@@ -1,0 +1,33 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 98%;
+    height: 10%; /* Fixed height for better control */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background-color: #e6cfb8;
+    z-index: 1000; /* Ensure it stays on top */
+}
+
+.be-logo {
+    height: 50px;
+    vertical-align: middle;
+}
+
+.clock {
+    font-size: 18px;
+    color: #987349;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-right: 5%;
+}
+.menu {
+    display: flex;
+    align-items: left;
+    gap: 20px
+}
