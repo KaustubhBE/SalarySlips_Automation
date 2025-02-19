@@ -1,15 +1,20 @@
+import os
 import json
 import webbrowser
 from google.oauth2.service_account import Credentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Load config
+config_path = os.path.join(script_dir, "config.json")
 try:
-    with open("config.json", "r") as f:
+    with open(config_path, "r") as f:
         config = json.load(f)
 except FileNotFoundError:
-    print("Error: Configuration file 'config.json' not found.")
+    print(f"Error: Configuration file '{config_path}' not found.")
     exit(1)
 
 # Email settings
@@ -24,7 +29,7 @@ if not SENDER_EMAIL or not SENDER_PASSWORD:
 
 # Load Service Account Credentials
 try:
-    service_account_file = r"C:\Users\Kaustubh\OneDrive\Desktop\BE_SS_Automation\backend\Utils\service_account_credentials.json"
+    service_account_file = os.path.join(script_dir, "service_account_credentials.json")
     creds = Credentials.from_service_account_file(
         service_account_file, 
         scopes=[
@@ -37,11 +42,11 @@ except Exception as e:
     exit(1)
 
 # Client secrets file for Google Drive API
-CLIENT_SECRETS_FILE = r"C:\Users\Kaustubh\OneDrive\Desktop\BE_SS_Automation\backend\Utils\client_secrets.json"
+CLIENT_SECRETS_FILE = os.path.join(script_dir, "client_secrets.json")
 
 # Authenticate PyDrive with OAuth2 using saved credentials
 try:
-    oauth2_file = r"C:\Users\Kaustubh\OneDrive\Desktop\BE_SS_Automation\backend\Utils\Oauth2.json"
+    oauth2_file = os.path.join(script_dir, "Oauth2.json")
     gauth = GoogleAuth()
     gauth.LoadClientConfigFile(CLIENT_SECRETS_FILE)
     gauth.LoadCredentialsFile(oauth2_file)
