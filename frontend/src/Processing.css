@@ -1,200 +1,218 @@
 #root {
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto 2rem;
-    padding: 2rem;
-    border-radius: 10px;
-    background-color: #e6cfb8;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-  }
-  
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  padding: 2rem;
+  border-radius: 10px;
+  background-color: #e6cfb8;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+}
+
+.input-elements {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 2rem;
+}
+
+.input-elements label {
+  font-weight: bold;
+  color: #987349;
+  font-size: 16px;
+}
+
+.input-elements select,
+.input-elements input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  color: #987349;
+  font-weight: bold;
+  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+  text-align: center; /* Center the text and placeholder */
+}
+
+.input-elements input::placeholder {
+  color: #987349; /* Match the placeholder color with the text color */
+  text-align: center; /* Center the placeholder text */
+}
+
+#datePicker {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  color: #987349;
+  font-weight: bold;
+  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+  text-align: center; /* Center the text and placeholder */
+}
+
+#datePicker::placeholder {
+  color: #987349; /* Match the placeholder color with the text color */
+  text-align: center; /* Center the placeholder text */
+}
+
+.option-select {
+  display: flex;
+  justify-content: center; /* Center the toggle buttons */
+  gap: 20px;
+  margin-bottom: 2rem;
+  font-weight: bold;
+  position: relative; /* Add relative positioning */
+  left: 10%; /* Move the container 10% to the right */
+}
+
+.whatsappToggle,
+.emailToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px; /* Reduced gap */
+  width: 48%; /* Ensure both toggle buttons take up equal width */
+}
+
+.whatsappToggle label,
+.emailToggle label {
+  margin: 0;
+  font-weight: bold;
+  color: #987349;
+  font-size: 16px;
+}
+
+.button {
+  text-align: center;
+}
+
+.btn {
+  background-color: #987349;
+  border: none;
+  color: #ffffff;
+  padding: 15px 30px;
+  font-size: 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #7a5c3a;
+}
+
+/* Styles for the login page */
+.login-container {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+}
+
+.login-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-container label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+  text-align: center; /* Center the text and placeholder */
+}
+
+.login-container input::placeholder {
+  color: #987349; /* Match the placeholder color with the text color */
+  text-align: center; /* Center the placeholder text */
+}
+
+.login-container button {
+  width: 100%;
+  padding: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-container button:hover {
+  background-color: #45a049;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
   .input-elements {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin-bottom: 2rem;
+    gap: 15px;
   }
-  
-  .input-elements label {
-    font-weight: bold;
-    color: #987349;
-    font-size: 16px;
-  }
-  
-  .input-elements select,
-  .input-elements input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 16px;
-    color: #987349;
-    font-weight: bold;
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-  }
-  
+
   .option-select {
-    display: flex;
-    justify-content: center; /* Center the toggle buttons */
-    gap: 20px;
-    margin-bottom: 2rem;
-    font-weight: bold;
-    position: relative; /* Add relative positioning */
-    left: 10%; /* Move the container 10% to the right */
+    flex-direction: column;
+    gap: 15px;
+    left: 0; /* Reset the left position for smaller screens */
   }
-  
-  #datePicker {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 16px;
-    color: #987349;
-    font-weight: bold;
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-  }
-  
-  .whatsappToggle,
-  .emailToggle {
-    display: flex;
-    align-items: center;
-    gap: 5px; /* Reduced gap */
-    width: 48%; /* Ensure both toggle buttons take up equal width */
-  }
-  
-  .whatsappToggle label,
-  .emailToggle label {
-    margin: 0;
-    font-weight: bold;
-    color: #987349;
-    font-size: 16px;
-  }
-  
-  .button {
-    text-align: center;
-  }
-  
+
   .btn {
-    background-color: #987349;
-    border: none;
-    color: #ffffff;
-    padding: 15px 30px;
-    font-size: 18px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    padding: 12px 24px;
+    font-size: 16px;
   }
-  
-  .btn:hover {
-    background-color: #7a5c3a;
-  }
-  
-  /* Styles for the login page */
+
   .login-container {
-    max-width: 400px;
-    margin: 50px auto;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+    margin: 30px auto;
+    padding: 15px;
   }
-  
-  .login-container h2 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  
-  .login-container label {
-    display: block;
-    margin-bottom: 5px;
-  }
-  
+
   .login-container input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+    padding: 8px;
   }
-  
+
   .login-container button {
-    width: 100%;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 1rem;
+  }
+
+  .input-elements {
+    gap: 10px;
+  }
+
+  .option-select {
+    gap: 10px;
+    left: 0; /* Reset the left position for smaller screens */
+  }
+
+  .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .login-container {
+    margin: 20px auto;
     padding: 10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
   }
-  
-  .login-container button:hover {
-    background-color: #45a049;
+
+  .login-container input {
+    padding: 6px;
   }
-  
-  /* Media queries for responsiveness */
-  @media (max-width: 768px) {
-    .input-elements {
-      gap: 15px;
-    }
-  
-    .option-select {
-      flex-direction: column;
-      gap: 15px;
-      left: 0; /* Reset the left position for smaller screens */
-    }
-  
-    .btn {
-      padding: 12px 24px;
-      font-size: 16px;
-    }
-  
-    .login-container {
-      margin: 30px auto;
-      padding: 15px;
-    }
-  
-    .login-container input {
-      padding: 8px;
-    }
-  
-    .login-container button {
-      padding: 8px;
-    }
+
+  .login-container button {
+    padding: 6px;
   }
-  
-  @media (max-width: 480px) {
-    #root {
-      padding: 1rem;
-    }
-  
-    .input-elements {
-      gap: 10px;
-    }
-  
-    .option-select {
-      gap: 10px;
-      left: 0; /* Reset the left position for smaller screens */
-    }
-  
-    .btn {
-      padding: 10px 20px;
-      font-size: 14px;
-    }
-  
-    .login-container {
-      margin: 20px auto;
-      padding: 10px;
-    }
-  
-    .login-container input {
-      padding: 6px;
-    }
-  
-    .login-container button {
-      padding: 6px;
-    }
-  }
+}

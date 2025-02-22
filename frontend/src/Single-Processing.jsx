@@ -50,7 +50,7 @@ function SingleProcessing() {
       sheet_name: sheetName,
       send_whatsapp: sendWhatsApp,
       send_email: sendEmail,
-      employee_details: employeeDetails, // Include employee details in the payload
+      employee_identifier: employeeDetails, // Include employee identifier in the payload
     };
 
     setLoading(true); // Start loading spinner
@@ -89,7 +89,7 @@ function SingleProcessing() {
         <Route path="/" element={
           <div className="main-content">
             <div className="input-elements">
-              <label htmlFor="employeeDetails">Enter Employee name or code</label>
+              <label htmlFor="employeeDetails">Enter Employee name or code:</label>
               <input
                 id="employeeDetails"
                 type="text"

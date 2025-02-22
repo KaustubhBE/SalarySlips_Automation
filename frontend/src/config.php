@@ -1,14 +1,11 @@
 <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "your_database_name";
+$dbname = 'users.db';
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
+// Create (connect to) SQLite database in file
+$conn = new SQLite3($dbname);
 
 // Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (!$conn) {
+    die("Connection failed: " . $conn->lastErrorMsg());
 }
 ?>

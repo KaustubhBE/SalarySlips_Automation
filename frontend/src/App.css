@@ -28,11 +28,13 @@ body {
 .splash-page h1 {
   font-size: 2.5rem;
   margin-bottom: 20px;
+  color: #987349;
 }
 
-.splash-page p {
+.splash-page h3 {
   font-size: 1.2rem;
   margin-bottom: 30px;
+  color: #987349;
 }
 
 /* Navigation links styles */
@@ -40,6 +42,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .nav-link {
@@ -50,9 +53,30 @@ body {
   text-decoration: none;
   border-radius: 5px;
   transition: background-color 0.3s;
+  flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
+  text-align: center; /* Center text */
+  margin: 5px; /* Add margin for spacing */
 }
 
 .nav-link:hover {
+  background-color: #0056b3;
+}
+
+/* Button styles */
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+  flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
+  text-align: center; /* Center text */
+  margin: 5px; /* Add margin for spacing */
+}
+
+.btn:hover {
   background-color: #0056b3;
 }
 
@@ -88,4 +112,43 @@ body {
 .message-logger div div {
   margin-bottom: 5px;
   color: #dc3545;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+  .splash-page {
+    padding: 30px;
+    margin: 30px auto;
+  }
+
+  .splash-page h1 {
+    font-size: 2rem;
+  }
+
+  .splash-page p {
+    font-size: 1rem;
+  }
+
+  .nav-link, .btn {
+    flex: 1 1 100px; /* Adjust flex-basis for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .splash-page {
+    padding: 20px;
+    margin: 20px auto;
+  }
+
+  .splash-page h1 {
+    font-size: 1.5rem;
+  }
+
+  .splash-page p {
+    font-size: 0.9rem;
+  }
+
+  .nav-link, .btn {
+    flex: 1 1 80px; /* Adjust flex-basis for smaller screens */
+  }
 }

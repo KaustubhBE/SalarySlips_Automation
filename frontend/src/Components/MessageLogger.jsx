@@ -42,7 +42,7 @@ const MessageLogger = ({ refreshTrigger }) => {
             zIndex: 1000,
         }}>
             <h4>Message Log</h4>
-            <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+            <div style={{ maxHeight: '100px', overflowY: 'auto' }}>
                 {messages.map((msg, index) => (
                     <div key={index} style={{ marginBottom: '5px', color: '#dc3545' }}>
                         {msg}

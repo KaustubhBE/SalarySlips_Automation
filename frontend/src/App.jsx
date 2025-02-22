@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
-import { Link, Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import SingleProcessing from './Single-Processing';
 import BatchProcessing from './Batch-Processing';
 import Settings from './Components/Settings';
@@ -37,8 +37,8 @@ function App() {
       {loading && <LoadingSpinner />}
       {showSplash ? (
         <div className="splash-page">
-          <h1>Welcome to Our Organization</h1>
-          <p>Please choose an option below:</p>
+          <h1>Welcome to Bajaj Earths</h1>
+          <h3>Please choose an option below:</h3>
           <div className="navigation-links">
             <span onClick={() => handleLinkClick('/single-processing')} className="nav-link">Single Processing</span>
             <span onClick={() => handleLinkClick('/batch-processing')} className="nav-link">Batch Processing</span>
@@ -47,6 +47,7 @@ function App() {
         </div>
       ) : (
         <Routes>
+          <Route path="/app" element={<App />} />
           <Route path="/settings" element={<Settings user={user} onLogout={handleLogout} />} />
           <Route path="/single-processing" element={<SingleProcessing />} />
           <Route path="/batch-processing" element={<BatchProcessing />} />

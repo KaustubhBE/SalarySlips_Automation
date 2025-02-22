@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import comtypes.client
 from docx import Document
 from Utils.email_utils import send_email_with_attachment, get_employee_email
@@ -22,7 +23,7 @@ def convert_docx_to_pdf(input_path, output_path):
         comtypes.CoUninitialize()  # Uninitialize COM library
         return True
     except Exception as e:
-        print(f"Error converting DOCX to PDF: {e}")
+        logging.error(f"Error converting DOCX to PDF: {e}")
         return False
 
 # Format file path
@@ -33,9 +34,9 @@ def format_file_path(file_path):
         return [f.replace("\\\\", "\\") for f in file_path]
     return file_path
 
-# Generate and process salary slips
+# Generate and process salary slips for a single employee
 def process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
-    print("Starting process_salary_slip function")
+    logging.info("Starting process_salary_slip function")
     headers = preprocess_headers(headers)
     placeholders = dict(zip(headers, employee_data))
 
@@ -54,7 +55,7 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
         placeholders["HRA"] = str(round(present_salary * 0.20))
         placeholders["SA"] = str(round(present_salary * 0.40))
     except ValueError:
-        print(f"Invalid Present Salary for {placeholders.get('Name', 'Unknown')}. Skipping.")
+        logging.error(f"Invalid Present Salary for {placeholders.get('Name', 'Unknown')}. Skipping.")
         return
 
     # Ensure all placeholders are strings
@@ -111,11 +112,11 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
                     </body>
                     </html>
                     """
-                    print(f"Sending email to {recipient_email}")
+                    logging.info(f"Sending email to {recipient_email}")
                     send_email_with_attachment(recipient_email, email_subject, email_body, output_pdf)
                 else:
-                    print(f"No email found for {placeholders.get('Name')}.")
-
+                    logging.info(f"No email found for {placeholders.get('Name')}.")
+            
             # Send WhatsApp message if enabled
             if send_whatsapp:
                 contact_name = placeholders.get("Name")
@@ -139,8 +140,15 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
                         "+91 - 86557 88172"
                     ]
                     file_path = os.path.join(output_dir, f"Salary Slip_{contact_name}_{month}{year}.pdf")
-                    print(f"Sending WhatsApp message to {whatsapp_number}")
+                    logging.info(f"Sending WhatsApp message to {whatsapp_number}")
                     send_whatsapp_message(contact_name, message, file_path, whatsapp_number)
     except Exception as e:
-        print(f"Error processing salary slip for {placeholders.get('Name', 'Unknown')}: {e}")
-    print("Finished process_salary_slip function")
+        logging.error(f"Error processing salary slip for {placeholders.get('Name', 'Unknown')}: {e}")
+    logging.info("Finished process_salary_slip function")
+
+# Generate and process salary slips for multiple employees (batch processing)
+def process_salary_slips(template_path, output_dir, employees_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
+    logging.info("Starting process_salary_slips function")
+    for employee_data in employees_data:
+        process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email)
+    logging.info("Finished process_salary_slips function")

@@ -7,11 +7,21 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Perform authentication (this is a simple example, you should use a secure method)
-    if (username === 'admin' && password === 'password') {
-      onLogin();
+
+    const response = await fetch('http://localhost:5000/authenticate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      onLogin(result.role);
     } else {
-      alert('Invalid credentials');
+      alert(result.message);
     }
   };
 

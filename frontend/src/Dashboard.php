@@ -9,19 +9,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $role = $_POST['role'];
 
         // Prepare an SQL statement
-        $stmt = $conn->prepare("INSERT INTO users (username, email, role) VALUES (?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO users (username, email, role) VALUES (:username, :email, :role)");
         if ($stmt === false) {
-            die("Error preparing statement: " . $conn->error);
+            die("Error preparing statement: " . $conn->lastErrorMsg());
         }
 
         // Bind parameters to the SQL statement
-        $stmt->bind_param("sss", $username, $email, $role);
+        $stmt->bindValue(':username', $username, SQLITE3_TEXT);
+        $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+        $stmt->bindValue(':role', $role, SQLITE3_TEXT);
 
         // Execute the statement
-        if ($stmt->execute() === TRUE) {
+        if ($stmt->execute()) {
             echo "New user added successfully";
         } else {
-            echo "Error: " . $stmt->error;
+            echo "Error: " . $conn->lastErrorMsg();
         }
 
         // Close the statement
@@ -30,19 +32,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user_id = $_POST['user_id'];
 
         // Prepare an SQL statement
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = :id");
         if ($stmt === false) {
-            die("Error preparing statement: " . $conn->error);
+            die("Error preparing statement: " . $conn->lastErrorMsg());
         }
 
         // Bind parameters to the SQL statement
-        $stmt->bind_param("i", $user_id);
+        $stmt->bindValue(':id', $user_id, SQLITE3_INTEGER);
 
         // Execute the statement
-        if ($stmt->execute() === TRUE) {
+        if ($stmt->execute()) {
             echo "User deleted successfully";
         } else {
-            echo "Error: " . $stmt->error;
+            echo "Error: " . $conn->lastErrorMsg();
         }
 
         // Close the statement
@@ -52,19 +54,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $role = $_POST['role'];
 
         // Prepare an SQL statement
-        $stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE users SET role = :role WHERE id = :id");
         if ($stmt === false) {
-            die("Error preparing statement: " . $conn->error);
+            die("Error preparing statement: " . $conn->lastErrorMsg());
         }
 
         // Bind parameters to the SQL statement
-        $stmt->bind_param("si", $role, $user_id);
+        $stmt->bindValue(':role', $role, SQLITE3_TEXT);
+        $stmt->bindValue(':id', $user_id, SQLITE3_INTEGER);
 
         // Execute the statement
-        if ($stmt->execute() === TRUE) {
+        if ($stmt->execute()) {
             echo "User role updated successfully";
         } else {
-            echo "Error: " . $stmt->error;
+            echo "Error: " . $conn->lastErrorMsg();
         }
 
         // Close the statement
@@ -87,7 +90,7 @@ $result = $conn->query($sql);
 <body>
     <h1>Admin Panel</h1>
     <h2>Add User</h2>
-    <form action="index.php" method="post">
+    <form action="Dashboard.php" method="post">
         <input type="hidden" name="add_user" value="1">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
@@ -112,19 +115,19 @@ $result = $conn->query($sql);
         </tr>
         <?php
         if ($result->num_rows > 0) {
-            while($row = $result->fetch_assoc()) {
+            while($row = $result->fetchArray(SQLITE3_ASSOC)) {
                 echo "<tr>
                         <td>{$row['id']}</td>
                         <td>{$row['username']}</td>
                         <td>{$row['email']}</td>
                         <td>{$row['role']}</td>
                         <td>
-                            <form action='index.php' method='post' style='display:inline;'>
+                            <form action='Dashboard.php' method='post' style='display:inline;'>
                                 <input type='hidden' name='delete_user' value='1'>
                                 <input type='hidden' name='user_id' value='{$row['id']}'>
                                 <button type='submit'>Delete</button>
                             </form>
-                            <form action='index.php' method='post' style='display:inline;'>
+                            <form action='Dashboard.php' method='post' style='display:inline;'>
                                 <input type='hidden' name='update_role' value='1'>
                                 <input type='hidden' name='user_id' value='{$row['id']}'>
                                 <select name='role'>
