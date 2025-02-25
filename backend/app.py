@@ -101,17 +101,24 @@ def generate_salary_slip_single():
         # Log the structure of drive_employees
         app.logger.info(f"drive_employees structure: {drive_employees}")
 
-        # Find the employee by name or code in the drive_employees list
-        employee = next((emp for emp in drive_employees if emp.get('Name') == employee_identifier or emp.get('Employee Code') == employee_identifier), None)
+        # Find the employee by code in the drive_employees list (column B)
+        employee = next((emp for emp in drive_employees if emp.get('Employee\nCode') == employee_identifier or emp.get('Name') == employee_identifier ), None)
         if not employee:
-            error_msg = f"Employee with identifier {employee_identifier} not found."
+            error_msg = f"Employee with identifier {employee_identifier} not found in drive data."
+            app.logger.error(error_msg)
+            return jsonify({"error": error_msg}), 404
+
+        # Find the employee by code in the salary data list (column D)
+        salary_employee = next((emp for emp in employees if emp[salary_headers.index('Employee\nCode')] == employee_identifier or emp[salary_headers.index('Name')] == employee_identifier), None)
+        if not salary_employee:
+            error_msg = f"Employee with identifier {employee_identifier} not found in salary data."
             app.logger.error(error_msg)
             return jsonify({"error": error_msg}), 404
 
         employee_name = employee.get('Name')  # Assuming the employee name is in the 'Name' field
         app.logger.info(f"Processing salary slip for employee: {employee_name}")
         try:
-            employee_data = [str(item) if item is not None else '' for item in employee.values()]
+            employee_data = [str(item) if item is not None else '' for item in salary_employee]
             process_salary_slip(
                 template_path=TEMPLATE_PATH,
                 output_dir=OUTPUT_DIR,

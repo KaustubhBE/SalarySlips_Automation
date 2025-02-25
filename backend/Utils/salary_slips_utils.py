@@ -45,17 +45,20 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
     placeholders["Year"] = full_year
 
     # Merge data from "Official Details" sheet
-    official_details = next((item for item in drive_data if item.get("Name") == placeholders.get("Name")), {})
+    official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code")), {})
     placeholders.update(official_details)
 
     # Calculate components of salary
     try:
-        present_salary = float(re.sub(r'[^\d.]', '', placeholders.get("Present Salary", "")))
+        present_salary_str = placeholders.get("Present Salary", "")
+        present_salary = float(re.sub(r'[^\d.]', '', present_salary_str))
+        if present_salary <= 0:
+            raise ValueError("Present Salary must be greater than zero.")
         placeholders["BS"] = str(round(present_salary * 0.40))
         placeholders["HRA"] = str(round(present_salary * 0.20))
         placeholders["SA"] = str(round(present_salary * 0.40))
-    except ValueError:
-        logging.error(f"Invalid Present Salary for {placeholders.get('Name', 'Unknown')}. Skipping.")
+    except ValueError as e:
+        logging.error(f"Invalid Present Salary for {placeholders.get('Name', 'Unknown')}: {e}. Skipping.")
         return
 
     # Ensure all placeholders are strings
