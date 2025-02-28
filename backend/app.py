@@ -14,9 +14,10 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Load configurations from environment variables
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", r"C:\Users\Kaustubh\OneDrive\Desktop\BE_SS_Automation\backend\Salary_Slips")
-TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", r"C:\Users\Kaustubh\OneDrive\Desktop\BE_SS_Automation\backend\ssformat.docx")
-LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", os.path.join(os.path.dirname(__file__), "app.log"))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(BASE_DIR, "Salary_Slips"))
+TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", os.path.join(BASE_DIR, "ssformat.docx"))
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", os.path.join(BASE_DIR, "app.log"))
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
