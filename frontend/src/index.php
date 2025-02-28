@@ -7,9 +7,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $username = $_POST['username'];
         $email = $_POST['email'];
         $role = $_POST['role'];
+        $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hash the password
 
         // Prepare an SQL statement
-        $stmt = $conn->prepare("INSERT INTO users (username, email, role) VALUES (:username, :email, :role)");
+        $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, :role)");
         if ($stmt === false) {
             die("Error preparing statement: " . $conn->lastErrorMsg());
         }
@@ -17,6 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Bind parameters to the SQL statement
         $stmt->bindValue(':username', $username, SQLITE3_TEXT);
         $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+        $stmt->bindValue(':password', $password, SQLITE3_TEXT);
         $stmt->bindValue(':role', $role, SQLITE3_TEXT);
 
         // Execute the statement
@@ -96,6 +98,8 @@ $result = $conn->query($sql);
         <input type="text" id="username" name="username" required>
         <label for="email">Email:</label>
         <input type="email" id="email" name="email" required>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
         <label for="role">Role:</label>
         <select id="role" name="role" required>
             <option value="user">User</option>
@@ -114,33 +118,29 @@ $result = $conn->query($sql);
             <th>Actions</th>
         </tr>
         <?php
-        if ($result->num_rows > 0) {
-            while($row = $result->fetchArray(SQLITE3_ASSOC)) {
-                echo "<tr>
-                        <td>{$row['id']}</td>
-                        <td>{$row['username']}</td>
-                        <td>{$row['email']}</td>
-                        <td>{$row['role']}</td>
-                        <td>
-                            <form action='Dashboard.php' method='post' style='display:inline;'>
-                                <input type='hidden' name='delete_user' value='1'>
-                                <input type='hidden' name='user_id' value='{$row['id']}'>
-                                <button type='submit'>Delete</button>
-                            </form>
-                            <form action='Dashboard.php' method='post' style='display:inline;'>
-                                <input type='hidden' name='update_role' value='1'>
-                                <input type='hidden' name='user_id' value='{$row['id']}'>
-                                <select name='role'>
-                                    <option value='user' " . ($row['role'] == 'user' ? 'selected' : '') . ">User</option>
-                                    <option value='admin' " . ($row['role'] == 'admin' ? 'selected' : '') . ">Admin</option>
-                                </select>
-                                <button type='submit'>Update Role</button>
-                            </form>
-                        </td>
-                      </tr>";
-            }
-        } else {
-            echo "<tr><td colspan='5'>No users found</td></tr>";
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            echo "<tr>
+                    <td>{$row['id']}</td>
+                    <td>{$row['username']}</td>
+                    <td>{$row['email']}</td>
+                    <td>{$row['role']}</td>
+                    <td>
+                        <form action='Dashboard.php' method='post' style='display:inline;'>
+                            <input type='hidden' name='delete_user' value='1'>
+                            <input type='hidden' name='user_id' value='{$row['id']}'>
+                            <button type='submit'>Delete</button>
+                        </form>
+                        <form action='Dashboard.php' method='post' style='display:inline;'>
+                            <input type='hidden' name='update_role' value='1'>
+                            <input type='hidden' name='user_id' value='{$row['id']}'>
+                            <select name='role'>
+                                <option value='user' " . ($row['role'] == 'user' ? 'selected' : '') . ">User</option>
+                                <option value='admin' " . ($row['role'] == 'admin' ? 'selected' : '') . ">Admin</option>
+                            </select>
+                            <button type='submit'>Update Role</button>
+                        </form>
+                    </td>
+                  </tr>";
         }
         ?>
     </table>

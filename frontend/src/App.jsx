@@ -11,14 +11,21 @@ import MessageLogger from './Components/MessageLogger';
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true to bypass login
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [user, setUser] = useState({ name: 'John Doe', email: 'john.doe@example.com' });
+  const [user, setUser] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
 
+  const handleLogin = (user) => {
+    setUser(user);
+    setIsAuthenticated(true);
+    navigate('/app');
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setUser(null);
     navigate('/');
   };
 
@@ -28,12 +35,12 @@ function App() {
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
     <>
-      <Navbar />
+      <Navbar user={user} onLogout={handleLogout} />
       {loading && <LoadingSpinner />}
       {showSplash ? (
         <div className="splash-page">

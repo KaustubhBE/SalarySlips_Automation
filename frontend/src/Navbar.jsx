@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './Navbar.css';
 import beLogo from './assets/be-logo.png';
 import { FaBars } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Navbar = () => {
   const [time, setTime] = useState(new Date());
@@ -45,8 +45,10 @@ const Navbar = () => {
             <span onClick={() => closeMenu('/settings')}>Settings</span>
           </div>
         )}
-      </div>
+        <Link to='/app' >
       <img src={beLogo} className='be-logo' alt='BE Logo' />
+      </Link>
+      </div>
       <div className='clock'>
         <p>
           {formatTime(time)}<br />

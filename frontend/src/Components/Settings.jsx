@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Settings = ({ user, onLogout }) => {
+function Settings({ user, onLogout }) {
   return (
     <div className="settings-container">
       <style>
@@ -47,12 +47,12 @@ const Settings = ({ user, onLogout }) => {
       </style>
       <h2>Settings</h2>
       <div className="user-info">
-        <p><strong>Name:</strong> {user.name}</p>
-        <p><strong>Email:</strong> {user.email}</p>
+        <p>Name: {user.name}</p>
+        <p>Email: {user.email}</p>
       </div>
       <button className="logout-button" onClick={onLogout}>Logout</button>
     </div>
   );
-};
+}
 
 export default Settings;
