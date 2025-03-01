@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
 from logging.handlers import RotatingFileHandler
 from Utils.fetch_data import fetch_google_sheet_data
@@ -42,7 +42,24 @@ def get_drive_service():
         app.logger.error(f"Error initializing Google Drive service: {e}")
         raise
 
+def check_user_role(required_role):
+    def decorator(f):
+        def wrapper(*args, **kwargs):
+            user_role = g.get('user_role')
+            if user_role != required_role:
+                return jsonify({"error": "Access denied"}), 403
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+@app.before_request
+def load_user():
+    # This is a placeholder. Replace with actual user loading logic.
+    # For example, you can load the user from a session or a token.
+    g.user_role = request.headers.get('X-User-Role', 'user')  # Default to 'user' if not provided
+
 @app.route("/generate-salary-slip-single", methods=["POST"])
+@check_user_role('user')
 def generate_salary_slip_single():
     try:
         user_inputs = request.json
@@ -155,6 +172,7 @@ def generate_salary_slip_single():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/generate-salary-slips-batch", methods=["POST"])
+@check_user_role('admin')
 def generate_salary_slips_batch():
     try:
         user_inputs = request.json
@@ -248,6 +266,6 @@ def get_logs():
 def home():
     return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
 
-if __name__ == "__main__":
+if __name__ == "___main__":
     initialize_database()  # Initialize the database when the server starts
     app.run(debug=True)
