@@ -1,32 +1,43 @@
 import sqlite3
+import os
+from werkzeug.security import generate_password_hash
 
 def initialize_database():
-    # Connect to the SQLite database (or create it if it doesn't exist)
-    conn = sqlite3.connect('users.db')
-
-    # Create a cursor object
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(BASE_DIR, '..', 'users.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create the users table
+    # Drop the users table if it exists
+    cursor.execute('DROP TABLE IF EXISTS users')
+
+    # Create the users table with the correct schema
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         role TEXT NOT NULL
     )
     ''')
 
-    # Insert sample user data (passwords should be hashed in a real application)
-    cursor.execute('''
-    INSERT INTO users (username, password, role) VALUES
-    ('admin', 'admin_password', 'admin'),
-    ('user', 'user_password', 'user')
-    ''')
+    # Hash the passwords
+    admin_password = generate_password_hash('admin_password')
+    user_password = generate_password_hash('user_password')
+    kaustubh_password = generate_password_hash('K@ustubh2003')
 
-    # Commit the changes and close the connection
+    # Insert initial users into the users table
+    cursor.execute('''
+    INSERT INTO users (username, email, password, role) VALUES
+    (?, ?, ?, ?),
+    (?, ?, ?, ?),
+    (?, ?, ?, ?)
+    ''', ('admin', 'admin@example.com', admin_password, 'admin',
+          'user', 'user@example.com', user_password, 'user',
+          'kaustubh', 'kaustubh@bajajearths.com', kaustubh_password, 'admin'))
+
     conn.commit()
     conn.close()
 
-if __name__ == "__main__":
-    initialize_database()
+    print('Database initialized successfully.')
