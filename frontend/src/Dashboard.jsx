@@ -17,8 +17,12 @@ function Dashboard() {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/get_users');
-      setUsers(response.data);
+      const response = await axios.get('http://localhost:5000/get_users');
+      if (Array.isArray(response.data)) {
+        setUsers(response.data);
+      } else {
+        setError('Unexpected response format.');
+      }
     } catch (err) {
       setError('An error occurred while fetching users.');
     }
@@ -27,7 +31,7 @@ function Dashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/add_user', { username, email, password, role });
+      const response = await axios.post('http://localhost:5000/add_user', { username, email, password, role });
       if (response.data.message) {
         setSuccess(response.data.message);
         fetchUsers();
@@ -41,7 +45,7 @@ function Dashboard() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await axios.post('/delete_user', { user_id: userId });
+      const response = await axios.post('http://localhost:5000/delete_user', { user_id: userId });
       if (response.data.message) {
         setSuccess(response.data.message);
         fetchUsers();
@@ -55,7 +59,7 @@ function Dashboard() {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      const response = await axios.post('/update_role', { user_id: userId, role: newRole });
+      const response = await axios.post('http://localhost:5000/update_role', { user_id: userId, role: newRole });
       if (response.data.message) {
         setSuccess(response.data.message);
         fetchUsers();
