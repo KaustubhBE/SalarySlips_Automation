@@ -8,24 +8,24 @@ import Login from './Login';
 import Navbar from './Navbar';
 import LoadingSpinner from './Components/LoadingSpinner';
 import MessageLogger from './Components/MessageLogger';
+import Dashboard from './Dashboard'; // Import the Dashboard component
+import ProtectedRoute from './Components/ProtectedRoute'; // Import the ProtectedRoute component
+import { useAuth } from './Components/AuthContext'; // Import the useAuth hook
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [user, setUser] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
+  const { user, isAuthenticated, login, logout } = useAuth(); // Use the useAuth hook
 
   const handleLogin = (user) => {
-    setUser(user);
-    setIsAuthenticated(true);
-    navigate('/app');
+    login(user);
+    navigate('/dashboard'); // Redirect to the Dashboard upon successful login
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
+    logout();
     navigate('/');
   };
 
@@ -54,10 +54,11 @@ function App() {
         </div>
       ) : (
         <Routes>
-          <Route path="/app" element={<App />} />
-          <Route path="/settings" element={<Settings user={user} onLogout={handleLogout} />} />
-          <Route path="/single-processing" element={<SingleProcessing />} />
-          <Route path="/batch-processing" element={<BatchProcessing />} />
+          <Route path="/app/*" element={<App />} />
+          <Route path="/settings/*" element={<Settings onLogout={handleLogout} />} />
+          <Route path="/single-processing/*" element={<SingleProcessing />} />
+          <Route path="/batch-processing/*" element={<BatchProcessing />} />
+          <Route path="/dashboard/*" element={<ProtectedRoute element={Dashboard} />} /> {/* Use ProtectedRoute for Dashboard */}
         </Routes>
       )}
       <MessageLogger refreshTrigger={refreshTrigger} />

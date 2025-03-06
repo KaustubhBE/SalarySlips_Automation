@@ -1,6 +1,13 @@
 import React from 'react';
+import { useAuth } from './AuthContext';
 
-function Settings({ user, onLogout }) {
+function Settings({ onLogout }) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <div className="settings-container"><p>Loading...</p></div>;
+  }
+
   return (
     <div className="settings-container">
       <style>
@@ -47,7 +54,7 @@ function Settings({ user, onLogout }) {
       </style>
       <h2>Settings</h2>
       <div className="user-info">
-        <p>Name: {user.name}</p>
+        <p>Name: {user.username}</p>
         <p>Email: {user.email}</p>
       </div>
       <button className="logout-button" onClick={onLogout}>Logout</button>
