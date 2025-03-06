@@ -9,6 +9,9 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from Utils.config import CLIENT_SECRETS_FILE, drive
 from Utils.setup_db import initialize_database  # Import the database initialization function
+from Utils.db_utils import get_db_connection  # Import the get_db_connection function
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -44,6 +47,7 @@ def get_drive_service():
 
 def check_user_role(required_role):
     def decorator(f):
+        @wraps(f)
         def wrapper(*args, **kwargs):
             user_role = g.get('user_role')
             if user_role != required_role:
@@ -57,6 +61,105 @@ def load_user():
     # This is a placeholder. Replace with actual user loading logic.
     # For example, you can load the user from a session or a token.
     g.user_role = request.headers.get('X-User-Role', 'user')  # Default to 'user' if not provided
+
+@app.route("/add_user", methods=["POST"])
+def add_user():
+    try:
+        data = request.json
+        username = data.get('username')
+        email = data.get('email')
+        role = data.get('role')
+        password = generate_password_hash(data.get('password'))
+
+        if not username or not email or not role or not password:
+            return jsonify({"error": "All fields are required"}), 400
+
+        conn = get_db_connection()
+        conn.execute('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+                     (username, email, password, role))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "New user added successfully"}), 201
+
+    except Exception as e:
+        error_msg = f"Error: {e}"
+        app.logger.error(error_msg)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/delete_user", methods=["POST"])
+def delete_user():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+
+        conn = get_db_connection()
+        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "User deleted successfully"}), 200
+
+    except Exception as e:
+        error_msg = f"Error: {e}"
+        app.logger.error(error_msg)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/update_role", methods=["POST"])
+def update_role():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        role = data.get('role')
+
+        if not user_id or not role:
+            return jsonify({"error": "User ID and role are required"}), 400
+
+        conn = get_db_connection()
+        conn.execute('UPDATE users SET role = ? WHERE id = ?', (role, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "User role updated successfully"}), 200
+
+    except Exception as e:
+        error_msg = f"Error: {e}"
+        app.logger.error(error_msg)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get_users", methods=["GET"])
+def get_users():
+    try:
+        conn = get_db_connection()
+        users = conn.execute('SELECT * FROM users').fetchall()
+        conn.close()
+
+        return jsonify([dict(user) for user in users]), 200
+
+    except Exception as e:
+        error_msg = f"Error: {e}"
+        app.logger.error(error_msg)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/user/<int:user_id>", methods=["GET"])
+def get_user(user_id):
+    try:
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+
+        if user is None:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify(dict(user)), 200
+
+    except Exception as e:
+        error_msg = f"Error: {e}"
+        app.logger.error(error_msg)
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/generate-salary-slip-single", methods=["POST"])
 @check_user_role('user')
@@ -79,8 +182,8 @@ def generate_salary_slip_single():
         sheet_id_drive = user_inputs["sheet_id_drive"]
         full_month = user_inputs["full_month"]
         full_year = user_inputs["full_year"]
-        employee_identifier = user_inputs["employee_identifier"]
         sheet_name = full_month[:3]  # Short form of the month
+        employee_identifier = user_inputs["employee_identifier"]  # Extract employee_identifier
         send_whatsapp = user_inputs.get("send_whatsapp", False)
         send_email = user_inputs.get("send_email", False)
 
@@ -170,7 +273,7 @@ def generate_salary_slip_single():
         error_msg = f"Error: {e}"
         app.logger.error(error_msg)
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route("/generate-salary-slips-batch", methods=["POST"])
 @check_user_role('admin')
 def generate_salary_slips_batch():
@@ -266,6 +369,8 @@ def get_logs():
 def home():
     return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
 
-if __name__ == "___main__":
+if __name__ == "__main__":
     initialize_database()  # Initialize the database when the server starts
+    from Utils.auth import auth_bp  # Import the auth blueprint
+    app.register_blueprint(auth_bp)
     app.run(debug=True)

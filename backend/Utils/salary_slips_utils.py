@@ -6,6 +6,7 @@ from docx import Document
 from Utils.email_utils import send_email_with_attachment, get_employee_email
 from Utils.whatsapp_utils import send_whatsapp_message, get_employee_contact
 from Utils.drive_utils import upload_to_google_drive
+import shutil
 
 # Preprocess headers
 def preprocess_headers(headers):
@@ -34,9 +35,24 @@ def format_file_path(file_path):
         return [f.replace("\\\\", "\\") for f in file_path]
     return file_path
 
+# Clear the Salary_Slips folder
+def clear_salary_slips_folder(output_dir):
+    try:
+        for filename in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        logging.info(f"Cleared the contents of the folder: {output_dir}")
+    except Exception as e:
+        logging.error(f"Error clearing the folder {output_dir}: {e}")
+
+# Generate and process salary slips for a single employee
 # Generate and process salary slips for a single employee
 def process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
     logging.info("Starting process_salary_slip function")
+    clear_salary_slips_folder(output_dir)  # Clear the folder at the beginning of the single processing
     headers = preprocess_headers(headers)
     placeholders = dict(zip(headers, employee_data))
 
@@ -152,6 +168,7 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
 # Generate and process salary slips for multiple employees (batch processing)
 def process_salary_slips(template_path, output_dir, employees_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
     logging.info("Starting process_salary_slips function")
+    clear_salary_slips_folder(output_dir)  # Clear the folder at the beginning of the batch processing
     for employee_data in employees_data:
         process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email)
     logging.info("Finished process_salary_slips function")
