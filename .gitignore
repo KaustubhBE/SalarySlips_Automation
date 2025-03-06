@@ -1,3 +1,6 @@
 node_modules
 .venv
 .vscode
+/backend/Oauth2.json
+/backend/service_account_credentials.json
+/backend/client_secrets.json
