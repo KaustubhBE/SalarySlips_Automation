@@ -55,7 +55,10 @@ function BatchProcessing() {
     try {
       const response = await fetch('http://127.0.0.1:5000/generate-salary-slips-batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'admin' // Set the user role to admin
+        },
         body: JSON.stringify(payload),
       });
 
