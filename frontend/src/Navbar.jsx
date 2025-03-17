@@ -3,16 +3,11 @@ import './Navbar.css';
 import beLogo from './assets/be-logo.png';
 import { FaBars } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
+import ClientOnly from './Components/ClientOnly';
 
-const Navbar = () => {
+const Clock = () => {
   const [time, setTime] = useState(new Date());
-  const [menuOpen, setMenuOpen] = useState(false);
-  const option = { month: 'short' };
-  const dateToday = new Date().getDate().toString().padStart(2, '0');
-  const monthToday = new Date().toLocaleDateString('en-US', option).toString().toUpperCase(0);
-  const yearToday = new Date().getFullYear();
-  const navigate = useNavigate();
-
+  
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date());
@@ -23,6 +18,25 @@ const Navbar = () => {
   const formatTime = (date) => {
     return date.toLocaleTimeString();
   };
+
+  const option = { month: 'short' };
+  const dateToday = time.getDate().toString().padStart(2, '0');
+  const monthToday = time.toLocaleDateString('en-US', option).toString().toUpperCase();
+  const yearToday = time.getFullYear();
+
+  return (
+    <div className='clock'>
+      <p>
+        {formatTime(time)}<br />
+        {`${dateToday} ${monthToday}, ${yearToday}`}
+      </p>
+    </div>
+  );
+};
+
+const Navbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -45,16 +59,13 @@ const Navbar = () => {
             <span onClick={() => closeMenu('/settings')}>Settings</span>
           </div>
         )}
-        <Link to='/app' >
-      <img src={beLogo} className='be-logo' alt='BE Logo' />
-      </Link>
+        <Link to='/app'>
+          <img src={beLogo} className='be-logo' alt='BE Logo' />
+        </Link>
       </div>
-      <div className='clock'>
-        <p>
-          {formatTime(time)}<br />
-          {`${dateToday} ${monthToday}, ${yearToday}`}
-        </p>
-      </div>
+      <ClientOnly>
+        <Clock />
+      </ClientOnly>
     </div>
   );
 };
