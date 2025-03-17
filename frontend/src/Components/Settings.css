@@ -1,0 +1,132 @@
+.settings-container {
+  max-width: 600px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  box-sizing: border-box;
+}
+
+.settings-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.user-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.user-info p {
+  font-size: 16px;
+  color: #333;
+  margin: 10px 0;
+}
+
+.password-form {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.error-message {
+  color: #dc3545;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f8d7da;
+  border-radius: 4px;
+}
+
+.success-message {
+  color: #28a745;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #d4edda;
+  border-radius: 4px;
+}
+
+.button {
+  width: 100%;
+  padding: 10px;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.change-password-button {
+  background-color: #007bff;
+}
+
+.change-password-button:hover {
+  background-color: #0056b3;
+}
+
+.change-password-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.logout-button {
+  background-color: #dc3545;
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .settings-container {
+    background-color: #1a1a1a;
+    border-color: #333;
+  }
+
+  .user-info,
+  .password-form {
+    background-color: #262626;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .user-info p,
+  .form-group label {
+    color: #e5e5e5;
+  }
+
+  .form-group input {
+    background-color: #333;
+    border-color: #444;
+    color: #e5e5e5;
+  }
+
+  .form-group input:focus {
+    border-color: #007bff;
+  }
+} 

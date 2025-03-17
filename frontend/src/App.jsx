@@ -1,67 +1,126 @@
-import React, { useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import './App.css';
-import { Route, Routes, useNavigate } from 'react-router-dom';
-import SingleProcessing from './Single-Processing';
-import BatchProcessing from './Batch-Processing';
+import { Route, Routes, useNavigate, Navigate } from 'react-router-dom';
+import Processing from './Processing';
 import Settings from './Components/Settings';
 import Login from './Login';
 import Navbar from './Navbar';
-import LoadingSpinner from './Components/LoadingSpinner';
-import MessageLogger from './Components/MessageLogger';
-import Dashboard from './Dashboard'; // Import the Dashboard component
-import ProtectedRoute from './Components/ProtectedRoute'; // Import the ProtectedRoute component
-import { useAuth } from './Components/AuthContext'; // Import the useAuth hook
+import Dashboard from './Dashboard';
+import { useAuth } from './Components/AuthContext';
 
 function App() {
-  const [loading, setLoading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
-  const { user, isAuthenticated, login, logout } = useAuth(); // Use the useAuth hook
+  const { user, isAuthenticated, login, logout } = useAuth();
 
-  const handleLogin = (user) => {
-    login(user);
-    navigate('/dashboard'); // Redirect to the Dashboard upon successful login
-  };
+  useEffect(() => {
+    const checkAuth = () => {
+      const storedUser = localStorage.getItem('user');
+      const storedAuthStatus = localStorage.getItem('isAuthenticated');
 
-  const handleLogout = () => {
+      if (storedUser && storedAuthStatus === 'true') {
+        const userData = JSON.parse(storedUser);
+        if (!isAuthenticated) {
+          login(userData);
+        }
+      } else if (isAuthenticated) {
+        logout();
+      }
+    };
+
+    checkAuth();
+  }, [isAuthenticated, login, logout]);
+
+  const handleLogout = useCallback(() => {
     logout();
-    navigate('/');
-  };
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
 
-  const handleLinkClick = (path) => {
-    setShowSplash(false);
-    navigate(path);
-  };
-
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
+  // Function to check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   return (
     <>
-      <Navbar user={user} onLogout={handleLogout} />
-      {loading && <LoadingSpinner />}
-      {showSplash ? (
-        <div className="splash-page">
-          <h1>Welcome to Bajaj Earths</h1>
-          <h3>Please choose an option below:</h3>
-          <div className="navigation-links">
-            <span onClick={() => handleLinkClick('/single-processing')} className="nav-link">Single Processing</span>
-            <span onClick={() => handleLinkClick('/batch-processing')} className="nav-link">Batch Processing</span>
-            <span onClick={() => handleLinkClick('/settings')} className="nav-link">Settings</span>
-          </div>
-        </div>
-      ) : (
-        <Routes>
-          <Route path="/app/*" element={<App />} />
-          <Route path="/settings/*" element={<Settings onLogout={handleLogout} />} />
-          <Route path="/single-processing/*" element={<SingleProcessing />} />
-          <Route path="/batch-processing/*" element={<BatchProcessing />} />
-          <Route path="/dashboard/*" element={<ProtectedRoute element={Dashboard} />} /> {/* Use ProtectedRoute for Dashboard */}
-        </Routes>
-      )}
-      <MessageLogger refreshTrigger={refreshTrigger} />
+      {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
+      
+      <Routes>
+        <Route path="/login" element={
+          isAuthenticated ? 
+            <Navigate to="/app" replace /> : 
+            <Login />
+        } />
+
+        <Route path="/" element={
+          isAuthenticated ? 
+            <Navigate to="/app" replace /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/app" element={
+          isAuthenticated ? (
+            <div className="splash-page">
+              <h1>Welcome to Bajaj Earths</h1>
+              <h3>Please choose an option below:</h3>
+              <div className="navigation-links">
+                <span 
+                  onClick={() => navigate('/single-processing')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Single Processing
+                </span>
+                <span 
+                  onClick={() => navigate('/batch-processing')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Batch Processing
+                </span>
+                <span 
+                  onClick={() => navigate('/settings')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Settings
+                </span>
+                {isAdmin && (
+                  <span 
+                    onClick={() => navigate('/dashboard')} 
+                    className="nav-link"
+                    role="button"
+                    tabIndex={0}
+                    aria-label="User Management (Admin Only)"
+                  >
+                    User Management
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/dashboard" element={
+          isAuthenticated && isAdmin ? 
+            <Dashboard /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/settings" element={
+          isAuthenticated ? <Settings onLogout={handleLogout} /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/single-processing" element={
+          isAuthenticated ? <Processing mode="single" /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/batch-processing" element={
+          isAuthenticated ? <Processing mode="batch" /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="*" element={<Navigate to="/app" replace />} />
+      </Routes>
     </>
   );
 }

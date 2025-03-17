@@ -1,12 +1,15 @@
 import os
 import re
 import logging
-import comtypes.client
 from docx import Document
 from Utils.email_utils import send_email_with_attachment, get_employee_email
 from Utils.whatsapp_utils import send_whatsapp_message, get_employee_contact
 from Utils.drive_utils import upload_to_google_drive
 import shutil
+import subprocess
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Preprocess headers
 def preprocess_headers(headers):
@@ -14,14 +17,19 @@ def preprocess_headers(headers):
 
 def convert_docx_to_pdf(input_path, output_path):
     try:
-        comtypes.CoInitialize()  # Initialize COM library
-        word = comtypes.client.CreateObject('Word.Application')
-        word.Visible = False
-        doc = word.Documents.Open(input_path)
-        doc.SaveAs(output_path, FileFormat=17)
-        doc.Close()
-        word.Quit()
-        comtypes.CoUninitialize()  # Uninitialize COM library
+        process = subprocess.Popen([
+            'libreoffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', os.path.dirname(output_path),
+            input_path
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.wait()
+        
+        # Rename the output file if needed
+        default_pdf_name = os.path.splitext(os.path.basename(input_path))[0] + '.pdf'
+        default_pdf_path = os.path.join(os.path.dirname(output_path), default_pdf_name)
+        if default_pdf_path != output_path:
+            os.rename(default_pdf_path, output_path)
+            
         return True
     except Exception as e:
         logging.error(f"Error converting DOCX to PDF: {e}")
@@ -48,7 +56,34 @@ def clear_salary_slips_folder(output_dir):
     except Exception as e:
         logging.error(f"Error clearing the folder {output_dir}: {e}")
 
-# Generate and process salary slips for a single employee
+def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path):
+    """Handle WhatsApp notification with environment check"""
+    if whatsapp_number:
+        message = [
+            f"Dear *{contact_name}*,",
+            "",
+            f"Please find attached your *salary slip* for the month of *{full_month} {full_year}*.",
+            "",
+            "This document includes:",
+            "   -  Earnings Breakdown",
+            "   -  Deductions Summary",
+            "   -  Net Salary Details",
+            "",
+            "Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.",
+            "",
+            "Thanks & Regards,",
+            "HR Department",
+            "Bajaj Earths Pvt. Ltd.",
+            "+91 - 86557 88172"
+        ]
+        
+        # Log attempt
+        logging.info(f"Attempting to send WhatsApp message to {contact_name} ({whatsapp_number})")
+        
+        # Send message
+        return send_whatsapp_message(contact_name, message, file_path, whatsapp_number)
+    return False
+
 # Generate and process salary slips for a single employee
 def process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
     logging.info("Starting process_salary_slip function")
@@ -140,27 +175,13 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
             if send_whatsapp:
                 contact_name = placeholders.get("Name")
                 whatsapp_number = get_employee_contact(contact_name, contact_employees)
-                if whatsapp_number:
-                    message = [
-                        f"Dear *{placeholders.get('Name')}*,",
-                        "",
-                        f"Please find attached your *salary slip* for the month of *{full_month} {full_year}*.",
-                        "",
-                        " This document includes:",
-                        "   -  Earnings Breakdown",
-                        "   -  Deductions Summary",
-                        "   -  Net Salary Details",
-                        "",
-                        "Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.",
-                        "",
-                        "Thanks & Regards,",
-                        "HR Department",
-                        "Bajaj Earths Pvt. Ltd.",
-                        "+91 - 86557 88172"
-                    ]
-                    file_path = os.path.join(output_dir, f"Salary Slip_{contact_name}_{month}{year}.pdf")
-                    logging.info(f"Sending WhatsApp message to {whatsapp_number}")
-                    send_whatsapp_message(contact_name, message, file_path, whatsapp_number)
+                handle_whatsapp_notification(
+                    contact_name,
+                    full_month,
+                    full_year,
+                    whatsapp_number,
+                    output_pdf
+                )
     except Exception as e:
         logging.error(f"Error processing salary slip for {placeholders.get('Name', 'Unknown')}: {e}")
     logging.info("Finished process_salary_slip function")
