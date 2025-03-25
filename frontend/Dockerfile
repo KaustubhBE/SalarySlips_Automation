@@ -17,6 +17,9 @@ COPY . .
 ENV NODE_ENV=production
 ENV VITE_API_URL=https://be-ss-automation.onrender.com/api
 
+# Create directory for config file
+RUN mkdir -p /app/src
+
 # Build the application
 RUN npm run build
 
