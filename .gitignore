@@ -1,11 +1,57 @@
-# Sensitive credentials
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Local development
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Credentials and sensitive files
 backend/Utils/client_secrets.json
 backend/Utils/service_account_credentials.json
 backend/Utils/Oauth2.json
-frontend/src/config.js
+backend/Utils/config.json
+backend/Salary_Slips/
 
 # Environment variables
-.env
 .env.local
 .env.development
 .env.production
@@ -40,11 +86,9 @@ Salary_Slips/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-logs/
 render.yaml.local
 
 # System Files
-.DS_Store
 Thumbs.db
 desktop.ini
 

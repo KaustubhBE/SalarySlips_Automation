@@ -14,14 +14,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
 
-# Initialize Flask app with static folder configuration
-static_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
-os.makedirs(static_folder, exist_ok=True)
-
-app = Flask(__name__, 
-    static_folder=static_folder,
-    static_url_path=''
-)
+# Initialize Flask app
+app = Flask(__name__)
 
 # CORS configuration for Render
 CORS(app, resources={
@@ -36,7 +30,7 @@ CORS(app, resources={
     }
 })
 
-# Load configurations
+# Load configurations from environment variables
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(BASE_DIR, "Salary_Slips"))
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", os.path.join(BASE_DIR, "ssformat.docx"))
@@ -55,6 +49,12 @@ if not app.logger.handlers:
     app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
     handler.propagate = False
+
+# Initialize database
+initialize_database()
+
+# Register blueprints
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 def get_drive_service():
     try:
@@ -370,42 +370,6 @@ def get_logs():
 def home():
     return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
 
-@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
-def login():
-    if request.method == "OPTIONS":
-        return "", 200
-        
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        
-        if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
-            
-        conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
-        conn.close()
-        
-        if user and check_password_hash(user['password'], password):
-            user_data = {
-                'id': user['id'],
-                'email': user['email'],
-                'username': user['username'],
-                'role': user['role']
-            }
-            response = jsonify({
-                "success": True,
-                "user": user_data
-            })
-            return response, 200
-        
-        return jsonify({"success": False, "error": "Invalid credentials"}), 401
-        
-    except Exception as e:
-        app.logger.error(f"Login error: {e}")
-        return jsonify({"error": str(e)}), 401
-
 # Error handlers
 @app.errorhandler(404)
 def not_found(e):
@@ -417,7 +381,7 @@ def not_found(e):
 def server_error(e):
     return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-# Health check endpoint
+# Health check endpoint for Render
 @app.route('/healthz')
 def health_check():
     return jsonify({"status": "healthy"}), 200
@@ -427,7 +391,7 @@ def ensure_directories():
     directories = [
         OUTPUT_DIR,
         os.path.dirname(LOG_FILE_PATH),
-        static_folder
+        app.static_folder
     ]
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
