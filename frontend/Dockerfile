@@ -13,6 +13,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Set environment variables
+ENV NODE_ENV=production
+ENV VITE_API_URL=https://be-ss-automation.onrender.com/api
+
 # Build the application
 RUN npm run build
 
