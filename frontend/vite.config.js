@@ -11,6 +11,10 @@ export default defineConfig(({ command, mode }) => {
       extensions: ['.js', '.jsx', '.json'],
       alias: {
         '@': path.resolve(__dirname, './src'),
+        'crypto': 'crypto-browserify',
+        'stream': 'stream-browserify',
+        'buffer': 'buffer',
+        'process': 'process/browser'
       },
     },
     build: {
