@@ -5,6 +5,7 @@ services:
     env: docker
     region: singapore
     plan: free
+    dockerContext: ./frontend
     dockerfilePath: ./frontend/Dockerfile
     envVars:
       - key: VITE_API_URL
@@ -13,6 +14,9 @@ services:
         value: 18.x
       - key: NODE_ENV
         value: production
+    secretFiles:
+      - name: config.js
+        mountPath: /app/src/config.js
     healthCheckPath: /
     autoDeploy: true
 
@@ -32,5 +36,18 @@ services:
         value: production
       - key: PYTHONPATH
         value: /opt/render/project/src/backend
+      - key: GOOGLE_DRIVE_CREDENTIALS_PATH
+        value: /etc/secrets/client_secrets.json
+      - key: GOOGLE_SHEETS_CREDENTIALS_PATH
+        value: /etc/secrets/service_account_credentials.json
+      - key: GOOGLE_OAUTH2_PATH
+        value: /etc/secrets/Oauth2.json
+    secretFiles:
+      - name: client_secrets.json
+        mountPath: /etc/secrets/client_secrets.json
+      - name: service_account_credentials.json
+        mountPath: /etc/secrets/service_account_credentials.json
+      - name: Oauth2.json
+        mountPath: /etc/secrets/Oauth2.json
     healthCheckPath: /healthz
     autoDeploy: true 
