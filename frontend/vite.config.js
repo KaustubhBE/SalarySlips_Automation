@@ -7,6 +7,12 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     plugins: [react()],
+    resolve: {
+      extensions: ['.js', '.jsx', '.json'],
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
     build: {
       outDir: 'dist',
       sourcemap: mode === 'development',
@@ -47,16 +53,6 @@ export default defineConfig(({ command, mode }) => {
     preview: {
       port: process.env.PORT || 3000,
       host: true
-    },
-    resolve: {
-      extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx'],
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-        'crypto': 'crypto-browserify',
-        'stream': 'stream-browserify',
-        'buffer': 'buffer',
-        'process': 'process/browser'
-      }
     },
     esbuild: {
       loader: 'jsx',
