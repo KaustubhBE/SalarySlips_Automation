@@ -9,28 +9,13 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.json'],
-      alias: [
-        {
-          find: '@',
-          replacement: path.resolve(__dirname, 'src'),
-        },
-        {
-          find: 'crypto',
-          replacement: 'crypto-browserify',
-        },
-        {
-          find: 'stream',
-          replacement: 'stream-browserify',
-        },
-        {
-          find: 'buffer',
-          replacement: 'buffer',
-        },
-        {
-          find: 'process',
-          replacement: 'process/browser',
-        }
-      ],
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+        'crypto': 'crypto-browserify',
+        'stream': 'stream-browserify',
+        'buffer': 'buffer',
+        'process': 'process/browser'
+      },
     },
     build: {
       outDir: 'dist',
