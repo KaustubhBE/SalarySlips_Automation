@@ -17,7 +17,7 @@ OAUTH2_FILE = os.getenv('GOOGLE_OAUTH2_PATH', '/etc/secrets/google_oauth2.json')
 SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
 SMTP_PORT = int(os.getenv('SMTP_PORT', "465"))
 SENDER_EMAIL = os.getenv('SENDER_EMAIL', "hrd@bajajearths.com")
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "wkcj ajvh exxs qhko")
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "XXXXXXXXXXXX")
 
 def load_credentials(file_path, service_name="Google Service"):
     try:
