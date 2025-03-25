@@ -1,7 +1,9 @@
 import os
 import logging
-from flask import Flask, request, jsonify, Response, g, send_from_directory
-from flask_cors import CORS
+from fastapi import FastAPI, Request, Response, HTTPException, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse
 from logging.handlers import RotatingFileHandler
 from Utils.fetch_data import fetch_google_sheet_data
 from Utils.salary_slips_utils import process_salary_slip, process_salary_slips
@@ -11,30 +13,23 @@ from Utils.config import CLIENT_SECRETS_FILE, drive
 from Utils.setup_db import initialize_database
 from Utils.db_utils import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-from Utils.auth import auth_bp
+from typing import Optional, Union
+from pydantic import BaseModel, validator, field_validator
 
-# Initialize Flask app with static folder configuration
-static_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
-os.makedirs(static_folder, exist_ok=True)
-
-app = Flask(__name__, 
-    static_folder=static_folder,
-    static_url_path=''
-)
+# Initialize FastAPI app
+app = FastAPI()
 
 # CORS configuration for Render
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://localhost:3000",  # Local development
-            "https://salary-slips-automation-frontend.onrender.com"  # Production frontend
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }
-})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # Local development
+        "https://salary-slips-automation-frontend.onrender.com"  # Production frontend
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load configurations
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,14 +42,58 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Configure logging
-if not app.logger.handlers:
+logger = logging.getLogger("app")
+if not logger.handlers:
     handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=10*1024*1024, backupCount=5)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(levelname)s - %(message)s')
     handler.setFormatter(formatter)
-    app.logger.addHandler(handler)
-    app.logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
     handler.propagate = False
+
+# Mount static files
+static_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+os.makedirs(static_folder, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_folder), name="static")
+
+# Pydantic models for request validation
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    role: str
+    password: str
+
+class UserUpdate(BaseModel):
+    user_id: int
+    role: str
+
+class SalarySlipRequest(BaseModel):
+    sheet_id_salary: str
+    sheet_id_drive: str
+    full_month: str
+    full_year: Union[str, int]  # Accept both string and integer
+    employee_identifier: Optional[str] = None
+    send_whatsapp: bool = False
+    send_email: bool = False
+
+    @field_validator('full_year')
+    @classmethod
+    def validate_full_year(cls, v):
+        # Convert to string if it's an integer
+        if isinstance(v, int):
+            return str(v)
+        return v
+
+# Dependency for user role
+async def get_user_role(x_user_role: str = Header(None)):
+    return x_user_role or 'user'
+
+# Dependency for checking user role
+async def check_user_role(required_role: str, user_role: str = Depends(get_user_role)):
+    if user_role != required_role:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return user_role
 
 def get_drive_service():
     try:
@@ -62,161 +101,104 @@ def get_drive_service():
         service = build('drive', 'v3', credentials=credentials)
         return service
     except Exception as e:
-        app.logger.error(f"Error initializing Google Drive service: {e}")
+        logger.error(f"Error initializing Google Drive service: {e}")
         raise
 
-def check_user_role(required_role):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            user_role = g.get('user_role')
-            if user_role != required_role:
-                return jsonify({"error": "Access denied"}), 403
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
-@app.before_request
-def load_user():
-    g.user_role = request.headers.get('X-User-Role', 'user')
-
 # Frontend routes
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
+@app.get("/")
+async def serve_root():
+    return FileResponse(os.path.join(static_folder, "index.html"))
+
+@app.get("/{path:path}")
+async def serve(path: str):
     if path.startswith('api/'):
-        return {"error": "Not found"}, 404
+        raise HTTPException(status_code=404, detail="Not found")
     try:
-        return send_from_directory(app.static_folder, path)
+        return FileResponse(os.path.join(static_folder, path))
     except:
-        return send_from_directory(app.static_folder, 'index.html')
+        return FileResponse(os.path.join(static_folder, "index.html"))
 
 # API routes
-@app.route("/api/add_user", methods=["POST"])
-def add_user():
+@app.post("/api/add_user")
+async def add_user(user: UserCreate):
     try:
-        data = request.json
-        username = data.get('username')
-        email = data.get('email')
-        role = data.get('role')
-        password = generate_password_hash(data.get('password'))
-
-        if not all([username, email, role, password]):
-            return jsonify({"error": "All fields are required"}), 400
-
         conn = get_db_connection()
         conn.execute('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-                     (username, email, password, role))
+                     (user.username, user.email, generate_password_hash(user.password), user.role))
         conn.commit()
         conn.close()
-
-        return jsonify({"message": "User added successfully"}), 201
-
+        return {"message": "User added successfully"}
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/delete_user", methods=["POST"])
-def delete_user():
+@app.post("/api/delete_user")
+async def delete_user(user_id: int):
     try:
-        user_id = request.json.get('user_id')
-        if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
-
         conn = get_db_connection()
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
         conn.close()
-
-        return jsonify({"message": "User deleted successfully"}), 200
-
+        return {"message": "User deleted successfully"}
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/update_role", methods=["POST"])
-def update_role():
+@app.post("/api/update_role")
+async def update_role(user_update: UserUpdate):
     try:
-        data = request.json
-        user_id = data.get('user_id')
-        role = data.get('role')
-
-        if not all([user_id, role]):
-            return jsonify({"error": "User ID and role are required"}), 400
-
         conn = get_db_connection()
-        conn.execute('UPDATE users SET role = ? WHERE id = ?', (role, user_id))
+        conn.execute('UPDATE users SET role = ? WHERE id = ?', (user_update.role, user_update.user_id))
         conn.commit()
         conn.close()
-
-        return jsonify({"message": "Role updated successfully"}), 200
-
+        return {"message": "Role updated successfully"}
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/get_users", methods=["GET"])
-def get_users():
+@app.get("/api/get_users")
+async def get_users():
     try:
         conn = get_db_connection()
         users = conn.execute('SELECT id, username, email, role FROM users').fetchall()
         conn.close()
-        
-        # Convert users to list of dictionaries
-        users_list = [dict(user) for user in users]
-        return jsonify(users_list), 200
-        
+        return [dict(user) for user in users]
     except Exception as e:
-        app.logger.error(f"Error fetching users: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error fetching users: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/user/<int:user_id>", methods=["GET"])
-def get_user(user_id):
+@app.get("/api/user/{user_id}")
+async def get_user(user_id: int):
     try:
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         conn.close()
-
         if user is None:
-            return jsonify({"error": "User not found"}), 404
-
-        return jsonify(dict(user)), 200
-
+            raise HTTPException(status_code=404, detail="User not found")
+        return dict(user)
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/generate-salary-slip-single", methods=["POST"])
-@check_user_role('user')
-def generate_salary_slip_single():
+@app.post("/api/generate-salary-slip-single")
+async def generate_salary_slip_single(
+    request: SalarySlipRequest,
+    user_role: str = Depends(lambda: check_user_role('user'))
+):
     try:
-        user_inputs = request.json
-        app.logger.info("Processing single salary slip request")
-
-        required_keys = ["sheet_id_salary", "sheet_id_drive", "full_month", "full_year", "employee_identifier"]
-        if missing_keys := [key for key in required_keys if not user_inputs.get(key)]:
-            return jsonify({"error": f"Missing parameters: {', '.join(missing_keys)}"}), 400
-
-        sheet_id_salary = user_inputs["sheet_id_salary"]
-        sheet_id_drive = user_inputs["sheet_id_drive"]
-        full_month = user_inputs["full_month"]
-        full_year = user_inputs["full_year"]
-        sheet_name = full_month[:3]
-        employee_identifier = user_inputs["employee_identifier"]
-        send_whatsapp = user_inputs.get("send_whatsapp", False)
-        send_email = user_inputs.get("send_email", False)
-
+        logger.info("Processing single salary slip request")
+        
         # Fetch data
         try:
-            salary_data = fetch_google_sheet_data(sheet_id_salary, sheet_name)
-            drive_data = fetch_google_sheet_data(sheet_id_drive, "Official Details")
-            email_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
-            contact_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
+            salary_data = fetch_google_sheet_data(request.sheet_id_salary, request.full_month[:3])
+            drive_data = fetch_google_sheet_data(request.sheet_id_drive, "Official Details")
+            email_data = fetch_google_sheet_data(request.sheet_id_drive, "Onboarding Details")
+            contact_data = fetch_google_sheet_data(request.sheet_id_drive, "Onboarding Details")
         except Exception as e:
-            return jsonify({"error": f"Error fetching data: {e}"}), 500
+            raise HTTPException(status_code=500, detail=f"Error fetching data: {e}")
 
         if not all([salary_data, drive_data, email_data, contact_data]):
-            return jsonify({"error": "Failed to fetch required data"}), 500
+            raise HTTPException(status_code=500, detail="Failed to fetch required data")
 
         # Process data
         salary_headers = (salary_data[1])
@@ -233,16 +215,16 @@ def generate_salary_slip_single():
 
         # Find employee
         employee = next((emp for emp in drive_employees 
-                        if emp.get('Employee Code') == employee_identifier 
-                        or emp.get('Name') == employee_identifier), None)
+                        if emp.get('Employee Code') == request.employee_identifier 
+                        or emp.get('Name') == request.employee_identifier), None)
         if not employee:
-            return jsonify({"error": "Employee not found in records"}), 404
+            raise HTTPException(status_code=404, detail="Employee not found in records")
 
         salary_employee = next((emp for emp in employees 
-                              if emp[salary_headers.index('Employee Code')] == employee_identifier 
-                              or emp[salary_headers.index('Name')] == employee_identifier), None)
+                              if emp[salary_headers.index('Employee Code')] == request.employee_identifier 
+                              or emp[salary_headers.index('Name')] == request.employee_identifier), None)
         if not salary_employee:
-            return jsonify({"error": "Employee salary data not found"}), 404
+            raise HTTPException(status_code=404, detail="Employee salary data not found")
 
         # Process salary slip
         try:
@@ -255,53 +237,37 @@ def generate_salary_slip_single():
                 drive_data=drive_employees,
                 email_employees=email_employees,
                 contact_employees=contact_employees,
-                month=sheet_name,
-                year=str(full_year)[-2:],
-                full_month=full_month,
-                full_year=full_year,
-                send_whatsapp=send_whatsapp,
-                send_email=send_email
+                month=request.full_month[:3],
+                year=str(request.full_year)[-2:],
+                full_month=request.full_month,
+                full_year=request.full_year,
+                send_whatsapp=request.send_whatsapp,
+                send_email=request.send_email
             )
-            return jsonify({"message": "Salary slip generated successfully"}), 200
-
+            return {"message": "Salary slip generated successfully"}
         except Exception as e:
-            return jsonify({"error": f"Error processing salary slip: {e}"}), 500
+            raise HTTPException(status_code=500, detail=f"Error processing salary slip: {e}")
 
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/generate-salary-slips-batch", methods=["POST"])
-# Temporarily remove RBAC for batch processing
-# @check_user_role('admin')
-def generate_salary_slips_batch():
+@app.post("/api/generate-salary-slips-batch")
+async def generate_salary_slips_batch(request: SalarySlipRequest):
     try:
-        user_inputs = request.json
-        app.logger.info("Processing batch salary slips request")
-
-        required_keys = ["sheet_id_salary", "sheet_id_drive", "full_month", "full_year"]
-        if missing_keys := [key for key in required_keys if not user_inputs.get(key)]:
-            return jsonify({"error": f"Missing parameters: {', '.join(missing_keys)}"}), 400
-
-        sheet_id_salary = user_inputs["sheet_id_salary"]
-        sheet_id_drive = user_inputs["sheet_id_drive"]
-        full_month = user_inputs["full_month"]
-        full_year = user_inputs["full_year"]
-        sheet_name = full_month[:3]
-        send_whatsapp = user_inputs.get("send_whatsapp", False)
-        send_email = user_inputs.get("send_email", False)
-
+        logger.info("Processing batch salary slips request")
+        
         # Fetch data
         try:
-            salary_data = fetch_google_sheet_data(sheet_id_salary, sheet_name)
-            drive_data = fetch_google_sheet_data(sheet_id_drive, "Official Details")
-            email_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
-            contact_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
+            salary_data = fetch_google_sheet_data(request.sheet_id_salary, request.full_month[:3])
+            drive_data = fetch_google_sheet_data(request.sheet_id_drive, "Official Details")
+            email_data = fetch_google_sheet_data(request.sheet_id_drive, "Onboarding Details")
+            contact_data = fetch_google_sheet_data(request.sheet_id_drive, "Onboarding Details")
         except Exception as e:
-            return jsonify({"error": f"Error fetching data: {e}"}), 500
+            raise HTTPException(status_code=500, detail=f"Error fetching data: {e}")
 
         if not all([salary_data, drive_data, email_data, contact_data]):
-            return jsonify({"error": "Failed to fetch required data"}), 500
+            raise HTTPException(status_code=500, detail="Failed to fetch required data")
 
         # Process data
         salary_headers = (salary_data[1])
@@ -316,11 +282,10 @@ def generate_salary_slips_batch():
         contact_headers = (contact_data[1])
         contact_employees = [dict(zip(contact_headers, row)) for row in contact_data[2:]]
 
-        
-       # Generate salary slips for each employee sequentially
+        # Generate salary slips for each employee
         for employee in employees:
             employee_name = employee[4]  # Assuming the employee name is at index 4
-            app.logger.info(f"Processing salary slip for employee: {employee_name}")
+            logger.info(f"Processing salary slip for employee: {employee_name}")
             try:
                 employee_data = [str(item) if item is not None else '' for item in employee]
                 process_salary_slip(
@@ -331,57 +296,53 @@ def generate_salary_slips_batch():
                     drive_data=drive_employees,
                     email_employees=email_employees,
                     contact_employees=contact_employees,
-                    month=sheet_name,
-                    year=str(full_year)[-2:],  # Last two digits of the year
-                    full_month=full_month,
-                    full_year=full_year,
-                    send_whatsapp=send_whatsapp,
-                    send_email=send_email
+                    month=request.full_month[:3],
+                    year=str(request.full_year)[-2:],
+                    full_month=request.full_month,
+                    full_year=request.full_year,
+                    send_whatsapp=request.send_whatsapp,
+                    send_email=request.send_email
                 )
-                app.logger.info(f"Uploaded {employee_name}'s salary slip to folder {OUTPUT_DIR}")
-                if send_email:
-                    app.logger.info(f"Sending email to {employee[5]}")  # Assuming email is at index 5
-                    app.logger.info(f"Email sent to {employee[5]}")        
-                             
-                if send_whatsapp:
-                    app.logger.info(f"Sending WhatsApp message to {employee[6]}")  # Assuming phone number is at index 6
+                logger.info(f"Uploaded {employee_name}'s salary slip to folder {OUTPUT_DIR}")
+                if request.send_email:
+                    logger.info(f"Sending email to {employee[5]}")
+                    logger.info(f"Email sent to {employee[5]}")
+                if request.send_whatsapp:
+                    logger.info(f"Sending WhatsApp message to {employee[6]}")
             except Exception as e:
                 error_msg = f"Error processing salary slip for employee {employee_name}: {e}"
-                app.logger.error(error_msg)
-                return jsonify({"error": error_msg}), 500
+                logger.error(error_msg)
+                raise HTTPException(status_code=500, detail=error_msg)
 
-        return jsonify({"message": "Batch salary slips generated successfully"}), 200
+        return {"message": "Batch salary slips generated successfully"}
 
     except Exception as e:
-        app.logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/get-logs", methods=["GET"])
-def get_logs():
+@app.get("/api/get-logs")
+async def get_logs():
     try:
         with open(LOG_FILE_PATH, "r") as log_file:
             logs = log_file.read()
-        return logs, 200, {'Content-Type': 'text/plain'}
+        return Response(content=logs, media_type="text/plain")
     except Exception as e:
-        app.logger.error(f"Error reading logs: {e}")
-        return jsonify({"error": "Failed to read logs"}), 500
+        logger.error(f"Error reading logs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to read logs")
 
-@app.route("/api/", methods=["GET"])
-def home():
-    return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
+@app.get("/api/")
+async def home():
+    return {"message": "Welcome to the Salary Slip Automation API!"}
 
-@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
-def login():
-    if request.method == "OPTIONS":
-        return "", 200
-        
+@app.post("/api/auth/login")
+async def login(request: Request):
     try:
-        data = request.get_json()
+        data = await request.json()
         email = data.get('email')
         password = data.get('password')
         
         if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
+            raise HTTPException(status_code=400, detail="Email and password are required")
             
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
@@ -394,44 +355,22 @@ def login():
                 'username': user['username'],
                 'role': user['role']
             }
-            response = jsonify({
+            return {
                 "success": True,
                 "user": user_data
-            })
-            return response, 200
+            }
         
-        return jsonify({"success": False, "error": "Invalid credentials"}), 401
+        raise HTTPException(status_code=401, detail="Invalid credentials")
         
     except Exception as e:
-        app.logger.error(f"Login error: {e}")
-        return jsonify({"error": str(e)}), 401
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=401, detail=str(e))
 
-# Error handlers
-@app.errorhandler(404)
-def not_found(e):
-    if request.path.startswith('/api/'):
-        return jsonify({"error": "API endpoint not found"}), 404
-    return send_from_directory(app.static_folder, 'index.html')
-
-@app.errorhandler(500)
-def server_error(e):
-    return jsonify({"error": "Internal server error", "details": str(e)}), 500
-
-# Health check endpoint
-@app.route('/healthz')
-def health_check():
-    return jsonify({"status": "healthy"}), 200
-
-def ensure_directories():
-    """Ensure all required directories exist"""
-    directories = [
-        OUTPUT_DIR,
-        os.path.dirname(LOG_FILE_PATH),
-        static_folder
-    ]
-    for directory in directories:
-        os.makedirs(directory, exist_ok=True)
+@app.get("/healthz")
+async def health_check():
+    return {"status": "healthy"}
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    import uvicorn
+    port = int(os.environ.get('PORT', 5000))
+    uvicorn.run(app, host='0.0.0.0', port=port)

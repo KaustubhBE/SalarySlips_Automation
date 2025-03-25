@@ -3,11 +3,9 @@ const isDevelopment = import.meta.env.MODE === 'development';
 export const isProduction = import.meta.env.PROD;
 
 // API URL configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || (
-  isProduction 
-    ? 'https://be-ss-automation.onrender.com/api'
-    : 'http://localhost:5000/api'
-);
+const API_BASE_URL = isProduction 
+  ? 'https://be-ss-automation.onrender.com/api'  // Replace with your actual Render.com backend URL
+  : 'http://localhost:5000/api';
 
 // Feature flags
 export const FEATURES = {
