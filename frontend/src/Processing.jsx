@@ -7,7 +7,7 @@ import './Processing.css';
 import Navbar from './Navbar';
 import Settings from './Components/Settings';
 import { Route, Routes } from 'react-router-dom';
-import { getApiUrl, makeApiCall, ENDPOINTS } from './config';
+import { getApiUrl, makeApiCall, ENDPOINTS } from './config.js';
 
 const plantData = [
   { name: 'Head Office', employee_drive_id: '1otjV4dGQQUKq-AKQDwgxClW1pPY7pZl99QscxixQUsA', employee_salary_sheet_id: '' },
