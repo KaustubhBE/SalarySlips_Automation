@@ -14,6 +14,9 @@ services:
         value: 18.x
       - key: NODE_ENV
         value: production
+    secretFiles:
+      - name: config.js
+        mountPath: /app/src/config.js
     healthCheckPath: /
     autoDeploy: true
 

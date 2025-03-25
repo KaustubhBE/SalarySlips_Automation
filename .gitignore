@@ -2,6 +2,7 @@
 backend/Utils/client_secrets.json
 backend/Utils/service_account_credentials.json
 backend/Utils/Oauth2.json
+frontend/src/config.js
 
 # Environment variables
 .env

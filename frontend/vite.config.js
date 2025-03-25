@@ -14,7 +14,8 @@ export default defineConfig(({ command, mode }) => {
         'crypto': 'crypto-browserify',
         'stream': 'stream-browserify',
         'buffer': 'buffer',
-        'process': 'process/browser'
+        'process': 'process/browser',
+        'config': '/app/src/config.js'
       },
     },
     build: {
