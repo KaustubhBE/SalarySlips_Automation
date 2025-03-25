@@ -90,7 +90,7 @@ function Dashboard() {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/update_role', 
+      const response = await axios.post('http://localhost:3000/api/update_role', 
         { user_id: userId, role: newRole },
         {
           withCredentials: true,

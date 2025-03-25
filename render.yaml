@@ -2,20 +2,10 @@ services:
   # Frontend service
   - type: web
     name: be-ss-automation-frontend
-    env: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
-      - path: /assets/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
+    env: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
     envVars:
       - key: VITE_API_URL
         value: https://be-ss-automation.onrender.com/api
@@ -23,25 +13,21 @@ services:
         value: 18.x
       - key: NODE_ENV
         value: production
+    healthCheckPath: /
+    autoDeploy: true
 
   # Backend service
   - type: web
-    name: be-ss-automation
+    name: salary-slips-automation
     env: python
-    region: singapore
-    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 4
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: PYTHON_VERSION
-        value: 3.9.0
-      - key: CORS_ORIGINS
-        value: https://be-ss-automation-frontend.onrender.com
-      - key: PORT
-        value: 10000
       - key: FLASK_APP
         value: app.py
-    healthCheckPath: /api/health
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+    healthCheckPath: /healthz
     autoDeploy: true 

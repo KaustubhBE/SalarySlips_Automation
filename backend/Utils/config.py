@@ -1,9 +1,9 @@
 import os
 import json
-import webbrowser
 from google.oauth2.service_account import Credentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -17,11 +17,15 @@ except FileNotFoundError:
     print(f"Error: Configuration file '{config_path}' not found.")
     exit(1)
 
+# Define client secrets file path
+CLIENT_SECRETS_FILE = os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH', '/etc/secrets/google_drive_credentials.json')
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH', '/etc/secrets/google_sheets_credentials.json')
+
 # Email settings
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465
-SENDER_EMAIL = "hrd@bajajearths.com"
-SENDER_PASSWORD = "wkcj ajvh exxs qhko"
+SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
+SMTP_PORT = int(os.getenv('SMTP_PORT', "465"))
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', "hrd@bajajearths.com")
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "wkcj ajvh exxs qhko")
 
 if not SENDER_EMAIL or not SENDER_PASSWORD:
     print("Error: Sender email and password are missing in the config file.")
@@ -37,27 +41,34 @@ try:
             'https://www.googleapis.com/auth/drive'
         ]
     )
+    # Create Drive API service
+    drive_service = build('drive', 'v3', credentials=creds)
+    drive = drive_service  # Export the drive service instance
 except Exception as e:
     print(f"Error loading service account credentials: {e}")
     exit(1)
 
-# Client secrets file for Google Drive API
-CLIENT_SECRETS_FILE = os.path.join(script_dir, "client_secrets.json")
-
-# Authenticate PyDrive with OAuth2 using saved credentials
-try:
-    oauth2_file = os.path.join(script_dir, "Oauth2.json")
-    gauth = GoogleAuth()
-    gauth.LoadClientConfigFile(CLIENT_SECRETS_FILE)
-    gauth.LoadCredentialsFile(oauth2_file)
-    if gauth.credentials is None or gauth.access_token_expired:
-        auth_url = gauth.GetAuthUrl()
-        webbrowser.open(auth_url)
-        gauth.LocalWebserverAuth()
-        gauth.SaveCredentialsFile(oauth2_file)
-    elif gauth.access_token_expired:
-        gauth.Refresh()
-    drive = GoogleDrive(gauth)
-except Exception as e:
-    print(f"Error authenticating Google Drive: {e}")
-    exit(1)
+# Function to upload file to Google Drive
+def upload_to_google_drive(file_path, folder_id, file_title):
+    try:
+        file_metadata = {
+            'name': file_title,
+            'parents': [folder_id]
+        }
+        
+        media = MediaFileUpload(
+            file_path,
+            mimetype='application/pdf',
+            resumable=True
+        )
+        
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id'
+        ).execute()
+        
+        return file.get('id')
+    except HttpError as error:
+        print(f'An error occurred: {error}')
+        return None

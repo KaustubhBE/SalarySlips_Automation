@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import './Processing.css';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ToggleButton from './Components/Toggle-Button';
 import LoadingSpinner from './LoadingSpinner';
+import './Processing.css';
 import Navbar from './Navbar';
-import { getApiUrl } from './config';
+import Settings from './Components/Settings';
+import { Route, Routes } from 'react-router-dom';
+import { getApiUrl, makeApiCall, ENDPOINTS } from './config';
 
 const plantData = [
   { name: 'Head Office', employee_drive_id: '1otjV4dGQQUKq-AKQDwgxClW1pPY7pZl99QscxixQUsA', employee_salary_sheet_id: '' },
@@ -23,51 +25,44 @@ function Processing({ mode = 'single' }) {
   const [plant, setPlant] = useState({});
   const [loading, setLoading] = useState(false);
   const [employeeDetails, setEmployeeDetails] = useState('');
-
-  const handleSelectChange = (e) => {
-    const selectedPlantName = e.target.value;
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  const handleSelectChange = (event) => {
+    const selectedPlantName = event.target.value;
     setSelectedPlant(selectedPlantName);
-    const selectedPlantData = plantData.find(p => p.name === selectedPlantName);
+    const selectedPlantData = plantData.find(plant => plant.name === selectedPlantName);
     setPlant(selectedPlantData || {});
   };
 
   const handleSubmit = async () => {
-    if (!selectedPlant) {
-      alert('Please select a plant');
-      return;
-    }
+    const fullMonth = selectedDate.toLocaleString('default', { month: 'long' });
+    const fullYear = selectedDate.getFullYear();
+    const sheetName = `${fullMonth.slice(0, 3)}${fullYear.toString().slice(-2)}`;
+    
+    const payload = {
+      sheet_id_salary: plant.employee_salary_sheet_id,
+      sheet_id_drive: plant.employee_drive_id,
+      full_month: fullMonth,
+      full_year: fullYear,
+      sheet_name: sheetName,
+      send_whatsapp: sendWhatsApp,
+      send_email: sendEmail,
+      ...(mode === 'single' && { employee_identifier: employeeDetails })
+    };
 
     setLoading(true);
     try {
-      const endpoint = mode === 'single' ? 'process_single' : 'process_batch';
-      const apiUrl = getApiUrl(endpoint);
-      
-      const requestData = {
-        plant_name: selectedPlant,
-        month: selectedDate.getMonth() + 1,
-        year: selectedDate.getFullYear(),
-        send_whatsapp: sendWhatsApp,
-        send_email: sendEmail,
-        ...(mode === 'single' && { employee_details: employeeDetails })
-      };
-
-      const response = await fetch(apiUrl, {
+      const endpoint = mode === 'single' ? ENDPOINTS.SINGLE_SLIP : ENDPOINTS.BATCH_SLIPS;
+      const response = await makeApiCall(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-        credentials: 'include'
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process request');
-      }
-
-      alert('Processing completed successfully');
+      alert(response.message || 'Operation completed successfully');
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred while processing the request');
+      alert('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -77,67 +72,65 @@ function Processing({ mode = 'single' }) {
     <>
       <Navbar />
       {loading && <LoadingSpinner />}
-      <div className="main-content">
-        <div className="input-elements">
-          {mode === 'single' && (
-            <>
-              <label htmlFor="employeeDetails">Enter Employee name or code:</label>
-              <input
-                id="employeeDetails"
-                type="text"
-                placeholder='Name or Employee Code'
-                value={employeeDetails}
-                onChange={(e) => setEmployeeDetails(e.target.value)}
-              />
-            </>
-          )}
-          
-          <label htmlFor="plantDropdown">Select Plant: </label>
-          <select id="plantDropdown" value={selectedPlant} onChange={handleSelectChange}>
-            <option value="" disabled>Select Plant</option>
-            {plantData.map((plant, index) => (
-              <option key={index} value={plant.name}>{plant.name}</option>
-            ))}
-          </select>
+      <Routes>
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/" element={
+          <div className="input-elements">
+            {mode === 'single' && (
+              <>
+                <label htmlFor="employeeDetails">Enter Employee Name or Code:</label>
+                <input
+                  id="employeeDetails"
+                  type="text"
+                  placeholder='Name or Employee Code'
+                  value={employeeDetails}
+                  onChange={(e) => setEmployeeDetails(e.target.value)}
+                />
+              </>
+            )}
 
-          <label htmlFor="monthYearPicker">Select Month & Year: </label>
-          <ReactDatePicker
-            id="monthYearPicker"
-            selected={selectedDate}
-            onChange={(date) => setSelectedDate(date)}
-            dateFormat="MMMM yyyy"
-            showMonthYearPicker
-            maxDate={new Date()}
-            minDate={new Date('2016-01-01')}
-          />
-        </div>
-
-        <div className="option-select">
-          <div className='whatsappToggle' style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label htmlFor="whatsappToggleInput" style={{ margin: 0 }}>WhatsApp Message: </label>
-            <ToggleButton
-              id="whatsappToggleInput"
-              isToggled={sendWhatsApp}
-              onToggle={() => setSendWhatsApp((prev) => !prev)}
+            <label htmlFor="plantDropdown">Select Plant:</label>
+            <select id="plantDropdown" value={selectedPlant} onChange={handleSelectChange}>
+              <option value="" disabled>Select Plant</option>
+              {plantData.map((plant, index) => (
+                <option key={index} value={plant.name}>{plant.name}</option>
+              ))}
+            </select>
+            
+            <label htmlFor="datePicker">Select Month & Year:</label>
+            <ReactDatePicker
+              id="datePicker"
+              selected={selectedDate}
+              onChange={(date) => setSelectedDate(date)}
+              dateFormat="MMMM yyyy"
+              showMonthYearPicker
+              maxDate={new Date()}
+              minDate={new Date('2016-01-01')}
             />
+            
+            <div className="option-select">
+              <div className='whatsappToggle' style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <label htmlFor="whatsappToggle" style={{ margin: 0 }}>WhatsApp Message: </label>
+                <ToggleButton
+                  isToggled={sendWhatsApp}
+                  onToggle={() => setSendWhatsApp((prev) => !prev)}
+                />
+              </div>
+              <div className='emailToggle' style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <label htmlFor="emailToggle" style={{ margin: 0 }}>Email Message: </label>
+                <ToggleButton
+                  isToggled={sendEmail}
+                  onToggle={() => setSendEmail((prev) => !prev)}
+                />
+              </div>
+            </div>
+            
+            <button type="button" className="btn" onClick={handleSubmit}>Process Salary Slip</button>
           </div>
-          <div className='emailToggle' style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label htmlFor="emailToggleInput" style={{ margin: 0 }}>Email Message: </label>
-            <ToggleButton
-              id="emailToggleInput"
-              isToggled={sendEmail}
-              onToggle={() => setSendEmail((prev) => !prev)}
-            />
-          </div>
-        </div>
-        <div className="button">
-          <button type="button" className="btn" onClick={handleSubmit}>
-            Process Salary Slip
-          </button>
-        </div>
-      </div>
+        } />
+      </Routes>
     </>
   );
 }
 
-export default Processing; 
+export default Processing;

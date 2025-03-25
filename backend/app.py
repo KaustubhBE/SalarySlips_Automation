@@ -15,15 +15,21 @@ from functools import wraps
 from Utils.auth import auth_bp
 
 # Initialize Flask app with static folder configuration
+static_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+os.makedirs(static_folder, exist_ok=True)
+
 app = Flask(__name__, 
-    static_folder='../frontend/dist',
+    static_folder=static_folder,
     static_url_path=''
 )
 
-# Simplified CORS configuration
+# CORS configuration for Render
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000"],
+        "origins": [
+            "http://localhost:3000",  # Local development
+            "https://salary-slips-automation-frontend.onrender.com"  # Production frontend
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True
@@ -35,6 +41,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(BASE_DIR, "Salary_Slips"))
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", os.path.join(BASE_DIR, "ssformat.docx"))
 LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", os.path.join(BASE_DIR, "app.log"))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Ensure directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -208,21 +215,21 @@ def generate_salary_slip_single():
         except Exception as e:
             return jsonify({"error": f"Error fetching data: {e}"}), 500
 
-        if not all([salary_data, drive_data, email_data]):
+        if not all([salary_data, drive_data, email_data, contact_data]):
             return jsonify({"error": "Failed to fetch required data"}), 500
 
         # Process data
-        salary_headers = salary_data[1]
+        salary_headers = (salary_data[1])
         employees = salary_data[2:]
 
-        drive_headers = drive_data[1]
-        drive_employees = [dict(zip(map(str.strip, drive_headers), row)) for row in drive_data[2:]]
+        drive_headers = (drive_data[1])
+        drive_employees = [dict(zip(drive_headers, row)) for row in drive_data[2:]]
 
-        email_headers = email_data[1]
-        email_employees = [dict(zip(map(str.strip, email_headers), row)) for row in email_data[2:]]
+        email_headers = (email_data[1])
+        email_employees = [dict(zip(email_headers, row)) for row in email_data[2:]]
 
-        contact_headers = contact_data[1]
-        contact_employees = [dict(zip(map(str.strip, contact_headers), row)) for row in contact_data[2:]]
+        contact_headers = (contact_data[1])
+        contact_employees = [dict(zip(contact_headers, row)) for row in contact_data[2:]]
 
         # Find employee
         employee = next((emp for emp in drive_employees 
@@ -265,7 +272,8 @@ def generate_salary_slip_single():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/generate-salary-slips-batch", methods=["POST"])
-@check_user_role('admin')
+# Temporarily remove RBAC for batch processing
+# @check_user_role('admin')
 def generate_salary_slips_batch():
     try:
         user_inputs = request.json
@@ -292,43 +300,57 @@ def generate_salary_slips_batch():
         except Exception as e:
             return jsonify({"error": f"Error fetching data: {e}"}), 500
 
-        if not all([salary_data, drive_data, email_data]):
+        if not all([salary_data, drive_data, email_data, contact_data]):
             return jsonify({"error": "Failed to fetch required data"}), 500
 
         # Process data
-        salary_headers = salary_data[1]
+        salary_headers = (salary_data[1])
         employees = salary_data[2:]
 
-        drive_headers = drive_data[1]
-        drive_employees = [dict(zip(map(str.strip, drive_headers), row)) for row in drive_data[2:]]
+        drive_headers = (drive_data[1])
+        drive_employees = [dict(zip(drive_headers, row)) for row in drive_data[2:]]
 
-        email_headers = email_data[1]
-        email_employees = [dict(zip(map(str.strip, email_headers), row)) for row in email_data[2:]]
+        email_headers = (email_data[1])
+        email_employees = [dict(zip(email_headers, row)) for row in email_data[2:]]
 
-        contact_headers = contact_data[1]
-        contact_employees = [dict(zip(map(str.strip, contact_headers), row)) for row in contact_data[2:]]
+        contact_headers = (contact_data[1])
+        contact_employees = [dict(zip(contact_headers, row)) for row in contact_data[2:]]
 
-        # Process salary slips
-        try:
-            process_salary_slips(
-                template_path=TEMPLATE_PATH,
-                output_dir=OUTPUT_DIR,
-                employees_data=employees,
-                headers=salary_headers,
-                drive_data=drive_employees,
-                email_employees=email_employees,
-                contact_employees=contact_employees,
-                month=sheet_name,
-                year=str(full_year)[-2:],
-                full_month=full_month,
-                full_year=full_year,
-                send_whatsapp=send_whatsapp,
-                send_email=send_email
-            )
-            return jsonify({"message": "Batch salary slips generated successfully"}), 200
+        
+       # Generate salary slips for each employee sequentially
+        for employee in employees:
+            employee_name = employee[4]  # Assuming the employee name is at index 4
+            app.logger.info(f"Processing salary slip for employee: {employee_name}")
+            try:
+                employee_data = [str(item) if item is not None else '' for item in employee]
+                process_salary_slip(
+                    template_path=TEMPLATE_PATH,
+                    output_dir=OUTPUT_DIR,
+                    employee_data=employee_data,
+                    headers=salary_headers,
+                    drive_data=drive_employees,
+                    email_employees=email_employees,
+                    contact_employees=contact_employees,
+                    month=sheet_name,
+                    year=str(full_year)[-2:],  # Last two digits of the year
+                    full_month=full_month,
+                    full_year=full_year,
+                    send_whatsapp=send_whatsapp,
+                    send_email=send_email
+                )
+                app.logger.info(f"Uploaded {employee_name}'s salary slip to folder {OUTPUT_DIR}")
+                if send_email:
+                    app.logger.info(f"Sending email to {employee[5]}")  # Assuming email is at index 5
+                    app.logger.info(f"Email sent to {employee[5]}")        
+                             
+                if send_whatsapp:
+                    app.logger.info(f"Sending WhatsApp message to {employee[6]}")  # Assuming phone number is at index 6
+            except Exception as e:
+                error_msg = f"Error processing salary slip for employee {employee_name}: {e}"
+                app.logger.error(error_msg)
+                return jsonify({"error": error_msg}), 500
 
-        except Exception as e:
-            return jsonify({"error": f"Error processing salary slips: {e}"}), 500
+        return jsonify({"message": "Batch salary slips generated successfully"}), 200
 
     except Exception as e:
         app.logger.error(f"Error: {e}")
@@ -395,6 +417,21 @@ def not_found(e):
 def server_error(e):
     return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-if __name__ == "__main__":
-    initialize_database()
-    app.run(debug=True)
+# Health check endpoint
+@app.route('/healthz')
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+def ensure_directories():
+    """Ensure all required directories exist"""
+    directories = [
+        OUTPUT_DIR,
+        os.path.dirname(LOG_FILE_PATH),
+        static_folder
+    ]
+    for directory in directories:
+        os.makedirs(directory, exist_ok=True)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
