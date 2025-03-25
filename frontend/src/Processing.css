@@ -1,12 +1,12 @@
 #root {
   width: 90%;
   max-width: 1200px;
-  margin: 0 auto 2rem;
+  margin: 100px auto 2rem;
   padding: 2rem;
   border-radius: 10px;
   background-color: #e6cfb8;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+  box-sizing: border-box;
 }
 
 .input-elements {
@@ -14,92 +14,133 @@
   flex-direction: column;
   gap: 20px;
   margin-bottom: 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .input-elements label {
-  font-weight: bold;
-  color: #987349;
+  font-weight: 600;
+  color: #333;
   font-size: 16px;
+  margin-bottom: 8px;
+  display: block;
 }
 
 .input-elements select,
 .input-elements input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
   font-size: 16px;
-  color: #987349;
-  font-weight: bold;
-  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-  text-align: center; /* Center the text and placeholder */
+  color: #333;
+  font-weight: 500;
+  box-sizing: border-box;
+  text-align: center;
+  transition: border-color 0.3s ease;
+  background-color: #f8f8f8;
+}
+
+.input-elements select:focus,
+.input-elements input:focus {
+  outline: none;
+  border-color: #987349;
+  box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.1);
 }
 
 .input-elements input::placeholder {
-  color: #987349; /* Match the placeholder color with the text color */
-  text-align: center; /* Center the placeholder text */
+  color: #999;
+  text-align: center;
 }
 
 #datePicker {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
   font-size: 16px;
-  color: #987349;
-  font-weight: bold;
-  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-  text-align: center; /* Center the text and placeholder */
+  color: #333;
+  font-weight: 500;
+  box-sizing: border-box;
+  text-align: center;
+  transition: border-color 0.3s ease;
+  background-color: #f8f8f8;
 }
 
-#datePicker::placeholder {
-  color: #987349; /* Match the placeholder color with the text color */
-  text-align: center; /* Center the placeholder text */
+#datePicker:focus {
+  outline: none;
+  border-color: #987349;
+  box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.1);
 }
 
 .option-select {
   display: flex;
-  justify-content: center; /* Center the toggle buttons */
+  justify-content: space-between;
   gap: 20px;
-  margin-bottom: 2rem;
-  font-weight: bold;
-  position: relative; /* Add relative positioning */
-  left: 10%; /* Move the container 10% to the right */
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
 }
 
 .whatsappToggle,
 .emailToggle {
   display: flex;
   align-items: center;
-  gap: 5px; /* Reduced gap */
-  width: 48%; /* Ensure both toggle buttons take up equal width */
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+  padding: 10px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .whatsappToggle label,
 .emailToggle label {
   margin: 0;
-  font-weight: bold;
-  color: #987349;
+  font-weight: 600;
+  color: #333;
   font-size: 16px;
 }
 
 .button {
   text-align: center;
+  margin-top: 20px;
 }
 
 .btn {
   background-color: #987349;
   border: none;
   color: #ffffff;
-  padding: 15px 30px;
-  font-size: 18px;
-  border-radius: 5px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  min-height: 45px;
+  display: block;
+  margin: 20px auto;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn:hover {
   background-color: #7a5c3a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 /* Styles for the login page */
@@ -121,6 +162,7 @@
 .login-container label {
   display: block;
   margin-bottom: 5px;
+  color: #333; /* Ensure the label color is dark enough to be visible */
 }
 
 .login-container input {
@@ -155,64 +197,73 @@
 
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
+  #root {
+    width: 95%;
+    margin: 50px auto 1rem;
+    padding: 1rem;
+  }
+
   .input-elements {
     gap: 15px;
+    padding: 15px;
   }
 
   .option-select {
     flex-direction: column;
     gap: 15px;
-    left: 0; /* Reset the left position for smaller screens */
+    padding: 10px;
   }
 
-  .btn {
-    padding: 12px 24px;
-    font-size: 16px;
-  }
-
-  .login-container {
-    margin: 30px auto;
-    padding: 15px;
-  }
-
-  .login-container input {
+  .whatsappToggle,
+  .emailToggle {
+    width: 100%;
     padding: 8px;
-  }
-
-  .login-container button {
-    padding: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  #root {
-    padding: 1rem;
-  }
-
-  .input-elements {
-    gap: 10px;
-  }
-
-  .option-select {
-    gap: 10px;
-    left: 0; /* Reset the left position for smaller screens */
   }
 
   .btn {
     padding: 10px 20px;
     font-size: 14px;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    width: 100%;
+    margin: 30px auto 1rem;
+    padding: 0.5rem;
   }
 
-  .login-container {
-    margin: 20px auto;
+  .input-elements {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .input-elements select,
+  .input-elements input,
+  #datePicker {
     padding: 10px;
+    font-size: 14px;
   }
 
-  .login-container input {
+  .option-select {
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .whatsappToggle,
+  .emailToggle {
     padding: 6px;
   }
 
-  .login-container button {
-    padding: 6px;
+  .whatsappToggle label,
+  .emailToggle label {
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 35px;
   }
 }

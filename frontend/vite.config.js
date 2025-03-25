@@ -24,12 +24,15 @@ export default defineConfig(({ command, mode }) => {
       },
       minify: mode === 'production',
       target: 'es2018',
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
     },
     server: {
       port: 3000,
       proxy: {
         '/api': {
-          target: 'http://localhost:5000',
+          target: env.VITE_API_URL || 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
           ws: true,
@@ -48,7 +51,11 @@ export default defineConfig(({ command, mode }) => {
     resolve: {
       extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx'],
       alias: {
-        '@': path.resolve(__dirname, './src')
+        '@': path.resolve(__dirname, './src'),
+        'crypto': 'crypto-browserify',
+        'stream': 'stream-browserify',
+        'buffer': 'buffer',
+        'process': 'process/browser'
       }
     },
     esbuild: {
@@ -59,7 +66,15 @@ export default defineConfig(({ command, mode }) => {
     },
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
-      'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL)
+      'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
+      'global': 'globalThis'
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        define: {
+          global: 'globalThis'
+        }
+      }
     }
   }
 })
