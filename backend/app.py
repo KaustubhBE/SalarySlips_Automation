@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, jsonify, Response, g, send_from_directory
+from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
 from logging.handlers import RotatingFileHandler
 from Utils.fetch_data import fetch_google_sheet_data
@@ -17,16 +17,19 @@ from Utils.auth import auth_bp
 # Initialize Flask app
 app = Flask(__name__)
 
-# CORS configuration for Render
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# CORS configuration
 CORS(app, resources={
     r"/api/*": {
-        "origins": [
-            "http://localhost:3000",  # Local development
-            "https://salary-slips-automation-frontend.onrender.com"  # Production frontend
-        ],
+        "origins": ["http://148.66.155.33", "http://ema.bajajearths.com"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
+        "allow_headers": ["Content-Type", "Authorization", "X-User-Role"],
+        "expose_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "max_age": 120
     }
 })
 
@@ -44,14 +47,19 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 if not app.logger.handlers:
     handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=10*1024*1024, backupCount=5)
     handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
     handler.propagate = False
 
 # Initialize database
-initialize_database()
+try:
+    initialize_database()
+    logger.info("Database initialized successfully")
+except Exception as e:
+    logger.error(f"Error initializing database: {e}")
+    raise
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -80,18 +88,6 @@ def check_user_role(required_role):
 def load_user():
     g.user_role = request.headers.get('X-User-Role', 'user')
 
-# Frontend routes
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    if path.startswith('api/'):
-        return {"error": "Not found"}, 404
-    try:
-        return send_from_directory(app.static_folder, path)
-    except:
-        return send_from_directory(app.static_folder, 'index.html')
-
-# API routes
 @app.route("/api/add_user", methods=["POST"])
 def add_user():
     try:
@@ -373,9 +369,7 @@ def home():
 # Error handlers
 @app.errorhandler(404)
 def not_found(e):
-    if request.path.startswith('/api/'):
-        return jsonify({"error": "API endpoint not found"}), 404
-    return send_from_directory(app.static_folder, 'index.html')
+    return jsonify({"error": "API endpoint not found"}), 404
 
 @app.errorhandler(500)
 def server_error(e):
@@ -384,18 +378,24 @@ def server_error(e):
 # Health check endpoint for Render
 @app.route('/healthz')
 def health_check():
-    return jsonify({"status": "healthy"}), 200
+    try:
+        # Check database connection
+        conn = get_db_connection()
+        conn.close()
+        return jsonify({"status": "healthy", "database": "connected"}), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
 def ensure_directories():
     """Ensure all required directories exist"""
     directories = [
         OUTPUT_DIR,
-        os.path.dirname(LOG_FILE_PATH),
-        app.static_folder
+        os.path.dirname(LOG_FILE_PATH)
     ]
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8000))
     app.run(host='0.0.0.0', port=port)

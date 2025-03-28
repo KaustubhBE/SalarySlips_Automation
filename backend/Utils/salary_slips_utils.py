@@ -250,10 +250,11 @@ def process_salary_slips(template_path, output_dir, employees_data, headers, dri
 
             if convert_docx_to_pdf(output_docx, output_pdf):
                 # Upload to Google Drive
-                folder_id = drive_data.get("Google Drive ID")
+                official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code")), {})
+                folder_id = official_details.get("Google Drive ID")
                 if folder_id:
                     logging.info(f"Found Google Drive ID {folder_id} for employee {employee_name}")
-                    upload_success = upload_to_google_drive(output_pdf, folder_id, employee_name, month, year)
+                    upload_success = upload_to_google_drive(output_pdf, folder_id, employee_name, full_month, full_year)
                     if upload_success:
                         logging.info(f"Successfully uploaded salary slip for {employee_name} to Google Drive folder {folder_id}")
                     else:

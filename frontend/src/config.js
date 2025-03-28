@@ -4,8 +4,8 @@ export const isProduction = import.meta.env.PROD;
 
 // API URL configuration
 const API_BASE_URL = isProduction 
-  ? 'https://be-ss-automation.onrender.com/api'  // Replace with your actual Render.com backend URL
-  : 'http://localhost:5000/api';
+    ? 'http://148.66.155.33:8000/api'   // Updated
+    : 'http://localhost:8000/api';
 
 // Feature flags
 export const FEATURES = {

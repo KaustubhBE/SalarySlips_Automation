@@ -17,7 +17,7 @@ function Dashboard() {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/get_users', {
+      const response = await axios.get('http://148.66.155.33:8000/api/get_users', {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ function Dashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/add_user', 
+      const response = await axios.post('http://148.66.155.33:8000/api/add_user', 
         { username, email, password, role },
         {
           withCredentials: true,
@@ -68,7 +68,7 @@ function Dashboard() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/delete_user', 
+      const response = await axios.post('http://148.66.155.33:8000/api/delete_user', 
         { user_id: userId },
         {
           withCredentials: true,
@@ -90,7 +90,7 @@ function Dashboard() {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      const response = await axios.post('http://localhost:3000/api/update_role', 
+      const response = await axios.post('http://148.66.155.33:8000/api/update_role', 
         { user_id: userId, role: newRole },
         {
           withCredentials: true,
