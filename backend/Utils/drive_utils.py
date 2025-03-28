@@ -39,7 +39,7 @@ def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
             fields='id'
         ).execute()
         
-        print(f"Uploaded {employee_name}'s salary slip to folder {folder_id}")
+        # print(f"Uploaded {employee_name}'s salary slip to folder {folder_id} {output_pdf}")
         return file.get('id')
     except Exception as e:
         print(f"Error uploading {employee_name}'s file to Google Drive: {e}")
