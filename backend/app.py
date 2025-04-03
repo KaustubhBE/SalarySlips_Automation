@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # CORS configuration
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://148.66.155.33", "http://ema.bajajearths.com"],
+        "origins": ["http://148.66.155.33", "http://ema.bajajearths.com", "http://localhost:3000"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "X-User-Role"],
         "expose_headers": ["Content-Type", "Authorization"],
@@ -208,10 +208,16 @@ def generate_salary_slip_single():
             drive_data = fetch_google_sheet_data(sheet_id_drive, "Official Details")
             email_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
             contact_data = fetch_google_sheet_data(sheet_id_drive, "Onboarding Details")
+            
+            # Log only essential data structure info
+            app.logger.info(f"Drive sheet headers: {drive_data[1] if drive_data else 'No headers'}")
+            
         except Exception as e:
+            app.logger.error(f"Error fetching data: {e}")
             return jsonify({"error": f"Error fetching data: {e}"}), 500
 
         if not all([salary_data, drive_data, email_data, contact_data]):
+            app.logger.error("Failed to fetch required data")
             return jsonify({"error": "Failed to fetch required data"}), 500
 
         # Process data
@@ -229,15 +235,17 @@ def generate_salary_slip_single():
 
         # Find employee
         employee = next((emp for emp in drive_employees 
-                        if emp.get('Employee Code') == employee_identifier 
+                        if emp.get('Employee\nCode') == employee_identifier 
                         or emp.get('Name') == employee_identifier), None)
         if not employee:
+            app.logger.error(f"Employee not found: {employee_identifier}")
             return jsonify({"error": "Employee not found in records"}), 404
 
         salary_employee = next((emp for emp in employees 
-                              if emp[salary_headers.index('Employee Code')] == employee_identifier 
+                              if emp[salary_headers.index('Employee\nCode')] == employee_identifier 
                               or emp[salary_headers.index('Name')] == employee_identifier), None)
         if not salary_employee:
+            app.logger.error(f"Employee salary data not found: {employee_identifier}")
             return jsonify({"error": "Employee salary data not found"}), 404
 
         # Process salary slip
@@ -258,9 +266,11 @@ def generate_salary_slip_single():
                 send_whatsapp=send_whatsapp,
                 send_email=send_email
             )
+            app.logger.info(f"Successfully processed salary slip for {employee_identifier}")
             return jsonify({"message": "Salary slip generated successfully"}), 200
 
         except Exception as e:
+            app.logger.error(f"Error processing salary slip: {e}")
             return jsonify({"error": f"Error processing salary slip: {e}"}), 500
 
     except Exception as e:
@@ -268,7 +278,6 @@ def generate_salary_slip_single():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/generate-salary-slips-batch", methods=["POST"])
-# Temporarily remove RBAC for batch processing
 # @check_user_role('admin')
 def generate_salary_slips_batch():
     try:

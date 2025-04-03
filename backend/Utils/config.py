@@ -4,6 +4,8 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+from pydrive2.drive import GoogleDrive
+from pydrive2.auth import GoogleAuth
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,38 +45,19 @@ try:
         SERVICE_ACCOUNT_FILE, 
         scopes=[
             'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
+            'https://www.googleapis.com/auth/drive',  # Full drive access
+            'https://www.googleapis.com/auth/drive.metadata'
         ]
     )
+    
     # Create Drive API service
-    drive_service = build('drive', 'v3', credentials=creds)
-    drive = drive_service  # Export the drive service instance
+    drive = build('drive', 'v3', credentials=creds)
+    
+    # Create Sheets API service
+    sheets_service = build('sheets', 'v4', credentials=creds)
+    
 except Exception as e:
     print(f"Error loading service account credentials: {e}")
     print(f"Please ensure the credentials file exists at: {SERVICE_ACCOUNT_FILE}")
-    raise
-
-# Function to upload file to Google Drive
-def upload_to_google_drive(file_path, folder_id, file_title):
-    try:
-        file_metadata = {
-            'name': file_title,
-            'parents': [folder_id]
-        }
-        
-        media = MediaFileUpload(
-            file_path,
-            mimetype='application/pdf',
-            resumable=True
-        )
-        
-        file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id'
-        ).execute()
-        
-        return file.get('id')
-    except HttpError as error:
-        print(f'An error occurred: {error}')
-        return None
+    drive = None
+    sheets_service = None
