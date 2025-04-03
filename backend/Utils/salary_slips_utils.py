@@ -7,7 +7,9 @@ from Utils.whatsapp_utils import send_whatsapp_message, get_employee_contact
 from Utils.drive_utils import upload_to_google_drive
 import shutil
 import subprocess
-import platform
+# import platform
+# import pythoncom
+# from comtypes.client import CreateObject
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +32,17 @@ def convert_docx_to_pdf(input_path, output_path):
         default_pdf_path = os.path.join(os.path.dirname(output_path), default_pdf_name)
         if default_pdf_path != output_path:
             os.rename(default_pdf_path, output_path)
-            
+
+        # pythoncom.CoInitialize()
+        # word = CreateObject('Word.Application')
+        # word.Visible = False  # Keep Word hidden
+        # doc = word.Documents.Open(input_path)
+        # doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
+        # doc.Close()
+        # word.Quit()
+        # print(f'Converted {input_path} to {output_path}')
+        # return True
+
         return True
     except Exception as e:
         logging.error(f"Error converting DOCX to PDF: {e}")
@@ -58,7 +70,6 @@ def clear_salary_slips_folder(output_dir):
         logging.error(f"Error clearing the folder {output_dir}: {e}")
 
 def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path):
-    """Handle WhatsApp notification with environment check"""
     if whatsapp_number:
         message = [
             f"Dear *{contact_name}*,",
@@ -96,7 +107,9 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
     placeholders["Year"] = full_year
 
     # Merge data from "Official Details" sheet
-    official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code")), {})
+    official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code") or 
+                           item.get("Employee\nCode") == placeholders.get("Employee\nCode") or 
+                           item.get("Name") == placeholders.get("Name")), {})
     placeholders.update(official_details)
 
     # Calculate components of salary
@@ -146,10 +159,6 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
             if folder_id:
                 logging.info(f"Found Google Drive ID {folder_id} for employee {employee_name}")
                 upload_success = upload_to_google_drive(output_pdf, folder_id, employee_name, month, year)
-                if upload_success:
-                    logging.info(f"Successfully uploaded salary slip for {employee_name} to Google Drive folder {folder_id}")
-                else:
-                    logging.error(f"Failed to upload salary slip for {employee_name} to Google Drive")
             else:
                 logging.error(f"No Google Drive ID found for employee: {employee_name}")
                 logging.error(f"Available keys in drive data: {list(drive_data[0].keys()) if drive_data else 'No drive data'}")
@@ -250,7 +259,9 @@ def process_salary_slips(template_path, output_dir, employees_data, headers, dri
 
             if convert_docx_to_pdf(output_docx, output_pdf):
                 # Upload to Google Drive
-                official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code")), {})
+                official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code") or 
+                                      item.get("Employee\nCode") == placeholders.get("Employee\nCode") or 
+                                      item.get("Name") == placeholders.get("Name")), {})
                 folder_id = official_details.get("Google Drive ID")
                 if folder_id:
                     logging.info(f"Found Google Drive ID {folder_id} for employee {employee_name}")
