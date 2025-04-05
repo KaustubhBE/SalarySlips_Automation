@@ -343,7 +343,6 @@ def generate_salary_slips_batch():
                     send_whatsapp=send_whatsapp,
                     send_email=send_email
                 )
-                app.logger.info(f"Uploaded {employee_name}'s salary slip to folder {OUTPUT_DIR}")
                 if send_email:
                     app.logger.info(f"Sending email to {employee[5]}")  # Assuming email is at index 5
                     app.logger.info(f"Email sent to {employee[5]}")        
