@@ -22,7 +22,7 @@ function Processing({ mode = 'single' }) {
   const [sendEmail, setSendEmail] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedPlant, setSelectedPlant] = useState('');
-  const [plant, setPlant] = useState({});
+  const [selectedPlantData, setSelectedPlantData] = useState({});
   const [loading, setLoading] = useState(false);
   const [employeeDetails, setEmployeeDetails] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -30,8 +30,8 @@ function Processing({ mode = 'single' }) {
   const handleSelectChange = (event) => {
     const selectedPlantName = event.target.value;
     setSelectedPlant(selectedPlantName);
-    const selectedPlantData = plantData.find(plant => plant.name === selectedPlantName);
-    setPlant(selectedPlantData || {});
+    const plant = plantData.find(p => p.name === selectedPlantName);
+    setSelectedPlantData(plant || {});
   };
 
   const handleSubmit = async () => {
@@ -40,8 +40,8 @@ function Processing({ mode = 'single' }) {
     const sheetName = `${fullMonth.slice(0, 3)}${fullYear.toString().slice(-2)}`;
     
     const payload = {
-      sheet_id_salary: plant.employee_salary_sheet_id,
-      sheet_id_drive: plant.employee_drive_id,
+      sheet_id_salary: selectedPlantData.employee_salary_sheet_id,
+      sheet_id_drive: selectedPlantData.employee_drive_id,
       full_month: fullMonth,
       full_year: fullYear,
       sheet_name: sheetName,
