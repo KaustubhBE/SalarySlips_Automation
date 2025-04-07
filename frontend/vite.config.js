@@ -6,6 +6,7 @@ import path from 'path'
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
+    base: '/app/',
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.json'],
@@ -22,15 +23,21 @@ export default defineConfig(({ command, mode }) => {
       outDir: 'dist',
       sourcemap: mode === 'development',
       assetsDir: 'assets',
+      emptyOutDir: true,
       rollupOptions: {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'ui-vendor': ['axios', 'react-datepicker']
           },
-          assetFileNames: 'assets/[name].[hash][ext]',
-          chunkFileNames: 'assets/[name].[hash].js',
-          entryFileNames: 'assets/[name].[hash].js',
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name.endsWith('.css')) {
+              return 'assets/css/[name].[hash][ext]';
+            }
+            return 'assets/[name].[hash][ext]';
+          },
+          chunkFileNames: 'assets/js/[name].[hash].js',
+          entryFileNames: 'assets/js/[name].[hash].js',
         },
       },
       minify: mode === 'production',
