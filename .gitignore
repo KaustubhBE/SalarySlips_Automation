@@ -49,6 +49,8 @@ backend/Utils/client_secrets.json
 backend/Utils/service_account_credentials.json
 backend/Utils/Oauth2.json
 backend/Utils/config.json
+backend/Utils/firebase-admin-sdk.json
+token.pickle
 backend/Salary_Slips/
 
 # Environment variables

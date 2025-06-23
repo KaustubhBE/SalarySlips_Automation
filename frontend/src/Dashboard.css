@@ -302,3 +302,53 @@ table tr:hover {
     background-color: #333333;
   }
 }
+
+.permissions-cell {
+  max-width: 300px;
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.permission-item label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.permission-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.permission-item input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.permissions-section {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.permissions-section label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}

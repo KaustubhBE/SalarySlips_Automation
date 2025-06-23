@@ -56,7 +56,11 @@ const Navbar = () => {
             <span onClick={() => closeMenu('/app')}>Home</span>
             <span onClick={() => closeMenu('/single-processing')}>Single Processing</span>
             <span onClick={() => closeMenu('/batch-processing')}>Batch Processing</span>
+            <span onClick={() => closeMenu('/reports')}>Reports</span>
             <span onClick={() => closeMenu('/settings')}>Settings</span>
+            <div className="menu-divider"></div>
+            <span onClick={() => closeMenu('/privacy-policy')}>Privacy Policy</span>
+            <span onClick={() => closeMenu('/terms-and-conditions')}>Terms & Conditions</span>
           </div>
         )}
         <Link to='/app'>
