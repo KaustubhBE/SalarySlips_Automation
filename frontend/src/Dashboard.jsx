@@ -2,12 +2,30 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Dashboard.css'; // Import the CSS file
 
+// Base URL for API calls
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Define available permissions for the two main activities
+const PERMISSIONS = {
+  SINGLE_PROCESSING: 'single_processing',
+  BATCH_PROCESSING: 'batch_processing',
+  REPORT_ACCESS: 'report_access'
+};
+
+// Permission descriptions
+const PERMISSION_DESCRIPTIONS = {
+  [PERMISSIONS.SINGLE_PROCESSING]: 'Process individual salary slips one at a time',
+  [PERMISSIONS.BATCH_PROCESSING]: 'Process multiple salary slips in batch',
+  [PERMISSIONS.REPORT_ACCESS]: 'Access and generate reports'
+};
+
 function Dashboard() {
   const [users, setUsers] = useState([]);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
+  const [permissions, setPermissions] = useState(Object.values(PERMISSIONS).reduce((acc, perm) => ({ ...acc, [perm]: false }), {}));
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -15,9 +33,28 @@ function Dashboard() {
     fetchUsers();
   }, []);
 
+  // Set default permissions when role changes
+  useEffect(() => {
+    if (role === 'super-admin') {
+      setPermissions(Object.values(PERMISSIONS).reduce((acc, perm) => ({ ...acc, [perm]: true }), {}));
+    } else if (role === 'admin') {
+      setPermissions({
+        [PERMISSIONS.SINGLE_PROCESSING]: true,
+        [PERMISSIONS.BATCH_PROCESSING]: true,
+        [PERMISSIONS.REPORT_ACCESS]: false  // Admin needs explicit permission for reports
+      });
+    } else {
+      setPermissions({
+        [PERMISSIONS.SINGLE_PROCESSING]: true,
+        [PERMISSIONS.BATCH_PROCESSING]: false,
+        [PERMISSIONS.REPORT_ACCESS]: false
+      });
+    }
+  }, [role]);
+
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://148.66.155.33:8000/api/get_users', {
+      const response = await axios.get(`${API_BASE_URL}/api/get_users`, {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
@@ -26,10 +63,17 @@ function Dashboard() {
       });
       
       if (Array.isArray(response.data)) {
-        setUsers(response.data);
+        // Use the Firestore document ID directly
+        const usersWithIds = response.data.map(user => ({
+          ...user,
+          // Ensure we use the Firestore document ID
+          id: user.docId || user.id  // Use docId from backend, fallback to id if present
+        }));
+        setUsers(usersWithIds);
         setError('');
       } else {
         setError('Unexpected response format');
+        setUsers([]);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error fetching users');
@@ -40,8 +84,14 @@ function Dashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://148.66.155.33:8000/api/add_user', 
-        { username, email, password, role },
+      const response = await axios.post(`${API_BASE_URL}/api/add_user`, 
+        { 
+          username, 
+          email, 
+          password, 
+          role,
+          permissions 
+        },
         {
           withCredentials: true,
           headers: {
@@ -59,6 +109,11 @@ function Dashboard() {
         setEmail('');
         setPassword('');
         setRole('user');
+        setPermissions({
+          [PERMISSIONS.SINGLE_PROCESSING]: true,
+          [PERMISSIONS.BATCH_PROCESSING]: false,
+          [PERMISSIONS.REPORT_ACCESS]: false
+        });
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error adding user');
@@ -68,7 +123,7 @@ function Dashboard() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await axios.post('http://148.66.155.33:8000/api/delete_user', 
+      const response = await axios.post(`${API_BASE_URL}/api/delete_user`, 
         { user_id: userId },
         {
           withCredentials: true,
@@ -88,10 +143,13 @@ function Dashboard() {
     }
   };
 
-  const handleUpdateRole = async (userId, newRole) => {
+  const handleRoleChange = async (userId, newRole) => {
     try {
-      const response = await axios.post('http://148.66.155.33:8000/api/update_role', 
-        { user_id: userId, role: newRole },
+      const response = await axios.post(`${API_BASE_URL}/api/update_role`, 
+        { 
+          user_id: userId, 
+          role: newRole
+        },
         {
           withCredentials: true,
           headers: {
@@ -106,8 +164,40 @@ function Dashboard() {
         setError(response.data.error);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Error updating user role');
+      setError(err.response?.data?.error || 'Error updating role');
     }
+  };
+
+  const handleUpdatePermissions = async (userId, updatedPermissions) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/update_permissions`, 
+        { 
+          user_id: userId, 
+          permissions: updatedPermissions
+        },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (response.data.message) {
+        setSuccess(response.data.message);
+        fetchUsers();
+      } else {
+        setError(response.data.error);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error updating permissions');
+    }
+  };
+
+  const handlePermissionChange = (permission) => {
+    setPermissions(prev => ({
+      ...prev,
+      [permission]: !prev[permission]
+    }));
   };
 
   return (
@@ -125,6 +215,8 @@ function Dashboard() {
               <th>Username</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Processing Access</th>
+              <th>Report Access</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -137,11 +229,61 @@ function Dashboard() {
                   <select
                     className="role-select"
                     value={user.role}
-                    onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      handleRoleChange(user.id, newRole);
+                    }}
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
+                    <option value="super-admin">Super Admin</option>
                   </select>
+                </td>
+                <td className="permissions-cell">
+                  <div className="permissions-grid">
+                    {Object.entries(PERMISSIONS)
+                      .filter(([key]) => key !== 'REPORT_ACCESS')
+                      .map(([key, value]) => (
+                        <div key={`${user.id}-${value}`} className="permission-item">
+                          <label title={PERMISSION_DESCRIPTIONS[value]}>
+                            <input
+                              type="checkbox"
+                              checked={user.permissions?.[value] || false}
+                              onChange={() => {
+                                const updatedPermissions = {
+                                  ...(user.permissions || {}),
+                                  [value]: !(user.permissions?.[value] || false)
+                                };
+                                handleUpdatePermissions(user.id, updatedPermissions);
+                              }}
+                              disabled={user.role === 'super-admin' && user.id !== 'super-admin'}
+                            />
+                            {key === 'SINGLE_PROCESSING' ? 'Single Processing' : 'Batch Processing'}
+                          </label>
+                        </div>
+                    ))}
+                  </div>
+                </td>
+                <td className="permissions-cell">
+                  <div className="permissions-grid">
+                    <div className="permission-item">
+                      <label title={PERMISSION_DESCRIPTIONS[PERMISSIONS.REPORT_ACCESS]}>
+                        <input
+                          type="checkbox"
+                          checked={user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false}
+                          onChange={() => {
+                            const updatedPermissions = {
+                              ...(user.permissions || {}),
+                              [PERMISSIONS.REPORT_ACCESS]: !(user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false)
+                            };
+                            handleUpdatePermissions(user.id, updatedPermissions);
+                          }}
+                          disabled={role === 'super-admin' && user.id !== 'super-admin'}
+                        />
+                        Report Access
+                      </label>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <button 
@@ -194,7 +336,7 @@ function Dashboard() {
           </div>
           
           <div className="form-group">
-            <label htmlFor="role">Role:</label>
+            <label htmlFor="role">Base Role:</label>
             <select 
               id="role" 
               value={role} 
@@ -203,7 +345,46 @@ function Dashboard() {
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option value="super-admin">Super Admin</option>
             </select>
+          </div>
+
+          <div className="form-group permissions-section">
+            <label>Processing Access:</label>
+            <div className="permissions-grid">
+              {Object.entries(PERMISSIONS)
+                .filter(([key]) => key !== 'REPORT_ACCESS')
+                .map(([key, value]) => (
+                  <div key={value} className="permission-item">
+                    <label title={PERMISSION_DESCRIPTIONS[value]}>
+                      <input
+                        type="checkbox"
+                        checked={permissions[value]}
+                        onChange={() => handlePermissionChange(value)}
+                        disabled={role === 'super-admin' && user.id !== 'super-admin'}
+                      />
+                      {key === 'SINGLE_PROCESSING' ? 'Single Processing' : 'Batch Processing'}
+                    </label>
+                  </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group permissions-section">
+            <label>Report Access:</label>
+            <div className="permissions-grid">
+              <div className="permission-item">
+                <label title={PERMISSION_DESCRIPTIONS[PERMISSIONS.REPORT_ACCESS]}>
+                  <input
+                    type="checkbox"
+                    checked={permissions[PERMISSIONS.REPORT_ACCESS]}
+                    onChange={() => handlePermissionChange(PERMISSIONS.REPORT_ACCESS)}
+                    disabled={role === 'super-admin' && user.id !== 'super-admin'}
+                  />
+                  Report Access
+                </label>
+              </div>
+            </div>
           </div>
           
           <button type="submit">Add User</button>

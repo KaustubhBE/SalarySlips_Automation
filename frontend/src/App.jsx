@@ -6,6 +6,9 @@ import Settings from './Components/Settings';
 import Login from './Login';
 import Navbar from './Navbar';
 import Dashboard from './Dashboard';
+import Reports from './Reports'
+import PrivacyPolicy from './Components/PrivacyPolicy';
+import TermsAndConditions from './Components/TermsAndConditions';
 import { useAuth } from './Components/AuthContext';
 
 function App() {
@@ -35,8 +38,8 @@ function App() {
     navigate('/login', { replace: true });
   }, [logout, navigate]);
 
-  // Function to check if user is admin
-  const isAdmin = user?.role === 'admin';
+  // Function to check if user is admin or super-admin
+  const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
   return (
     <>
@@ -78,6 +81,14 @@ function App() {
                   Batch Processing
                 </span>
                 <span 
+                  onClick={() => navigate('/reports')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Reports
+                </span>
+                <span 
                   onClick={() => navigate('/settings')} 
                   className="nav-link"
                   role="button"
@@ -111,13 +122,20 @@ function App() {
           isAuthenticated ? <Settings onLogout={handleLogout} /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/single-processing" element={
+        <Route path="/single-processing/*" element={
           isAuthenticated ? <Processing mode="single" /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/batch-processing" element={
+        <Route path="/batch-processing/*" element={
           isAuthenticated ? <Processing mode="batch" /> : <Navigate to="/login" replace />
         } />
+
+        <Route path="/reports" element={
+          isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
 
         <Route path="*" element={<Navigate to="/app" replace />} />
       </Routes>
