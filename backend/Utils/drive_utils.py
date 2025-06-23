@@ -14,17 +14,17 @@ def verify_folder_permissions(folder_id):
         # Check if we have necessary permissions
         caps = folder.get('capabilities', {})
         if not (caps.get('canAddChildren') and caps.get('canEdit')):
-            print(f"Service account lacks necessary permissions on folder {folder_id}")
+            print("Service account lacks necessary permissions on folder {}".format(folder_id))
             print("Please ensure the folder is shared with the service account with Editor access")
             return False
         return True
     except HttpError as e:
         if e.resp.status == 404:
-            print(f"Folder {folder_id} not found")
+            print("Folder {} not found".format(folder_id))
         elif e.resp.status == 403:
-            print(f"No access to folder {folder_id}. Please share the folder with Editor access")
+            print("No access to folder {}. Please share the folder with Editor access".format(folder_id))
         else:
-            print(f"Error verifying folder permissions: {str(e)}")
+            print("Error verifying folder permissions: {}".format(str(e)))
         return False
 
 def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
@@ -38,10 +38,11 @@ def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
             return False
 
         # Define the file title
-        file_title = f"Salary Slip_{employee_name}_{month}{year}.pdf"
+        file_title = "Salary Slip_{}_{}{}.pdf".format(employee_name, month, year)
 
         try:
             # Search for existing files
+            query = "name='{}' and '{}' in parents and trashed=false".format(file_title, folder_id)
             query = f"name='{file_title}' and '{folder_id}' in parents and trashed=false"
             results = drive.files().list(
                 q=query,

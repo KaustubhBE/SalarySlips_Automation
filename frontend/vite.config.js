@@ -6,7 +6,7 @@ import path from 'path'
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    base: '/app/',
+    base: '/',
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.json'],
@@ -27,17 +27,16 @@ export default defineConfig(({ command, mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['axios', 'react-datepicker']
+            vendor: ['react', 'react-dom', 'react-router-dom', 'axios']
           },
           assetFileNames: (assetInfo) => {
             if (assetInfo.name.endsWith('.css')) {
-              return 'assets/css/[name].[hash][ext]';
+              return 'assets/css/[name][extname]';
             }
-            return 'assets/[name].[hash][ext]';
+            return 'assets/[name][extname]';
           },
-          chunkFileNames: 'assets/js/[name].[hash].js',
-          entryFileNames: 'assets/js/[name].[hash].js',
+          chunkFileNames: 'assets/js/[name].js',
+          entryFileNames: 'assets/js/[name].js',
         },
       },
       minify: mode === 'production',
@@ -48,23 +47,13 @@ export default defineConfig(({ command, mode }) => {
     },
     server: {
       port: 3000,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_URL || 'http://148.66.155.33:8000/api',
-          changeOrigin: true,
-          secure: false,
-          ws: true,
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.log('proxy error', err);
-            });
-          }
-        }
-      }
+      strictPort: true,
+      host: 'localhost'
     },
     preview: {
-      port: process.env.PORT || 3000,
-      host: true
+      port: 3000,
+      strictPort: true,
+      host: 'localhost'
     },
     esbuild: {
       loader: 'jsx',
@@ -82,7 +71,8 @@ export default defineConfig(({ command, mode }) => {
         define: {
           global: 'globalThis'
         }
-      }
+      },
+      include: ['react', 'react-dom', 'react-router-dom'],
     }
   }
 })

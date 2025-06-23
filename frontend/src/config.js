@@ -1,25 +1,51 @@
 // Environment variables
-const isDevelopment = import.meta.env.MODE === 'development';
-export const isProduction = import.meta.env.PROD;
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Default backend URL
+const DEFAULT_BACKEND_URL = 'http://localhost:5000';
 
 // API URL configuration
-const API_BASE_URL = isProduction 
-    ? 'http://148.66.155.33:8000/api'   // Updated
-    : 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+        // Check if we have a stored local backend URL
+        const localBackendUrl = localStorage.getItem('localBackendUrl');
+        if (localBackendUrl && isDevelopment) {
+            return `${localBackendUrl}/api`;
+        }
+    }
+    
+    // Use the appropriate backend URL based on environment
+    return `${DEFAULT_BACKEND_URL}/api`;
+};
+
+// Initialize backend URL in localStorage if not set
+if (typeof window !== 'undefined' && !localStorage.getItem('localBackendUrl')) {
+    localStorage.setItem('localBackendUrl', DEFAULT_BACKEND_URL);
+}
+
+// Configure axios defaults
+import axios from 'axios';
+
+axios.defaults.baseURL = getApiBaseUrl();
+axios.defaults.withCredentials = true;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.timeout = 10000; // 10 seconds timeout
 
 // Feature flags
 export const FEATURES = {
-  ENABLE_WHATSAPP: import.meta.env.VITE_ENABLE_WHATSAPP === 'true',
-  ENABLE_EMAIL: import.meta.env.VITE_ENABLE_EMAIL === 'true',
-  ENABLE_ERROR_REPORTING: import.meta.env.VITE_ENABLE_ERROR_REPORTING === 'true'
+    ENABLE_WHATSAPP: import.meta.env.VITE_ENABLE_WHATSAPP === 'true',
+    ENABLE_EMAIL: import.meta.env.VITE_ENABLE_EMAIL === 'true',
+    ENABLE_ERROR_REPORTING: import.meta.env.VITE_ENABLE_ERROR_REPORTING === 'true'
 };
 
 // Logging configuration
 export const LOG_CONFIG = {
-  LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info'
+    LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info'
 };
 
-// API request configuration with environment-specific settings
+// API request configuration
 export const API_CONFIG = {
     headers: {
         'Content-Type': 'application/json',
@@ -31,15 +57,28 @@ export const API_CONFIG = {
 
 // Function to get the full API URL for a specific endpoint
 export const getApiUrl = (endpoint) => {
-    return `${API_BASE_URL}/${endpoint}`;
+    return `${getApiBaseUrl()}/${endpoint}`;
+};
+
+// Function to set local backend URL
+export const setLocalBackendUrl = (url) => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('localBackendUrl', url);
+    }
+};
+
+// Function to get current backend URL
+export const getCurrentBackendUrl = () => {
+    return getApiBaseUrl();
 };
 
 // Common API endpoints
 export const ENDPOINTS = {
     // Auth endpoints
-    LOGIN: 'auth/login',
+    GOOGLE_AUTH: 'auth/google',
+    GOOGLE_CALLBACK: 'auth/google/callback',
     LOGOUT: 'auth/logout',
-    VERIFY_TOKEN: 'auth/verify',
+    AUTH_STATUS: 'auth/status',
     
     // Salary slip endpoints
     SINGLE_SLIP: 'generate-salary-slip-single',
@@ -119,16 +158,8 @@ export const configuredFetch = (url, options = {}) => {
     return fetch(url, finalOptions);
 };
 
-// Update axios default configuration
-import axios from 'axios';
-
-axios.defaults.withCredentials = true;
-axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.headers.common['Accept'] = 'application/json';
-
 export default {
     getApiUrl,
     makeApiCall,
-    ENDPOINTS,
-    isProduction
+    ENDPOINTS
 };

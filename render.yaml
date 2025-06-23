@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: salary-slip-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: http://localhost:8000/api
+      - key: VITE_ENABLE_WHATSAPP
+        value: "true"
+      - key: VITE_ENABLE_EMAIL
+        value: "true"
+      - key: VITE_ENABLE_ERROR_REPORTING
+        value: "true"
+      - key: VITE_LOG_LEVEL
+        value: "info"
+    staticPublishPath: ./dist
+    headers:
+      - path: /assets/*
+        name: Content-Type
+        value: text/css
+      - path: /assets/js/*
+        name: Content-Type
+        value: application/javascript
+      - path: /assets/css/*
+        name: Content-Type
+        value: text/css 

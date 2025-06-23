@@ -267,3 +267,202 @@
     min-height: 35px;
   }
 }
+
+.financial-year-info {
+  font-size: 0.9em;
+  color: #666;
+  margin-left: 8px;
+  font-weight: normal;
+}
+
+.btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background-color: #cccccc;
+  transform: none;
+  box-shadow: none;
+}
+
+.processing-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.months-container {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.month-group {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  align-items: flex-end;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.month-group .form-group {
+  flex: 0 1 auto;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+/* Make both month and year inputs equal width */
+.month-group .form-group select,
+.month-group .form-group input {
+  width: 180px;
+  height: 38px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  text-align: center;
+}
+
+.month-group .form-group label {
+  text-align: center;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.month-group .form-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 32px;
+}
+
+/* Add responsive styles for smaller screens */
+@media (max-width: 480px) {
+  .month-group {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .month-group .form-group select,
+  .month-group .form-group input {
+    width: 100%;
+  }
+}
+
+.add-month-btn,
+.remove-month-btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.add-month-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.remove-month-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.add-month-btn:hover {
+  background-color: #45a049;
+}
+
+.remove-month-btn:hover {
+  background-color: #da190b;
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button[type="submit"]:hover {
+  background-color: #1976D2;
+}
+
+button[type="submit"]:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+}
+
+.result-container {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.results-list {
+  margin-top: 15px;
+}
+
+.result-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.result-item.success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.result-item.error {
+  background-color: #ffebee;
+  color: #c62828;
+}

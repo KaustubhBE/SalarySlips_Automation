@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 from docx import Document
 from Utils.email_utils import send_email_with_attachment, get_employee_email
@@ -7,12 +8,21 @@ from Utils.whatsapp_utils import send_whatsapp_message, get_employee_contact
 from Utils.drive_utils import upload_to_google_drive
 import shutil
 import subprocess
-import platform
-import pythoncom
-from comtypes.client import CreateObject
+# import platform
+# import pythoncom
+# from comtypes.client import CreateObject
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
+# Load message templates
+def load_message_templates():
+    try:
+        with open('backend/Utils/message.json', 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logging.error(f"Error loading message templates: {e}")
+        return None
 
 # Preprocess headers
 def preprocess_headers(headers):
@@ -20,22 +30,22 @@ def preprocess_headers(headers):
 
 def convert_docx_to_pdf(input_path, output_path):
     try:
-        # process = subprocess.Popen([
-        #     'libreoffice', '--headless', '--convert-to', 'pdf',
-        #     '--outdir', os.path.dirname(output_path),
-        #     input_path
-        # ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # process.wait()
+        process = subprocess.Popen([
+            'libreoffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', os.path.dirname(output_path),
+            input_path
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.wait()
 
-        pythoncom.CoInitialize()
-        word = CreateObject('Word.Application')
-        word.Visible = False  # Keep Word hidden
-        doc = word.Documents.Open(input_path)
-        doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
-        doc.Close()
-        word.Quit()
-        print(f'Converted {input_path} to {output_path}')
-        return True
+        # pythoncom.CoInitialize()
+        # word = CreateObject('Word.Application')
+        # word.Visible = False  # Keep Word hidden
+        # doc = word.Documents.Open(input_path)
+        # doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
+        # doc.Close()
+        # word.Quit()
+        # print(f'Converted {input_path} to {output_path}')
+        # return True
 
         return True
     except Exception as e:
@@ -63,25 +73,72 @@ def clear_salary_slips_folder(output_dir):
     except Exception as e:
         logging.error(f"Error clearing the folder {output_dir}: {e}")
 
-def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path):
+def format_months_list(months_data):
+    """Format the list of months for display in messages."""
+    if not months_data:
+        return ""
+    
+    if isinstance(months_data, list):
+        # Format for WhatsApp message
+        return "\n".join([f"   -  {month['month']} {month['year']}" for month in months_data])
+    else:
+        # Format for email HTML
+        return "".join([f"<li>{month['month']} {month['year']}</li>" for month in months_data])
+
+def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
     if whatsapp_number:
-        message = [
-            f"Dear *{contact_name}*,",
-            "",
-            f"Please find attached your *salary slip* for the month of *{full_month} {full_year}*.",
-            "",
-            "This document includes:",
-            "   -  Earnings Breakdown",
-            "   -  Deductions Summary",
-            "   -  Net Salary Details",
-            "",
-            "Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.",
-            "",
-            "Thanks & Regards,",
-            "HR Department",
-            "Bajaj Earths Pvt. Ltd.",
-            "+91 - 86557 88172"
-        ]
+        # Load message templates
+        templates = load_message_templates()
+        if not templates:
+            logging.error("Failed to load message templates")
+            return False
+            
+        # Choose appropriate template
+        template_key = "special_whatsapp_message" if is_special else "monthly_whatsapp_message"
+        
+        # Format the message with actual values
+        if is_special and months_data:
+            message = [line.format(
+                contact_name=contact_name,
+                months_list=format_months_list(months_data)
+            ) for line in templates[template_key]]
+        else:
+            message = [line.format(
+                contact_name=contact_name,
+                full_month=full_month,
+                full_year=full_year
+            ) for line in templates[template_key]]
+        
+        # Log attempt
+        logging.info(f"Attempting to send WhatsApp message to {contact_name} ({whatsapp_number})")
+        
+        # Send message
+        return send_whatsapp_message(contact_name, message, file_path, whatsapp_number)
+    return False
+
+def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
+    if whatsapp_number:
+        # Load message templates
+        templates = load_message_templates()
+        if not templates:
+            logging.error("Failed to load message templates")
+            return False
+            
+        # Choose appropriate template
+        template_key = "special_whatsapp_message" if is_special else "monthly_whatsapp_message"
+        
+        # Format the message with actual values
+        if is_special and months_data:
+            message = [line.format(
+                contact_name=contact_name,
+                months_list=format_months_list(months_data)
+            ) for line in templates[template_key]]
+        else:
+            message = [line.format(
+                contact_name=contact_name,
+                full_month=full_month,
+                full_year=full_year
+            ) for line in templates[template_key]]
         
         # Log attempt
         logging.info(f"Attempting to send WhatsApp message to {contact_name} ({whatsapp_number})")
@@ -91,7 +148,7 @@ def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_n
     return False
 
 # Generate and process salary slips for a single employee
-def process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
+def process_salary_slip(template_path, output_dir, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email, is_special=False, months_data=None, collected_pdfs=None):
     logging.info("Starting process_salary_slip function")
     headers = preprocess_headers(headers)
     placeholders = dict(zip(headers, employee_data))
@@ -102,8 +159,7 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
 
     # Merge data from "Official Details" sheet
     official_details = next((item for item in drive_data if item.get("Employee Code") == placeholders.get("Employee Code") or 
-                           item.get("Employee\nCode") == placeholders.get("Employee\nCode") or 
-                           item.get("Name") == placeholders.get("Name")), {})
+                           item.get("Employee\nCode") == placeholders.get("Employee\nCode")), {})
     placeholders.update(official_details)
 
     # Calculate components of salary
@@ -157,27 +213,29 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
                 logging.error(f"No Google Drive ID found for employee: {employee_name}")
                 logging.error(f"Available keys in drive data: {list(drive_data[0].keys()) if drive_data else 'No drive data'}")
 
+            # Load message templates
+            templates = load_message_templates()
+            if not templates:
+                logging.error("Failed to load message templates")
+                return
+
+            # If this is part of a multi-month process, collect the PDF
+            if collected_pdfs is not None:
+                collected_pdfs.append(output_pdf)
+                return
+
             # Send email if enabled
             if send_email:
                 recipient_email = get_employee_email(placeholders.get("Name"), email_employees)
                 if recipient_email:
-                    email_subject = f"Salary Slip for {full_month} {full_year} - Bajaj Earths Pvt. Ltd."
-                    email_body = f"""
-                    <html>
-                    <body>
-                    <p>Dear <b>{placeholders.get('Name')}</b>,</p>
-                    <p>Please find attached your <b>salary slip</b> for the month of <b>{full_month} {full_year}</b>.</p>
-                    <p>This document includes:</p>
-                    <ul>
-                    <li>Earnings Breakdown</li>
-                    <li>Deductions Summary</li>
-                    <li>Net Salary Details</li>
-                    </ul>
-                    <p>Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.</p>
-                    <p>Thanks & Regards,</p>
-                    </body>
-                    </html>
-                    """
+                    email_subject = f"Salary Slip{'s' if is_special else ''} for {full_month} {full_year} - Bajaj Earths Pvt. Ltd."
+                    template_key = "special_email_body" if is_special else "monthly_email_body"
+                    email_body = templates[template_key].format(
+                        employee_name=placeholders.get("Name"),
+                        full_month=full_month,
+                        full_year=full_year,
+                        months_list=format_months_list(months_data) if is_special else ""
+                    )
                     logging.info(f"Sending email to {recipient_email}")
                     send_email_with_attachment(recipient_email, email_subject, email_body, output_pdf)
                 else:
@@ -192,7 +250,9 @@ def process_salary_slip(template_path, output_dir, employee_data, headers, drive
                     full_month,
                     full_year,
                     whatsapp_number,
-                    output_pdf
+                    output_pdf,
+                    is_special,
+                    months_data
                 )
     except Exception as e:
         logging.error(f"Error processing salary slip for {placeholders.get('Name', 'Unknown')}: {e}")
@@ -265,27 +325,22 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                 logging.error(f"No Google Drive ID found for employee: {employee_name}")
                 logging.error(f"Available keys in drive data: {list(drive_data[0].keys()) if drive_data else 'No drive data'}")
 
+            # Load message templates
+            templates = load_message_templates()
+            if not templates:
+                logging.error("Failed to load message templates")
+                return
+
             # Send email if enabled
             if send_email:
                 recipient_email = get_employee_email(placeholders.get("Name"), email_employees)
                 if recipient_email:
                     email_subject = f"Salary Slip for {full_month} {full_year} - Bajaj Earths Pvt. Ltd."
-                    email_body = f"""
-                    <html>
-                    <body>
-                    <p>Dear <b>{placeholders.get('Name')}</b>,</p>
-                    <p>Please find attached your <b>salary slip</b> for the month of <b>{full_month} {full_year}</b>.</p>
-                    <p>This document includes:</p>
-                    <ul>
-                    <li>Earnings Breakdown</li>
-                    <li>Deductions Summary</li>
-                    <li>Net Salary Details</li>
-                    </ul>
-                    <p>Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.</p>
-                    <p>Thanks & Regards,</p>
-                    </body>
-                    </html>
-                    """
+                    email_body = templates["monthly_email_body"].format(
+                        employee_name=placeholders.get("Name"),
+                        full_month=full_month,
+                        full_year=full_year
+                    )
                     logging.info(f"Sending email to {recipient_email}")
                     send_email_with_attachment(recipient_email, email_subject, email_body, output_pdf)
                 else:
