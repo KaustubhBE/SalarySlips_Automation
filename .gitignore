@@ -52,6 +52,7 @@ backend/Utils/config.json
 backend/Utils/firebase-admin-sdk.json
 token.pickle
 backend/Salary_Slips/
+hosting_rajaj_cmd.txt
 
 # Environment variables
 .env.local

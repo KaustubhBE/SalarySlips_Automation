@@ -12,7 +12,9 @@ from googleapiclient.discovery import build
 import pickle
 import hashlib
 import sys
+import json
 from Utils.config import CLIENT_SECRETS_FILE
+from Utils.firebase_utils import update_user_base64_token
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,20 +35,152 @@ def resource_path(relative_path):
 
 def get_token_path(user_id):
     """Generate a secure token path for the user."""
+    # Define the target directory for storing tokens
+    token_dir = r"C:\Users\Kaustubh\Salary_Slips\temp_attachments"
+    
+    # Create the directory if it doesn't exist
+    os.makedirs(token_dir, exist_ok=True)
+    
     if not user_id:
-        return 'token.pickle'
+        return os.path.join(token_dir, 'token.pickle')
     # Hash the user_id to create a secure filename
     hashed_id = hashlib.sha256(user_id.encode()).hexdigest()
-    return f'token_{hashed_id}.pickle'
+    return os.path.join(token_dir, f'token_{hashed_id}.pickle')
+
+def decrypt_token_to_json(user_id=None):
+    """Decrypt token.pickle file and convert to JSON format."""
+    try:
+        token_path = get_token_path(user_id)
+        
+        # Check if token.pickle exists
+        if not os.path.exists(token_path):
+            logger.error("Token file not found at: {}".format(token_path))
+            return None
+        
+        # Load the pickle file
+        with open(token_path, 'rb') as token_file:
+            credentials = pickle.load(token_file)
+        
+        # Extract credential information
+        token_data = {
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes,
+            'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
+            'expired': credentials.expired,
+            'valid': credentials.valid
+        }
+        
+        # Create JSON file path
+        json_path = token_path.replace('.pickle', '.json')
+        
+        # Save as JSON
+        with open(json_path, 'w') as json_file:
+            json.dump(token_data, json_file, indent=2)
+        
+        # Create BASE64 encrypted version
+        json_content = json.dumps(token_data, indent=2)
+        base64_content = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
+        
+        # Save BASE64 encrypted file
+        base64_path = token_path.replace('.pickle', '.json.base64')
+        with open(base64_path, 'w') as base64_file:
+            base64_file.write(base64_content)
+        
+        # Update Firestore with BASE64 content
+        if user_id:
+            firestore_success = update_user_base64_token(user_id, base64_content)
+            if firestore_success:
+                logger.info("BASE64 token updated in Firestore for user: {}".format(user_id))
+            else:
+                logger.error("Failed to update BASE64 token in Firestore for user: {}".format(user_id))
+        
+        logger.info("Token decrypted and saved to JSON: {}".format(json_path))
+        logger.info("Token encrypted and saved to BASE64: {}".format(base64_path))
+        return json_path
+        
+    except Exception as e:
+        logger.error("Error decrypting token to JSON: {}".format(e))
+        return None
+
+def get_token_json_content(user_id=None):
+    """Get the content of the decrypted token JSON file."""
+    try:
+        json_path = decrypt_token_to_json(user_id)
+        if json_path and os.path.exists(json_path):
+            with open(json_path, 'r') as json_file:
+                return json.load(json_file)
+        return None
+    except Exception as e:
+        logger.error("Error reading token JSON content: {}".format(e))
+        return None
+
+def decrypt_base64_to_json(user_id=None):
+    """Decrypt BASE64 file back to JSON format."""
+    try:
+        token_path = get_token_path(user_id)
+        base64_path = token_path.replace('.pickle', '.json.base64')
+        
+        # Check if BASE64 file exists
+        if not os.path.exists(base64_path):
+            logger.error("BASE64 file not found at: {}".format(base64_path))
+            return None
+        
+        # Read BASE64 content
+        with open(base64_path, 'r') as base64_file:
+            base64_content = base64_file.read()
+        
+        # Decode BASE64 to JSON
+        json_content = base64.b64decode(base64_content).decode('utf-8')
+        token_data = json.loads(json_content)
+        
+        logger.info("BASE64 file decrypted successfully: {}".format(base64_path))
+        return token_data
+        
+    except Exception as e:
+        logger.error("Error decrypting BASE64 to JSON: {}".format(e))
+        return None
+
+def get_token_base64_content(user_id=None):
+    """Get the BASE64 content of the encrypted token file."""
+    try:
+        token_path = get_token_path(user_id)
+        base64_path = token_path.replace('.pickle', '.json.base64')
+        
+        if os.path.exists(base64_path):
+            with open(base64_path, 'r') as base64_file:
+                return base64_file.read()
+        return None
+    except Exception as e:
+        logger.error("Error reading BASE64 content: {}".format(e))
+        return None
 
 def clear_user_credentials(user_id=None):
     """Clear stored credentials for a user."""
     try:
         token_path = get_token_path(user_id)
+        json_path = token_path.replace('.pickle', '.json')
+        base64_path = token_path.replace('.pickle', '.json.base64')
+        
+        # Remove pickle file
         if os.path.exists(token_path):
             os.remove(token_path)
-            logger.info("Cleared credentials for user: {}".format(user_id))
-            return True
+            logger.info("Cleared pickle credentials for user: {}".format(user_id))
+        
+        # Remove JSON file
+        if os.path.exists(json_path):
+            os.remove(json_path)
+            logger.info("Cleared JSON credentials for user: {}".format(user_id))
+        
+        # Remove BASE64 file
+        if os.path.exists(base64_path):
+            os.remove(base64_path)
+            logger.info("Cleared BASE64 credentials for user: {}".format(user_id))
+            
+        return True
     except Exception as e:
         logger.error("Error clearing credentials: {}".format(e))
     return False
@@ -71,6 +205,8 @@ def get_gmail_service(user_id=None):
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
+                # Decrypt refreshed credentials to JSON
+                decrypt_token_to_json(user_id)
             except Exception as e:
                 logger.error("Error refreshing credentials: {}".format(e))
                 # If refresh fails, clear credentials and get new ones
@@ -86,6 +222,9 @@ def get_gmail_service(user_id=None):
                 # Save credentials for future use
                 with open(token_path, 'wb') as token:
                     pickle.dump(creds, token)
+                
+                # Decrypt newly created credentials to JSON
+                decrypt_token_to_json(user_id)
             except Exception as e:
                 logger.error("Error getting new credentials: {}".format(e))
                 return None

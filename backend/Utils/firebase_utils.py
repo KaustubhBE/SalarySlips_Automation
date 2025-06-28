@@ -73,3 +73,28 @@ def update_user_permissions(user_id, permissions):
     """Update a user's permissions"""
     user_ref = db.collection('USERS').document(user_id)
     user_ref.update({'permissions': permissions}) 
+
+def update_user_base64_token(user_id, base64_token):
+    """Update user's BASE64 encrypted token in Firestore"""
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        user_ref.update({'base64_token': base64_token}, merge=True)
+        # print(f"BASE64 length: {len(base64_token)}")
+        # user_ref.set({'base64_token': base64_token}, merge=True)
+        return True
+    except Exception as e:
+        print(f"Error updating BASE64 token in Firestore: {e}")
+        return False
+
+def get_user_base64_token(user_id):
+    """Get user's BASE64 encrypted token from Firestore"""
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        user_doc = user_ref.get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            return user_data.get('base64_token')
+        return None
+    except Exception as e:
+        print(f"Error getting BASE64 token from Firestore: {e}")
+        return None
