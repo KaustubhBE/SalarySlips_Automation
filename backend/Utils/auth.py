@@ -50,4 +50,4 @@ def login():
 
     except Exception as e:
         logger.error("Login error: {}".format(str(e)), exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+

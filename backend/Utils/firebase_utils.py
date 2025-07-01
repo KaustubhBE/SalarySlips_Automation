@@ -79,8 +79,6 @@ def update_user_base64_token(user_id, base64_token):
     try:
         user_ref = db.collection('USERS').document(user_id)
         user_ref.update({'base64_token': base64_token}, merge=True)
-        # print(f"BASE64 length: {len(base64_token)}")
-        # user_ref.set({'base64_token': base64_token}, merge=True)
         return True
     except Exception as e:
         print(f"Error updating BASE64 token in Firestore: {e}")

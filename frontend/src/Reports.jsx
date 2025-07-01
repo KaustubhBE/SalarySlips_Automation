@@ -11,6 +11,7 @@ const Reports = () => {
   const [sheetName, setSheetName] = useState('');
   const [sheetError, setSheetError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   // const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -728,6 +729,7 @@ const Reports = () => {
             </label>
             <span className="toggle-label">Send via Email</span>
           </div>
+
           {/*
           <div className="toggle-item">
             <label className="toggle">
