@@ -1302,7 +1302,7 @@ if __name__ == "__main__":
         frontend_thread.start()
         
         # Start Flask app
-        app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+        app.run(host="0.0.0.0", port=8089, debug=True, use_reloader=False)
     except Exception as e:
         logger.error("Failed to start server: {}".format(str(e)), exc_info=True)
         sys.exit(1)
