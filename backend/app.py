@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "your_default_secret_key")  # Set secret key for sessions
 logger.info("Flask app initialized")
 
 # Frontend URL
@@ -720,8 +721,11 @@ def update_permissions():
 @app.route("/api/send-reports", methods=["POST"])
 def generate_report():
     try:
-        # Get user_id from session
         user_id = session.get('user', {}).get('email')
+        logger.info(f"Session user_id for report email: {user_id}")
+        if not user_id:
+            logger.error("No user_id found in session. User must be logged in to send reports.")
+            return jsonify({"error": "User not authenticated"}), 401
         
         # Get form data
         template_files = request.files.getlist('template_files')

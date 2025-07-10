@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify 
+from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash
 from Utils.firebase_utils import get_user_by_email, update_user_token
 import logging
@@ -66,6 +66,7 @@ def login():
                     'username': user['username'],
                     'permissions': permissions
                 }
+                session['user'] = user_data  # Set session for normal login
                 logger.info("Login successful for user: {} (normal)".format(email))
                 return jsonify({'success': True, 'user': user_data}), 200
             logger.warning("Invalid password for user: {}".format(email))
@@ -90,6 +91,7 @@ def login():
                     'username': user['username'],
                     'permissions': permissions
                 }
+                session['user'] = user_data  # Set session for Google login
                 logger.info("Login successful for user: {} (gauth)".format(email))
                 return jsonify({'success': True, 'user': user_data}), 200
             except Exception as e:
