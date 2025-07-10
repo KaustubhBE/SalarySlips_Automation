@@ -27,8 +27,8 @@ from Utils.firebase_utils import (
     add_salary_slip,
     get_salary_slips_by_user,
     update_user_permissions,
-    update_user_base64_token,
-    get_user_base64_token
+    update_user_token,
+    get_user_token
 )
 import json
 from docx import Document
@@ -88,8 +88,9 @@ if not app.logger.handlers:
 # CORS configuration
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
-    "http://localhost:8089",
-     "http://admin.bajajearths.com"
+    "http://localhost:3000",
+    "https://frontend-ssautomation.onrender.com",
+    "https://beadmins.onrender.com", "http://admin.bajajearths.com"
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role"]
@@ -157,6 +158,7 @@ def preview_file():
     if request.method == "OPTIONS":
         return handle_preflight()
 
+    temp_path = None
     try:
         if 'file' not in request.files:
             logger.error('No file in request')
@@ -178,20 +180,18 @@ def preview_file():
         file.save(temp_path)
         logger.info('File saved to: %s', temp_path)
         
-        try:
-            # Read the file content
-            content = process_reports(temp_path)
-            logger.info('File processed successfully')
-            return jsonify({"content": content})
-        finally:
-            # Clean up the temporary file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-                logger.info('Temporary file removed')
-                
+        # Read the file content
+        content = process_reports(temp_path)
+        logger.info('File processed successfully')
+        return jsonify({"content": content})
     except Exception as e:
         logger.error("Error previewing file: {}".format(e), exc_info=True)
         return jsonify({"error": str(e)}), 500
+    finally:
+        # Clean up the temporary file
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+            logger.info('Temporary file removed')
 
 def delayed_open_frontend():
     """Open frontend URL after a short delay to ensure server is running"""
@@ -331,7 +331,7 @@ def get_users():
     try:
         users = firebase_get_all_users()
         return jsonify(users), 200
-
+        
     except Exception as e:
         logger.error("Error getting users: {}".format(e))
         return jsonify({"error": str(e)}), 500
@@ -543,7 +543,14 @@ def generate_salary_slip_single():
                                     </html>
                         """.format(employee.get("Name"), full_month, full_year)
                         logging.info("Sending email to {}".format(recipient_email))
-                        success = send_email_with_attachment(recipient_email, email_subject, email_body, collected_pdfs, user_id=user_id)
+                        success = send_email_with_attachment(
+                            recipient_email=recipient_email,
+                            subject=email_subject,
+                            body=email_body,
+                            process_name="salary_slips",
+                            attachment_paths=collected_pdfs,
+                            user_id=user_id
+                        )
                         if success:
                             logging.info("Email sent to {}".format(recipient_email))
                         else:
@@ -871,10 +878,11 @@ def generate_report():
                             </html>
                             """.format(email_content.replace('\n', '<br>'))
                             success = send_email_with_attachment(
-                                recipient_email,
-                                email_subject,
-                                email_body,
-                                [file for file in attachment_paths],
+                                recipient_email=recipient_email,
+                                subject=email_subject,
+                                body=email_body,
+                                process_name="reports",
+                                attachment_paths=attachment_paths,
                                 user_id=user_id,
                                 cc=cc_email,
                                 bcc=bcc_email
@@ -1020,275 +1028,6 @@ def logout():
     except Exception as e:
         logger.error("Error during logout: {}".format(e))
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/auth/gmail-oauth-start', methods=['POST'])
-def gmail_oauth_start():
-    data = request.json
-    user_email = data.get('email')
-    if not user_email:
-        return jsonify({'error': 'Email required'}), 400
-    redirect_uri = url_for('gmail_oauth_callback', _external=True)
-    auth_url, state = start_gmail_oauth(user_email, redirect_uri)
-    session['oauth_state'] = state
-    session['pending_user'] = user_email
-    return jsonify({'oauth_url': auth_url})
-
-@app.route('/api/auth/gmail-oauth-callback')
-def gmail_oauth_callback():
-    state = session.get('oauth_state')
-    user_email = session.get('pending_user')
-    redirect_uri = url_for('gmail_oauth_callback', _external=True)
-    if not user_email or not state:
-        return jsonify({'error': 'Missing session state or user'}), 400
-    try:
-        finish_gmail_oauth(user_email, state, redirect_uri)
-        # Mark user as authenticated for Gmail
-        session['user'] = {'email': user_email}
-        return redirect(FRONTEND_URL)
-    except Exception as e:
-        logger.error("OAuth callback error: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
-    # ... your password check logic ...
-    # If password is correct:
-    session['user'] = {'email': email}
-    # Check if Gmail token exists
-    token_path = get_token_path(email)
-    if not os.path.exists(token_path):
-        redirect_uri = url_for('gmail_oauth_callback', _external=True)
-        auth_url, state = gmail_oauth_start(email, redirect_uri)
-        session['oauth_state'] = state
-        session['pending_user'] = email
-        return jsonify({'oauth_url': auth_url, 'success': True, 'user': {'email': email}})
-    # ... rest of login logic ...
-    return jsonify({'success': True, 'user': {'email': email}})
-
-@app.route('/api/token/decrypt', methods=['POST'])
-def decrypt_token():
-    """Decrypt token.pickle to JSON format."""
-    try:
-        data = request.json
-        user_id = data.get('user_id') if data else None
-        
-        # If no user_id provided, use the current session user
-        if not user_id:
-            user_id = session.get('user', {}).get('email')
-        
-        if not user_id:
-            return jsonify({'error': 'No user ID provided'}), 400
-        
-        json_path = decrypt_token_to_json(user_id)
-        if json_path:
-            return jsonify({
-                'success': True,
-                'message': 'Token decrypted successfully',
-                'json_path': json_path
-            })
-        else:
-            return jsonify({'error': 'Failed to decrypt token'}), 500
-            
-    except Exception as e:
-        logger.error("Error decrypting token: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/content', methods=['GET'])
-def get_token_content():
-    """Get the content of the decrypted token JSON file."""
-    try:
-        user_id = request.args.get('user_id')
-        
-        # If no user_id provided, use the current session user
-        if not user_id:
-            user_id = session.get('user', {}).get('email')
-        
-        if not user_id:
-            return jsonify({'error': 'No user ID provided'}), 400
-        
-        token_content = get_token_json_content(user_id)
-        if token_content:
-            return jsonify({
-                'success': True,
-                'token_data': token_content
-            })
-        else:
-            return jsonify({'error': 'No token content found'}), 404
-            
-    except Exception as e:
-        logger.error("Error getting token content: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/list', methods=['GET'])
-def list_tokens():
-    """List all available token files in the temp_attachments directory."""
-    try:
-        token_dir = r"C:\Users\Kaustubh\Salary_Slips\temp_attachments"
-        
-        if not os.path.exists(token_dir):
-            return jsonify({'tokens': []})
-        
-        tokens = []
-        for filename in os.listdir(token_dir):
-            if filename.endswith('.pickle') or filename.endswith('.json') or filename.endswith('.base64'):
-                file_path = os.path.join(token_dir, filename)
-                file_size = os.path.getsize(file_path)
-                modified_time = os.path.getmtime(file_path)
-                
-                file_type = 'pickle' if filename.endswith('.pickle') else 'json' if filename.endswith('.json') else 'base64'
-                
-                tokens.append({
-                    'filename': filename,
-                    'file_path': file_path,
-                    'file_size': file_size,
-                    'modified_time': modified_time,
-                    'file_type': file_type
-                })
-        
-        return jsonify({
-            'success': True,
-            'tokens': tokens
-        })
-        
-    except Exception as e:
-        logger.error("Error listing tokens: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/base64/content', methods=['GET'])
-def get_base64_content():
-    """Get the BASE64 content of the encrypted token file."""
-    try:
-        user_id = request.args.get('user_id')
-        
-        # If no user_id provided, use the current session user
-        if not user_id:
-            user_id = session.get('user', {}).get('email')
-        
-        if not user_id:
-            return jsonify({'error': 'No user ID provided'}), 400
-        
-        base64_content = get_token_base64_content(user_id)
-        if base64_content:
-            return jsonify({
-                'success': True,
-                'base64_content': base64_content
-            })
-        else:
-            return jsonify({'error': 'No BASE64 content found'}), 404
-            
-    except Exception as e:
-        logger.error("Error getting BASE64 content: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/base64/decrypt', methods=['POST'])
-def decrypt_base64_token():
-    """Decrypt BASE64 file back to JSON format."""
-    try:
-        data = request.json
-        user_id = data.get('user_id') if data else None
-        
-        # If no user_id provided, use the current session user
-        if not user_id:
-            user_id = session.get('user', {}).get('email')
-        
-        if not user_id:
-            return jsonify({'error': 'No user ID provided'}), 400
-        
-        token_data = decrypt_base64_to_json(user_id)
-        if token_data:
-            return jsonify({
-                'success': True,
-                'message': 'BASE64 file decrypted successfully',
-                'token_data': token_data
-            })
-        else:
-            return jsonify({'error': 'Failed to decrypt BASE64 file'}), 500
-            
-    except Exception as e:
-        logger.error("Error decrypting BASE64 token: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/firestore/update', methods=['POST'])
-def update_firestore_base64_token():
-    """Update BASE64 token in Firestore."""
-    try:
-        data = request.json
-        user_id = data.get('user_id')
-        base64_content = data.get('base64_content')
-        
-        if not user_id or not base64_content:
-            return jsonify({'error': 'user_id and base64_content are required'}), 400
-        
-        success = update_user_base64_token(user_id, base64_content)
-        if success:
-            return jsonify({
-                'success': True,
-                'message': 'BASE64 token updated in Firestore successfully'
-            })
-        else:
-            return jsonify({'error': 'Failed to update BASE64 token in Firestore'}), 500
-            
-    except Exception as e:
-        logger.error("Error updating BASE64 token in Firestore: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/firestore/get', methods=['GET'])
-def get_firestore_base64_token():
-    """Get BASE64 token from Firestore."""
-    try:
-        user_id = request.args.get('user_id')
-        
-        if not user_id:
-            return jsonify({'error': 'user_id is required'}), 400
-        
-        base64_content = get_user_base64_token(user_id)
-        if base64_content:
-            return jsonify({
-                'success': True,
-                'base64_content': base64_content
-            })
-        else:
-            return jsonify({'error': 'No BASE64 token found in Firestore'}), 404
-            
-    except Exception as e:
-        logger.error("Error getting BASE64 token from Firestore: {}".format(e))
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/token/firestore/decrypt', methods=['POST'])
-def decrypt_firestore_base64_token():
-    """Decrypt BASE64 token from Firestore back to JSON."""
-    try:
-        data = request.json
-        user_id = data.get('user_id')
-        
-        if not user_id:
-            return jsonify({'error': 'user_id is required'}), 400
-        
-        # Get BASE64 content from Firestore
-        base64_content = get_user_base64_token(user_id)
-        if not base64_content:
-            return jsonify({'error': 'No BASE64 token found in Firestore'}), 404
-        
-        # Decode BASE64 to JSON
-        try:
-            json_content = base64.b64decode(base64_content).decode('utf-8')
-            token_data = json.loads(json_content)
-            
-            return jsonify({
-                'success': True,
-                'message': 'BASE64 token from Firestore decrypted successfully',
-                'token_data': token_data
-            })
-        except Exception as decode_error:
-            logger.error("Error decoding BASE64 content: {}".format(decode_error))
-            return jsonify({'error': 'Failed to decode BASE64 content'}), 500
-            
-    except Exception as e:
-        logger.error("Error decrypting BASE64 token from Firestore: {}".format(e))
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     try:

@@ -18,7 +18,7 @@ function Settings({ onLogout }) {
           <h3>Account Information</h3>
           <p><strong>Email:</strong> {user.email}</p>
           <p><strong>Role:</strong> {user.role}</p>
-          <p><strong>Authentication:</strong> Google Account</p>
+          <p><strong>Authentication:</strong> {user.login_type}</p>
         </div>
 
         <button className="button logout-button" onClick={onLogout}>

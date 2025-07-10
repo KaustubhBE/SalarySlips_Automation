@@ -33,13 +33,15 @@ project_root = os.path.dirname(os.path.dirname(script_dir))
 # Define credential paths from environment variables with fallback to project directory
 CLIENT_SECRETS_FILE = os.getenv('GOOGLE_CLIENT_SECRETS_PATH', os.path.join(project_root, 'backend', 'Utils', 'client_secrets.json'))
 SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SHEETS_CREDENTIALS_PATH', os.path.join(project_root, 'backend', 'Utils', 'service_account_credentials.json'))
-OAUTH2_FILE = os.getenv('GOOGLE_OAUTH2_PATH', os.path.join(project_root, 'backend', 'Utils', 'Oauth2.json'))
 
 # Email settings from environment variables
 SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
 SMTP_PORT = int(os.getenv('SMTP_PORT', "465"))
 SENDER_EMAIL = os.getenv('SENDER_EMAIL', "hrd@bajajearths.com")
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "wkcj ajvh exxs qhko")
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "kmfp lyfn ttti bael")
+
+# JWT secret for encoding/decoding tokens
+JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_here')  # TODO: Set a secure secret in production
 
 def load_credentials(file_path, service_name="Google Service"):
     try:

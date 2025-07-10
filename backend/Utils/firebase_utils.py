@@ -2,6 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 from Utils.config import get_resource_path
+import logging
 
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'firebase-admin-sdk.json'))
@@ -72,27 +73,27 @@ def get_salary_slips_by_user(user_id):
 def update_user_permissions(user_id, permissions):
     """Update a user's permissions"""
     user_ref = db.collection('USERS').document(user_id)
-    user_ref.update({'permissions': permissions}) 
+    user_ref.update({'permissions': permissions})
 
-def update_user_base64_token(user_id, base64_token):
-    """Update user's BASE64 encrypted token in Firestore"""
+def update_user_token(user_id, token):
+    """Update user's authentication token (as a string) in Firestore. The token is exchanged directly between variables, not files."""
     try:
         user_ref = db.collection('USERS').document(user_id)
-        user_ref.update({'base64_token': base64_token}, merge=True)
+        user_ref.update({'token': token})
         return True
     except Exception as e:
-        print(f"Error updating BASE64 token in Firestore: {e}")
+        logging.error(f"Error updating token in Firestore: {e}")
         return False
 
-def get_user_base64_token(user_id):
-    """Get user's BASE64 encrypted token from Firestore"""
+def get_user_token(user_id):
+    """Get user's authentication token (as a string) from Firestore. The token is exchanged directly between variables, not files."""
     try:
         user_ref = db.collection('USERS').document(user_id)
         user_doc = user_ref.get()
         if user_doc.exists:
             user_data = user_doc.to_dict()
-            return user_data.get('base64_token')
+            return user_data.get('token')
         return None
     except Exception as e:
-        print(f"Error getting BASE64 token from Firestore: {e}")
+        logging.error(f"Error getting token from Firestore: {e}")
         return None

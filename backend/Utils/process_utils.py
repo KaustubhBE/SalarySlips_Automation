@@ -240,7 +240,7 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                     </html>
                     """
                     logging.info("Sending email to {}".format(recipient_email))
-                    send_email_with_gmail(recipient_email, email_subject, email_body, output_pdf)
+                    send_email_with_gmail(recipient_email, email_subject, email_body, process_name="salary_slips", attachment_paths=output_pdf)
                 else:
                     logging.info("No email found for {}.".format(placeholders.get('Name')))
             
@@ -362,7 +362,7 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                     </body>
                     </html>"""
                 logging.info("Sending email to {}".format(recipient_email))
-                send_email_with_gmail(recipient_email, email_subject, email_body, output_pdf)
+                send_email_with_gmail(recipient_email, email_subject, email_body, process_name="salary_slips", attachment_paths=output_pdf)
             else:
                 logging.info("No email found for {}.".format(placeholders.get('Name')))
             
