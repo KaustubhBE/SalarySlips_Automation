@@ -109,6 +109,39 @@ form button:active {
   transform: translateY(0);
 }
 
+.toggle-password-btn {
+  padding: 8px 16px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150px; /* Match permission grid minmax width */
+  box-sizing: border-box;
+}
+
+.toggle-password-btn:hover {
+  background-color: #dc2626;
+}
+
+.toggle-password-btn:active {
+  background-color: #b91c1c;
+}
+
+/* Ensure all form buttons have consistent sizing */
+form button,
+.toggle-password-btn {
+  box-sizing: border-box;
+}
+
 /* Table Styling */
 .users-table-container {
   overflow-x: auto;

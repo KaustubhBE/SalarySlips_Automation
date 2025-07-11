@@ -82,8 +82,8 @@ def login():
                 if idinfo['email'] != email:
                     logger.warning("Email in Google token does not match request email")
                     return jsonify({'success': False, 'error': 'Google token email mismatch'}), 401
-                # Store the Google token in Firestore as soon as it is received and verified
-                update_user_token(user['id'], token)
+                # Store the full credentials dict (e.g., from google-auth)
+                update_user_token(user['id'], credentials_to_dict(credentials) if 'credentials' in locals() else {'token': token})
                 user_data = {
                     'id': user.get('id'),
                     'email': user['email'],
@@ -96,6 +96,10 @@ def login():
                 return jsonify({'success': True, 'user': user_data}), 200
             except Exception as e:
                 logger.error(f"Google token verification failed: {e}")
+                # If token expired, clear from Firestore and notify frontend
+                if 'Token expired' in str(e):
+                    update_user_token(user['id'], None)  # Clear the token
+                    return jsonify({'success': False, 'error': 'Google token expired. Please re-authenticate.', 'reauth_required': True}), 401
                 return jsonify({'success': False, 'error': 'Invalid Google token'}), 401
         else:
             logger.warning(f"Unknown login_type: {login_type}")

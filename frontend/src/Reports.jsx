@@ -21,6 +21,7 @@ const Reports = () => {
   const [draggedItem, setDraggedItem] = useState(null);
   const [previewTitle, setPreviewTitle] = useState('');
   const [mailSubject, setMailSubject] = useState('');
+  const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
 
   // Helper to get file type as a string
   const getFileType = (file) => {
@@ -326,6 +327,11 @@ const Reports = () => {
     setDraggedItem(null);
   };
 
+  const handleGoogleAuth = () => {
+    // TODO: Replace with your actual Google Auth flow trigger
+    window.location.href = '/login';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -411,7 +417,18 @@ const Reports = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: 'Failed to generate reports' };
+        }
+        // Handle token expired error
+        if (response.status === 401 && errorData.error === 'TOKEN_EXPIRED') {
+          setShowTokenExpiredModal(true);
+          setIsLoading(false);
+          return;
+        }
         throw new Error(errorData.error || 'Failed to generate reports');
       }
 
@@ -443,6 +460,18 @@ const Reports = () => {
 
   return (
     <div className="reports-container">
+      {/* Token Expired Modal */}
+      {showTokenExpiredModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Session Expired</h2>
+            <p>Your Google authentication has expired. Please re-authenticate to continue sending reports.</p>
+            <button className="modal-button" onClick={handleGoogleAuth}>
+              Re-authenticate with Google
+            </button>
+          </div>
+        </div>
+      )}
       <h1>Generate Reports</h1>
       
       {/* Email Subject at the top, full width */}

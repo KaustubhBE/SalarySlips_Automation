@@ -552,6 +552,8 @@ def generate_salary_slip_single():
                             attachment_paths=collected_pdfs,
                             user_email=user_id
                         )
+                        if success == "TOKEN_EXPIRED":
+                            return jsonify({"error": "TOKEN_EXPIRED"}), 401
                         if success:
                             logging.info("Email sent to {}".format(recipient_email))
                         else:
@@ -887,6 +889,8 @@ def generate_report():
                                 cc=cc_email,
                                 bcc=bcc_email
                             )
+                            if success == "TOKEN_EXPIRED":
+                                return jsonify({"error": "TOKEN_EXPIRED"}), 401
                             if not success:
                                 logger.error("Failed to send email to {}".format(recipient_email))
                         except Exception as e:

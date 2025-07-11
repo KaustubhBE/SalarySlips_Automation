@@ -24,6 +24,8 @@ function Dashboard() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [appPassword, setAppPassword] = useState('');
+  const [showAppPassword, setShowAppPassword] = useState(false);
   const [role, setRole] = useState('user');
   const [permissions, setPermissions] = useState(Object.values(PERMISSIONS).reduce((acc, perm) => ({ ...acc, [perm]: false }), {}));
   const [error, setError] = useState('');
@@ -89,6 +91,7 @@ function Dashboard() {
           username, 
           email, 
           password, 
+          appPassword, // <-- add this
           role,
           permissions 
         },
@@ -108,6 +111,7 @@ function Dashboard() {
         setUsername('');
         setEmail('');
         setPassword('');
+        setAppPassword(''); // <-- reset app password
         setRole('user');
         setPermissions({
           [PERMISSIONS.SINGLE_PROCESSING]: true,
@@ -333,6 +337,32 @@ function Dashboard() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="appPassword">Gmail App Password:</label>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showAppPassword ? 'text' : 'password'}
+                id="appPassword"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                pattern="^(\\w{4} ){3}\\w{4}$"
+                placeholder="xxxx xxxx xxxx xxxx"
+                required
+                title="App password must be 16 characters, grouped as 4x4 (e.g., abcd efgh ijkl mnop)"
+                style={{ marginRight: '8px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAppPassword((prev) => !prev)}
+                className="toggle-password-btn"
+                tabIndex={-1}
+                aria-label={showAppPassword ? 'Hide password' : 'Show password'}
+              >
+                {showAppPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           
           <div className="form-group">

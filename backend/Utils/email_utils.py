@@ -13,6 +13,13 @@ import jwt
 from Utils.config import JWT_SECRET
 from Utils.config import CLIENT_SECRETS_FILE, SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, SENDER_PASSWORD
 from Utils.firebase_utils import update_user_token, get_user_token_by_email
+# Add imports for Google token verification
+try:
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+except ImportError:
+    id_token = None
+    google_requests = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +29,51 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
-def get_gmail_service(process_name, user_email=None):
+def verify_token(token, client_id=None):
+    """
+    Verifies a JWT token. Supports Google-issued tokens (RS256) and internal tokens (HS256).
+    Returns the decoded payload if valid, else None.
+    """
+    # Try to decode header to check algorithm/issuer
+    try:
+        header = jwt.get_unverified_header(token)
+        payload = jwt.decode(token, options={"verify_signature": False})
+        iss = payload.get('iss', '')
+        alg = header.get('alg', '')
+    except Exception as e:
+        logging.error(f"Failed to decode JWT header/payload: {e}")
+        return None
+
+    # Google token: iss contains 'accounts.google.com' and alg is RS256
+    if (iss.startswith('https://accounts.google.com') or iss.startswith('accounts.google.com')) and alg == 'RS256':
+        if id_token is None or google_requests is None:
+            logging.error("google-auth library is not installed. Cannot verify Google tokens.")
+            return None
+        # You must provide your Google OAuth client_id for audience verification
+        GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID') or '579518246340-0673etiich0q7ji2q6imu7ln525554ab.apps.googleusercontent.com'
+        try:
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            return idinfo
+        except Exception as e:
+            if 'expired' in str(e).lower():
+                logging.error(f"Google token expired: {e}")
+                return "TOKEN_EXPIRED"
+            logging.error(f"Google token verification failed: {e}")
+            return None
+    else:
+        # Internal token, verify with HS256 and your secret
+        try:
+            decoded = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            return decoded
+        except Exception as e:
+            if 'expired' in str(e).lower():
+                logging.error(f"Internal token expired: {e}")
+                return "TOKEN_EXPIRED"
+            logging.error(f"Internal token verification failed: {e}")
+            return None
+
+
+def get_gmail_service(process_name, user_email=None, user_token=None):
     if process_name == "salary_slips":
         # Use static SMTP credentials; handled separately in send_email_with_gmail
         return "smtp"
@@ -30,20 +81,17 @@ def get_gmail_service(process_name, user_email=None):
         if not user_email:
             logger.error("user_email is required for 'reports' process")
             return None
-            
-        token = get_user_token_by_email(user_email)
-        if token:
-            try:
-                decoded_token = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        oauth_creds = user_token or get_user_token_by_email(user_email)
+        if oauth_creds:
+            # If it's a dict, extract the access token
+            token = oauth_creds.get('token') if isinstance(oauth_creds, dict) else oauth_creds
+            decoded_token = verify_token(token)
+            if decoded_token == "TOKEN_EXPIRED":
+                return "TOKEN_EXPIRED"
+            if decoded_token:
                 return decoded_token
-            except jwt.ExpiredSignatureError:
-                logger.error(f"JWT token expired for user: {user_email}")
-                return None
-            except jwt.InvalidTokenError as e:
-                logger.error(f"Invalid JWT token for user {user_email}: {e}")
-                return None
-            except Exception as e:
-                logger.error(f"Failed to decode JWT token for user {user_email}: {e}")
+            else:
+                logger.error(f"Token verification failed for user: {user_email}")
                 return None
         else:
             logger.error(f"No token found for user_email: {user_email} (required for 'reports' process)")
@@ -109,9 +157,10 @@ def send_gmail_message(service, user_id, message):
         return False
 
 def send_email_with_gmail(recipient_email, subject, body, process_name, attachment_paths=None, user_email=None, cc=None, bcc=None):
-    """Send an email using Gmail API or SMTP with optional CC and BCC."""
     try:
         service = get_gmail_service(process_name, user_email)
+        if service == "TOKEN_EXPIRED":
+            return "TOKEN_EXPIRED"
         message_obj = create_message(
             sender=user_email or SENDER_EMAIL,
             to=recipient_email,
@@ -159,7 +208,6 @@ def get_employee_email(employee_name, email_employees):
 # Send email with PDF attachment
 def send_email_with_attachment(recipient_email, subject, body, process_name, attachment_paths, user_email=None, cc=None, bcc=None):
     try:
-        # Use Gmail API to send email
         success = send_email_with_gmail(
             recipient_email=recipient_email,
             subject=subject,
@@ -170,6 +218,9 @@ def send_email_with_attachment(recipient_email, subject, body, process_name, att
             cc=cc,
             bcc=bcc
         )
+        if success == "TOKEN_EXPIRED":
+            logger.error("Token expired while sending email to {}".format(recipient_email))
+            return "TOKEN_EXPIRED"
         if success:
             logger.info("Email sent to {}".format(recipient_email))
             return True
