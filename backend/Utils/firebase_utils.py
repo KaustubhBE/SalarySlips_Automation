@@ -1,5 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 import os
 from Utils.config import get_resource_path
 import logging
@@ -33,7 +34,7 @@ def get_user_by_id(user_id):
 def get_user_by_email(email):
     """Get a user by their email"""
     users_ref = db.collection('USERS')
-    query = users_ref.where('email', '==', email).limit(1)
+    query = users_ref.where(filter=FieldFilter('email', '==', email)).limit(1)
     results = query.get()
     if results:
         user_doc = results[0]
@@ -66,7 +67,7 @@ def add_salary_slip(slip_data):
 def get_salary_slips_by_user(user_id):
     """Get all salary slips for a user"""
     slips_ref = db.collection('salary_slips')
-    query = slips_ref.where('user_id', '==', user_id)
+    query = slips_ref.where(filter=FieldFilter('user_id', '==', user_id))
     results = query.get()
     return [slip.to_dict() for slip in results]
 
@@ -76,7 +77,6 @@ def update_user_permissions(user_id, permissions):
     user_ref.update({'permissions': permissions})
 
 def update_user_token(user_id, token):
-    """Update user's authentication token (as a string) in Firestore. The token is exchanged directly between variables, not files."""
     try:
         user_ref = db.collection('USERS').document(user_id)
         user_ref.update({'token': token})
@@ -86,7 +86,6 @@ def update_user_token(user_id, token):
         return False
 
 def get_user_token(user_id):
-    """Get user's authentication token (as a string) from Firestore. The token is exchanged directly between variables, not files."""
     try:
         user_ref = db.collection('USERS').document(user_id)
         user_doc = user_ref.get()
@@ -97,3 +96,34 @@ def get_user_token(user_id):
     except Exception as e:
         logging.error(f"Error getting token from Firestore: {e}")
         return None
+
+def get_user_token_by_email(email):
+    user = get_user_by_email(email)
+    if user:
+        return user.get('token')
+    return None
+
+def check_user_token_status(email):
+    """Check if a user has a valid token and return status information"""
+    user = get_user_by_email(email)
+    if not user:
+        return {
+            'exists': False,
+            'has_token': False,
+            'message': f'User with email {email} not found in database'
+        }
+    
+    token = user.get('token')
+    if not token:
+        return {
+            'exists': True,
+            'has_token': False,
+            'message': f'User {email} exists but has no token stored'
+        }
+    
+    return {
+        'exists': True,
+        'has_token': True,
+        'token': token,
+        'message': f'User {email} has a token stored'
+    }

@@ -550,12 +550,12 @@ def generate_salary_slip_single():
                             body=email_body,
                             process_name="salary_slips",
                             attachment_paths=collected_pdfs,
-                            user_id=user_id
+                            user_email=user_id
                         )
                         if success:
                             logging.info("Email sent to {}".format(recipient_email))
                         else:
-                            logging.error("Error sending email: {}".format(str(e)))
+                            logging.error("Failed to send email to {}".format(recipient_email))
                 except Exception as e:
                     logging.error("Error sending email: {}".format(str(e)))
 
@@ -722,7 +722,6 @@ def update_permissions():
 def generate_report():
     try:
         user_id = session.get('user', {}).get('email')
-        logger.info(f"Session user_id for report email: {user_id}")
         if not user_id:
             logger.error("No user_id found in session. User must be logged in to send reports.")
             return jsonify({"error": "User not authenticated"}), 401
@@ -841,7 +840,6 @@ def generate_report():
                     country_code = data_dict.get('Country Code', '').strip()
                     phone_no = data_dict.get('Contact No.', '').strip()
                     recipient_phone = "{} {}".format(country_code, phone_no)
-                    logging.info("Formatted phone number: {}".format(recipient_phone))
 
                     if send_whatsapp:
                         if not recipient_phone or not country_code or not phone_no:
@@ -859,9 +857,7 @@ def generate_report():
                                 process_name="report"
                             )
                             
-                            if success:
-                                logger.info("WhatsApp message sent to {} with attachment".format(recipient_phone))
-                            else:
+                            if not success:
                                 logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
 
                         except Exception as e:
@@ -887,14 +883,12 @@ def generate_report():
                                 body=email_body,
                                 process_name="reports",
                                 attachment_paths=attachment_paths,
-                                user_id=user_id,
+                                user_email=user_id,
                                 cc=cc_email,
                                 bcc=bcc_email
                             )
-                            if success:
-                                logger.info("Email sent to {}".format(recipient_email))
-                            else:
-                                logger.error("Error sending email: {}".format(str(e)))
+                            if not success:
+                                logger.error("Failed to send email to {}".format(recipient_email))
                         except Exception as e:
                             logger.error("Error sending email: {}".format(str(e)))
 
@@ -910,7 +904,6 @@ def generate_report():
             try:
                 if os.path.exists(attachment_path):
                     os.remove(attachment_path)
-                    logger.info("Successfully removed temporary file: {}".format(attachment_path))
             except Exception as e:
                 logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
 
@@ -920,29 +913,22 @@ def generate_report():
                 # List any remaining files in the directory
                 remaining_files = os.listdir(temp_dir)
                 if remaining_files:
-                    logger.warning("Found remaining files in temp directory: {}".format(remaining_files))
                     # Try to remove each remaining file
                     for file in remaining_files:
                         try:
                             file_path = os.path.join(temp_dir, file)
                             if os.path.isfile(file_path):
                                 os.remove(file_path)
-                                logger.info("Successfully removed remaining file: {}".format(file))
                         except Exception as e:
                             logger.error("Error removing remaining file {}: {}".format(file, e))
                 
                 # Try to remove the directory again
                 try:
                     os.rmdir(temp_dir)
-                    logger.info("Successfully removed temporary directory: {}".format(temp_dir))
                 except Exception as e:
                     logger.error("Failed to remove temporary directory {}: {}".format(temp_dir, e))
-                    # If we still can't remove it, log a warning but continue
-                    logger.warning("Temporary directory could not be removed, but operation completed successfully")
         except Exception as e:
             logger.error("Error during final cleanup: {}".format(e))
-            # Log warning but don't fail the operation
-            logger.warning("Cleanup encountered errors but operation completed successfully")
 
         return jsonify({
             "message": "Reports generated successfully",

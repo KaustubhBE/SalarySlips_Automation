@@ -12,7 +12,7 @@ import json
 import jwt
 from Utils.config import JWT_SECRET
 from Utils.config import CLIENT_SECRETS_FILE, SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, SENDER_PASSWORD
-from Utils.firebase_utils import update_user_token, get_user_token
+from Utils.firebase_utils import update_user_token, get_user_token_by_email
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,24 +22,35 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
-def get_gmail_service(process_name, user_id=None):
+def get_gmail_service(process_name, user_email=None):
     if process_name == "salary_slips":
         # Use static SMTP credentials; handled separately in send_email_with_gmail
         return "smtp"
     elif process_name == "reports":
-        token = get_user_token(user_id)
+        if not user_email:
+            logger.error("user_email is required for 'reports' process")
+            return None
+            
+        token = get_user_token_by_email(user_email)
         if token:
             try:
                 decoded_token = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
                 return decoded_token
+            except jwt.ExpiredSignatureError:
+                logger.error(f"JWT token expired for user: {user_email}")
+                return None
+            except jwt.InvalidTokenError as e:
+                logger.error(f"Invalid JWT token for user {user_email}: {e}")
+                return None
             except Exception as e:
-                logger.error(f"Failed to decode JWT token: {e}")
+                logger.error(f"Failed to decode JWT token for user {user_email}: {e}")
                 return None
         else:
-            logger.error("No token found for user_id: {} (required for 'reports' process)".format(user_id))
+            logger.error(f"No token found for user_email: {user_email} (required for 'reports' process)")
+            logger.info(f"User {user_email} needs to authenticate to generate a token")
             return None
     else:
-        logger.error("Unknown process_name: {}".format(process_name))
+        logger.error(f"Unknown process_name: {process_name}")
         return None
 
 def create_message(sender, to, subject, message_text, attachment_paths=None, cc=None, bcc=None):
@@ -97,12 +108,12 @@ def send_gmail_message(service, user_id, message):
         logger.error("Error sending email: {}".format(e))
         return False
 
-def send_email_with_gmail(recipient_email, subject, body, process_name, attachment_paths=None, user_id=None, cc=None, bcc=None):
+def send_email_with_gmail(recipient_email, subject, body, process_name, attachment_paths=None, user_email=None, cc=None, bcc=None):
     """Send an email using Gmail API or SMTP with optional CC and BCC."""
     try:
-        service = get_gmail_service(process_name, user_id)
+        service = get_gmail_service(process_name, user_email)
         message_obj = create_message(
-            sender=user_id or SENDER_EMAIL,
+            sender=user_email or SENDER_EMAIL,
             to=recipient_email,
             subject=subject,
             message_text=body,
@@ -130,7 +141,7 @@ def send_email_with_gmail(recipient_email, subject, body, process_name, attachme
             return True
         elif service:
             # Use Gmail API
-            return send_gmail_message(service, user_id, {'raw': message_obj['raw']})
+            return send_gmail_message(service, user_email, {'raw': message_obj['raw']})
         else:
             logger.error("Failed to get email service")
             return False
@@ -146,7 +157,7 @@ def get_employee_email(employee_name, email_employees):
     return ""
 
 # Send email with PDF attachment
-def send_email_with_attachment(recipient_email, subject, body, process_name, attachment_paths, user_id=None, cc=None, bcc=None):
+def send_email_with_attachment(recipient_email, subject, body, process_name, attachment_paths, user_email=None, cc=None, bcc=None):
     try:
         # Use Gmail API to send email
         success = send_email_with_gmail(
@@ -155,7 +166,7 @@ def send_email_with_attachment(recipient_email, subject, body, process_name, att
             body=body,
             process_name=process_name,
             attachment_paths=attachment_paths,
-            user_id=user_id,
+            user_email=user_email,
             cc=cc,
             bcc=bcc
         )
