@@ -21,6 +21,7 @@ from firebase_admin import firestore
 from Utils.firebase_utils import (
     add_user as firebase_add_user,
     get_user_by_id,
+    get_user_by_email,
     get_all_users as firebase_get_all_users,
     update_user_role as firebase_update_role,
     delete_user as firebase_delete_user,
@@ -52,7 +53,7 @@ app.secret_key = os.getenv("SECRET_KEY", "your_default_secret_key")  # Set secre
 logger.info("Flask app initialized")
 
 # Frontend URL
-FRONTEND_URL = "http://admin.bajajearths.com"
+# FRONTEND_URL = "http://admin.bajajearths.com"
 _frontend_opened = False
 
 # Load configurations from environment variables
@@ -890,7 +891,42 @@ def generate_report():
                                 bcc=bcc_email
                             )
                             if success == "TOKEN_EXPIRED":
-                                return jsonify({"error": "TOKEN_EXPIRED"}), 401
+                                # Store the request data for retry
+                                request_data = {
+                                    'template_files_data': [],
+                                    'attachment_files_data': [],
+                                    'file_sequence': file_sequence,
+                                    'sheet_id': sheet_id,
+                                    'sheet_name': sheet_name,
+                                    'send_whatsapp': send_whatsapp,
+                                    'send_email': send_email,
+                                    'mail_subject': mail_subject
+                                }
+                                
+                                # Convert template files to base64 for storage
+                                for template_file in template_files:
+                                    if template_file.filename.endswith('.docx'):
+                                        template_file.seek(0)  # Reset file pointer
+                                        file_content = template_file.read()
+                                        request_data['template_files_data'].append({
+                                            'name': template_file.filename,
+                                            'content': base64.b64encode(file_content).decode('utf-8')
+                                        })
+                                
+                                # Convert attachment files to base64 for storage
+                                for attachment_path in attachment_paths:
+                                    if os.path.exists(attachment_path):
+                                        with open(attachment_path, 'rb') as f:
+                                            file_content = f.read()
+                                            request_data['attachment_files_data'].append({
+                                                'name': os.path.basename(attachment_path),
+                                                'content': base64.b64encode(file_content).decode('utf-8')
+                                            })
+                                
+                                return jsonify({
+                                    "error": "TOKEN_EXPIRED",
+                                    "request_data": request_data
+                                }), 401
                             if not success:
                                 logger.error("Failed to send email to {}".format(recipient_email))
                         except Exception as e:
@@ -949,6 +985,277 @@ def generate_report():
     finally:
         # Optional cleanup or logging here if needed
         pass
+
+@app.route("/api/refresh-token", methods=["POST"])
+def refresh_token():
+    """Handle token refresh request from frontend"""
+    try:
+        data = request.json
+        user_email = data.get('user_email')
+        google_token = data.get('google_token')
+        
+        if not user_email or not google_token:
+            return jsonify({"error": "user_email and google_token are required"}), 400
+        
+        # Verify the Google token
+        from Utils.email_utils import verify_token
+        decoded_token = verify_token(google_token)
+        
+        if decoded_token == "TOKEN_EXPIRED":
+            return jsonify({"error": "Provided token is also expired"}), 401
+        
+        if not decoded_token:
+            return jsonify({"error": "Invalid Google token"}), 401
+        
+        # Get user from Firebase
+        user = get_user_by_email(user_email)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Update the token in Firebase
+        success = update_user_token(user['id'], google_token)
+        if not success:
+            return jsonify({"error": "Failed to update token in database"}), 500
+        
+        return jsonify({
+            "success": True,
+            "message": "Token refreshed successfully",
+            "user_email": user_email
+        }), 200
+        
+    except Exception as e:
+        logger.error("Error refreshing token: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/retry-reports", methods=["POST"])
+def retry_reports():
+    """Retry sending reports after token refresh"""
+    try:
+        user_id = session.get('user', {}).get('email')
+        if not user_id:
+            logger.error("No user_id found in session. User must be logged in to send reports.")
+            return jsonify({"error": "User not authenticated"}), 401
+        
+        # Get the original request data from the request
+        data = request.json
+        original_request_data = data.get('original_request_data')
+        
+        if not original_request_data:
+            return jsonify({"error": "Original request data is required"}), 400
+        
+        # Extract the data needed for report generation
+        template_files_data = original_request_data.get('template_files_data', [])
+        attachment_files_data = original_request_data.get('attachment_files_data', [])
+        file_sequence = original_request_data.get('file_sequence', {})
+        sheet_id = original_request_data.get('sheet_id')
+        sheet_name = original_request_data.get('sheet_name')
+        send_whatsapp = original_request_data.get('send_whatsapp', False)
+        send_email = original_request_data.get('send_email', True)
+        mail_subject = original_request_data.get('mail_subject', '')
+        
+        if not sheet_id or not sheet_name:
+            return jsonify({"error": "Sheet ID and name are required"}), 400
+        
+        # Validate sheet ID format
+        if not validate_sheet_id(sheet_id):
+            return jsonify({"error": "Invalid Google Sheet ID format"}), 400
+        
+        # Create temporary directory for attachments
+        temp_dir = os.path.join(OUTPUT_DIR, "temp_attachments")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Reconstruct attachment files from base64 data
+        attachment_paths = []
+        for attachment_data in attachment_files_data:
+            try:
+                file_name = attachment_data.get('name')
+                file_content = base64.b64decode(attachment_data.get('content'))
+                file_path = os.path.join(temp_dir, file_name)
+                
+                with open(file_path, 'wb') as f:
+                    f.write(file_content)
+                attachment_paths.append(file_path)
+            except Exception as e:
+                logger.error(f"Error reconstructing attachment {file_name}: {e}")
+                continue
+        
+        try:
+            # Fetch data from Google Sheet
+            sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
+            if not sheet_data or len(sheet_data) < 2:
+                return jsonify({"error": "No data found in the Google Sheet"}), 400
+        except Exception as e:
+            logger.error("Error fetching Google Sheet data: {}".format(e))
+            return jsonify({"error": "Failed to fetch data from Google Sheet"}), 500
+        
+        # Process headers and data
+        headers = sheet_data[0]
+        data_rows = sheet_data[1:]
+        
+        # Create output directory if it doesn't exist
+        output_dir = os.path.join(OUTPUT_DIR, "reports")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Process each template file
+        generated_files = []
+        for template_data in template_files_data:
+            try:
+                file_name = template_data.get('name')
+                file_content = base64.b64decode(template_data.get('content'))
+                temp_template_path = os.path.join(output_dir, f"temp_{file_name}")
+                
+                with open(temp_template_path, 'wb') as f:
+                    f.write(file_content)
+                
+                # Read template content for messages
+                try:
+                    doc = Document(temp_template_path)
+                    template_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                except Exception as e:
+                    logger.error("Error reading template content: {}".format(e))
+                    continue
+                
+                if send_whatsapp:
+                    open_whatsapp()
+                
+                # Process each row of data
+                for row in data_rows:
+                    try:
+                        # Create data dictionary from headers and row
+                        data_dict = dict(zip(headers, row))
+                        
+                        recipient_name = data_dict.get('Name', 'unknown')
+                        
+                        # Generate report for this row
+                        output_filename = "report_{}.docx".format(recipient_name)
+                        output_path = os.path.join(output_dir, output_filename)
+                        
+                        # Process the template with data
+                        process_template(temp_template_path, output_path, data_dict)
+                        generated_files.append(output_path)
+                        
+                        # Process template content for messages
+                        message_content = template_content
+                        email_content = template_content
+                        
+                        # Replace placeholders in message content
+                        for key, value in data_dict.items():
+                            placeholder = "{{{}}}".format(key)
+                            message_content = message_content.replace(placeholder, str(value))
+                            email_content = email_content.replace(placeholder, str(value))
+                            mail_subject = mail_subject.replace(placeholder, str(value))
+                        
+                        # Get contact details from Google Sheet data
+                        recipient_email = data_dict.get('Email ID - To')
+                        cc_email = data_dict.get('Email ID - CC', '')
+                        bcc_email = data_dict.get('Email ID - BCC', '')
+                        
+                        # Helper to split emails by comma or newline and join as comma-separated string
+                        def clean_emails(email_str):
+                            if not email_str:
+                                return None
+                            emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
+                            return ','.join(emails) if emails else None
+                        
+                        recipient_email = clean_emails(recipient_email)
+                        cc_email = clean_emails(cc_email)
+                        bcc_email = clean_emails(bcc_email)
+                        
+                        country_code = data_dict.get('Country Code', '').strip()
+                        phone_no = data_dict.get('Contact No.', '').strip()
+                        recipient_phone = "{} {}".format(country_code, phone_no)
+                        
+                        if send_whatsapp:
+                            if not recipient_phone or not country_code or not phone_no:
+                                logger.warning("Skipping WhatsApp message for {}: Missing Country Code or Contact No.".format(recipient_name))
+                                continue
+                            
+                            try:
+                                # Send WhatsApp message with attachments
+                                success = send_whatsapp_message(
+                                    contact_name=recipient_name,
+                                    message=message_content,
+                                    file_paths=attachment_paths,
+                                    file_sequence=file_sequence,
+                                    whatsapp_number=recipient_phone,
+                                    process_name="report"
+                                )
+                                
+                                if not success:
+                                    logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
+                                    
+                            except Exception as e:
+                                logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
+                        
+                        # Handle email notifications
+                        if send_email:
+                            if not recipient_email:
+                                logger.warning("No email found for recipient: {}".format(recipient_name))
+                                continue
+                            try:
+                                email_subject = mail_subject
+                                email_body = """
+                                <html>
+                                <body>
+                                {} 
+                                </body>
+                                </html>
+                                """.format(email_content.replace('\n', '<br>'))
+                                success = send_email_with_attachment(
+                                    recipient_email=recipient_email,
+                                    subject=email_subject,
+                                    body=email_body,
+                                    process_name="reports",
+                                    attachment_paths=attachment_paths,
+                                    user_email=user_id,
+                                    cc=cc_email,
+                                    bcc=bcc_email
+                                )
+                                if success == "TOKEN_EXPIRED":
+                                    return jsonify({"error": "TOKEN_EXPIRED"}), 401
+                                if not success:
+                                    logger.error("Failed to send email to {}".format(recipient_email))
+                            except Exception as e:
+                                logger.error("Error sending email: {}".format(str(e)))
+                                
+                    except Exception as e:
+                        logger.error("Error processing row: {}".format(e))
+                        continue
+                
+                # Clean up temporary template
+                os.remove(temp_template_path)
+                
+            except Exception as e:
+                logger.error(f"Error processing template {file_name}: {e}")
+                continue
+        
+        # Clean up temporary attachment files
+        for attachment_path in attachment_paths:
+            try:
+                if os.path.exists(attachment_path):
+                    os.remove(attachment_path)
+            except Exception as e:
+                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
+        
+        # Remove temporary directory and any remaining files
+        try:
+            if os.path.exists(temp_dir):
+                remaining_files = os.listdir(temp_dir)
+                if remaining_files:
+                    logger.warning("Remaining files in temp directory: {}".format(remaining_files))
+                os.rmdir(temp_dir)
+        except Exception as e:
+            logger.error("Error cleaning up temp directory: {}".format(e))
+        
+        return jsonify({
+            "success": True,
+            "message": "Reports generated and sent successfully!",
+            "generated_files": len(generated_files)
+        }), 200
+        
+    except Exception as e:
+        logger.error("Error retrying reports: {}".format(e))
+        return jsonify({"error": str(e)}), 500
 
 def validate_sheet_id(sheet_id):
     """Validate Google Sheet ID format"""

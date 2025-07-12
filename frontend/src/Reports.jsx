@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import './Reports.css';
 import { getApiUrl } from './config';
+import { useAuth } from './Components/AuthContext';
 
 const Reports = () => {
   const [templateFiles, setTemplateFiles] = useState([]);
@@ -22,6 +23,157 @@ const Reports = () => {
   const [previewTitle, setPreviewTitle] = useState('');
   const [mailSubject, setMailSubject] = useState('');
   const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
+  const [storedRequestData, setStoredRequestData] = useState(null);
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+
+  const { user } = useAuth();
+
+  // Google Login logic
+  const GOOGLE_CLIENT_ID = '579518246340-0673etiich0q7ji2q6imu7ln525554ab.apps.googleusercontent.com';
+
+  // Only initialize Google button when modal is shown
+  useEffect(() => {
+    if (showTokenExpiredModal) {
+      if (!window.google) {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+            scope: 'https://www.googleapis.com/auth/gmail.send',
+            ux_mode: 'popup',
+          });
+          window.google.accounts.id.renderButton(
+            document.getElementById('google-signin-btn-reports'),
+            { theme: 'outline', size: 'large' }
+          );
+        };
+        document.body.appendChild(script);
+      } else {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+          scope: 'https://www.googleapis.com/auth/gmail.send',
+          ux_mode: 'popup',
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById('google-signin-btn-reports'),
+          { theme: 'outline', size: 'large' }
+        );
+      }
+    }
+    // eslint-disable-next-line
+  }, [showTokenExpiredModal]);
+
+  function handleCredentialResponse(response) {
+    const base64Url = response.credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const userData = JSON.parse(window.atob(base64));
+    
+    // Update token in Firebase and retry reports
+    handleTokenRefresh(userData.email, response.credential);
+  }
+
+  const handleTokenRefresh = async (userEmail, googleToken) => {
+    setIsRefreshingToken(true);
+    try {
+      const response = await fetch(getApiUrl('refresh-token'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          user_email: userEmail,
+          google_token: googleToken
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to refresh token');
+      }
+
+      const result = await response.json();
+      console.log('Token refreshed successfully:', result);
+
+      // Now retry the reports
+      if (storedRequestData) {
+        await retryReports(storedRequestData);
+      }
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      alert('Failed to refresh token: ' + error.message);
+    } finally {
+      setIsRefreshingToken(false);
+      setShowTokenExpiredModal(false);
+      setStoredRequestData(null);
+    }
+  };
+
+  const retryReports = async (requestData) => {
+    try {
+      const response = await fetch(getApiUrl('retry-reports'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          original_request_data: requestData
+        })
+      });
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: 'Failed to retry reports' };
+        }
+        
+        if (response.status === 401 && errorData.error === 'TOKEN_EXPIRED') {
+          // Token expired again, show modal again
+          setStoredRequestData(requestData);
+          setShowTokenExpiredModal(true);
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to retry reports');
+      }
+
+      const result = await response.json();
+      
+      // Show success message
+      alert(result.message || 'Reports generated and sent successfully!');
+      
+      // Reset form
+      setTemplateFiles([]);
+      setAttachmentFiles([]);
+      setSheetId('');
+      setSheetName('');
+      setSendEmail(false);
+      setMailSubject('');
+      setPreviewItems([]);
+      
+      // Refresh the page after successful submission
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error retrying reports:', error);
+      alert(error.message || 'Failed to retry reports. Please try again.');
+    }
+  };
+
+  const handleGoogleAuth = () => {
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.prompt();
+    } else {
+      alert('Google authentication is not available. Please refresh the page and try again.');
+    }
+  };
 
   // Helper to get file type as a string
   const getFileType = (file) => {
@@ -327,11 +479,6 @@ const Reports = () => {
     setDraggedItem(null);
   };
 
-  const handleGoogleAuth = () => {
-    // TODO: Replace with your actual Google Auth flow trigger
-    window.location.href = '/login';
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -425,6 +572,26 @@ const Reports = () => {
         }
         // Handle token expired error
         if (response.status === 401 && errorData.error === 'TOKEN_EXPIRED') {
+          // Store the request data that was sent back from the server
+          if (errorData.request_data) {
+            setStoredRequestData(errorData.request_data);
+          } else {
+            // Fallback: store basic form data
+            setStoredRequestData({
+              template_files_data: [],
+              attachment_files_data: [],
+              file_sequence: sortedItems.map(item => ({
+                file_name: item.file_name,
+                file_type: item.file_type,
+                sequence_no: item.sequence_no
+              })),
+              sheet_id: sheetId,
+              sheet_name: sheetName,
+              send_whatsapp: false,
+              send_email: sendEmail,
+              mail_subject: mailSubject
+            });
+          }
           setShowTokenExpiredModal(true);
           setIsLoading(false);
           return;
@@ -466,9 +633,14 @@ const Reports = () => {
           <div className="modal-content">
             <h2>Session Expired</h2>
             <p>Your Google authentication has expired. Please re-authenticate to continue sending reports.</p>
-            <button className="modal-button" onClick={handleGoogleAuth}>
-              Re-authenticate with Google
-            </button>
+            {isRefreshingToken ? (
+              <div className="loading-state">
+                <p>Refreshing token and retrying reports...</p>
+                <div className="spinner"></div>
+              </div>
+            ) : (
+              <div id="google-signin-btn-reports"></div>
+            )}
           </div>
         </div>
       )}

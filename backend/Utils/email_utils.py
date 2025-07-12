@@ -141,6 +141,8 @@ def create_message(sender, to, subject, message_text, attachment_paths=None, cc=
 
 def send_gmail_message(service, user_id, message):
     """Send an email message."""
+    decoded_token = service
+    logger.info(f"Decoded token: {decoded_token}")
     if not service:
         logger.error("No valid Gmail service available")
         return False

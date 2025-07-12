@@ -79,7 +79,7 @@ def update_user_permissions(user_id, permissions):
 def update_user_token(user_id, oauth_credentials):
     try:
         user_ref = db.collection('USERS').document(user_id)
-        user_ref.update({'google_oauth': oauth_credentials})
+        user_ref.update({'token': oauth_credentials})
         return True
     except Exception as e:
         logging.error(f"Error updating google_oauth in Firestore: {e}")
@@ -112,7 +112,7 @@ def check_user_token_status(email):
             'has_token': False,
             'message': f'User with email {email} not found in database'
         }
-    token = user.get('google_oauth') or user.get('token')
+    token = user.get('token')
     if not token:
         return {
             'exists': True,

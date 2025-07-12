@@ -83,7 +83,7 @@ def login():
                     logger.warning("Email in Google token does not match request email")
                     return jsonify({'success': False, 'error': 'Google token email mismatch'}), 401
                 # Store the full credentials dict (e.g., from google-auth)
-                update_user_token(user['id'], credentials_to_dict(credentials) if 'credentials' in locals() else {'token': token})
+                update_user_token(user['id'], token)
                 user_data = {
                     'id': user.get('id'),
                     'email': user['email'],
