@@ -13,13 +13,13 @@ import jwt
 from Utils.config import JWT_SECRET
 from Utils.config import CLIENT_SECRETS_FILE, SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, SENDER_PASSWORD
 from Utils.firebase_utils import update_user_token, get_user_token_by_email
-# Add imports for Google token verification
-try:
-    from google.oauth2 import id_token
-    from google.auth.transport import requests as google_requests
-except ImportError:
-    id_token = None
-    google_requests = None
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import Flow
+import requests
+import smtplib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +28,8 @@ logger = logging.getLogger(__name__)
 # Gmail API scopes
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
-
 def verify_token(token, client_id=None):
-    """
-    Verifies a JWT token. Supports Google-issued tokens (RS256) and internal tokens (HS256).
-    Returns the decoded payload if valid, else None.
-    """
+    
     # Try to decode header to check algorithm/issuer
     try:
         header = jwt.get_unverified_header(token)
@@ -73,29 +69,21 @@ def verify_token(token, client_id=None):
             return None
 
 
-def get_gmail_service(process_name, user_email=None, user_token=None):
+def get_gmail_service(process_name, creds):
     if process_name == "salary_slips":
         # Use static SMTP credentials; handled separately in send_email_with_gmail
         return "smtp"
     elif process_name == "reports":
-        if not user_email:
-            logger.error("user_email is required for 'reports' process")
-            return None
-        oauth_creds = user_token or get_user_token_by_email(user_email)
-        if oauth_creds:
-            # If it's a dict, extract the access token
-            token = oauth_creds.get('token') if isinstance(oauth_creds, dict) else oauth_creds
-            decoded_token = verify_token(token)
-            if decoded_token == "TOKEN_EXPIRED":
-                return "TOKEN_EXPIRED"
-            if decoded_token:
-                return decoded_token
+        try:
+            service = build('gmail', 'v1', credentials=creds)
+            if service:
+                logger.info(f"Gmail service built successfully for reports process")
+                return service
             else:
-                logger.error(f"Token verification failed for user: {user_email}")
+                logger.error("Failed to build Gmail service with service account")
                 return None
-        else:
-            logger.error(f"No token found for user_email: {user_email} (required for 'reports' process)")
-            logger.info(f"User {user_email} needs to authenticate to generate a token")
+        except Exception as e:
+            logger.error(f"Failed to build Gmail service for reports process: {e}")
             return None
     else:
         logger.error(f"Unknown process_name: {process_name}")
@@ -141,18 +129,18 @@ def create_message(sender, to, subject, message_text, attachment_paths=None, cc=
 
 def send_gmail_message(service, user_id, message):
     """Send an email message."""
-    decoded_token = service
-    logger.info(f"Decoded token: {decoded_token}")
+    logger.info(f"Using Gmail service for user: {user_id}")
     if not service:
         logger.error("No valid Gmail service available")
         return False
         
     try:
-        message = service.users().messages().send(
-            userId=user_id or 'me',
+        user_id_to_use = user_id if user_id else 'me'
+        result = service.users().messages().send(
+            userId=user_id_to_use,
             body=message
         ).execute()
-        logger.info("Message Id: {}".format(message['id']))
+        logger.info("Message Id: {}".format(result['id']))
         return True
     except Exception as e:
         logger.error("Error sending email: {}".format(e))
@@ -160,11 +148,17 @@ def send_gmail_message(service, user_id, message):
 
 def send_email_with_gmail(recipient_email, subject, body, process_name, attachment_paths=None, user_email=None, cc=None, bcc=None):
     try:
-        service = get_gmail_service(process_name, user_email)
-        if service == "TOKEN_EXPIRED":
+        token = get_user_token_by_email(user_email)
+        if not token:
+            logger.error("No token found for user: {}".format(user_email))
             return "TOKEN_EXPIRED"
+        if isinstance(token, str):
+            token = json.loads(token)
+        creds = Credentials.from_authorized_user_info(token, SCOPES)
+        service = get_gmail_service(process_name, creds)
+        sender_email = SENDER_EMAIL if process_name == "salary_slips" else (user_email or SENDER_EMAIL)
         message_obj = create_message(
-            sender=user_email or SENDER_EMAIL,
+            sender=sender_email,
             to=recipient_email,
             subject=subject,
             message_text=body,
@@ -173,7 +167,6 @@ def send_email_with_gmail(recipient_email, subject, body, process_name, attachme
             bcc=bcc
         )
         if service == "smtp":
-            # Use SMTP to send the email
             import smtplib
             mime_msg = message_obj['mime']
             recipients = [recipient_email]
@@ -190,9 +183,9 @@ def send_email_with_gmail(recipient_email, subject, body, process_name, attachme
                 )
             logger.info(f"Email sent to {recipient_email} via SMTP")
             return True
-        elif service:
-            # Use Gmail API
-            return send_gmail_message(service, user_email, {'raw': message_obj['raw']})
+        elif SCOPES:
+            service_account_email = SENDER_EMAIL if process_name == "reports" else user_email
+            return send_gmail_message(service, service_account_email, {'raw': message_obj['raw']})
         else:
             logger.error("Failed to get email service")
             return False

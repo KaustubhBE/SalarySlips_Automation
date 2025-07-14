@@ -35,6 +35,7 @@ import json
 from docx import Document
 import re
 import base64
+import requests
 
 # Configure logging first
 logging.basicConfig(
@@ -54,7 +55,7 @@ logger.info("Flask app initialized")
 
 # Frontend URL
 # FRONTEND_URL = "http://admin.bajajearths.com"
-_frontend_opened = False
+# _frontend_opened = False
 
 # Load configurations from environment variables
 def get_base_dir():
@@ -195,29 +196,28 @@ def preview_file():
             os.remove(temp_path)
             logger.info('Temporary file removed')
 
-def delayed_open_frontend():
-    """Open frontend URL after a short delay to ensure server is running"""
-    global _frontend_opened
-    if _frontend_opened:
-        return
-    
-    try:
-        # Wait for server to start
-        time.sleep(2)
-        logger.info("Attempting to open frontend URL...")
-        webbrowser.open(FRONTEND_URL)
-        logger.info("Successfully opened frontend URL: {}".format(FRONTEND_URL))
-        _frontend_opened = True
-    except Exception as e:
-        logger.error("Failed to open frontend URL: {}".format(str(e)), exc_info=True)
+# def delayed_open_frontend():
+#     """Open frontend URL after a short delay to ensure server is running"""
+#     global _frontend_opened
+#     if _frontend_opened:
+#         return
+#     try:
+#         # Wait for server to start
+#         time.sleep(2)
+#         logger.info("Attempting to open frontend URL...")
+#         webbrowser.open(FRONTEND_URL)
+#         logger.info("Successfully opened frontend URL: {}".format(FRONTEND_URL))
+#         _frontend_opened = True
+#     except Exception as e:
+#         logger.error("Failed to open frontend URL: {}".format(str(e)), exc_info=True)
 
-@app.before_request
-def before_request():
-    """Handle pre-request tasks"""
-    try:
-        delayed_open_frontend()
-    except Exception as e:
-        logger.error("Error in before_request: {}".format(str(e)), exc_info=True)
+# @app.before_request
+# def before_request():
+#     """Handle pre-request tasks"""
+#     try:
+#         delayed_open_frontend()
+#     except Exception as e:
+#         logger.error("Error in before_request: {}".format(str(e)), exc_info=True)
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -1337,9 +1337,9 @@ if __name__ == "__main__":
         logger.info("Directories ensured")
         
         # Start frontend opener in a separate thread
-        frontend_thread = threading.Thread(target=delayed_open_frontend)
-        frontend_thread.daemon = True
-        frontend_thread.start()
+        # frontend_thread = threading.Thread(target=delayed_open_frontend)
+        # frontend_thread.daemon = True
+        # frontend_thread.start()
         
         # Start Flask app
         app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

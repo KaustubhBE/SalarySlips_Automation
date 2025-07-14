@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Components/AuthContext';
@@ -13,41 +13,51 @@ function Login({ onLogin }) {
   const [googleToken, setGoogleToken] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
+  const codeClientRef = useRef(null);
 
   // Google Login logic
   const GOOGLE_CLIENT_ID = '579518246340-0673etiich0q7ji2q6imu7ln525554ab.apps.googleusercontent.com'; 
 
   useEffect(() => {
-    // Dynamically load the Google Identity Services script if not present
-    if (!window.google) {
+    // Load GIS script if not present
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleCredentialResponse,
-          scope: 'https://www.googleapis.com/auth/gmail.send',
-          ux_mode: 'popup', // Required for additional scopes
-        });
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-btn'),
-          { theme: 'outline', size: 'large' }
-        );
-      };
+      script.onload = initCodeClient;
       document.body.appendChild(script);
     } else {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleCredentialResponse,
-        scope: 'https://www.googleapis.com/auth/gmail.send',
-        ux_mode: 'popup', // Required for additional scopes
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-signin-btn'),
-        { theme: 'outline', size: 'large' }
-      );
+      initCodeClient();
+    }
+
+    function initCodeClient() {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        codeClientRef.current = window.google.accounts.oauth2.initCodeClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/gmail.send email profile openid',
+          ux_mode: 'popup',
+          callback: (response) => {
+            if (response.code) {
+              // Try to extract email from id_token if available
+              let email = '';
+              if (response.id_token) {
+                try {
+                  const base64Url = response.id_token.split('.')[1];
+                  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                  const userData = JSON.parse(window.atob(base64));
+                  email = userData.email || '';
+                } catch (e) {
+                  email = '';
+                }
+              }
+              handleGmailOAuthSuccess(response.code, email);
+            } else {
+              alert('Google authentication failed.');
+            }
+          }
+        });
+      }
     }
     // eslint-disable-next-line
   }, []);
@@ -105,6 +115,32 @@ function Login({ onLogin }) {
       } else {
         setError('An error occurred during login. Please try again.');
       }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGmailOAuthSuccess(code, email) {
+    setError('');
+    setLoading(true);
+    try {
+      const apiUrl = getApiUrl('auth/login');
+      const response = await axios.post(apiUrl, {
+        email,
+        code,
+        login_type: 'gauth'
+      }, { withCredentials: true });
+      if (response.data?.success && response.data?.user) {
+        const userData = response.data.user;
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('isAuthenticated', 'true');
+        login(userData);
+        navigate('/app', { replace: true });
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      setError('Google OAuth failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -221,8 +257,48 @@ function Login({ onLogin }) {
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
-      {/* Google Sign-In button rendered here */}
-      <div id="google-signin-btn"></div>
+      {/* Google Sign-In button for OAuth and Gmail API */}
+      <button
+        type="button"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#fff',
+          color: '#3c4043',
+          border: '1px solid #dadce0',
+          borderRadius: '4px',
+          fontWeight: 500,
+          fontSize: '16px',
+          padding: '0 24px 0 12px',
+          height: '44px',
+          boxShadow: 'none',
+          cursor: 'pointer',
+          transition: 'box-shadow 0.2s',
+          outline: 'none',
+          minWidth: '240px',
+          margin: '12px 0',
+        }}
+        onClick={() => {
+          if (codeClientRef.current) {
+            codeClientRef.current.requestCode();
+          } else {
+            alert('Google API not loaded yet. Please wait a moment and try again.');
+          }
+        }}
+      >
+        <img
+          style={{
+            width: '24px',
+            height: '24px',
+            marginRight: '12px',
+            background: 'transparent',
+          }}
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          alt="Google logo"
+        />
+        Sign in with Google (Gmail API)
+      </button>
     </div>
   );
 }

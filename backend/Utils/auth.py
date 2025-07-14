@@ -2,10 +2,9 @@ from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash
 from Utils.firebase_utils import get_user_by_email, update_user_token
 import logging
-
-# Add imports for Google ID token verification
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+import os
+import requests
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +21,74 @@ def login():
         login_type = data.get('login_type', 'normal')
         email = data.get('email')
         password = data.get('password')
-        token = data.get('token')
+        code = data.get('code')  # For OAuth2 code flow
 
-        
+        if login_type == 'gauth':
+            if not code:
+                logger.warning("Missing OAuth2 code for gauth login")
+                return jsonify({'success': False, 'error': 'OAuth2 code is required for gauth login'}), 400
+            try:
+                # Exchange code for tokens
+                token_url = 'https://oauth2.googleapis.com/token'
+                payload = {
+                    'code': code,
+                    'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+                    'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+                    'redirect_uri': 'postmessage',
+                    'grant_type': 'authorization_code'
+                }
+                r = requests.post(token_url, data=payload)
+                if r.status_code != 200:
+                    logger.error(f"Failed to exchange code: {r.text}")
+                    return jsonify({'success': False, 'error': 'Failed to exchange code', 'details': r.text}), 401
+                tokens = r.json()
+                tokens['client_id'] = payload['client_id']
+                tokens['client_secret'] = payload['client_secret']
+                tokens['token_uri'] = token_url
+                id_token_jwt = tokens.get('id_token')
+                if not id_token_jwt:
+                    logger.error("No id_token in token response")
+                    return jsonify({'success': False, 'error': 'No id_token in token response'}), 401
+                # Decode the id_token to get the email
+                idinfo = jwt.decode(id_token_jwt, options={"verify_signature": False})
+                email = idinfo.get('email')
+                if not email:
+                    logger.error("No email in id_token")
+                    return jsonify({'success': False, 'error': 'No email in id_token'}), 401
+                user = get_user_by_email(email)
+                if not user:
+                    logger.warning("No user found for email: {}".format(email))
+                    return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+                # Ensure permissions are always set based on role if missing
+                role = user.get('role')
+                permissions = user.get('permissions')
+                if not permissions:
+                    if role == 'super-admin':
+                        permissions = {
+                            'single_processing': True,
+                            'batch_processing': True,
+                            'user_management': True,
+                            'settings_access': True,
+                            'can_create_admin': True
+                        }
+                    else:
+                        permissions = {}
+                update_user_token(user['id'], tokens)
+                user_data = {
+                    'id': user.get('id'),
+                    'email': user['email'],
+                    'role': role,
+                    'username': user['username'],
+                    'permissions': permissions
+                }
+                session['user'] = user_data
+                logger.info("Login successful for user: {} (gauth-oauth2)".format(email))
+                return jsonify({'success': True, 'user': user_data}), 200
+            except Exception as e:
+                logger.error(f"OAuth2 code exchange failed: {e}")
+                return jsonify({'success': False, 'error': 'OAuth2 code exchange failed'}), 401
 
+        # Normal login flow (unchanged)
         if not data or not email:
             logger.warning("Missing email in request")
             return jsonify({'success': False, 'error': 'Email is required'}), 400
@@ -50,7 +113,6 @@ def login():
                     'can_create_admin': True
                 }
             else:
-                # For admin and user, leave as empty dict if missing (dynamic)
                 permissions = {}
 
         if login_type == 'normal':
@@ -66,41 +128,11 @@ def login():
                     'username': user['username'],
                     'permissions': permissions
                 }
-                session['user'] = user_data  # Set session for normal login
+                session['user'] = user_data
                 logger.info("Login successful for user: {} (normal)".format(email))
                 return jsonify({'success': True, 'user': user_data}), 200
             logger.warning("Invalid password for user: {}".format(email))
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-        elif login_type == 'gauth':
-            if not token:
-                logger.warning("Missing Google token for gauth login")
-                return jsonify({'success': False, 'error': 'Google token is required for gauth login'}), 400
-            try:
-                # Verify the Google ID token
-                CLIENT_ID = '579518246340-0673etiich0q7ji2q6imu7ln525554ab.apps.googleusercontent.com'  # <-- Use your actual client ID
-                idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), CLIENT_ID)
-                if idinfo['email'] != email:
-                    logger.warning("Email in Google token does not match request email")
-                    return jsonify({'success': False, 'error': 'Google token email mismatch'}), 401
-                # Store the full credentials dict (e.g., from google-auth)
-                update_user_token(user['id'], token)
-                user_data = {
-                    'id': user.get('id'),
-                    'email': user['email'],
-                    'role': role,
-                    'username': user['username'],
-                    'permissions': permissions
-                }
-                session['user'] = user_data  # Set session for Google login
-                logger.info("Login successful for user: {} (gauth)".format(email))
-                return jsonify({'success': True, 'user': user_data}), 200
-            except Exception as e:
-                logger.error(f"Google token verification failed: {e}")
-                # If token expired, clear from Firestore and notify frontend
-                if 'Token expired' in str(e):
-                    update_user_token(user['id'], None)  # Clear the token
-                    return jsonify({'success': False, 'error': 'Google token expired. Please re-authenticate.', 'reauth_required': True}), 401
-                return jsonify({'success': False, 'error': 'Invalid Google token'}), 401
         else:
             logger.warning(f"Unknown login_type: {login_type}")
             return jsonify({'success': False, 'error': 'Unknown login type'}), 400
