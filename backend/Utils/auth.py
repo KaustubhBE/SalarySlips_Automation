@@ -14,19 +14,17 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
-        logger.info("Received login request")
-        logger.info("Request headers: {}".format(dict(request.headers)))
+        # Only log the start of the login process
+        logger.info("Login process started")
         data = request.get_json()
-        logger.info("Received login data: {}".format(data))
 
         # Decrypt payload if it is hashed/encrypted (assume base64 for example)
         if data.get('is_hashed'):
             try:
-                # Assume the payload is base64 encoded JSON string in 'payload' key
                 import json
                 decoded = base64.b64decode(data['payload']).decode('utf-8')
                 data = json.loads(decoded)
-                logger.info("Decrypted payload: {}".format(data))
+                logger.info("Payload decrypted successfully")
             except Exception as e:
                 logger.error(f"Failed to decrypt payload: {e}")
                 return jsonify({'success': False, 'error': 'Failed to decrypt payload'}), 400
@@ -43,7 +41,6 @@ def login():
                 logger.warning("Missing OAuth2 code for gauth login")
                 return jsonify({'success': False, 'error': 'OAuth2 code is required for gauth login'}), 400
             try:
-                # Exchange code for tokens
                 token_url = 'https://oauth2.googleapis.com/token'
                 payload = {
                     'code': code,
@@ -64,13 +61,11 @@ def login():
                 if not id_token_jwt:
                     logger.error("No id_token in token response")
                     return jsonify({'success': False, 'error': 'No id_token in token response'}), 401
-                # Decode the id_token to get the email
                 idinfo = jwt.decode(id_token_jwt, options={"verify_signature": False})
                 email = idinfo.get('email')
                 if not email:
                     logger.error("No email in id_token")
                     return jsonify({'success': False, 'error': 'No email in id_token'}), 401
-                # Match client_id and client_secret with those in Firestore
                 stored_client_id, stored_client_secret = get_user_client_credentials(email)
                 if stored_client_id != client_id or stored_client_secret != client_secret:
                     logger.warning(f"Client credentials do not match for user: {email}")
@@ -79,7 +74,6 @@ def login():
                 if not user:
                     logger.warning("No user found for email: {}".format(email))
                     return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-                # Ensure permissions are always set based on role if missing
                 role = user.get('role')
                 permissions = user.get('permissions')
                 if not permissions:
@@ -102,25 +96,21 @@ def login():
                     'permissions': permissions
                 }
                 session['user'] = user_data
-                logger.info("Login successful for user: {} (gauth-oauth2)".format(email))
+                logger.info(f"Login successful for user: {email} (gauth-oauth2)")
                 return jsonify({'success': True, 'user': user_data}), 200
             except Exception as e:
                 logger.error(f"OAuth2 code exchange failed: {e}")
                 return jsonify({'success': False, 'error': 'OAuth2 code exchange failed'}), 401
 
-        # Normal login flow (unchanged)
         if not data or not email:
             logger.warning("Missing email in request")
             return jsonify({'success': False, 'error': 'Email is required'}), 400
 
         user = get_user_by_email(email)
-        logger.info("Found user for email {}: {}".format(email, user is not None))
-
         if not user:
             logger.warning("No user found for email: {}".format(email))
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
 
-        # Ensure permissions are always set based on role if missing
         role = user.get('role')
         permissions = user.get('permissions')
         if not permissions:
@@ -139,7 +129,6 @@ def login():
             if not password:
                 logger.warning("Missing password for normal login")
                 return jsonify({'success': False, 'error': 'Password is required for normal login'}), 400
-            logger.info("Checking password for user: {}".format(email))
             if check_password_hash(user['password_hash'], password):
                 user_data = {
                     'id': user.get('id'),
@@ -149,7 +138,7 @@ def login():
                     'permissions': permissions
                 }
                 session['user'] = user_data
-                logger.info("Login successful for user: {} (normal)".format(email))
+                logger.info(f"Login successful for user: {email} (normal)")
                 return jsonify({'success': True, 'user': user_data}), 200
             logger.warning("Invalid password for user: {}".format(email))
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
@@ -157,6 +146,6 @@ def login():
             logger.warning(f"Unknown login_type: {login_type}")
             return jsonify({'success': False, 'error': 'Unknown login type'}), 400
     except Exception as e:
-        logger.error("Login error: {}".format(str(e)), exc_info=True)
+        logger.error(f"Login error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
 

@@ -115,29 +115,31 @@ CORS(app,
 
 @app.before_request
 def log_request_info():
-    """Log request information for debugging"""
-    logger.info('Headers: %s', request.headers)
-    logger.info('Body: %s', request.get_data())
-    logger.info('URL: %s', request.url)
-    logger.info('Method: %s', request.method)
+    """Log only essential request information for debugging"""
+    # Comment out or remove verbose logs
+    # logger.info('Headers: %s', request.headers)
+    # logger.info('Body: %s', request.get_data())
+    # logger.info('URL: %s', request.url)
+    # Only log method and URL if needed
+    # logger.info('Method: %s URL: %s', request.method, request.url)
+    pass
 
 @app.after_request
 def after_request(response):
-    """Add CORS headers to all responses"""
-    logger.info('Response status: %s', response.status)
-    logger.info('Response headers: %s', response.headers)
-    
+    """Add CORS headers to all responses, but do not log response status or headers."""
+    # Remove verbose logs
+    # logger.info('Response status: %s', response.status)
+    # logger.info('Response headers: %s', response.headers)
+    # origin = request.headers.get('Origin')
+    # logger.info('Request origin: %s', origin)
     origin = request.headers.get('Origin')
-    logger.info('Request origin: %s', origin)
-    
     if origin in app.config['CORS_ORIGINS']:
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Access-Control-Allow-Headers', ','.join(app.config['CORS_ALLOW_HEADERS']))
         response.headers.add('Access-Control-Allow-Methods', ','.join(app.config['CORS_METHODS']))
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Max-Age', str(app.config['CORS_MAX_AGE']))
-    
-    logger.info('Final response headers: %s', response.headers)
+    # logger.info('Preflight response headers: %s', response.headers)
     return response
 
 # Handle OPTIONS requests
@@ -152,7 +154,7 @@ def handle_preflight():
         response.headers.add('Access-Control-Allow-Methods', ','.join(app.config['CORS_METHODS']))
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Max-Age', str(app.config['CORS_MAX_AGE']))
-    logger.info('Preflight response headers: %s', response.headers)
+    # logger.info('Preflight response headers: %s', response.headers)
     return response
 
 @app.route("/api/preview-file", methods=["POST", "OPTIONS"])
