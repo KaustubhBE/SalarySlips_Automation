@@ -1,10 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash
-from Utils.firebase_utils import get_user_by_email, update_user_token
+from Utils.firebase_utils import get_user_by_email, update_user_token, get_user_client_credentials
 import logging
 import os
 import requests
 import jwt
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,24 @@ def login():
         data = request.get_json()
         logger.info("Received login data: {}".format(data))
 
+        # Decrypt payload if it is hashed/encrypted (assume base64 for example)
+        if data.get('is_hashed'):
+            try:
+                # Assume the payload is base64 encoded JSON string in 'payload' key
+                import json
+                decoded = base64.b64decode(data['payload']).decode('utf-8')
+                data = json.loads(decoded)
+                logger.info("Decrypted payload: {}".format(data))
+            except Exception as e:
+                logger.error(f"Failed to decrypt payload: {e}")
+                return jsonify({'success': False, 'error': 'Failed to decrypt payload'}), 400
+
         login_type = data.get('login_type', 'normal')
         email = data.get('email')
         password = data.get('password')
         code = data.get('code')  # For OAuth2 code flow
+        client_id = data.get('client_id')
+        client_secret = data.get('client_secret')
 
         if login_type == 'gauth':
             if not code:
@@ -32,8 +47,8 @@ def login():
                 token_url = 'https://oauth2.googleapis.com/token'
                 payload = {
                     'code': code,
-                    'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
-                    'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+                    'client_id': client_id,
+                    'client_secret': client_secret,
                     'redirect_uri': 'postmessage',
                     'grant_type': 'authorization_code'
                 }
@@ -55,6 +70,11 @@ def login():
                 if not email:
                     logger.error("No email in id_token")
                     return jsonify({'success': False, 'error': 'No email in id_token'}), 401
+                # Match client_id and client_secret with those in Firestore
+                stored_client_id, stored_client_secret = get_user_client_credentials(email)
+                if stored_client_id != client_id or stored_client_secret != client_secret:
+                    logger.warning(f"Client credentials do not match for user: {email}")
+                    return jsonify({'success': False, 'error': 'Invalid client credentials'}), 401
                 user = get_user_by_email(email)
                 if not user:
                     logger.warning("No user found for email: {}".format(email))

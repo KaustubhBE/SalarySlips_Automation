@@ -148,6 +148,34 @@ def send_gmail_message(service, user_id, message):
 
 def send_email_with_gmail(recipient_email, subject, body, process_name, attachment_paths=None, user_email=None, cc=None, bcc=None):
     try:
+        if process_name == "salary_slips":
+            sender_email = SENDER_EMAIL
+            message_obj = create_message(
+                sender=sender_email,
+                to=recipient_email,
+                subject=subject,
+                message_text=body,
+                attachment_paths=attachment_paths,
+                cc=cc,
+                bcc=bcc
+            )
+            import smtplib
+            mime_msg = message_obj['mime']
+            recipients = [recipient_email]
+            if cc:
+                recipients += [cc] if isinstance(cc, str) else cc
+            if bcc:
+                recipients += [bcc] if isinstance(bcc, str) else bcc
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.sendmail(
+                    SENDER_EMAIL,
+                    recipients,
+                    mime_msg.as_string()
+                )
+            logger.info(f"Email sent to {recipient_email} via SMTP")
+            return True
+        # --- Existing logic for other process names (including 'reports') ---
         token = get_user_token_by_email(user_email)
         if not token:
             logger.error("No token found for user: {}".format(user_email))

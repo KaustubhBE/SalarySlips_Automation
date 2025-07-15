@@ -12,15 +12,20 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None):
     """Add a new user to Firestore"""
-    user_ref = db.collection('USERS').document()
-    user_ref.set({
+    user_data = {
         'username': username,
         'email': email,
         'role': role,
         'password_hash': password_hash
-    })
+    }
+    if client_id:
+        user_data['client_id'] = client_id
+    if client_secret:
+        user_data['client_secret'] = client_secret
+    user_ref = db.collection('USERS').document()
+    user_ref.set(user_data)
     return user_ref.id
 
 def get_user_by_id(user_id):
@@ -125,3 +130,10 @@ def check_user_token_status(email):
         'token': token,
         'message': f'User {email} has a token stored'
     }
+
+def get_user_client_credentials(email):
+    """Get client_id and client_secret for a user by email"""
+    user = get_user_by_email(email)
+    if user:
+        return user.get('client_id'), user.get('client_secret')
+    return None, None
