@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getApiUrl, ENDPOINTS } from './config';
 import './Dashboard.css'; // Import the CSS file
-
-// Base URL for API calls
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Define available permissions for the two main activities
 const PERMISSIONS = {
@@ -54,7 +52,7 @@ function Dashboard() {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/get_users`, {
+      const response = await axios.get(getApiUrl(ENDPOINTS.GET_USERS), {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +82,7 @@ function Dashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/add_user`, 
+      const response = await axios.post(getApiUrl(ENDPOINTS.ADD_USER), 
         { 
           username, 
           email, 
@@ -123,7 +121,7 @@ function Dashboard() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/delete_user`, 
+      const response = await axios.post(getApiUrl(ENDPOINTS.DELETE_USER), 
         { user_id: userId },
         {
           withCredentials: true,
@@ -145,7 +143,7 @@ function Dashboard() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/update_role`, 
+      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_ROLE), 
         { 
           user_id: userId, 
           role: newRole
@@ -170,7 +168,7 @@ function Dashboard() {
 
   const handleUpdatePermissions = async (userId, updatedPermissions) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/update_permissions`, 
+      const response = await axios.post(getApiUrl('update_permissions'), 
         { 
           user_id: userId, 
           permissions: updatedPermissions

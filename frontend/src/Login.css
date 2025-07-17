@@ -109,6 +109,45 @@
   text-align: center;
 }
 
+
+.login-links-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-links-container button {
+  background: transparent !important;
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+  transition: color 0.2s;
+  box-shadow: none !important;
+}
+
+.login-link-btn {
+  background: transparent !important;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+  padding: 0;
+  transition: color 0.2s;
+  box-shadow: none !important;
+}
+
+.login-links-container button:hover,
+.login-links-container button:focus,
+.login-links-container button:active {
+  color: #0056b3;
+}
+
 @media screen and (max-width: 480px) {
   .login-container {
     margin: 100px 1rem;
@@ -122,5 +161,20 @@
   .login-container input,
   .login-container button {
     font-size: 0.95rem;
+  }
+
+  .google-signin-btn {
+    font-size: 0.95rem;
+    min-width: 180px;
+    padding: 0 12px 0 8px;
+    height: 38px;
+  }
+  .google-signin-logo {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+  }
+  .login-link-btn {
+    font-size: 0.9rem;
   }
 }

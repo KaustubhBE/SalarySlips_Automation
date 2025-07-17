@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Components/AuthContext';
 import { getApiUrl } from './config.js';
+import "./Login.css"
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -299,6 +300,21 @@ function Login({ onLogin }) {
         />
         Sign in with Google (Gmail API)
       </button>
+      {/* Privacy Policy and Terms & Conditions links */}
+      <div className="login-links-container">
+        <button
+          type="button"
+          onClick={() => navigate('/privacy-policy')}
+        >
+          Privacy Policy
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/terms-and-conditions')}
+        >
+          Terms & Conditions
+        </button>
+      </div>
     </div>
   );
 }
