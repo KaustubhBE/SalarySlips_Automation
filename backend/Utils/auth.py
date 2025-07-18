@@ -52,15 +52,33 @@ def login():
             logger.warning("Invalid password for user: {}".format(email))
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
 
-        # If Google OAuth tokens are present in the payload, store them in Firebase (after successful login)
-        google_tokens = {}
-        for key in ['id_token', 'access_token', 'refresh_token', 'scope', 'token_type', 'token_uri']:
-            if key in data:
-                google_tokens[key] = data[key]
-        if google_tokens:
+        # After successful email/password authentication
+        # If a Google OAuth code is present, exchange it for tokens and store them in Firebase
+        if code:
             try:
-                update_user_token(user['id'], google_tokens)
-                logger.info(f"Uploaded Google tokens for user: {email}")
+                client_id = os.environ.get('GOOGLE_CLIENT_ID')
+                client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+                if not client_id or not client_secret:
+                    logger.error("Google OAuth credentials not set in environment")
+                else:
+                    token_url = 'https://oauth2.googleapis.com/token'
+                    payload = {
+                        'code': code,
+                        'client_id': client_id,
+                        'client_secret': client_secret,
+                        'redirect_uri': 'postmessage',
+                        'grant_type': 'authorization_code'
+                    }
+                    r = requests.post(token_url, data=payload)
+                    if r.status_code == 200:
+                        tokens = r.json()
+                        tokens['client_id'] = client_id
+                        tokens['client_secret'] = client_secret
+                        tokens['token_uri'] = token_url
+                        update_user_token(user['id'], tokens)
+                        logger.info(f"Uploaded Google tokens for user: {email}")
+                    else:
+                        logger.error(f"Failed to exchange code for user {email}: {r.text}")
             except Exception as e:
                 logger.error(f"Error uploading Google tokens for user {email}: {e}")
 
