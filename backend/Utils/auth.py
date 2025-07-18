@@ -29,78 +29,14 @@ def login():
                 logger.error(f"Failed to decrypt payload: {e}")
                 return jsonify({'success': False, 'error': 'Failed to decrypt payload'}), 400
 
-        login_type = data.get('login_type', 'normal')
         email = data.get('email')
         password = data.get('password')
         code = data.get('code')  # For OAuth2 code flow
         client_id = data.get('client_id')
         client_secret = data.get('client_secret')
 
-        if login_type == 'gauth':
-            if not code:
-                logger.warning("Missing OAuth2 code for gauth login")
-                return jsonify({'success': False, 'error': 'OAuth2 code is required for gauth login'}), 400
-            try:
-                token_url = 'https://oauth2.googleapis.com/token'
-                payload = {
-                    'code': code,
-                    'client_id': client_id,
-                    'client_secret': client_secret,
-                    'redirect_uri': 'postmessage',
-                    'grant_type': 'authorization_code'
-                }
-                r = requests.post(token_url, data=payload)
-                if r.status_code != 200:
-                    logger.error(f"Failed to exchange code: {r.text}")
-                    return jsonify({'success': False, 'error': 'Failed to exchange code', 'details': r.text}), 401
-                tokens = r.json()
-                tokens['client_id'] = payload['client_id']
-                tokens['client_secret'] = payload['client_secret']
-                tokens['token_uri'] = token_url
-                id_token_jwt = tokens.get('id_token')
-                if not id_token_jwt:
-                    logger.error("No id_token in token response")
-                    return jsonify({'success': False, 'error': 'No id_token in token response'}), 401
-                idinfo = jwt.decode(id_token_jwt, options={"verify_signature": False})
-                email = idinfo.get('email')
-                if not email:
-                    logger.error("No email in id_token")
-                    return jsonify({'success': False, 'error': 'No email in id_token'}), 401
-                stored_client_id, stored_client_secret = get_user_client_credentials(email)
-                if stored_client_id != client_id or stored_client_secret != client_secret:
-                    logger.warning(f"Client credentials do not match for user: {email}")
-                    return jsonify({'success': False, 'error': 'Invalid client credentials'}), 401
-                user = get_user_by_email(email)
-                if not user:
-                    logger.warning("No user found for email: {}".format(email))
-                    return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-                role = user.get('role')
-                permissions = user.get('permissions')
-                if not permissions:
-                    if role == 'super-admin':
-                        permissions = {
-                            'single_processing': True,
-                            'batch_processing': True,
-                            'user_management': True,
-                            'settings_access': True,
-                            'can_create_admin': True
-                        }
-                    else:
-                        permissions = {}
-                update_user_token(user['id'], tokens)
-                user_data = {
-                    'id': user.get('id'),
-                    'email': user['email'],
-                    'role': role,
-                    'username': user['username'],
-                    'permissions': permissions
-                }
-                session['user'] = user_data
-                logger.info(f"Login successful for user: {email} (gauth-oauth2)")
-                return jsonify({'success': True, 'user': user_data}), 200
-            except Exception as e:
-                logger.error(f"OAuth2 code exchange failed: {e}")
-                return jsonify({'success': False, 'error': 'OAuth2 code exchange failed'}), 401
+        # Remove the special gauth block; handle all logins the same way
+        # (Authenticate with email/password, store Google tokens if present)
 
         if not data or not email:
             logger.warning("Missing email in request")
@@ -111,6 +47,24 @@ def login():
             logger.warning("No user found for email: {}".format(email))
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
 
+        # Check password
+        if not password or not check_password_hash(user['password_hash'], password):
+            logger.warning("Invalid password for user: {}".format(email))
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+
+        # If Google OAuth tokens are present in the payload, store them in Firebase (after successful login)
+        google_tokens = {}
+        for key in ['id_token', 'access_token', 'refresh_token', 'scope', 'token_type', 'token_uri']:
+            if key in data:
+                google_tokens[key] = data[key]
+        if google_tokens:
+            try:
+                update_user_token(user['id'], google_tokens)
+                logger.info(f"Uploaded Google tokens for user: {email}")
+            except Exception as e:
+                logger.error(f"Error uploading Google tokens for user {email}: {e}")
+
+        # Continue with login success as before
         role = user.get('role')
         permissions = user.get('permissions')
         if not permissions:
@@ -124,27 +78,16 @@ def login():
                 }
             else:
                 permissions = {}
-
-        if login_type == 'normal':
-            if not password:
-                logger.warning("Missing password for normal login")
-                return jsonify({'success': False, 'error': 'Password is required for normal login'}), 400
-            if check_password_hash(user['password_hash'], password):
-                user_data = {
-                    'id': user.get('id'),
-                    'email': user['email'],
-                    'role': role,
-                    'username': user['username'],
-                    'permissions': permissions
-                }
-                session['user'] = user_data
-                logger.info(f"Login successful for user: {email} (normal)")
-                return jsonify({'success': True, 'user': user_data}), 200
-            logger.warning("Invalid password for user: {}".format(email))
-            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
-        else:
-            logger.warning(f"Unknown login_type: {login_type}")
-            return jsonify({'success': False, 'error': 'Unknown login type'}), 400
+        user_data = {
+            'id': user.get('id'),
+            'email': user['email'],
+            'role': role,
+            'username': user['username'],
+            'permissions': permissions
+        }
+        session['user'] = user_data
+        logger.info(f"Login successful for user: {email} (email/password only)")
+        return jsonify({'success': True, 'user': user_data}), 200
     except Exception as e:
         logger.error(f"Login error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
