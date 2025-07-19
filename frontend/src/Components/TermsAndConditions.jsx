@@ -1,4 +1,5 @@
 import React from 'react';
+import Navbar from '../Navbar';
 
 const containerStyle = {
   maxWidth: '1200px',
@@ -48,64 +49,67 @@ const listItemStyle = {
 
 const TermsAndConditions = () => {
   return (
-    <div style={containerStyle}>
-      <h1 style={titleStyle}>Terms and Conditions</h1>
-      <div style={contentStyle}>
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>1. Acceptance of Terms</h2>
-          <p style={paragraphStyle}>By accessing and using the Bajaj Earths system, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the system.</p>
-        </section>
+    <>
+      <Navbar />
+      <div style={containerStyle}>
+        <h1 style={titleStyle}>Terms and Conditions</h1>
+        <div style={contentStyle}>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>1. Acceptance of Terms</h2>
+            <p style={paragraphStyle}>By accessing and using the Bajaj Earths system, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the system.</p>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>2. User Responsibilities</h2>
-          <p style={paragraphStyle}>As a user of the system, you agree to:</p>
-          <ul style={listStyle}>
-            <li style={listItemStyle}>Provide accurate and complete information</li>
-            <li style={listItemStyle}>Maintain the confidentiality of your account</li>
-            <li style={listItemStyle}>Use the system in compliance with all applicable laws</li>
-            <li style={listItemStyle}>Report any security breaches or unauthorized access</li>
-          </ul>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>2. User Responsibilities</h2>
+            <p style={paragraphStyle}>As a user of the system, you agree to:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Provide accurate and complete information</li>
+              <li style={listItemStyle}>Maintain the confidentiality of your account</li>
+              <li style={listItemStyle}>Use the system in compliance with all applicable laws</li>
+              <li style={listItemStyle}>Report any security breaches or unauthorized access</li>
+            </ul>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>3. System Usage</h2>
-          <p style={paragraphStyle}>The system is provided for authorized business purposes only. Users must not:</p>
-          <ul style={listStyle}>
-            <li style={listItemStyle}>Share access credentials with unauthorized persons</li>
-            <li style={listItemStyle}>Attempt to bypass security measures</li>
-            <li style={listItemStyle}>Use the system for any illegal activities</li>
-            <li style={listItemStyle}>Interfere with system operations</li>
-          </ul>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>3. System Usage</h2>
+            <p style={paragraphStyle}>The system is provided for authorized business purposes only. Users must not:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Share access credentials with unauthorized persons</li>
+              <li style={listItemStyle}>Attempt to bypass security measures</li>
+              <li style={listItemStyle}>Use the system for any illegal activities</li>
+              <li style={listItemStyle}>Interfere with system operations</li>
+            </ul>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>4. Data Management</h2>
-          <p style={paragraphStyle}>Users are responsible for:</p>
-          <ul style={listStyle}>
-            <li style={listItemStyle}>Ensuring data accuracy and completeness</li>
-            <li style={listItemStyle}>Maintaining appropriate backups</li>
-            <li style={listItemStyle}>Following data retention policies</li>
-            <li style={listItemStyle}>Protecting sensitive information</li>
-          </ul>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>4. Data Management</h2>
+            <p style={paragraphStyle}>Users are responsible for:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Ensuring data accuracy and completeness</li>
+              <li style={listItemStyle}>Maintaining appropriate backups</li>
+              <li style={listItemStyle}>Following data retention policies</li>
+              <li style={listItemStyle}>Protecting sensitive information</li>
+            </ul>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>5. System Availability</h2>
-          <p style={paragraphStyle}>While we strive to maintain system availability, we do not guarantee uninterrupted access. We reserve the right to perform maintenance and updates as needed.</p>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>5. System Availability</h2>
+            <p style={paragraphStyle}>While we strive to maintain system availability, we do not guarantee uninterrupted access. We reserve the right to perform maintenance and updates as needed.</p>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>6. Modifications</h2>
-          <p style={paragraphStyle}>We reserve the right to modify these terms at any time. Users will be notified of significant changes. Continued use of the system after changes constitutes acceptance of the modified terms.</p>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>6. Modifications</h2>
+            <p style={paragraphStyle}>We reserve the right to modify these terms at any time. Users will be notified of significant changes. Continued use of the system after changes constitutes acceptance of the modified terms.</p>
+          </section>
 
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>7. Contact</h2>
-          <p style={paragraphStyle}>For questions regarding these Terms and Conditions, please contact:</p>
-          <p style={paragraphStyle}>Email: info@bajajearths.com</p>
-        </section>
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>7. Contact</h2>
+            <p style={paragraphStyle}>For questions regarding these Terms and Conditions, please contact:</p>
+            <p style={paragraphStyle}>Email: info@bajajearths.com</p>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
