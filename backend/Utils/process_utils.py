@@ -3,7 +3,8 @@ import re
 import json
 import logging
 from docx import Document
-from Utils.email_utils import send_email_with_gmail, get_employee_email
+from flask import session
+from Utils.email_utils import send_email_smtp, get_employee_email
 from Utils.whatsapp_utils import *
 from Utils.drive_utils import upload_to_google_drive
 import shutil
@@ -225,7 +226,7 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                     email_body = f"""
                     <html>
                     <body>
-                    <p>Dear <b>{placeholders.get("Name")}</b>,</p>
+                    <p>Dear <b>{placeholders.get('Name')}</b>,</p>
                     <p>Please find attached your <b>salary slip{'s' if is_special else ''}</b> for the following months:</p>
                     <ul>{months_list}</ul>
                     <p>These documents include:</p>
@@ -239,10 +240,11 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                     </body>
                     </html>
                     """
-                    logging.info("Sending email to {}".format(recipient_email))
-                    send_email_with_gmail(recipient_email, email_subject, email_body, process_name="salary_slips", attachment_paths=output_pdf)
+                    logging.info(f"Sending email to {recipient_email}")
+                    user_id = session.get('user', {}).get('id') or session.get('user', {}).get('email')
+                    send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
                 else:
-                    logging.info("No email found for {}.".format(placeholders.get('Name')))
+                    logging.info(f"No email found for {placeholders.get('Name')}.")
             
             # Send WhatsApp message if enabled
             if send_whatsapp:
@@ -361,10 +363,11 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                     <p>Thanks & Regards,</p>
                     </body>
                     </html>"""
-                logging.info("Sending email to {}".format(recipient_email))
-                send_email_with_gmail(recipient_email, email_subject, email_body, process_name="salary_slips", attachment_paths=output_pdf)
+                logging.info(f"Sending email to {recipient_email}")
+                user_id = session.get('user', {}).get('id') or session.get('user', {}).get('email')
+                send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
             else:
-                logging.info("No email found for {}.".format(placeholders.get('Name')))
+                logging.info(f"No email found for {placeholders.get('Name')}.")
             
             # Send WhatsApp message if enabled
             if send_whatsapp:

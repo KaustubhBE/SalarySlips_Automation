@@ -12,7 +12,7 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash, client_id=None, client_secret=None):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None):
     """Add a new user to Firestore"""
     user_data = {
         'username': username,
@@ -24,6 +24,8 @@ def add_user(username, email, role, password_hash, client_id=None, client_secret
         user_data['client_id'] = client_id
     if client_secret:
         user_data['client_secret'] = client_secret
+    if app_password:
+        user_data['app_password'] = app_password
     user_ref = db.collection('USERS').document()
     user_ref.set(user_data)
     return user_ref.id
@@ -81,59 +83,14 @@ def update_user_permissions(user_id, permissions):
     user_ref = db.collection('USERS').document(user_id)
     user_ref.update({'permissions': permissions})
 
-def update_user_token(user_id, oauth_credentials):
-    try:
-        user_ref = db.collection('USERS').document(user_id)
-        user_ref.update({'token': oauth_credentials})
-        return True
-    except Exception as e:
-        logging.error(f"Error updating google_oauth in Firestore: {e}")
-        return False
+def update_user_app_password(user_id, app_password):
+    """Update a user's app password"""
+    user_ref = db.collection('USERS').document(user_id)
+    user_ref.update({'app_password': app_password})
 
-def get_user_token(user_id):
-    try:
-        user_ref = db.collection('USERS').document(user_id)
-        user_doc = user_ref.get()
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            return user_data.get('token')
-        return None
-    except Exception as e:
-        logging.error(f"Error getting google_oauth from Firestore: {e}")
-        return None
-
-def get_user_token_by_email(email):
+def get_smtp_credentials_by_email(email):
+    """Get the sender email and app password for SMTP for a user by their email."""
     user = get_user_by_email(email)
     if user:
-        return user.get('token')
-    return None
-
-def check_user_token_status(email):
-    """Check if a user has a valid token and return status information"""
-    user = get_user_by_email(email)
-    if not user:
-        return {
-            'exists': False,
-            'has_token': False,
-            'message': f'User with email {email} not found in database'
-        }
-    token = user.get('token')
-    if not token:
-        return {
-            'exists': True,
-            'has_token': False,
-            'message': f'User {email} exists but has no token stored'
-        }
-    return {
-        'exists': True,
-        'has_token': True,
-        'token': token,
-        'message': f'User {email} has a token stored'
-    }
-
-def get_user_client_credentials(email):
-    """Get client_id and client_secret for a user by email"""
-    user = get_user_by_email(email)
-    if user:
-        return user.get('client_id'), user.get('client_secret')
+        return user.get('email'), user.get('app_password')
     return None, None

@@ -15,7 +15,7 @@ from Utils.config import CLIENT_SECRETS_FILE, drive
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
-from Utils.email_utils import *
+from Utils.email_utils import send_email_smtp
 from Utils.whatsapp_utils import *
 from firebase_admin import firestore
 from Utils.firebase_utils import (
@@ -28,8 +28,7 @@ from Utils.firebase_utils import (
     add_salary_slip,
     get_salary_slips_by_user,
     update_user_permissions,
-    update_user_token,
-    get_user_token
+    update_user_app_password
 )
 import json
 from docx import Document
@@ -256,11 +255,12 @@ def add_user():
         email = data.get('email')
         role = data.get('role')
         password = generate_password_hash(data.get('password'))
+        app_password = data.get('appPassword') or data.get('app_password')
 
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        user_id = firebase_add_user(username, email, role, password)
+        user_id = firebase_add_user(username, email, role, password, app_password=app_password)
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
 
     except Exception as e:
@@ -547,13 +547,13 @@ def generate_salary_slip_single():
                                     </html>
                         """.format(employee.get("Name"), full_month, full_year)
                         logging.info("Sending email to {}".format(recipient_email))
-                        success = send_email_with_attachment(
+                        user_email = session.get('user', {}).get('email')
+                        success = send_email_smtp(
                             recipient_email=recipient_email,
                             subject=email_subject,
                             body=email_body,
-                            process_name="salary_slips",
                             attachment_paths=collected_pdfs,
-                            user_email=user_id
+                            user_email=user_email
                         )
                         if success == "TOKEN_EXPIRED":
                             return jsonify({"error": "TOKEN_EXPIRED"}), 401
@@ -665,6 +665,7 @@ def generate_salary_slips_batch():
                 )
                 if send_email:
                     app.logger.info("Sending email to {}".format(employee[5]))  # Assuming email is at index 5
+                    user_email = session.get('user', {}).get('email')
                     app.logger.info("Email sent to {}".format(employee[5]))        
                 if send_whatsapp:
                     app.logger.info("Sending WhatsApp message to {}".format(employee[6]))  # Assuming phone number is at index 6
@@ -882,13 +883,13 @@ def generate_report():
                             </body>
                             </html>
                             """.format(email_content.replace('\n', '<br>'))
-                            success = send_email_with_attachment(
+                            user_email = session.get('user', {}).get('email')
+                            success = send_email_smtp(
                                 recipient_email=recipient_email,
                                 subject=email_subject,
                                 body=email_body,
-                                process_name="reports",
                                 attachment_paths=attachment_paths,
-                                user_email=user_id,
+                                user_email=user_email,
                                 cc=cc_email,
                                 bcc=bcc_email
                             )
@@ -1203,13 +1204,13 @@ def retry_reports():
                                 </body>
                                 </html>
                                 """.format(email_content.replace('\n', '<br>'))
-                                success = send_email_with_attachment(
+                                user_email = session.get('user', {}).get('email')
+                                success = send_email_smtp(
                                     recipient_email=recipient_email,
                                     subject=email_subject,
                                     body=email_body,
-                                    process_name="reports",
                                     attachment_paths=attachment_paths,
-                                    user_email=user_id,
+                                    user_email=user_email,
                                     cc=cc_email,
                                     bcc=bcc_email
                                 )
@@ -1257,6 +1258,20 @@ def retry_reports():
         
     except Exception as e:
         logger.error("Error retrying reports: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/update_app_password", methods=["POST"])
+def update_app_password():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        app_password = data.get('appPassword') or data.get('app_password')
+        if not user_id or not app_password:
+            return jsonify({"error": "User ID and app password are required"}), 400
+        update_user_app_password(user_id, app_password)
+        return jsonify({"message": "App password updated successfully"}), 200
+    except Exception as e:
+        logger.error("Error updating app password: {}".format(e))
         return jsonify({"error": str(e)}), 500
 
 def validate_sheet_id(sheet_id):

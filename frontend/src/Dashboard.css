@@ -385,3 +385,107 @@ table tr:hover {
   margin-bottom: 10px;
   font-weight: bold;
 }
+
+/* Edit App Password inline editor */
+.edit-app-password-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.edit-app-password-inline input[type="password"] {
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  width: 220px;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+}
+
+.edit-app-password-inline input[type="password"]:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.edit-app-password-inline .action-button {
+  min-width: 70px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.edit-app-password-inline .edit-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.edit-app-password-inline .edit-button:disabled {
+  background-color: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.edit-app-password-inline .delete-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+}
+
+/* Add spacing between action buttons */
+.action-button + .action-button {
+  margin-left: 8px;
+}
+
+/* Remove Actions column width and stacking rules */
+table th:last-child, table td:last-child {
+  min-width: unset;
+}
+
+table td.user-actions-row {
+  background: #f8fafc;
+  padding-top: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.user-actions-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.edit-app-password-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.edit-app-password-inline input[type="password"] {
+  margin-bottom: 0;
+}
+
+/* Users list/table container improvements */
+.users-list {
+  max-width: 1150px;
+  margin: 0 auto 40px auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.07);
+  padding: 24px 18px 32px 18px;
+  transition: box-shadow 0.2s;
+}
+
+@media (max-width: 1200px) {
+  .users-list {
+    max-width: 99vw;
+    padding: 12px 4px 18px 4px;
+  }
+}

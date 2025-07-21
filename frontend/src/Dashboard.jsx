@@ -22,10 +22,14 @@ function Dashboard() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [appPassword, setAppPassword] = useState("");
+  const [showAppPassword, setShowAppPassword] = useState(false);
   const [role, setRole] = useState('user');
   const [permissions, setPermissions] = useState(Object.values(PERMISSIONS).reduce((acc, perm) => ({ ...acc, [perm]: false }), {}));
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editingAppPassword, setEditingAppPassword] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -87,6 +91,7 @@ function Dashboard() {
           username, 
           email, 
           password, 
+          appPassword, // send app password
           role,
           permissions 
         },
@@ -106,6 +111,7 @@ function Dashboard() {
         setUsername('');
         setEmail('');
         setPassword('');
+        setAppPassword('');
         setRole('user');
         setPermissions({
           [PERMISSIONS.SINGLE_PROCESSING]: true,
@@ -198,6 +204,39 @@ function Dashboard() {
     }));
   };
 
+  const handleEditAppPassword = (user) => {
+    setEditingUserId(user.id);
+    setEditingAppPassword("");
+  };
+
+  const handleSaveAppPassword = async (userId) => {
+    try {
+      const response = await axios.post(getApiUrl("update_app_password"), {
+        user_id: userId,
+        appPassword: editingAppPassword
+      }, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.data.message) {
+        setSuccess(response.data.message);
+        setError("");
+        setEditingUserId(null);
+        setEditingAppPassword("");
+        fetchUsers();
+      } else {
+        setError(response.data.error);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error updating app password');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setEditingAppPassword("");
+  };
+
   return (
     <div className="dashboard-container">
       <h1>User Management</h1>
@@ -215,83 +254,119 @@ function Dashboard() {
               <th>Role</th>
               <th>Processing Access</th>
               <th>Report Access</th>
-              <th>Actions</th>
+              {/* Remove Actions header */}
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id}>
-                <td>{user.username}</td>
-                <td>{user.email}</td>
-                <td>
-                  <select
-                    className="role-select"
-                    value={user.role}
-                    onChange={(e) => {
-                      const newRole = e.target.value;
-                      handleRoleChange(user.id, newRole);
-                    }}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="super-admin">Super Admin</option>
-                  </select>
-                </td>
-                <td className="permissions-cell">
-                  <div className="permissions-grid">
-                    {Object.entries(PERMISSIONS)
-                      .filter(([key]) => key !== 'REPORT_ACCESS')
-                      .map(([key, value]) => (
-                        <div key={`${user.id}-${value}`} className="permission-item">
-                          <label title={PERMISSION_DESCRIPTIONS[value]}>
-                            <input
-                              type="checkbox"
-                              checked={user.permissions?.[value] || false}
-                              onChange={() => {
-                                const updatedPermissions = {
-                                  ...(user.permissions || {}),
-                                  [value]: !(user.permissions?.[value] || false)
-                                };
-                                handleUpdatePermissions(user.id, updatedPermissions);
-                              }}
-                              disabled={user.role === 'super-admin' && user.id !== 'super-admin'}
-                            />
-                            {key === 'SINGLE_PROCESSING' ? 'Single Processing' : 'Batch Processing'}
-                          </label>
-                        </div>
-                    ))}
-                  </div>
-                </td>
-                <td className="permissions-cell">
-                  <div className="permissions-grid">
-                    <div className="permission-item">
-                      <label title={PERMISSION_DESCRIPTIONS[PERMISSIONS.REPORT_ACCESS]}>
-                        <input
-                          type="checkbox"
-                          checked={user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false}
-                          onChange={() => {
-                            const updatedPermissions = {
-                              ...(user.permissions || {}),
-                              [PERMISSIONS.REPORT_ACCESS]: !(user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false)
-                            };
-                            handleUpdatePermissions(user.id, updatedPermissions);
-                          }}
-                          disabled={role === 'super-admin' && user.id !== 'super-admin'}
-                        />
-                        Report Access
-                      </label>
+              <React.Fragment key={user.id}>
+                <tr>
+                  <td>{user.username}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    <select
+                      className="role-select"
+                      value={user.role}
+                      onChange={(e) => {
+                        const newRole = e.target.value;
+                        handleRoleChange(user.id, newRole);
+                      }}
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="super-admin">Super Admin</option>
+                    </select>
+                  </td>
+                  <td className="permissions-cell">
+                    <div className="permissions-grid">
+                      {Object.entries(PERMISSIONS)
+                        .filter(([key]) => key !== 'REPORT_ACCESS')
+                        .map(([key, value]) => (
+                          <div key={`${user.id}-${value}`} className="permission-item">
+                            <label title={PERMISSION_DESCRIPTIONS[value]}>
+                              <input
+                                type="checkbox"
+                                checked={user.permissions?.[value] || false}
+                                onChange={() => {
+                                  const updatedPermissions = {
+                                    ...(user.permissions || {}),
+                                    [value]: !(user.permissions?.[value] || false)
+                                  };
+                                  handleUpdatePermissions(user.id, updatedPermissions);
+                                }}
+                                disabled={user.role === 'super-admin' && user.id !== 'super-admin'}
+                              />
+                              {key === 'SINGLE_PROCESSING' ? 'Single Processing' : 'Batch Processing'}
+                            </label>
+                          </div>
+                      ))}
                     </div>
-                  </div>
-                </td>
-                <td>
-                  <button 
-                    className="action-button delete-button"
-                    onClick={() => handleDeleteUser(user.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
+                  </td>
+                  <td className="permissions-cell">
+                    <div className="permissions-grid">
+                      <div className="permission-item">
+                        <label title={PERMISSION_DESCRIPTIONS[PERMISSIONS.REPORT_ACCESS]}>
+                          <input
+                            type="checkbox"
+                            checked={user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false}
+                            onChange={() => {
+                              const updatedPermissions = {
+                                ...(user.permissions || {}),
+                                [PERMISSIONS.REPORT_ACCESS]: !(user.permissions?.[PERMISSIONS.REPORT_ACCESS] || false)
+                              };
+                              handleUpdatePermissions(user.id, updatedPermissions);
+                            }}
+                            disabled={role === 'super-admin' && user.id !== 'super-admin'}
+                          />
+                          Report Access
+                        </label>
+                      </div>
+                    </div>
+                  </td>
+                  {/* No Actions cell here */}
+                </tr>
+                <tr>
+                  <td colSpan={6} className="user-actions-row">
+                    {editingUserId === user.id && (
+                      <div className="edit-app-password-inline">
+                        <input
+                          type="password"
+                          placeholder="New App Password"
+                          value={editingAppPassword}
+                          onChange={e => setEditingAppPassword(e.target.value)}
+                        />
+                        <button
+                          className="action-button edit-button"
+                          onClick={() => handleSaveAppPassword(user.id)}
+                          disabled={!editingAppPassword}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="action-button delete-button"
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    <div className="user-actions-buttons">
+                      <button
+                        className="action-button edit-button"
+                        onClick={() => handleEditAppPassword(user)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="action-button delete-button"
+                        onClick={() => handleDeleteUser(user.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -331,6 +406,27 @@ function Dashboard() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="appPassword">App Password:</label>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showAppPassword ? "text" : "password"}
+                id="appPassword"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="toggle-password-btn"
+                onClick={() => setShowAppPassword((prev) => !prev)}
+                tabIndex={-1}
+              >
+                {showAppPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
           
           <div className="form-group">

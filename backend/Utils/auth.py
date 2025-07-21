@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash
-from Utils.firebase_utils import get_user_by_email, update_user_token, get_user_client_credentials
+from Utils.firebase_utils import get_user_by_email
 import logging
 import os
 import requests
@@ -75,7 +75,7 @@ def login():
                         tokens['client_id'] = client_id
                         tokens['client_secret'] = client_secret
                         tokens['token_uri'] = token_url
-                        update_user_token(user['id'], tokens)
+                        # update_user_token(user['id'], tokens) # This line was removed
                         logger.info(f"Uploaded Google tokens for user: {email}")
                     else:
                         logger.error(f"Failed to exchange code for user {email}: {r.text}")
