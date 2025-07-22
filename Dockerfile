@@ -52,9 +52,7 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY backend/requirements.txt .
-RUN python3 -m venv venv && . venv/bin/activate && pip install --no-cache-dir -r requirements.txt
-RUN pip install flask
-RUN pip install flask-cors
+RUN python3 -m venv venv && . venv/bin/activate && pip install --no-cache-dir -r requirements.txt && pip install flask flask-cors gunicorn
 
 # Copy backend application code
 COPY backend/ ./backend/
@@ -86,5 +84,5 @@ COPY --from=backend-builder /app/backend /app/backend
 # Expose ports
 EXPOSE 80 5000
 
-# Start nginx and backend application
-CMD ["sh", "-c", "nginx -g 'daemon off;' & . /app/venv/bin/activate && python3 /app/backend/app.py"]
+# Start nginx and backend application with Gunicorn
+CMD ["sh", "-c", "nginx -g 'daemon off;' & . /app/venv/bin/activate && gunicorn -w 4 -b 0.0.0.0:5000 app:app --chdir /app/backend"]

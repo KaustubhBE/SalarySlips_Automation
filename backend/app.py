@@ -16,7 +16,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
-from Utils.whatsapp_utils import *
+#from Utils.whatsapp_utils import *
 from firebase_admin import firestore
 from Utils.firebase_utils import (
     add_user as firebase_add_user,
@@ -91,8 +91,7 @@ if not app.logger.handlers:
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
     "http://localhost:3000",
-    "https://frontend-ssautomation.onrender.com",
-    "https://beadmins.onrender.com", "http://admin.bajajearths.com"
+    "https://admin.bajajearths.com"
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role"]

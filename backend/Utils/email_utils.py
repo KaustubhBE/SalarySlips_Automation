@@ -4,6 +4,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from email.header import Header
+import email.utils
 from Utils.firebase_utils import get_smtp_credentials_by_email
 import smtplib
 
@@ -25,16 +27,17 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
         return False
 
     message = MIMEMultipart()
-    message['to'] = recipient_email
-    message['from'] = sender_email
-    message['subject'] = subject
+    message['to'] = Header(recipient_email, 'utf-8')
+    message['from'] = Header(sender_email, 'utf-8')
+    message['subject'] = Header(subject, 'utf-8')
     if cc:
-        message['cc'] = cc
+        message['cc'] = Header(cc, 'utf-8')
     if bcc:
-        message['bcc'] = bcc
+        message['bcc'] = Header(bcc, 'utf-8')
 
     # Add message body
-    msg = MIMEText(body, 'html')
+    msg = MIMEText(body, 'html', 'utf-8')
+    msg.replace_header('Content-Type', 'text/html; charset="utf-8"')
     message.attach(msg)
 
     # Add attachments if any
@@ -56,11 +59,11 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
                 logger.error(f"Error attaching file {attachment_path}: {e}")
                 continue
 
-    recipients = [recipient_email]
+    recipients = extract_ascii_emails(recipient_email)
     if cc:
-        recipients += [cc] if isinstance(cc, str) else cc
+        recipients += extract_ascii_emails(cc)
     if bcc:
-        recipients += [bcc] if isinstance(bcc, str) else bcc
+        recipients += extract_ascii_emails(bcc)
 
     try:
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
@@ -68,13 +71,25 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
             server.sendmail(
                 sender_email,
                 recipients,
-                message.as_string()
+                message.as_bytes()
             )
         logger.info(f"Email sent to {recipient_email} via SMTP for user {user_email}")
         return True
     except Exception as e:
         logger.error(f"Error sending email via SMTP for user {user_email}: {e}")
         return False
+
+def extract_ascii_emails(addresses):
+    if not addresses:
+        return []
+    if isinstance(addresses, str):
+        addresses = [addresses]
+    ascii_emails = []
+    for addr in addresses:
+        # Parse address to get only the email part
+        name, email_addr = email.utils.parseaddr(addr)
+        ascii_emails.append(email_addr)
+    return ascii_emails
 
 def get_employee_email(employee_name, email_employees):
     """Get employee's email from the email_employees list based on their name."""

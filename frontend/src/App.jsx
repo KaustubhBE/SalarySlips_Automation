@@ -10,7 +10,6 @@ import Reports from './Reports'
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import { useAuth } from './Components/AuthContext';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 
 function App() {
   const navigate = useNavigate();
