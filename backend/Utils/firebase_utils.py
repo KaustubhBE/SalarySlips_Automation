@@ -94,3 +94,8 @@ def get_smtp_credentials_by_email(email):
     if user:
         return user.get('email'), user.get('app_password')
     return None, None
+
+def update_user_password(user_id, password_hash):
+    """Update a user's app password"""
+    user_ref = db.collection('USERS').document(user_id)
+    user_ref.update({'password_hash': password_hash})

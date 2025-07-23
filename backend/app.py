@@ -90,8 +90,7 @@ if not app.logger.handlers:
 # CORS configuration
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
-    "http://localhost:3000",
-    "https://admin.bajajearths.com"
+    "http://localhost:3000"
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role"]

@@ -5,7 +5,7 @@ import logging
 from docx import Document
 from flask import session
 from Utils.email_utils import send_email_smtp, get_employee_email
-from Utils.whatsapp_utils import *
+# from Utils.whatsapp_utils import *
 from Utils.drive_utils import upload_to_google_drive
 import shutil
 import subprocess
@@ -15,6 +15,49 @@ from comtypes.client import CreateObject
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
+def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
+    
+    try:
+        # Initialize empty list if no file paths provided
+        if not file_paths:
+            return []
+            
+        # Convert single path to list if it's not already
+        if not isinstance(file_paths, list):
+            file_paths = [file_paths]
+            
+        # Validate each path and collect valid ones
+        valid_paths = []
+        seen_filenames = set()  # Keep track of filenames we've already processed
+        
+        for path in file_paths:
+            if is_upload:
+                # Handle uploaded file
+                if hasattr(path, 'filename') and path.filename:
+                    temp_path = os.path.join(temp_dir, path.filename)
+                    path.save(temp_path)
+                    valid_paths.append(temp_path)
+                    seen_filenames.add(path.filename)
+                    logging.info(f"Saved attachment file to: {temp_path}")
+            else:
+                # Handle existing file path
+                if os.path.exists(path) and os.path.isfile(path):
+                    filename = os.path.basename(path)
+                    if filename not in seen_filenames:
+                        valid_paths.append(path)
+                        seen_filenames.add(filename)
+                        logging.info(f"Added file: {path}")
+                    else:
+                        logging.warning(f"Duplicate file found: {path}. Skipping.")
+                else:
+                    logging.warning(f"Invalid or non-existent file path: {path}")
+                
+        logging.info(f"Prepared {len(valid_paths)} valid file paths")
+        return valid_paths
+    except Exception as e:
+        logging.error(f"Error preparing file paths: {str(e)}")
+        return []
 
 # Load message templates
 def load_message_templates():

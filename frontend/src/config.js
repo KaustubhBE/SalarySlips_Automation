@@ -1,51 +1,49 @@
-// Environment variables
+// config.js
+
+import axios from 'axios';
+
+// Detect if running in development
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // Default backend URL
 const DEFAULT_BACKEND_URL = 'http://localhost:5000';
 
-// API URL configuration
+// Determine the base API URL
 const getApiBaseUrl = () => {
-    // Check if we're in a browser environment
     if (typeof window !== 'undefined') {
-        // Check if we have a stored local backend URL
         const localBackendUrl = localStorage.getItem('localBackendUrl');
         if (localBackendUrl && isDevelopment) {
             return `${localBackendUrl}/api`;
         }
     }
-    
-    // Use the appropriate backend URL based on environment
     return `${DEFAULT_BACKEND_URL}/api`;
 };
 
-// Initialize backend URL in localStorage if not set
+// Set local backend URL if not already set
 if (typeof window !== 'undefined' && !localStorage.getItem('localBackendUrl')) {
     localStorage.setItem('localBackendUrl', DEFAULT_BACKEND_URL);
 }
 
-// Configure axios defaults
-import axios from 'axios';
-
+// Configure axios globally
 axios.defaults.baseURL = getApiBaseUrl();
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.timeout = 10000; // 10 seconds timeout
+axios.defaults.timeout = 10000;
 
-// Feature flags
+// Feature flags (optional)
 export const FEATURES = {
     ENABLE_WHATSAPP: import.meta.env.VITE_ENABLE_WHATSAPP === 'true',
     ENABLE_EMAIL: import.meta.env.VITE_ENABLE_EMAIL === 'true',
     ENABLE_ERROR_REPORTING: import.meta.env.VITE_ENABLE_ERROR_REPORTING === 'true'
 };
 
-// Logging configuration
+// Logging config
 export const LOG_CONFIG = {
     LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info'
 };
 
-// API request configuration
+// API config for `fetch`
 export const API_CONFIG = {
     headers: {
         'Content-Type': 'application/json',
@@ -55,53 +53,53 @@ export const API_CONFIG = {
     mode: 'cors'
 };
 
-// Function to get the full API URL for a specific endpoint
+// Get full API URL for an endpoint
 export const getApiUrl = (endpoint) => {
     return `${getApiBaseUrl()}/${endpoint}`;
 };
 
-// Function to set local backend URL
+// Set backend URL dynamically
 export const setLocalBackendUrl = (url) => {
     if (typeof window !== 'undefined') {
         localStorage.setItem('localBackendUrl', url);
     }
 };
 
-// Function to get current backend URL
+// Get current backend URL
 export const getCurrentBackendUrl = () => {
     return getApiBaseUrl();
 };
 
 // Common API endpoints
 export const ENDPOINTS = {
-    // Auth endpoints
+    // Auth
     GOOGLE_AUTH: 'auth/google',
     GOOGLE_CALLBACK: 'auth/google/callback',
     LOGOUT: 'auth/logout',
     AUTH_STATUS: 'auth/status',
-    
-    // Salary slip endpoints
+    CHANGE_PASSWORD: 'auth/change-password',
+
+    // Salary Slip
     SINGLE_SLIP: 'generate-salary-slip-single',
     BATCH_SLIPS: 'generate-salary-slips-batch',
-    
-    // User management endpoints
+
+    // User Management
     GET_USERS: 'get_users',
     ADD_USER: 'add_user',
     DELETE_USER: 'delete_user',
     UPDATE_ROLE: 'update_role',
-    
-    // Logging endpoints
+
+    // Logs
     GET_LOGS: 'get-logs',
-    
-    // Misc endpoints
+
+    // Misc
     HOME: '',
     HEALTH: 'health',
     PROCESS_SINGLE: 'process_single',
-    PROCESS_BATCH: 'process_batch',
-    CHANGE_PASSWORD: 'change-password'
+    PROCESS_BATCH: 'process_batch'
 };
 
-// Enhanced API call helper with better error handling
+// API call with fetch
 export const makeApiCall = async (endpoint, options = {}) => {
     const defaultOptions = {
         credentials: 'include',
@@ -112,7 +110,6 @@ export const makeApiCall = async (endpoint, options = {}) => {
         }
     };
 
-    // Merge options while preserving the credentials and mode settings
     const mergedOptions = {
         ...defaultOptions,
         ...options,
@@ -126,7 +123,6 @@ export const makeApiCall = async (endpoint, options = {}) => {
 
     try {
         const response = await fetch(getApiUrl(endpoint), mergedOptions);
-        
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(errorText || `HTTP error! status: ${response.status}`);
@@ -136,6 +132,7 @@ export const makeApiCall = async (endpoint, options = {}) => {
         if (contentType && contentType.includes('application/json')) {
             return await response.json();
         }
+
         return await response.text();
     } catch (error) {
         console.error('API call failed:', error);
@@ -143,13 +140,11 @@ export const makeApiCall = async (endpoint, options = {}) => {
     }
 };
 
-// Export a configured fetch function for special cases
+// Export fetch with defaults
 export const configuredFetch = (url, options = {}) => {
     const finalOptions = {
         ...API_CONFIG,
         ...options,
-        credentials: 'include',
-        mode: 'cors',
         headers: {
             ...API_CONFIG.headers,
             ...options.headers
@@ -158,6 +153,7 @@ export const configuredFetch = (url, options = {}) => {
     return fetch(url, finalOptions);
 };
 
+// Export everything as default
 export default {
     getApiUrl,
     makeApiCall,

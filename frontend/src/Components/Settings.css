@@ -1,38 +1,55 @@
 .settings-container {
-  max-width: 600px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f9f9f9;
+  max-width: 420px;
+  margin: 48px auto 0 auto;
+  padding: 32px 24px 28px 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #ddd;
   box-sizing: border-box;
 }
 
 .settings-container h2 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  color: #987349;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 .user-info {
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: white;
-  border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 22px;
+  padding: 16px 14px 10px 14px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(152,115,73,0.07);
+}
+
+.user-info h3 {
+  color: #987349;
+  margin: 0 0 12px 0;
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .user-info p {
-  font-size: 16px;
-  color: #333;
-  margin: 10px 0;
+  font-size: 15px;
+  color: #444;
+  margin: 8px 0 6px 0;
 }
 
-.password-form {
-  margin-top: 20px;
+.user-info p strong {
+  color: #666;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.update-password {
+  margin-top: 25px;
+  background: #fff;
   padding: 20px;
-  background-color: white;
-  border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(152,115,73,0.07);
 }
 
 .form-group {
@@ -61,24 +78,39 @@
   border-radius: 4px;
 }
 
-.success-message {
-  color: #28a745;
-  margin: 10px 0;
-  padding: 10px;
-  background-color: #d4edda;
-  border-radius: 4px;
+.password-message {
+  margin-top: 14px;
+  color: #987349;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+  border-radius: 6px;
 }
 
-.button {
-  width: 100%;
-  padding: 10px;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  font-size: 16px;
-  margin-top: 10px;
+/* Media Queries */
+@media (max-width: 600px) {
+  .settings-container {
+    margin: 20px 15px;
+    padding: 20px 16px;
+    max-width: none;
+    border-radius: 12px;
+  }
+
+  .update-password-button,
+  .logout-button {
+    width: 100%;
+    padding: 10px 0;
+  }
+
+  .password-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .save-password-button,
+  .cancel-password-button {
+    width: 100%;
+  }
 }
 
 .change-password-button {
@@ -100,6 +132,197 @@
 
 .logout-button:hover {
   background-color: #c82333;
+}
+
+
+.update-password-form {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.update-password label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.password-input {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  transition: all 0.2s ease;
+}
+
+.password-input:focus {
+  border-color: #987349;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(152,115,73,0.1);
+}
+
+.password-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.save-password-button,
+.cancel-password-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-password-button {
+  background: #987349;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.save-password-button:hover {
+  background: linear-gradient(90deg, #bfa074 60%, #987349 100%);
+  box-shadow: 0 4px 16px rgba(152,115,73,0.13);
+  transform: translateY(-1px);
+}
+
+.cancel-password-button {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.cancel-password-button:hover {
+  background: #e4e4e4;
+  color: #444;
+}
+
+.update-password-button {
+  width: 70%;
+  margin: 20px auto 0 auto;
+  padding: 12px 0;
+  border: none;
+  border-radius: 5px;
+  background: #987349;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: block;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.update-password-button:hover {
+  background: #7d5f3c;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.update-password-form label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #222;
+  align-self: flex-start;
+}
+
+.password-input {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #bdbdbd;
+  margin-bottom: 18px;
+  width: 95%;
+  font-size: 1.1rem;
+  background: #f5f7fa;
+  color: #222;
+  transition: border-color 0.2s;
+}
+.password-input:focus {
+  border-color: #2d8f5a;
+  outline: none;
+}
+
+.update-password-form .button {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  padding: 12px 0;
+}
+
+.save-password-button {
+  background: #2d8f5a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.save-password-button:hover {
+  background: #237346;
+}
+
+.cancel-password-button {
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cancel-password-button:hover {
+  background: #bdbdbd;
+}
+
+.password-message {
+  margin-top: 12px;
+  color: #2d8f5a;
+  font-weight: 600;
+  text-align: center;
+}
+
+.save-password-button {
+  background: #2d8f5a;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  flex: 1;
+}
+
+.cancel-password-button {
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  flex: 1;
+}
+
+.password-message {
+  margin-top: 10px;
+  color: #2d8f5a;
+  font-weight: bold;
 }
 
 /* Dark mode support */

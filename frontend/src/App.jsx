@@ -1,14 +1,18 @@
 import React, { useEffect, useCallback } from 'react';
 import './App.css';
 import { Route, Routes, useNavigate, Navigate } from 'react-router-dom';
-import Processing from './Processing';
 import Settings from './Components/Settings';
 import Login from './Login';
 import Navbar from './Navbar';
 import Dashboard from './Dashboard';
-import Reports from './Reports'
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
+import HR from './Components/HR';
+import Processing from './Processing'
+import Marketing from './Components/Marketing';
+import Store from './Components/Store';
+import Inventory from './Inventory';
+import Reports from './Reports'
 import { useAuth } from './Components/AuthContext';
 
 function App() {
@@ -65,36 +69,36 @@ function App() {
               <h3>Please choose an option below:</h3>
               <div className="navigation-links">
                 <span 
-                  onClick={() => navigate('/single-processing')} 
-                  className="nav-link"
-                  role="button"
-                  tabIndex={0}
-                >
-                  Single Processing
-                </span>
-                <span 
-                  onClick={() => navigate('/batch-processing')} 
-                  className="nav-link"
-                  role="button"
-                  tabIndex={0}
-                >
-                  Batch Processing
-                </span>
-                <span 
-                  onClick={() => navigate('/reports')} 
-                  className="nav-link"
-                  role="button"
-                  tabIndex={0}
-                >
-                  Reports
-                </span>
-                <span 
                   onClick={() => navigate('/settings')} 
                   className="nav-link"
                   role="button"
                   tabIndex={0}
                 >
                   Settings
+                </span>
+                <span 
+                  onClick={() => navigate('/hr')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Human Resource
+                </span>
+                <span 
+                  onClick={() => navigate('/marketing')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Marketing
+                </span>
+                <span 
+                  onClick={() => navigate('/store')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Store
                 </span>
                 {isAdmin && (
                   <span 
@@ -130,8 +134,24 @@ function App() {
           isAuthenticated ? <Processing mode="batch" /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/reports" element={
+        <Route path="/reports/*" element={
           isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/hr/*" element={
+          isAuthenticated ? <HR /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/marketing/*" element={
+          isAuthenticated ? <Marketing /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/store/*" element={
+          isAuthenticated ? <Store /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/inventory/*" element={
+          isAuthenticated ? <Inventory /> : <Navigate to="/login" replace />
         } />
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
