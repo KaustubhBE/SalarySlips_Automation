@@ -2,7 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../App.css'
 
-const HR = () => {
+const HumanResource = () => {
   const navigate = useNavigate()
 
   return (
@@ -39,4 +39,4 @@ const HR = () => {
   )
 }
 
-export default HR
+export default HumanResource

@@ -5,14 +5,13 @@ import Settings from './Components/Settings';
 import Login from './Login';
 import Navbar from './Navbar';
 import Dashboard from './Dashboard';
-import PrivacyPolicy from './Components/PrivacyPolicy';
-import TermsAndConditions from './Components/TermsAndConditions';
-import HR from './Components/HR';
-import Processing from './Processing'
+import Processing from './Processing';
+import Reports from './Reports';
+import HR from './Components/HumanResource';
 import Marketing from './Components/Marketing';
 import Store from './Components/Store';
-import Inventory from './Inventory';
-import Reports from './Reports'
+import PrivacyPolicy from './Components/PrivacyPolicy';
+import TermsAndConditions from './Components/TermsAndConditions';
 import { useAuth } from './Components/AuthContext';
 
 function App() {
@@ -103,7 +102,7 @@ function App() {
                 {isAdmin && (
                   <span 
                     onClick={() => navigate('/dashboard')} 
-                    className="nav-link"
+                    className="nav-link admin-link"
                     role="button"
                     tabIndex={0}
                     aria-label="User Management (Admin Only)"
@@ -126,6 +125,18 @@ function App() {
           isAuthenticated ? <Settings onLogout={handleLogout} /> : <Navigate to="/login" replace />
         } />
 
+        <Route path="/hr/*" element={
+          isAuthenticated ? <HR /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/marketing" element={
+          isAuthenticated ? <Marketing /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/store/*" element={
+          isAuthenticated ? <Store /> : <Navigate to="/login" replace />
+        } />
+
         <Route path="/single-processing/*" element={
           isAuthenticated ? <Processing mode="single" /> : <Navigate to="/login" replace />
         } />
@@ -134,24 +145,8 @@ function App() {
           isAuthenticated ? <Processing mode="batch" /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/reports/*" element={
+        <Route path="/reports" element={
           isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
-        } />
-
-        <Route path="/hr/*" element={
-          isAuthenticated ? <HR /> : <Navigate to="/login" replace />
-        } />
-
-        <Route path="/marketing/*" element={
-          isAuthenticated ? <Marketing /> : <Navigate to="/login" replace />
-        } />
-
-        <Route path="/store/*" element={
-          isAuthenticated ? <Store /> : <Navigate to="/login" replace />
-        } />
-
-        <Route path="/inventory/*" element={
-          isAuthenticated ? <Inventory /> : <Navigate to="/login" replace />
         } />
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
