@@ -7,11 +7,15 @@ import Navbar from './Navbar';
 import Dashboard from './Dashboard';
 import Processing from './Processing';
 import Reports from './Reports';
-import HR from './Components/HumanResource';
+import HumanResource from './Components/HumanResource';
 import Marketing from './Components/Marketing';
 import Store from './Components/Store';
+import Accounts from './Components/Accounts';
+import ReportsDepartment from './Components/ReportsDepartment';
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
+import Inventory from './Inventory';
+import DailyReports from './DailyReports';
 import { useAuth } from './Components/AuthContext';
 
 function App() {
@@ -68,15 +72,7 @@ function App() {
               <h3>Please choose an option below:</h3>
               <div className="navigation-links">
                 <span 
-                  onClick={() => navigate('/settings')} 
-                  className="nav-link"
-                  role="button"
-                  tabIndex={0}
-                >
-                  Settings
-                </span>
-                <span 
-                  onClick={() => navigate('/hr')} 
+                  onClick={() => navigate('/humanresource')} 
                   className="nav-link"
                   role="button"
                   tabIndex={0}
@@ -98,6 +94,22 @@ function App() {
                   tabIndex={0}
                 >
                   Store
+                </span>
+                <span 
+                  onClick={() => navigate('/accounts')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Accounts
+                </span>
+                <span 
+                  onClick={() => navigate('/reports-department')} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Reports Department
                 </span>
                 {isAdmin && (
                   <span 
@@ -125,8 +137,8 @@ function App() {
           isAuthenticated ? <Settings onLogout={handleLogout} /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/hr/*" element={
-          isAuthenticated ? <HR /> : <Navigate to="/login" replace />
+        <Route path="/humanresource/*" element={
+          isAuthenticated ? <HumanResource /> : <Navigate to="/login" replace />
         } />
 
         <Route path="/marketing" element={
@@ -137,6 +149,14 @@ function App() {
           isAuthenticated ? <Store /> : <Navigate to="/login" replace />
         } />
 
+        <Route path="/accounts/*" element={
+          isAuthenticated ? <Accounts /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/reports-department" element={
+          isAuthenticated ? <ReportsDepartment /> : <Navigate to="/login" replace />
+        } />
+
         <Route path="/single-processing/*" element={
           isAuthenticated ? <Processing mode="single" /> : <Navigate to="/login" replace />
         } />
@@ -145,8 +165,16 @@ function App() {
           isAuthenticated ? <Processing mode="batch" /> : <Navigate to="/login" replace />
         } />
 
+        <Route path="/inventory/*" element={
+          isAuthenticated ? <Inventory /> : <Navigate to="/login" replace />
+        }/>
+
         <Route path="/reports" element={
           isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
+        } />
+
+        <Route path="/daily-reports" element={
+          isAuthenticated ? <DailyReports /> : <Navigate to="/login" replace />
         } />
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

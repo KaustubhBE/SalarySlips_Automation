@@ -37,9 +37,6 @@ def change_password():
         logger.error(f'Error updating password: {e}', exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
 
-# -------------------------
-# ✅ Login Route
-# -------------------------
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:

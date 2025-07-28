@@ -40,7 +40,7 @@ const Inventory = () => {
   };
 
   return (
-    <div className="splash-page">
+    <div className="inventory-page">
       <h1>Inventory Management Portal</h1>
       
       {/* Inventory Management Section */}
@@ -150,7 +150,7 @@ const Inventory = () => {
       </div>
 
       {/* Navigation Links */}
-      <div className="navigation-links">
+      <div className="inventory-navigation-links">
         <span 
           onClick={() => navigate('/store')} 
           className="nav-link"
@@ -172,4 +172,4 @@ const Inventory = () => {
   );
 }
 
-export default Inventory
+export default Inventory;

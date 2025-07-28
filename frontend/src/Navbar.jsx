@@ -1,42 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './Navbar.css';
 import beLogo from './assets/be-logo.png';
-import { FaBars } from 'react-icons/fa';
+import { FaBars, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
-import ClientOnly from './Components/ClientOnly';
+import { useAuth } from './Components/AuthContext';
 
-const Clock = () => {
-  const [time, setTime] = useState(new Date());
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString();
-  };
-
-  const option = { month: 'short' };
-  const dateToday = time.getDate().toString().padStart(2, '0');
-  const monthToday = time.toLocaleDateString('en-US', option).toString().toUpperCase();
-  const yearToday = time.getFullYear();
-
-  return (
-    <div className='clock'>
-      <p>
-        {formatTime(time)}<br />
-        {`${dateToday} ${monthToday}, ${yearToday}`}
-      </p>
-    </div>
-  );
-};
-
-const Navbar = () => {
+const Navbar = ({ onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -47,6 +19,11 @@ const Navbar = () => {
     navigate(path);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className='navbar'>
       <div className='burger-menu'>
@@ -54,11 +31,9 @@ const Navbar = () => {
         {menuOpen && (
           <div className='menu'>
             <span onClick={() => closeMenu('/app')}>Home</span>
-            <span onClick={() => closeMenu ('/hr')}>Human Resource</span>
+            <span onClick={() => closeMenu ('/humanresource')}>Human Resource</span>
             <span onClick={() => closeMenu ('/marketing')}>Marketing</span>
             <span onClick={() => closeMenu ('/store')}>Store</span>
-            <span onClick={() => closeMenu('/settings')}>Settings</span>
-            
             <div className="menu-divider"></div>
             <span onClick={() => closeMenu('/privacy-policy')}>Privacy Policy</span>
             <span onClick={() => closeMenu('/terms-and-conditions')}>Terms & Conditions</span>
@@ -68,9 +43,10 @@ const Navbar = () => {
           <img src={beLogo} className='be-logo' alt='BE Logo' />
         </Link>
       </div>
-      <ClientOnly>
-        <Clock />
-      </ClientOnly>
+      <div className="navbar-right">
+        <FaSignOutAlt className="logout-icon" onClick={handleLogout} title="Logout" />
+        <FaCog className="settings-icon" onClick={() => navigate('/settings')} title="Settings" />
+      </div>
     </div>
   );
 };

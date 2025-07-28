@@ -16,7 +16,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
-#from Utils.whatsapp_utils import *
 from firebase_admin import firestore
 from Utils.firebase_utils import (
     add_user as firebase_add_user,
@@ -28,13 +27,62 @@ from Utils.firebase_utils import (
     add_salary_slip,
     get_salary_slips_by_user,
     update_user_permissions,
-    update_user_app_password
+    update_user_app_password,
+    update_user_department,
+    update_user
 )
 import json
 from docx import Document
 import re
 import base64
 import requests
+
+# Define departments and permissions (aligned with Dashboard.jsx)
+DEPARTMENTS = {
+    'STORE': 'store',
+    'MARKETING': 'marketing',
+    'HUMANRESOURCE': 'humanresource',
+    'Accounts': 'accounts'
+}
+
+# Define default permissions for each role (aligned with Dashboard.jsx)
+ROLE_PERMISSIONS = {
+    'super-admin': {
+        'reports': True,
+        'settings_access': True,
+        'user_management': True,
+        'can_create_admin': True,
+        'inventory': True,
+        'single_processing': True,
+        'batch_processing': True,
+        'marketing_campaigns': True,
+        'expense_management': True
+    },
+    'admin': {
+        'reports': True,
+        'settings_access': True,
+        'user_management': True,
+        'can_create_admin': False
+    },
+    'user': {
+        'reports': False  # Will be overridden by department permissions
+    }
+}
+
+# Department-based default permissions (aligned with Dashboard.jsx)
+DEPARTMENT_DEFAULT_PERMISSIONS = {
+    DEPARTMENTS['STORE']: {
+        'inventory': True
+    },
+    DEPARTMENTS['MARKETING']: {
+        'marketing_campaigns': True
+    },
+    DEPARTMENTS['HUMANRESOURCE']: {
+        'single_processing': True,
+        'batch_processing': True,
+    },
+    DEPARTMENTS["Accounts"]: {}
+}
 
 # Configure logging first
 logging.basicConfig(
@@ -230,17 +278,6 @@ def get_drive_service():
         app.logger.error("Error initializing Google Drive service: {}".format(e))
         raise
 
-def check_user_role(required_role):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            user_role = g.get('user_role')
-            if user_role != required_role:
-                return jsonify({"error": "Access denied"}), 403
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
 @app.before_request
 def load_user():
     g.user_role = request.headers.get('X-User-Role', 'user')
@@ -254,11 +291,21 @@ def add_user():
         role = data.get('role')
         password = generate_password_hash(data.get('password'))
         app_password = data.get('appPassword') or data.get('app_password')
+        department = data.get('department')
+        permissions = data.get('permissions', {})
 
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        user_id = firebase_add_user(username, email, role, password, app_password=app_password)
+        user_id = firebase_add_user(
+            username=username, 
+            email=email, 
+            role=role, 
+            password_hash=password, 
+            app_password=app_password,
+            department=department,
+            permissions=permissions
+        )
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
 
     except Exception as e:
@@ -291,30 +338,8 @@ def update_role():
         if not all([user_id, new_role]):
             return jsonify({"error": "User ID and role are required"}), 400
 
-        # Define default permissions for each role
-        role_permissions = {
-            'super-admin': {
-                'single_processing': True,
-                'batch_processing': True,
-                'user_management': True,
-                'settings_access': True,
-                'can_create_admin': True
-            },
-            'admin': {
-                'single_processing': True,
-                'batch_processing': True,
-                'user_management': True,
-                'settings_access': True,
-                'can_create_admin': False
-            },
-            'user': {
-                'single_processing': True,
-                'batch_processing': False,
-                'user_management': False,
-                'settings_access': False,
-                'can_create_admin': False
-            }
-        }
+        # Use the role permissions defined at the top of the file
+        role_permissions = ROLE_PERMISSIONS
 
         # Update role
         firebase_update_role(user_id, new_role)
@@ -322,7 +347,39 @@ def update_role():
         # Update permissions based on role
         update_user_permissions(user_id, role_permissions.get(new_role, role_permissions['user']))
         
+        # Clear department for super-admin
+        if new_role == 'super-admin':
+            update_user_department(user_id, None)
+        
         return jsonify({"message": "Role and permissions updated successfully"}), 200
+
+    except Exception as e:
+        logger.error("Error updating role: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/update_department", methods=["POST"])
+def update_department():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        new_department = data.get('department')
+        current_role = 
+
+        if not all([user_id, new_department]):
+            return jsonify({"error": "User ID and role are required"}), 400
+
+        # Use the role permissions defined at the top of the file
+        department_permissions = DEPARTMENT_DEFAULT_PERMISSIONS
+
+        # Update role
+        firebase_update_role(user_id, new_department)
+        
+        # Update permissions based on role
+        update_user_department(user_id, department_permissions.get(new_department, department_permissions['depaartment']))
+
+
+        
+        return jsonify({"message": "Department updated successfully"}), 200
 
     except Exception as e:
         logger.error("Error updating role: {}".format(e))
@@ -987,47 +1044,6 @@ def generate_report():
         # Optional cleanup or logging here if needed
         pass
 
-@app.route("/api/refresh-token", methods=["POST"])
-def refresh_token():
-    """Handle token refresh request from frontend"""
-    try:
-        data = request.json
-        user_email = data.get('user_email')
-        google_token = data.get('google_token')
-        
-        if not user_email or not google_token:
-            return jsonify({"error": "user_email and google_token are required"}), 400
-        
-        # Verify the Google token
-        from Utils.email_utils import verify_token
-        decoded_token = verify_token(google_token)
-        
-        if decoded_token == "TOKEN_EXPIRED":
-            return jsonify({"error": "Provided token is also expired"}), 401
-        
-        if not decoded_token:
-            return jsonify({"error": "Invalid Google token"}), 401
-        
-        # Get user from Firebase
-        user = get_user_by_email(user_email)
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Update the token in Firebase
-        success = update_user_token(user['id'], google_token)
-        if not success:
-            return jsonify({"error": "Failed to update token in database"}), 500
-        
-        return jsonify({
-            "success": True,
-            "message": "Token refreshed successfully",
-            "user_email": user_email
-        }), 200
-        
-    except Exception as e:
-        logger.error("Error refreshing token: {}".format(e))
-        return jsonify({"error": str(e)}), 500
-
 @app.route("/api/retry-reports", methods=["POST"])
 def retry_reports():
     """Retry sending reports after token refresh"""
@@ -1270,6 +1286,40 @@ def update_app_password():
         return jsonify({"message": "App password updated successfully"}), 200
     except Exception as e:
         logger.error("Error updating app password: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/update_user", methods=["POST"])
+def update_user_endpoint():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        department = data.get('department')
+        permissions = data.get('permissions')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # If department is provided, update with default permissions for that department
+        if department and department in DEPARTMENT_DEFAULT_PERMISSIONS:
+            permissions = DEPARTMENT_DEFAULT_PERMISSIONS[department]
+        
+        # Prepare update data
+        update_data = {}
+        if department is not None:
+            update_data['department'] = department
+        if permissions is not None:
+            update_data['permissions'] = permissions
+            
+        if not update_data:
+            return jsonify({"error": "No valid update data provided"}), 400
+        
+        # Update user
+        update_user(user_id, **update_data)
+        
+        return jsonify({"message": "User updated successfully"}), 200
+        
+    except Exception as e:
+        logger.error("Error updating user: {}".format(e))
         return jsonify({"error": str(e)}), 500
 
 def validate_sheet_id(sheet_id):

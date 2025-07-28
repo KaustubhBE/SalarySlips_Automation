@@ -7,7 +7,7 @@ const HumanResource = () => {
 
   return (
     <div className="splash-page">
-      <h1>HR Department</h1>
+      <h1>Human Resource Department</h1>
       <h3>Please choose a processing option:</h3>
       <div className="navigation-links">
         <span 
