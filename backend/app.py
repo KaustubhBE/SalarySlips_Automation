@@ -1283,17 +1283,23 @@ def generate_report():
             return jsonify({"error": "User not authenticated"}), 401
         
         # Get form data
-
         send_whatsapp = request.form.get('send_whatsapp') == 'true'
         send_email = request.form.get('send_email') == 'true'
 
-        
+        sheet_id = get_sheet_id(user_id, date)
+
+        try:
+            spreadsheet = client.open_by_key(sheet_id)
+            all_worksheets = spreadsheet.worksheets()
+
+            sheet_names = [ws.title for ws in all_worksheets]
+        except gspread.exceptions.SpreadsheetNotFound:
+            print(f"Spreadsheet with ID '{sheet_id}' not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")        
 
         if not sheet_id:
             return jsonify({"error": "Google Sheet ID is required"}), 400
-
-        if not sheet_name:
-            return jsonify({"error": "Sheet name is required"}), 400
 
         # Validate sheet ID format
         if not validate_sheet_id(sheet_id):
