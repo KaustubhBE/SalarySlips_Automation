@@ -1303,15 +1303,15 @@ def reactor_report():
 
         # Fetch sheet IDs from Firebase based on date range
         try:
-            reactor_reports_ref = db.collection('reactor_report')
-            sheet_ids = {}
+            reactor_reports_sheet_id = os.getenv('REACTOR_REPORT')
+            sheet_ids = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
             
             # Convert dates to datetime objects for comparison
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
             end_dt = datetime.strptime(end_date, '%Y-%m-%d')
             
             # Get all documents from reactor_report collection
-            docs = reactor_reports_ref.stream()
+            docs = sheet_ids.stream()
             
             for doc in docs:
                 doc_data = doc.to_dict()
@@ -1325,17 +1325,23 @@ def reactor_report():
                             
                             # Check if date is within range
                             if start_dt <= doc_date <= end_dt:
-                                sheet_ids[date_str] = sheet_id
+                                sheet_id[date_str] = sheet_id
                     except Exception as e:
                         logger.warning(f"Error parsing date {date_str}: {e}")
                         continue
             
-            if not sheet_ids:
+            if not sheet_id:
                 return jsonify({"error": "No sheet IDs found for the specified date range"}), 400
                 
         except Exception as e:
             logger.error(f"Error fetching sheet IDs from Firebase: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Firebase"}), 500
+        
+         # Fetch data
+        try:
+            recipient_sheet = fetch_google_sheet_data(sheet_id, 'Recipient')
+        except Exception as e:
+            return jsonify({"error": "Error fetching data: {}".format(e)}), 500
 
         # Create temporary directory for processing
         temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
@@ -1351,7 +1357,7 @@ def reactor_report():
         generated_files = []
         all_sheet_data = {}
         
-        for date_str, sheet_id in sheet_ids.items():
+        for date_str, sheet_id in reactor_sheets.items():
             try:
                 # Validate sheet ID format
                 if not validate_sheet_id(sheet_id):

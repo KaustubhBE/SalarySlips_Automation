@@ -492,3 +492,4 @@ def process_reports(file_path_template):
     except Exception as e:
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
+    

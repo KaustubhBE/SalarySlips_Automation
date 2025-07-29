@@ -4,8 +4,6 @@ import { getApiUrl } from './config';
 
 const ReactorReports = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
-  const [previewItems, setPreviewItems] = useState([]);
   const [sendEmail, setSendEmail] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -87,31 +85,6 @@ const ReactorReports = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!dailySheetID) {
-      setSheetError('Daily Sheet ID is required');
-      return;
-    }
-
-    if (!validateSheetId(dailySheetID)) {
-      setSheetError('Invalid Daily Sheet ID format');
-      return;
-    }
-
-    if (!sheetId) {
-      setSheetError('Google Sheet ID is required');
-      return;
-    }
-
-    if (!validateSheetId(sheetId)) {
-      setSheetError('Invalid Google Sheet ID format');
-      return;
-    }
-
-    if (!sheetName) {
-      alert('Please enter the sheet name');
-      return;
-    }
-
     if (!startDate || !endDate) {
       alert('Please select both start and end dates');
       return;
@@ -122,11 +95,6 @@ const ReactorReports = () => {
       return;
     }
 
-    const messageItems = previewItems.filter(item => item.file_type === 'message');
-    if (messageItems.length === 0) {
-      alert('Please add at least one message template');
-      return;
-    }
 
     setIsLoading(true);
 
@@ -157,14 +125,7 @@ const ReactorReports = () => {
       const result = await response.json();
       alert(result.message || 'Reports generated and sent successfully!');
 
-      setTemplateFiles([]);
-      setAttachmentFiles([]);
-      setDailySheetID('');
-      setSheetId('');
-      setSheetName('');
       setSendEmail(false);
-      setMailSubject('');
-      setPreviewItems([]);
       const today = new Date().toISOString().split('T')[0];
       setStartDate(today);
       setEndDate(today);
@@ -231,7 +192,7 @@ const ReactorReports = () => {
       <button
         className="submit-button"
         onClick={handleSubmit}
-        disabled={previewItems.filter(item => item.file_type === 'message').length === 0 || !sheetId || !!sheetError || isLoading || !sendEmail}
+        disabled={ isLoading || !sendEmail}
       >
         {isLoading ? 'Generating Reports...' : 'Generate Reports'}
       </button>
