@@ -1340,6 +1340,7 @@ def reactor_report():
          # Fetch data
         try:
             recipient_sheet = fetch_google_sheet_data(sheet_id, 'Recipient')
+            
         except Exception as e:
             return jsonify({"error": "Error fetching data: {}".format(e)}), 500
 
@@ -1490,19 +1491,13 @@ def reactor_report():
                 </html>
                 """
                 
-                success = send_email_smtp(
+                success = send_email_smtp(    
                     recipient_email=','.join(recipient_emails),
                     subject=email_subject,
                     body=email_body,
                     attachment_paths=[pdf_path],
                     user_email=user_id
                 )
-                
-                if success == "TOKEN_EXPIRED":
-                    return jsonify({
-                        "error": "TOKEN_EXPIRED",
-                        "message": "Email token expired, but report was generated successfully"
-                    }), 401
                     
                 if not success:
                     logger.error("Failed to send email notification")
