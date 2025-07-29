@@ -1293,7 +1293,6 @@ def reactor_report():
             return jsonify({"error": "User not authenticated"}), 401
         
         # Get form data
-        # send_whatsapp = request.form.get('send_whatsapp') == 'true'
         send_email = request.form.get('send_email') == 'true'
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
@@ -1301,236 +1300,38 @@ def reactor_report():
         if not start_date or not end_date:
             return jsonify({"error": "Start date and end date are required"}), 400
 
-        # Fetch sheet IDs from Firebase based on date range
+        # Fetch sheet IDs from Google Sheet (mapping sheet)
         try:
             reactor_reports_sheet_id = os.getenv('REACTOR_REPORT')
-            sheet_ids = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
-            
-            # Convert dates to datetime objects for comparison
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            
-            # Get all documents from reactor_report collection
-            docs = sheet_ids.stream()
-            
-            for doc in docs:
-                doc_data = doc.to_dict()
-                for date_str, sheet_id in doc_data.items():
-                    try:
-                        # Parse the date string (assuming format like "28/07/2025")
-                        date_parts = date_str.split('/')
-                        if len(date_parts) == 3:
-                            day, month, year = date_parts
-                            doc_date = datetime(int(year), int(month), int(day))
-                            
-                            # Check if date is within range
-                            if start_dt <= doc_date <= end_dt:
-                                sheet_id[date_str] = sheet_id
-                    except Exception as e:
-                        logger.warning(f"Error parsing date {date_str}: {e}")
-                        continue
-            
-            if not sheet_id:
-                return jsonify({"error": "No sheet IDs found for the specified date range"}), 400
-                
+            sheet_id_mapping_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
+            sheet_recipients_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Recipients')
         except Exception as e:
-            logger.error(f"Error fetching sheet IDs from Firebase: {e}")
-            return jsonify({"error": "Failed to fetch sheet IDs from Firebase"}), 500
+            logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
+            return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
         
-         # Fetch data
-        try:
-            recipient_sheet = fetch_google_sheet_data(sheet_id, 'Recipient')
-            
-        except Exception as e:
-            return jsonify({"error": "Error fetching data: {}".format(e)}), 500
-
         # Create temporary directory for processing
         temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
         os.makedirs(temp_dir, exist_ok=True)
-
-        # Path to the reactor report template
         template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
-        
         if not os.path.exists(template_path):
             return jsonify({"error": "Reactor report template not found"}), 500
-
-        # Process each sheet ID
-        generated_files = []
-        all_sheet_data = {}
         
-        for date_str, sheet_id in reactor_sheets.items():
-            try:
-                # Validate sheet ID format
-                if not validate_sheet_id(sheet_id):
-                    logger.warning(f"Invalid sheet ID format for date {date_str}: {sheet_id}")
-                    continue
-
-                # Get all worksheets in the spreadsheet
-                try:
-                    spreadsheet = client.open_by_key(sheet_id)
-                    all_worksheets = spreadsheet.worksheets()
-                    
-                    sheet_data = {}
-                    for worksheet in all_worksheets:
-                        sheet_name = worksheet.title
-                        # Get all data from the worksheet
-                        all_values = worksheet.get_all_values()
-                        if all_values:
-                            sheet_data[sheet_name] = all_values
-                    
-                    all_sheet_data[date_str] = {
-                        'sheet_id': sheet_id,
-                        'sheets': sheet_data
-                    }
-                    
-                except gspread.exceptions.SpreadsheetNotFound:
-                    logger.warning(f"Spreadsheet with ID '{sheet_id}' not found for date {date_str}")
-                    continue
-                except Exception as e:
-                    logger.error(f"Error accessing spreadsheet {sheet_id} for date {date_str}: {e}")
-                    continue
-
-            except Exception as e:
-                logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
-                continue
-
-        if not all_sheet_data:
-            return jsonify({"error": "No valid data found in any sheets for the specified date range"}), 400
-
-        # Create the report document
-        try:
-            # Load the template
-            doc = Document(template_path)
-            
-            # Add sheet data to the document
-            for date_str, data in all_sheet_data.items():
-                # Add date as a heading
-                doc.add_heading(f"Date: {date_str}", level=1)
-                
-                for sheet_name, sheet_values in data['sheets'].items():
-                    if sheet_values:
-                        # Add sheet name as subheading
-                        doc.add_heading(f"Sheet: {sheet_name}", level=2)
-                        
-                        # Create table from sheet data
-                        if len(sheet_values) > 0:
-                            # Determine table dimensions
-                            max_cols = max(len(row) for row in sheet_values)
-                            table = doc.add_table(rows=len(sheet_values), cols=max_cols)
-                            table.style = 'Table Grid'
-                            
-                            # Populate table
-                            for i, row in enumerate(sheet_values):
-                                for j, cell_value in enumerate(row):
-                                    if j < max_cols:
-                                        table.cell(i, j).text = str(cell_value)
-                            
-                            # Add some spacing
-                            doc.add_paragraph()
-                
-                # Add page break between dates
-                doc.add_page_break()
-
-            # Save the document
-            output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
-            output_path = os.path.join(temp_dir, output_filename)
-            doc.save(output_path)
-            generated_files.append(output_path)
-
-        except Exception as e:
-            logger.error(f"Error creating report document: {e}")
-            return jsonify({"error": "Failed to create report document"}), 500
-
-        # Convert to PDF
-        try:
-            pdf_filename = f"reactor_report_{start_date}_to_{end_date}.pdf"
-            pdf_path = os.path.join(temp_dir, pdf_filename)
-            
-            # Convert docx to PDF using python-docx2pdf or similar
-            # For now, we'll use a simple approach - you may need to install additional libraries
-            import subprocess
-            try:
-                # Try using LibreOffice for conversion (if available)
-                subprocess.run([
-                    'libreoffice', '--headless', '--convert-to', 'pdf', 
-                    output_path, '--outdir', temp_dir
-                ], check=True)
-                
-                # Rename the converted file
-                converted_pdf = os.path.join(temp_dir, f"reactor_report_{start_date}_to_{end_date}.pdf")
-                if os.path.exists(converted_pdf):
-                    os.rename(converted_pdf, pdf_path)
-                
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                # Fallback: keep the docx file if PDF conversion fails
-                logger.warning("PDF conversion failed, using DOCX file")
-                pdf_path = output_path
-
-        except Exception as e:
-            logger.error(f"Error converting to PDF: {e}")
-            pdf_path = output_path
-
-        # Send notifications
-        if send_email:
-            try:
-                # Get recipient emails from user's settings or use a default
-                recipient_emails = get_user_emails(user_id)  # You'll need to implement this function
-                if not recipient_emails:
-                    recipient_emails = [user_id]  # Send to user's email if no recipients configured
-                
-                email_subject = "Reactor Report - Daily Operations Summary"
-                email_body = f"""
-                <html>
-                <body>
-                <h2>Reactor Report</h2>
-                <p>Please find attached the reactor report for the period from {start_date} to {end_date}.</p>
-                <p>This report contains snapshots of all reactor operations data for the specified period.</p>
-                <br>
-                <p>Best regards,<br>Reactor Automation System</p>
-                </body>
-                </html>
-                """
-                
-                success = send_email_smtp(    
-                    recipient_email=','.join(recipient_emails),
-                    subject=email_subject,
-                    body=email_body,
-                    attachment_paths=[pdf_path],
-                    user_email=user_id
-                )
-                    
-                if not success:
-                    logger.error("Failed to send email notification")
-                    
-            except Exception as e:
-                logger.error(f"Error sending email notification: {e}")
-
-        # if send_whatsapp:
-        #     try:
-        #         # Get recipient phone numbers from user's settings
-        #         recipient_phones = get_user_phones(user_id)  # You'll need to implement this function
-        #         
-        #         if recipient_phones:
-        #             message_content = f"Reactor Report for {start_date} to {end_date} has been generated and sent via email."
-        #             
-        #             for phone in recipient_phones:
-        #                 try:
-        #                     success = send_whatsapp_message(
-        #                         contact_name="Reactor Report Recipient",
-        #                         message=message_content,
-        #                         file_paths=[pdf_path],
-        #                         whatsapp_number=phone,
-        #                         process_name="reactor_report"
-        #                     )
-        #                     
-        #                     if not success:
-        #                         logger.error(f"Failed to send WhatsApp message to {phone}")
-        #                         
-        #                 except Exception as e:
-        #                     logger.error(f"Error sending WhatsApp message to {phone}: {e}")
-        #                     
-        #     except Exception as e:
-        #         logger.error(f"Error sending WhatsApp notification: {e}")
+        gspread_client = gspread.authorize(creds)
+        
+        # Call the new utility function
+        result = process_reactor_reports(
+            sheet_id_mapping_data=sheet_id_mapping_data,
+            sheet_recipients_data=sheet_recipients_data,
+            start_date=start_date,
+            end_date=end_date,
+            user_id=user_id,
+            send_email=send_email,
+            template_path=template_path,
+            output_dir=temp_dir,
+            gspread_client=gspread_client,
+            logger=logger,
+            send_email_smtp=send_email_smtp
+        )
 
         # Clean up temporary files
         try:
@@ -1542,7 +1343,6 @@ def reactor_report():
                             os.remove(file_path)
                     except Exception as e:
                         logger.error(f"Error removing temporary file {file}: {e}")
-                
                 try:
                     os.rmdir(temp_dir)
                 except Exception as e:
@@ -1550,22 +1350,14 @@ def reactor_report():
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 
-        return jsonify({
-            "message": "Reactor reports generated and sent successfully",
-            "generated_files": len(generated_files),
-            "date_range": f"{start_date} to {end_date}",
-            "sheets_processed": len(all_sheet_data),
-            "notifications_sent": {
-                "email": send_email,
-                # "whatsapp": send_whatsapp
-            }
-        }), 200
+        if 'error' in result:
+            return jsonify({"error": result['error']}), 400
+        return jsonify(result), 200
 
     except Exception as e:
         logger.error(f"Error generating reactor reports: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
-        # Optional cleanup or logging here if needed
         pass
 
 @app.route("/api/update_app_password", methods=["POST"])

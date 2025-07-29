@@ -12,6 +12,9 @@ import subprocess
 import platform
 import pythoncom
 from comtypes.client import CreateObject
+from datetime import datetime
+import os
+from docx import Document
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -384,7 +387,7 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                 upload_success = upload_to_google_drive(output_pdf, folder_id, employee_name, month, year)
             else:
                 logging.error("No Google Drive ID found for employee: {}".format(employee_name))
-                logging.error("Available keys in official_details: {}".format(list(official_details.keys()) if isinstance(official_details, dict) else 'Not a dictionary'))
+                logging.error("Available keys in official_details: {}".format(list(official_details.keys())))
             
         # Send email if enabled
         if send_email:
@@ -492,4 +495,154 @@ def process_reports(file_path_template):
     except Exception as e:
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
-    
+
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
+
+    # Parse date range
+    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+    # Build date->sheet_id mapping from sheet_id_mapping_data
+    date_to_sheetid = {}
+    for row in sheet_id_mapping_data[1:]:  # skip header
+        if len(row) >= 2:
+            date_str, sheet_id = row[0], row[1]
+            try:
+                # Parse date in format 'DD/MM/YY' or 'DD/MM/YYYY'
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    day, month, year = parts
+                    if len(year) == 2:
+                        year = '20' + year  # crude Y2K fix
+                    dt = datetime(int(year), int(month), int(day))
+                    if start_dt <= dt <= end_dt:
+                        date_to_sheetid[date_str] = sheet_id
+            except Exception as e:
+                logger.warning(f"Error parsing date {date_str}: {e}")
+                continue
+
+    if not date_to_sheetid:
+        return {"error": "No sheet IDs found for the specified date range"}
+
+    # For each date, fetch all worksheet data
+    all_sheet_data = {}
+    for date_str, sheet_id in date_to_sheetid.items():
+        try:
+            spreadsheet = gspread_client.open_by_key(sheet_id)
+            all_worksheets = spreadsheet.worksheets()
+            sheet_data = {}
+            for worksheet in all_worksheets:
+                sheet_name = worksheet.title
+                all_values = worksheet.get_all_values()
+                if all_values:
+                    sheet_data[sheet_name] = all_values
+            all_sheet_data[date_str] = {
+                'sheet_id': sheet_id,
+                'sheets': sheet_data
+            }
+        except Exception as e:
+            logger.error(f"Error accessing spreadsheet {sheet_id} for date {date_str}: {e}")
+            continue
+
+    if not all_sheet_data:
+        return {"error": "No valid data found in any sheets for the specified date range"}
+
+    # Create the report document
+    try:
+        doc = Document(template_path)
+        for date_str, data in all_sheet_data.items():
+            doc.add_heading(f"Date: {date_str}", level=1)
+            for sheet_name, sheet_values in data['sheets'].items():
+                if sheet_values:
+                    doc.add_heading(f"Sheet: {sheet_name}", level=2)
+                    if len(sheet_values) > 0:
+                        max_cols = max(len(row) for row in sheet_values)
+                        table = doc.add_table(rows=len(sheet_values), cols=max_cols)
+                        table.style = 'Table Grid'
+                        for i, row in enumerate(sheet_values):
+                            for j, cell_value in enumerate(row):
+                                if j < max_cols:
+                                    table.cell(i, j).text = str(cell_value)
+                        doc.add_paragraph()
+            doc.add_page_break()
+        output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
+        output_path = os.path.join(output_dir, output_filename)
+        doc.save(output_path)
+    except Exception as e:
+        logger.error(f"Error creating report document: {e}")
+        return {"error": "Failed to create report document"}
+
+    # Convert to PDF (try, fallback to docx)
+    pdf_filename = f"reactor_report_{start_date}_to_{end_date}.pdf"
+    pdf_path = os.path.join(output_dir, pdf_filename)
+    try:
+        import subprocess
+        subprocess.run([
+            'libreoffice', '--headless', '--convert-to', 'pdf', 
+            output_path, '--outdir', output_dir
+        ], check=True)
+        converted_pdf = os.path.join(output_dir, pdf_filename)
+        if os.path.exists(converted_pdf):
+            os.rename(converted_pdf, pdf_path)
+        else:
+            pdf_path = output_path
+    except Exception as e:
+        logger.warning("PDF conversion failed, using DOCX file")
+        pdf_path = output_path
+
+    # Send notifications using Recipients sheet
+    if send_email:
+        try:
+            # Parse recipients from sheet_recipients_data
+            headers = [h.strip() for h in sheet_recipients_data[0]]
+            to_idx = headers.index('Email ID - To') if 'Email ID - To' in headers else None
+            cc_idx = headers.index('Email ID - CC') if 'Email ID - CC' in headers else None
+            bcc_idx = headers.index('Email ID - BCC') if 'Email ID - BCC' in headers else None
+            recipients_to = []
+            recipients_cc = []
+            recipients_bcc = []
+            for row in sheet_recipients_data[1:]:
+                if to_idx is not None and len(row) > to_idx and row[to_idx].strip():
+                    recipients_to.append(row[to_idx].strip())
+                if cc_idx is not None and len(row) > cc_idx and row[cc_idx].strip():
+                    recipients_cc.append(row[cc_idx].strip())
+                if bcc_idx is not None and len(row) > bcc_idx and row[bcc_idx].strip():
+                    recipients_bcc.append(row[bcc_idx].strip())
+            if not recipients_to:
+                return {"error": "No valid recipient emails found in Recipients sheet"}
+            email_subject = "Reactor Report - Daily Operations Summary"
+            email_body = f"""
+                <html>
+                <body>
+                <h2>Reactor Report</h2>
+                <p>Please find attached the reactor report for the period from {start_date} to {end_date}.</p>
+                <p>This report contains snapshots of all reactor operations data for the specified period.</p>
+                <br>
+                <p>Best regards,<br>Reactor Automation System</p>
+                </body>
+                </html>
+                """
+            success = send_email_smtp(
+                recipient_email=','.join(recipients_to),
+                subject=email_subject,
+                body=email_body,
+                attachment_paths=[pdf_path],
+                user_email=user_id,
+                cc=','.join(recipients_cc) if recipients_cc else None,
+                bcc=','.join(recipients_bcc) if recipients_bcc else None
+            )
+            if not success:
+                logger.error("Failed to send email notification")
+        except Exception as e:
+            logger.error(f"Error sending email notification: {e}")
+
+    return {
+        "message": "Reactor reports generated and sent successfully",
+        "generated_files": 1,
+        "date_range": f"{start_date} to {end_date}",
+        "sheets_processed": len(all_sheet_data),
+        "notifications_sent": {
+            "email": send_email
+        },
+        "output_file": pdf_path
+    } 
