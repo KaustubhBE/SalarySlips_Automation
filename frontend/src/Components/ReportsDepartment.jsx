@@ -11,7 +11,7 @@ const ReportsDepartment = () => {
       <h3>Please choose an option:</h3>
       <div className="navigation-links">
         <span 
-          onClick={() => navigate('/daily-reports')} 
+          onClick={() => navigate('/reactor-reports')} 
           className="nav-link"
           role="button"
           tabIndex={0}

@@ -87,6 +87,124 @@ const SUPER_ADMIN_PERMISSIONS = Object.values(ALL_PERMISSIONS).reduce((acc, cate
   return acc;
 }, {});
 
+// Separate PermissionsGrid component
+const PermissionsGrid = ({ 
+  permissions, 
+  onPermissionChange, 
+  isEditing = false, 
+  targetUserRole = 'user',
+  currentUserRole = 'super-admin' 
+}) => {
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  const toggleCategory = (categoryName) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryName]: !prev[categoryName]
+    }));
+  };
+
+  const renderNestedPermissions = (nestedPerms, permissionsToShow, categoryName) => {
+    const canEditThisNestedPermission = isEditing && (
+      currentUserRole === 'super-admin' || 
+      (currentUserRole === 'admin' && targetUserRole === 'user')
+    );
+    
+    return Object.entries(nestedPerms).map(([permKey, permValue]) => {
+      return (
+        <div key={permValue} className="permission-item nested-permission">
+          <label title={PERMISSION_DESCRIPTIONS[permValue]}>
+            <input
+              type="checkbox"
+              checked={permissionsToShow[permValue] || false}
+              onChange={() => onPermissionChange(permValue)}
+              disabled={!canEditThisNestedPermission}
+            />
+            {permKey.replace('_', ' ')}
+          </label>
+        </div>
+      );
+    });
+  };
+
+  // Determine which permissions to show based on current user role and target user role
+  let availablePermissions = {};
+  
+  if (currentUserRole === 'super-admin') {
+    // Super admin can edit all permissions for any user role
+    availablePermissions = ALL_PERMISSIONS;
+  } else if (currentUserRole === 'admin') {
+    // Admin can edit user permissions (but not admin permissions)
+    if (targetUserRole === 'user') {
+      availablePermissions = {
+        GENERAL: ALL_PERMISSIONS.GENERAL,
+        STORE: ALL_PERMISSIONS.STORE,
+        HR_DEPARTMENT: ALL_PERMISSIONS.HR_DEPARTMENT,
+        MARKETING: ALL_PERMISSIONS.MARKETING,
+        ACCOUNTS: ALL_PERMISSIONS.ACCOUNTS
+      };
+    }
+    // If admin tries to create admin/super-admin, no permissions shown (handled by role restrictions)
+  }
+
+  return (
+    <div className="permissions-categories">
+      {Object.entries(availablePermissions).map(([categoryName, categoryPerms]) => (
+        <div key={categoryName} className="permission-category">
+          <h4 className="category-title">{categoryName.replace('_', ' ')}</h4>
+          <div className="permissions-grid">
+            {Object.entries(categoryPerms).map(([permKey, permValue]) => {
+              // Handle nested permissions (like SALARY_PROCESSING)
+              if (typeof permValue === 'object') {
+                return (
+                  <div key={permKey} className="permission-group">
+                    <div className="permission-item">
+                      <label 
+                        className="expandable-label"
+                        onClick={() => toggleCategory(`${categoryName}-${permKey}`)}
+                      >
+                        <span className="expand-icon">
+                          {expandedCategories[`${categoryName}-${permKey}`] ? '▼' : '▶'}
+                        </span>
+                        {permKey.replace('_', ' ')}
+                      </label>
+                    </div>
+                    {expandedCategories[`${categoryName}-${permKey}`] && (
+                      <div className="nested-permissions">
+                        {renderNestedPermissions(permValue, permissions, categoryName)}
+                      </div>
+                    )}
+                  </div>
+                );
+              } else {
+                // Super admin can edit all permissions, admin can edit user permissions
+                const canEditThisPermission = isEditing && (
+                  currentUserRole === 'super-admin' || 
+                  (currentUserRole === 'admin' && targetUserRole === 'user')
+                );
+                
+                return (
+                  <div key={permValue} className="permission-item">
+                    <label title={PERMISSION_DESCRIPTIONS[permValue]}>
+                      <input
+                        type="checkbox"
+                        checked={permissions[permValue] || false}
+                        onChange={() => onPermissionChange(permValue)}
+                        disabled={!canEditThisPermission}
+                      />
+                      {permKey.replace('_', ' ')}
+                    </label>
+                  </div>
+                );
+              }
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 function Dashboard() {
   const [users, setUsers] = useState([]);
   const [username, setUsername] = useState('');
@@ -103,7 +221,6 @@ function Dashboard() {
   const [editingAppPassword, setEditingAppPassword] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState({});
 
   useEffect(() => {
     fetchUsers();
@@ -410,120 +527,6 @@ function Dashboard() {
     return false;
   };
 
-  const toggleCategory = (categoryName) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryName]: !prev[categoryName]
-    }));
-  };
-
-  const renderNestedPermissions = (nestedPerms, permissionsToShow, isEditing, categoryName, targetUserRole = 'user') => {
-    const currentRole = getCurrentUserRole();
-    
-    return Object.entries(nestedPerms).map(([permKey, permValue]) => {
-      const canEditThisNestedPermission = isEditing && (
-        currentRole === 'super-admin' || 
-        (currentRole === 'admin' && targetUserRole === 'user')
-      );
-      
-      return (
-        <div key={permValue} className="permission-item nested-permission">
-          <label title={PERMISSION_DESCRIPTIONS[permValue]}>
-            <input
-              type="checkbox"
-              checked={permissionsToShow[permValue] || false}
-              onChange={() => isEditing ? handleEditPermissionChange(permValue) : handlePermissionChange(permValue)}
-              disabled={!canEditThisNestedPermission}
-            />
-            {permKey.replace('_', ' ')}
-          </label>
-        </div>
-      );
-    });
-  };
-
-  const renderPermissionsGrid = (userPermissions, isEditing , targetUserRole = 'user') => {
-    const currentRole = getCurrentUserRole();
-    const permissionsToShow = userPermissions || {};
-    
-    // Determine which permissions to show based on current user role and target user role
-    let availablePermissions = {};
-    
-    if (currentRole === 'super-admin') {
-      // Super admin can edit all permissions for any user role
-      availablePermissions = ALL_PERMISSIONS;
-    } else if (currentRole === 'admin') {
-      // Admin can edit user permissions (but not admin permissions)
-      if (targetUserRole === 'user') {
-        availablePermissions = {
-          GENERAL: ALL_PERMISSIONS.GENERAL,
-          STORE: ALL_PERMISSIONS.STORE,
-          HR_DEPARTMENT: ALL_PERMISSIONS.HR_DEPARTMENT,
-          MARKETING: ALL_PERMISSIONS.MARKETING,
-          ACCOUNTS: ALL_PERMISSIONS.ACCOUNTS
-        };
-      }
-      // If admin tries to create admin/super-admin, no permissions shown (handled by role restrictions)
-    }
-
-    return (
-      <div className="permissions-categories">
-        {Object.entries(availablePermissions).map(([categoryName, categoryPerms]) => (
-          <div key={categoryName} className="permission-category">
-            <h4 className="category-title">{categoryName.replace('_', ' ')}</h4>
-            <div className="permissions-grid">
-              {Object.entries(categoryPerms).map(([permKey, permValue]) => {
-                // Handle nested permissions (like SALARY_PROCESSING)
-                if (typeof permValue === 'object') {
-                  return (
-                    <div key={permKey} className="permission-group">
-                      <div className="permission-item">
-                        <label 
-                          className="expandable-label"
-                          onClick={() => toggleCategory(`${categoryName}-${permKey}`)}
-                        >
-                          <span className="expand-icon">
-                            {expandedCategories[`${categoryName}-${permKey}`] ? '▼' : '▶'}
-                          </span>
-                          {permKey.replace('_', ' ')}
-                        </label>
-                      </div>
-                      {expandedCategories[`${categoryName}-${permKey}`] && (
-                        <div className="nested-permissions">
-                          {renderNestedPermissions(permValue, permissionsToShow, isEditing, categoryName, targetUserRole)}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  // Super admin can edit all permissions, admin can edit user permissions
-                  const canEditThisPermission = isEditing && (
-                    currentRole === 'super-admin' || 
-                    (currentRole === 'admin' && targetUserRole === 'user')
-                  );
-                  
-                  return (
-                    <div key={permValue} className="permission-item">
-                      <label title={PERMISSION_DESCRIPTIONS[permValue]}>
-                        <input
-                          type="checkbox"
-                          checked={permissionsToShow[permValue] || false}
-                          onChange={() => isEditing ? handleEditPermissionChange(permValue) : handlePermissionChange(permValue)}
-                          disabled={!canEditThisPermission}
-                        />
-                        {permKey.replace('_', ' ')}
-                      </label>
-                    </div>
-                  );
-                }
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="dashboard-container">
       <h1>User Management</h1>
@@ -641,7 +644,13 @@ function Dashboard() {
         <div className="modal-overlay">
           <div className="modal-content permissions-modal">
             <h3>Edit Permissions</h3>
-            {renderPermissionsGrid(editingPermissions, true, users.find(u => u.id === editingUserId)?.role)}
+            <PermissionsGrid
+              permissions={editingPermissions}
+              onPermissionChange={handleEditPermissionChange}
+              isEditing={true}
+              targetUserRole={users.find(u => u.id === editingUserId)?.role}
+              currentUserRole={getCurrentUserRole()}
+            />
             <div className="modal-actions">
               <button
                 className="action-button edit-button"
@@ -756,7 +765,13 @@ function Dashboard() {
 
             <div className="form-group permissions-section">
               <label>Permissions:</label>
-              {renderPermissionsGrid(permissions, true, role)}
+              <PermissionsGrid
+                permissions={permissions}
+                onPermissionChange={handlePermissionChange}
+                isEditing={true}
+                targetUserRole={role}
+                currentUserRole={getCurrentUserRole()}
+              />
             </div>
             
             <button type="submit">Add User</button>
@@ -767,4 +782,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default Dashboard; 

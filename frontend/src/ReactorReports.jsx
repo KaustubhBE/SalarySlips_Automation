@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import './Reports.css';
 import { getApiUrl } from './config';
 
-const DailyReports = () => {
+const ReactorReports = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [previewItems, setPreviewItems] = useState([]);
@@ -133,15 +133,11 @@ const DailyReports = () => {
     try {
       const formData = new FormData();
 
-      formData.append('Daily_sheet_id', dailySheetID);
-      formData.append('sheet_id', sheetId);
-      formData.append('sheet_name', sheetName);
       formData.append('send_email', sendEmail);
-      formData.append('mail_subject', mailSubject);
       formData.append('start_date', startDate);
       formData.append('end_date', endDate);
 
-      const response = await fetch(getApiUrl('send-reports'), {
+      const response = await fetch(getApiUrl('reactor-reports'), {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -243,4 +239,4 @@ const DailyReports = () => {
   );
 };
 
-export default DailyReports;
+export default ReactorReports;

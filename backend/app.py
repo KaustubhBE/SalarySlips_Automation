@@ -11,7 +11,7 @@ from Utils.fetch_data import fetch_google_sheet_data
 from Utils.process_utils import *
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from Utils.config import CLIENT_SECRETS_FILE, drive
+from Utils.config import CLIENT_SECRETS_FILE, drive, creds
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
@@ -29,13 +29,24 @@ from Utils.firebase_utils import (
     update_user_permissions,
     update_user_app_password,
     update_user_department,
-    update_user
+    update_user,
+    db
 )
 import json
 from docx import Document
 import re
 import base64
 import requests
+from datetime import datetime
+import gspread
+
+# Initialize gspread client
+try:
+    
+    client = gspread.authorize(creds)
+except Exception as e:
+    logger.error(f"Error initializing gspread client: {e}")
+    client = None
 
 # Define departments and permissions (aligned with Dashboard.jsx)
 DEPARTMENTS = {
@@ -363,7 +374,6 @@ def update_department():
         data = request.json
         user_id = data.get('user_id')
         new_department = data.get('department')
-        current_role = 
 
         if not all([user_id, new_department]):
             return jsonify({"error": "User ID and role are required"}), 400
@@ -1274,8 +1284,8 @@ def retry_reports():
         logger.error("Error retrying reports: {}".format(e))
         return jsonify({"error": str(e)}), 500
     
-@app.route("/api/daily-reports", methods=["POST"])
-def generate_report():
+@app.route("/api/reactor-reports", methods=["POST"])
+def reactor_report():
     try:
         user_id = session.get('user', {}).get('email')
         if not user_id:
@@ -1283,257 +1293,275 @@ def generate_report():
             return jsonify({"error": "User not authenticated"}), 401
         
         # Get form data
-        send_whatsapp = request.form.get('send_whatsapp') == 'true'
+        # send_whatsapp = request.form.get('send_whatsapp') == 'true'
         send_email = request.form.get('send_email') == 'true'
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
 
-        sheet_id = get_sheet_id(user_id, date)
+        if not start_date or not end_date:
+            return jsonify({"error": "Start date and end date are required"}), 400
 
+        # Fetch sheet IDs from Firebase based on date range
         try:
-            spreadsheet = client.open_by_key(sheet_id)
-            all_worksheets = spreadsheet.worksheets()
-
-            sheet_names = [ws.title for ws in all_worksheets]
-        except gspread.exceptions.SpreadsheetNotFound:
-            print(f"Spreadsheet with ID '{sheet_id}' not found.")
-        except Exception as e:
-            print(f"An error occurred: {e}")        
-
-        if not sheet_id:
-            return jsonify({"error": "Google Sheet ID is required"}), 400
-
-        # Validate sheet ID format
-        if not validate_sheet_id(sheet_id):
-            return jsonify({"error": "Invalid Google Sheet ID format"}), 400
-
-        # Create temporary directory for attachments
-        temp_dir = os.path.join(OUTPUT_DIR, "temp_attachments")
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # Save attachment files temporarily and store their paths
-        attachment_paths = prepare_file_paths(attachment_files, temp_dir=temp_dir, is_upload=True)
-
-        try:
-            # Fetch data from Google Sheet
-            sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
-            if not sheet_data or len(sheet_data) < 2:  # Check if we have headers and at least one row
-                return jsonify({"error": "No data found in the Google Sheet"}), 400
-        except Exception as e:
-            logger.error("Error fetching Google Sheet data: {}".format(e))
-            return jsonify({"error": "Failed to fetch data from Google Sheet"}), 500
-
-        # Process headers and data
-        headers = sheet_data[0]
-        data_rows = sheet_data[1:]
-
-        # Create output directory if it doesn't exist
-        output_dir = os.path.join(OUTPUT_DIR, "reports")
-        os.makedirs(output_dir, exist_ok=True)
-
-        # Process each template file
-        generated_files = []
-        for template_file in template_files:
-            if not template_file.filename.endswith('.docx'):
-                continue
-
-            # Save template temporarily
-            temp_template_path = os.path.join(output_dir, "temp_{}".format(template_file.filename))
-            template_file.save(temp_template_path)
-
-            # Read template content for messages
-            try:
-                doc = Document(temp_template_path)
-                template_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            except Exception as e:
-                logger.error("Error reading template content: {}".format(e))
-                return jsonify({"error": "Failed to read template content"}), 500
+            reactor_reports_ref = db.collection('reactor_report')
+            sheet_ids = {}
             
-            if send_whatsapp:
-                open_whatsapp()
-
-            # Process each row of data
-            for row in data_rows:
-                try:
-                    # Create data dictionary from headers and row
-                    data_dict = dict(zip(headers, row))
-
-                    recipient_name = data_dict.get('Name', 'unknown')
-                    
-                    # Generate report for this row
-                    output_filename = "report_{}.docx".format(recipient_name)
-                    output_path = os.path.join(output_dir, output_filename)
-                    
-                    # Process the template with data
-                    process_template(temp_template_path, output_path, data_dict)
-                    generated_files.append(output_path)
-
-                    # Process template content for messages
-                    message_content = template_content
-                    email_content = template_content
-
-                    # Replace placeholders in message content
-                    for key, value in data_dict.items():
-                        placeholder = "{{{}}}".format(key)
-                        message_content = message_content.replace(placeholder, str(value))
-                        email_content = email_content.replace(placeholder, str(value))
-                        mail_subject = mail_subject.replace(placeholder, str(value))
-
-                    # Get contact details from Google Sheet data
-                    recipient_email = data_dict.get('Email ID - To')
-                    cc_email = data_dict.get('Email ID - CC', '')
-                    bcc_email = data_dict.get('Email ID - BCC', '')
-                    
-                    # Helper to split emails by comma or newline and join as comma-separated string
-                    def clean_emails(email_str):
-                        if not email_str:
-                            return None
-                        emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
-                        return ','.join(emails) if emails else None
-                    
-                    recipient_email = clean_emails(recipient_email)
-                    cc_email = clean_emails(cc_email)
-                    bcc_email = clean_emails(bcc_email)
-                    
-                    country_code = data_dict.get('Country Code', '').strip()
-                    phone_no = data_dict.get('Contact No.', '').strip()
-                    recipient_phone = "{} {}".format(country_code, phone_no)
-
-                    if send_whatsapp:
-                        if not recipient_phone or not country_code or not phone_no:
-                            logger.warning("Skipping WhatsApp message for {}: Missing Country Code or Contact No.".format(recipient_name))
-                            continue
-
-                        try:
-                            # Send WhatsApp message with attachments
-                            success = send_whatsapp_message(
-                                contact_name=recipient_name,
-                                message=message_content,
-                                file_paths=attachment_paths,
-                                file_sequence = file_sequence,
-                                whatsapp_number=recipient_phone,
-                                process_name="report"
-                            )
+            # Convert dates to datetime objects for comparison
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            
+            # Get all documents from reactor_report collection
+            docs = reactor_reports_ref.stream()
+            
+            for doc in docs:
+                doc_data = doc.to_dict()
+                for date_str, sheet_id in doc_data.items():
+                    try:
+                        # Parse the date string (assuming format like "28/07/2025")
+                        date_parts = date_str.split('/')
+                        if len(date_parts) == 3:
+                            day, month, year = date_parts
+                            doc_date = datetime(int(year), int(month), int(day))
                             
-                            if not success:
-                                logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
+                            # Check if date is within range
+                            if start_dt <= doc_date <= end_dt:
+                                sheet_ids[date_str] = sheet_id
+                    except Exception as e:
+                        logger.warning(f"Error parsing date {date_str}: {e}")
+                        continue
+            
+            if not sheet_ids:
+                return jsonify({"error": "No sheet IDs found for the specified date range"}), 400
+                
+        except Exception as e:
+            logger.error(f"Error fetching sheet IDs from Firebase: {e}")
+            return jsonify({"error": "Failed to fetch sheet IDs from Firebase"}), 500
 
-                        except Exception as e:
-                            logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
+        # Create temporary directory for processing
+        temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
+        os.makedirs(temp_dir, exist_ok=True)
 
-                    # Handle notifications if enabled
-                    if send_email:
-                        if not recipient_email:
-                            logger.warning("No email found for recipient: {}".format(recipient_name))
-                            continue
-                        try:
-                            email_subject = mail_subject
-                            email_body = """
-                            <html>
-                            <body>
-                            {} 
-                            </body>
-                            </html>
-                            """.format(email_content.replace('\n', '<br>'))
-                            user_email = session.get('user', {}).get('email')
-                            success = send_email_smtp(
-                                recipient_email=recipient_email,
-                                subject=email_subject,
-                                body=email_body,
-                                attachment_paths=attachment_paths,
-                                user_email=user_email,
-                                cc=cc_email,
-                                bcc=bcc_email
-                            )
-                            if success == "TOKEN_EXPIRED":
-                                # Store the request data for retry
-                                request_data = {
-                                    'template_files_data': [],
-                                    'attachment_files_data': [],
-                                    'file_sequence': file_sequence,
-                                    'sheet_id': sheet_id,
-                                    'sheet_name': sheet_name,
-                                    'send_whatsapp': send_whatsapp,
-                                    'send_email': send_email,
-                                    'mail_subject': mail_subject
-                                }
-                                
-                                # Convert template files to base64 for storage
-                                for template_file in template_files:
-                                    if template_file.filename.endswith('.docx'):
-                                        template_file.seek(0)  # Reset file pointer
-                                        file_content = template_file.read()
-                                        request_data['template_files_data'].append({
-                                            'name': template_file.filename,
-                                            'content': base64.b64encode(file_content).decode('utf-8')
-                                        })
-                                
-                                # Convert attachment files to base64 for storage
-                                for attachment_path in attachment_paths:
-                                    if os.path.exists(attachment_path):
-                                        with open(attachment_path, 'rb') as f:
-                                            file_content = f.read()
-                                            request_data['attachment_files_data'].append({
-                                                'name': os.path.basename(attachment_path),
-                                                'content': base64.b64encode(file_content).decode('utf-8')
-                                            })
-                                
-                                return jsonify({
-                                    "error": "TOKEN_EXPIRED",
-                                    "request_data": request_data
-                                }), 401
-                            if not success:
-                                logger.error("Failed to send email to {}".format(recipient_email))
-                        except Exception as e:
-                            logger.error("Error sending email: {}".format(str(e)))
+        # Path to the reactor report template
+        template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
+        
+        if not os.path.exists(template_path):
+            return jsonify({"error": "Reactor report template not found"}), 500
 
-                except Exception as e:
-                    logger.error("Error processing row: {}".format(e))
+        # Process each sheet ID
+        generated_files = []
+        all_sheet_data = {}
+        
+        for date_str, sheet_id in sheet_ids.items():
+            try:
+                # Validate sheet ID format
+                if not validate_sheet_id(sheet_id):
+                    logger.warning(f"Invalid sheet ID format for date {date_str}: {sheet_id}")
                     continue
 
-            # Clean up temporary template
-            os.remove(temp_template_path)
+                # Get all worksheets in the spreadsheet
+                try:
+                    spreadsheet = client.open_by_key(sheet_id)
+                    all_worksheets = spreadsheet.worksheets()
+                    
+                    sheet_data = {}
+                    for worksheet in all_worksheets:
+                        sheet_name = worksheet.title
+                        # Get all data from the worksheet
+                        all_values = worksheet.get_all_values()
+                        if all_values:
+                            sheet_data[sheet_name] = all_values
+                    
+                    all_sheet_data[date_str] = {
+                        'sheet_id': sheet_id,
+                        'sheets': sheet_data
+                    }
+                    
+                except gspread.exceptions.SpreadsheetNotFound:
+                    logger.warning(f"Spreadsheet with ID '{sheet_id}' not found for date {date_str}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error accessing spreadsheet {sheet_id} for date {date_str}: {e}")
+                    continue
 
-        # Clean up temporary attachment files
-        for attachment_path in attachment_paths:
-            try:
-                if os.path.exists(attachment_path):
-                    os.remove(attachment_path)
             except Exception as e:
-                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
+                logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
+                continue
 
-        # Remove temporary directory and any remaining files
+        if not all_sheet_data:
+            return jsonify({"error": "No valid data found in any sheets for the specified date range"}), 400
+
+        # Create the report document
+        try:
+            # Load the template
+            doc = Document(template_path)
+            
+            # Add sheet data to the document
+            for date_str, data in all_sheet_data.items():
+                # Add date as a heading
+                doc.add_heading(f"Date: {date_str}", level=1)
+                
+                for sheet_name, sheet_values in data['sheets'].items():
+                    if sheet_values:
+                        # Add sheet name as subheading
+                        doc.add_heading(f"Sheet: {sheet_name}", level=2)
+                        
+                        # Create table from sheet data
+                        if len(sheet_values) > 0:
+                            # Determine table dimensions
+                            max_cols = max(len(row) for row in sheet_values)
+                            table = doc.add_table(rows=len(sheet_values), cols=max_cols)
+                            table.style = 'Table Grid'
+                            
+                            # Populate table
+                            for i, row in enumerate(sheet_values):
+                                for j, cell_value in enumerate(row):
+                                    if j < max_cols:
+                                        table.cell(i, j).text = str(cell_value)
+                            
+                            # Add some spacing
+                            doc.add_paragraph()
+                
+                # Add page break between dates
+                doc.add_page_break()
+
+            # Save the document
+            output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
+            output_path = os.path.join(temp_dir, output_filename)
+            doc.save(output_path)
+            generated_files.append(output_path)
+
+        except Exception as e:
+            logger.error(f"Error creating report document: {e}")
+            return jsonify({"error": "Failed to create report document"}), 500
+
+        # Convert to PDF
+        try:
+            pdf_filename = f"reactor_report_{start_date}_to_{end_date}.pdf"
+            pdf_path = os.path.join(temp_dir, pdf_filename)
+            
+            # Convert docx to PDF using python-docx2pdf or similar
+            # For now, we'll use a simple approach - you may need to install additional libraries
+            import subprocess
+            try:
+                # Try using LibreOffice for conversion (if available)
+                subprocess.run([
+                    'libreoffice', '--headless', '--convert-to', 'pdf', 
+                    output_path, '--outdir', temp_dir
+                ], check=True)
+                
+                # Rename the converted file
+                converted_pdf = os.path.join(temp_dir, f"reactor_report_{start_date}_to_{end_date}.pdf")
+                if os.path.exists(converted_pdf):
+                    os.rename(converted_pdf, pdf_path)
+                
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # Fallback: keep the docx file if PDF conversion fails
+                logger.warning("PDF conversion failed, using DOCX file")
+                pdf_path = output_path
+
+        except Exception as e:
+            logger.error(f"Error converting to PDF: {e}")
+            pdf_path = output_path
+
+        # Send notifications
+        if send_email:
+            try:
+                # Get recipient emails from user's settings or use a default
+                recipient_emails = get_user_emails(user_id)  # You'll need to implement this function
+                if not recipient_emails:
+                    recipient_emails = [user_id]  # Send to user's email if no recipients configured
+                
+                email_subject = "Reactor Report - Daily Operations Summary"
+                email_body = f"""
+                <html>
+                <body>
+                <h2>Reactor Report</h2>
+                <p>Please find attached the reactor report for the period from {start_date} to {end_date}.</p>
+                <p>This report contains snapshots of all reactor operations data for the specified period.</p>
+                <br>
+                <p>Best regards,<br>Reactor Automation System</p>
+                </body>
+                </html>
+                """
+                
+                success = send_email_smtp(
+                    recipient_email=','.join(recipient_emails),
+                    subject=email_subject,
+                    body=email_body,
+                    attachment_paths=[pdf_path],
+                    user_email=user_id
+                )
+                
+                if success == "TOKEN_EXPIRED":
+                    return jsonify({
+                        "error": "TOKEN_EXPIRED",
+                        "message": "Email token expired, but report was generated successfully"
+                    }), 401
+                    
+                if not success:
+                    logger.error("Failed to send email notification")
+                    
+            except Exception as e:
+                logger.error(f"Error sending email notification: {e}")
+
+        # if send_whatsapp:
+        #     try:
+        #         # Get recipient phone numbers from user's settings
+        #         recipient_phones = get_user_phones(user_id)  # You'll need to implement this function
+        #         
+        #         if recipient_phones:
+        #             message_content = f"Reactor Report for {start_date} to {end_date} has been generated and sent via email."
+        #             
+        #             for phone in recipient_phones:
+        #                 try:
+        #                     success = send_whatsapp_message(
+        #                         contact_name="Reactor Report Recipient",
+        #                         message=message_content,
+        #                         file_paths=[pdf_path],
+        #                         whatsapp_number=phone,
+        #                         process_name="reactor_report"
+        #                     )
+        #                     
+        #                     if not success:
+        #                         logger.error(f"Failed to send WhatsApp message to {phone}")
+        #                         
+        #                 except Exception as e:
+        #                     logger.error(f"Error sending WhatsApp message to {phone}: {e}")
+        #                     
+        #     except Exception as e:
+        #         logger.error(f"Error sending WhatsApp notification: {e}")
+
+        # Clean up temporary files
         try:
             if os.path.exists(temp_dir):
-                # List any remaining files in the directory
-                remaining_files = os.listdir(temp_dir)
-                if remaining_files:
-                    # Try to remove each remaining file
-                    for file in remaining_files:
-                        try:
-                            file_path = os.path.join(temp_dir, file)
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                        except Exception as e:
-                            logger.error("Error removing remaining file {}: {}".format(file, e))
+                for file in os.listdir(temp_dir):
+                    file_path = os.path.join(temp_dir, file)
+                    try:
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    except Exception as e:
+                        logger.error(f"Error removing temporary file {file}: {e}")
                 
-                # Try to remove the directory again
                 try:
                     os.rmdir(temp_dir)
                 except Exception as e:
-                    logger.error("Failed to remove temporary directory {}: {}".format(temp_dir, e))
+                    logger.error(f"Failed to remove temporary directory {temp_dir}: {e}")
         except Exception as e:
-            logger.error("Error during final cleanup: {}".format(e))
+            logger.error(f"Error during cleanup: {e}")
 
         return jsonify({
-            "message": "Reports generated successfully",
+            "message": "Reactor reports generated and sent successfully",
             "generated_files": len(generated_files),
+            "date_range": f"{start_date} to {end_date}",
+            "sheets_processed": len(all_sheet_data),
             "notifications_sent": {
                 "email": send_email,
-                "whatsapp": send_whatsapp
+                # "whatsapp": send_whatsapp
             }
         }), 200
 
     except Exception as e:
-        logger.error("Error generating reports: {}".format(e))
+        logger.error(f"Error generating reactor reports: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         # Optional cleanup or logging here if needed
@@ -1610,6 +1638,40 @@ def process_template(template_path, output_path, data_dict):
     except Exception as e:
         logger.error("Error processing template: {}".format(e))
         return False
+
+def get_user_emails(user_id):
+    """Get recipient emails for reactor reports from user settings"""
+    try:
+        # Get user document from Firebase
+        user_doc = db.collection('users').document(user_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            # Check if user has configured reactor report recipients
+            reactor_recipients = user_data.get('reactor_report_recipients', [])
+            if reactor_recipients:
+                return reactor_recipients
+        # Fallback to user's own email
+        return [user_id]
+    except Exception as e:
+        logger.error(f"Error getting user emails: {e}")
+        return [user_id]
+
+def get_user_phones(user_id):
+    """Get recipient phone numbers for reactor reports from user settings"""
+    try:
+        # Get user document from Firebase
+        user_doc = db.collection('users').document(user_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            # Check if user has configured reactor report phone recipients
+            reactor_phones = user_data.get('reactor_report_phones', [])
+            if reactor_phones:
+                return reactor_phones
+        # Return empty list if no phones configured
+        return []
+    except Exception as e:
+        logger.error(f"Error getting user phones: {e}")
+        return []
 
 # Error handlers
 @app.errorhandler(404)

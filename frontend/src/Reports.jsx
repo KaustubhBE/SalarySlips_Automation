@@ -447,7 +447,7 @@ const Reports = () => {
   };
 
   const handleCopyServiceAccount = () => {
-    navigator.clipboard.writeText('automation@be-ss-automation.iam.gserviceaccount.com');
+    navigator.clipboard.writeText('ems-974@be-ss-automation-445106.iam.gserviceaccount.com');
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000); // Reset success message after 2 seconds
   };

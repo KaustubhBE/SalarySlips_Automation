@@ -15,7 +15,7 @@ import ReportsDepartment from './Components/ReportsDepartment';
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import Inventory from './Inventory';
-import DailyReports from './DailyReports';
+import ReactorReports from './ReactorReports';
 import { useAuth } from './Components/AuthContext';
 
 function App() {
@@ -173,8 +173,8 @@ function App() {
           isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
         } />
 
-        <Route path="/daily-reports" element={
-          isAuthenticated ? <DailyReports /> : <Navigate to="/login" replace />
+        <Route path="/reactor-reports" element={
+          isAuthenticated ? <ReactorReports /> : <Navigate to="/login" replace />
         } />
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
