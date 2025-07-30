@@ -533,8 +533,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         # Set table alignment to center
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         
-        # Apply table style
-        table.style = 'Table Grid'
+        # Apply custom borders (no style dependency)
         table.allow_autofit = True
         
         # Format each cell
@@ -543,9 +542,17 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 # Set vertical alignment to center
                 cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 
-                # Set paragraph alignment to center
+                # Set paragraph alignment based on column
                 for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Check if this is the first column (Particulars)
+                    if table.rows.index(row) == 0:  # Header row
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    else:  # Data rows
+                        # First column (Particulars) - left align, others - center
+                        if table.rows.index(row) > 0 and cell == row.cells[0]:
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        else:
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     
                     # Format runs (text)
                     for run in paragraph.runs:
@@ -656,19 +663,44 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             max_cols = max(len(row) for row in data)
                             table = doc.add_table(rows=len(data), cols=max_cols)
                             
-                            # Format table
-                            format_table(table, is_header=True)
+                            # Set table alignment to center
+                            table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                            table.allow_autofit = True
                             
-                            # Fill table data
+                            # Fill table data with proper formatting
                             for i, row in enumerate(data):
                                 for j, cell_value in enumerate(row):
                                     if j < max_cols:
                                         cell = table.cell(i, j)
                                         cell.text = str(cell_value)
                                         
-                                        # Center align text
+                                        # Set vertical alignment to center
+                                        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                                        
+                                        # Set paragraph alignment based on column
                                         for paragraph in cell.paragraphs:
-                                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                            if i == 0:  # Header row
+                                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                                for run in paragraph.runs:
+                                                    run.bold = True
+                                                    run.font.size = Pt(11)
+                                                # Set header background color
+                                                set_cell_background_color(cell, "E6F3FF")
+                                            else:  # Data rows
+                                                # First column (Particulars) - left align, others - center
+                                                if j == 0:
+                                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                                                else:
+                                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                                
+                                                for run in paragraph.runs:
+                                                    run.font.size = Pt(10)
+                                                
+                                                # Alternate row colors
+                                                if i % 2 == 0:
+                                                    set_cell_background_color(cell, "F8F9FA")
+                                                else:
+                                                    set_cell_background_color(cell, "FFFFFF")
                             
                             # Add spacing after table
                             doc.add_paragraph()
