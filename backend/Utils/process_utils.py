@@ -21,6 +21,10 @@ import requests
 from PIL import Image
 import io
 import base64
+from docx.shared import Pt
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.shared import OxmlElement, qn
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -504,12 +508,62 @@ def process_reports(file_path_template):
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
     from datetime import datetime
+    from docx.shared import Inches
+    from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.shared import OxmlElement, qn
+    
     # Helper for robust header lookup
     def find_header(headers, name):
         for i, h in enumerate(headers):
             if h.strip().lower() == name.strip().lower():
                 return i
         raise ValueError(f"{name} is not in list: {headers}")
+
+    # Helper to set cell background color
+    def set_cell_background_color(cell, color):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
+
+    # Helper to format table with professional styling
+    def format_table(table, is_header=False):
+        # Set table alignment to center
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Apply table style
+        table.style = 'Table Grid'
+        table.allow_autofit = True
+        
+        # Format each cell
+        for row in table.rows:
+            for cell in row.cells:
+                # Set vertical alignment to center
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                
+                # Set paragraph alignment to center
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Format runs (text)
+                    for run in paragraph.runs:
+                        if is_header:
+                            run.bold = True
+                            run.font.size = Pt(11)
+                        else:
+                            run.font.size = Pt(10)
+                
+                # Set header background color (light blue)
+                if is_header:
+                    set_cell_background_color(cell, "E6F3FF")
+                else:
+                    # Alternate row colors for better readability
+                    if table.rows.index(row) % 2 == 0:
+                        set_cell_background_color(cell, "F8F9FA")
+                    else:
+                        set_cell_background_color(cell, "FFFFFF")
 
     # Parse date range
     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
@@ -554,14 +608,21 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         doc = Document(template_path)
         for dt, date_str, sheet_id in date_sheet_pairs:
             try:
-                doc.add_heading(f"Date: {date_str}", level=1)
+                # Add date heading with formatting
+                date_heading = doc.add_heading(f"Date: {date_str}", level=1)
+                date_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                
                 spreadsheet = gspread_client.open_by_key(sheet_id)
                 all_worksheets = spreadsheet.worksheets()
                 for worksheet in all_worksheets:
                     sheet_name = worksheet.title
                     if sheet_name == 'Table_Range':
                         continue
-                    doc.add_heading(f"Sheet: {sheet_name}", level=2)
+                    
+                    # Add sheet heading with formatting
+                    sheet_heading = doc.add_heading(f"Sheet: {sheet_name}", level=2)
+                    sheet_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    
                     # Include all tables from table_range_data for each worksheet
                     table_defs = []
                     for row in table_range_data[2:]:
@@ -573,27 +634,57 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                 'end': row[idx_end].strip()
                             })
                     table_defs.sort(key=lambda x: x['no'])
+                    
                     # For each table, extract the range and add to doc
                     for table_def in table_defs:
                         try:
                             data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
                             if not data or len(data) < 1:
                                 continue
-                            doc.add_paragraph(table_def['name'])  # No style argument
+                            
+                            # Add table name with formatting
+                            table_name_para = doc.add_paragraph(table_def['name'])
+                            table_name_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                            for run in table_name_para.runs:
+                                run.bold = True
+                                run.font.size = Pt(12)
+                            
+                            # Add spacing before table
+                            doc.add_paragraph()
+                            
+                            # Create table with proper formatting
                             max_cols = max(len(row) for row in data)
                             table = doc.add_table(rows=len(data), cols=max_cols)
+                            
+                            # Format table
+                            format_table(table, is_header=True)
+                            
+                            # Fill table data
                             for i, row in enumerate(data):
                                 for j, cell_value in enumerate(row):
                                     if j < max_cols:
-                                        table.cell(i, j).text = str(cell_value)
+                                        cell = table.cell(i, j)
+                                        cell.text = str(cell_value)
+                                        
+                                        # Center align text
+                                        for paragraph in cell.paragraphs:
+                                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Add spacing after table
                             doc.add_paragraph()
+                            
                         except Exception as e:
                             logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
-                            doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
+                            error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
+                            error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                
+                # Add page break between dates
                 doc.add_page_break()
+                
             except Exception as e:
                 logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
                 continue
+                
         output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
         output_path = os.path.join(output_dir, output_filename)
         doc.save(output_path)
