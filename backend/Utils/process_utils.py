@@ -502,93 +502,76 @@ def process_reports(file_path_template):
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
 
-def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
-
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
     # Parse date range
     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
 
-    # Build date->sheet_id mapping from sheet_id_mapping_data
-    date_to_sheetid = {}
-    for row in sheet_id_mapping_data[1:]:  # skip header
+    # Build date->sheet_id mapping from sheet_id_mapping_data, and sort by date ascending
+    date_sheet_pairs = []
+    for row in sheet_id_mapping_data[1:]:
         if len(row) >= 2:
             date_str, sheet_id = row[0], row[1]
             try:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    day, month, year = parts
-                    if len(year) == 2:
-                        year = '20' + year
-                    dt = datetime(int(year), int(month), int(day))
-                    if start_dt <= dt <= end_dt:
-                        date_to_sheetid[date_str] = sheet_id
+                dt = datetime.strptime(date_str, "%d/%m/%y")
+                if start_dt <= dt <= end_dt:
+                    date_sheet_pairs.append((dt, date_str, sheet_id))
             except Exception as e:
                 logger.warning(f"Error parsing date {date_str}: {e}")
                 continue
+    date_sheet_pairs.sort()  # ascending order by date
 
-    if not date_to_sheetid:
+    if not date_sheet_pairs:
         return {"error": "No sheet IDs found for the specified date range"}
+
+    # Parse table_range_data header indices
+    tr_headers = [h.strip() for h in table_range_data[0]]
+    idx_sheet = tr_headers.index('Sheet Name')
+    idx_no = tr_headers.index('Table No.')
+    idx_name = tr_headers.index('Table Name')
+    idx_start = tr_headers.index('Start Range')
+    idx_end = tr_headers.index('End Range')
 
     try:
         doc = Document(template_path)
-        for date_str, sheet_id in date_to_sheetid.items():
+        for dt, date_str, sheet_id in date_sheet_pairs:
             try:
                 doc.add_heading(f"Date: {date_str}", level=1)
                 spreadsheet = gspread_client.open_by_key(sheet_id)
                 all_worksheets = spreadsheet.worksheets()
                 for worksheet in all_worksheets:
                     sheet_name = worksheet.title
-                    logger.info(f"Processing sheet: {sheet_name} for date {date_str}")
                     if sheet_name == 'Table_Range':
                         continue
                     doc.add_heading(f"Sheet: {sheet_name}", level=2)
-                    # Read Table_Range sheet for this worksheet
-                    try:
-                        table_range_ws = spreadsheet.worksheet('Table_Range')
-                        table_ranges = table_range_ws.get_all_values()
-                        if not table_ranges or len(table_ranges) < 2:
-                            logger.info(f"No Table_Range data for {sheet_name}")
-                            continue
-                        # Parse Table_Range header
-                        tr_headers = [h.strip() for h in table_ranges[0]]
-                        idx_no = tr_headers.index('Table No.')
-                        idx_name = tr_headers.index('Table Name')
-                        idx_start = tr_headers.index('Start Range')
-                        idx_end = tr_headers.index('End Range')
-                        # Collect all table ranges for this worksheet
-                        table_defs = []
-                        for row in table_ranges[1:]:
-                            if len(row) > max(idx_no, idx_name, idx_start, idx_end):
-                                if row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
-                                    table_defs.append({
-                                        'no': int(row[idx_no]),
-                                        'name': row[idx_name].strip(),
-                                        'start': row[idx_start].strip(),
-                                        'end': row[idx_end].strip()
-                                    })
-                        # Sort by Table No.
-                        table_defs.sort(key=lambda x: x['no'])
-                        # For each table, extract the range and add to doc
-                        for table_def in table_defs:
-                            try:
-                                # Extract range from worksheet
-                                data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
-                                if not data or len(data) < 1:
-                                    continue
-                                doc.add_paragraph(table_def['name'], style='Heading 3')
-                                max_cols = max(len(row) for row in data)
-                                table = doc.add_table(rows=len(data), cols=max_cols)
-                                for i, row in enumerate(data):
-                                    for j, cell_value in enumerate(row):
-                                        if j < max_cols:
-                                            table.cell(i, j).text = str(cell_value)
-                                doc.add_paragraph()
-                            except Exception as e:
-                                logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
-                                doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
-                    except Exception as e:
-                        logger.error(f"Error reading Table_Range for {sheet_name}: {e}")
-                        doc.add_paragraph(f"Error reading Table_Range for {sheet_name}: {str(e)}")
+                    # Filter and sort table ranges for this worksheet from table_range_data
+                    table_defs = []
+                    for row in table_range_data[1:]:
+                        if row[idx_sheet].strip() == sheet_name and row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
+                            table_defs.append({
+                                'no': int(row[idx_no]),
+                                'name': row[idx_name].strip(),
+                                'start': row[idx_start].strip(),
+                                'end': row[idx_end].strip()
+                            })
+                    table_defs.sort(key=lambda x: x['no'])
+                    # For each table, extract the range and add to doc
+                    for table_def in table_defs:
+                        try:
+                            data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
+                            if not data or len(data) < 1:
+                                continue
+                            doc.add_paragraph(table_def['name'], style='Heading 3')
+                            max_cols = max(len(row) for row in data)
+                            table = doc.add_table(rows=len(data), cols=max_cols)
+                            for i, row in enumerate(data):
+                                for j, cell_value in enumerate(row):
+                                    if j < max_cols:
+                                        table.cell(i, j).text = str(cell_value)
+                            doc.add_paragraph()
+                        except Exception as e:
+                            logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
+                            doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
                 doc.add_page_break()
             except Exception as e:
                 logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
@@ -619,7 +602,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
             recipients_to = []
             recipients_cc = []
             recipients_bcc = []
-                        
             for row in sheet_recipients_data[1:]:
                 if to_idx is not None and len(row) > to_idx and row[to_idx].strip():
                     email = row[to_idx].strip()
@@ -633,11 +615,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                     email = row[bcc_idx].strip()
                     if is_valid_email(email):
                         recipients_bcc.append(email)
-            
             if not recipients_to:
                 logger.warning("No valid recipient emails found in Recipients sheet")
                 return {"error": "No valid recipient emails found in Recipients sheet"}
-            
             email_subject = "Reactor Report - Daily Operations Summary"
             email_body = f"""
                 <html>
@@ -650,7 +630,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                 </body>
                 </html>
                 """
-            
             # Send email to each recipient individually to avoid syntax errors
             success_count = 0
             for recipient in recipients_to:
@@ -671,12 +650,10 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                         logger.error(f"Failed to send email to {recipient}")
                 except Exception as e:
                     logger.error(f"Error sending email to {recipient}: {e}")
-            
             if success_count == 0:
                 logger.error("Failed to send email to any recipients")
             else:
                 logger.info(f"Successfully sent emails to {success_count} recipients")
-                
         except Exception as e:
             logger.error(f"Error sending email notification: {e}")
 
@@ -684,7 +661,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
         "message": "Reactor reports generated and sent successfully",
         "generated_files": 1,
         "date_range": f"{start_date} to {end_date}",
-        "sheets_processed": len(date_to_sheetid),
+        "sheets_processed": len(date_sheet_pairs),
         "notifications_sent": {
             "email": send_email
         },
