@@ -15,6 +15,12 @@ from comtypes.client import CreateObject
 from datetime import datetime
 import os
 from docx import Document
+from datetime import datetime
+from docx.shared import Inches
+import requests
+from PIL import Image
+import io
+import base64
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -497,7 +503,7 @@ def process_reports(file_path_template):
         return f"Error reading file: {str(e)}"
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
-
+    
     # Parse date range
     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
@@ -524,50 +530,66 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
     if not date_to_sheetid:
         return {"error": "No sheet IDs found for the specified date range"}
 
-    # For each date, fetch all worksheet data
-    all_sheet_data = {}
-    for date_str, sheet_id in date_to_sheetid.items():
-        try:
-            spreadsheet = gspread_client.open_by_key(sheet_id)
-            all_worksheets = spreadsheet.worksheets()
-            sheet_data = {}
-            for worksheet in all_worksheets:
-                sheet_name = worksheet.title
-                all_values = worksheet.get_all_values()
-                if all_values:
-                    sheet_data[sheet_name] = all_values
-            all_sheet_data[date_str] = {
-                'sheet_id': sheet_id,
-                'sheets': sheet_data
-            }
-        except Exception as e:
-            logger.error(f"Error accessing spreadsheet {sheet_id} for date {date_str}: {e}")
-            continue
-
-    if not all_sheet_data:
-        return {"error": "No valid data found in any sheets for the specified date range"}
-
     # Create the report document
     try:
         doc = Document(template_path)
-        for date_str, data in all_sheet_data.items():
-            doc.add_heading(f"Date: {date_str}", level=1)
-            for sheet_name, sheet_values in data['sheets'].items():
-                if sheet_values:
+        
+        for date_str, sheet_id in date_to_sheetid.items():
+            try:
+                # Add date as a heading
+                doc.add_heading(f"Date: {date_str}", level=1)
+                
+                # Get all worksheets in the spreadsheet
+                spreadsheet = gspread_client.open_by_key(sheet_id)
+                all_worksheets = spreadsheet.worksheets()
+                
+                for worksheet in all_worksheets:
+                    sheet_name = worksheet.title
+                    logger.info(f"Processing sheet: {sheet_name} for date {date_str}")
+                    
+                    # Add sheet name as subheading
                     doc.add_heading(f"Sheet: {sheet_name}", level=2)
-                    if len(sheet_values) > 0:
-                        max_cols = max(len(row) for row in sheet_values)
-                        table = doc.add_table(rows=len(sheet_values), cols=max_cols)
-                        table.style = 'Table Grid'
-                        for i, row in enumerate(sheet_values):
-                            for j, cell_value in enumerate(row):
-                                if j < max_cols:
-                                    table.cell(i, j).text = str(cell_value)
-                        doc.add_paragraph()
-            doc.add_page_break()
+                    
+                    # Capture screenshot of the sheet
+                    try:
+                        # Create screenshot URL for the sheet
+                        screenshot_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=png&gid={worksheet.id}"
+                        
+                        # Download the screenshot
+                        response = requests.get(screenshot_url)
+                        if response.status_code == 200:
+                            # Save screenshot temporarily
+                            screenshot_path = os.path.join(output_dir, f"screenshot_{date_str}_{sheet_name}.png")
+                            with open(screenshot_path, 'wb') as f:
+                                f.write(response.content)
+                            
+                            # Add image to document
+                            doc.add_picture(screenshot_path, width=Inches(7.0))  # Adjust width as needed
+                            doc.add_paragraph()  # Add some spacing
+                            
+                            # Clean up temporary screenshot
+                            os.remove(screenshot_path)
+                        else:
+                            logger.warning(f"Failed to capture screenshot for {sheet_name}: {response.status_code}")
+                            # Add a note that screenshot couldn't be captured
+                            doc.add_paragraph(f"Screenshot not available for {sheet_name}")
+                    
+                    except Exception as e:
+                        logger.error(f"Error capturing screenshot for {sheet_name}: {e}")
+                        doc.add_paragraph(f"Error capturing screenshot for {sheet_name}: {str(e)}")
+                
+                # Add page break between dates
+                doc.add_page_break()
+                
+            except Exception as e:
+                logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
+                continue
+        
+        # Save the document
         output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
         output_path = os.path.join(output_dir, output_filename)
         doc.save(output_path)
+        
     except Exception as e:
         logger.error(f"Error creating report document: {e}")
         return {"error": "Failed to create report document"}
@@ -640,7 +662,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
         "message": "Reactor reports generated and sent successfully",
         "generated_files": 1,
         "date_range": f"{start_date} to {end_date}",
-        "sheets_processed": len(all_sheet_data),
+        "sheets_processed": len(date_to_sheetid),
         "notifications_sent": {
             "email": send_email
         },
