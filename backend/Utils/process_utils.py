@@ -507,11 +507,6 @@ def process_reports(file_path_template):
         return f"Error reading file: {str(e)}"
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
-    from datetime import datetime
-    from docx.shared import Inches
-    from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.oxml.shared import OxmlElement, qn
     
     # Helper for robust header lookup
     def find_header(headers, name):
@@ -560,11 +555,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 
                 # Set background colors
                 if i == 0:  # Header row
-                    set_cell_background_color(cell, "f9cb9c")
+                    set_cell_background_color(cell, "e8f0fe")
                 else:
                     # Alternate row colors
                     if i % 2 == 0:
-                        set_cell_background_color(cell, "e8f0fe")
+                        set_cell_background_color(cell, "f9cb9c")
                     else:
                         set_cell_background_color(cell, "FFFFFF")
 
@@ -610,11 +605,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     try:
         doc = Document(template_path)
         for dt, date_str, sheet_id in date_sheet_pairs:
-            try:
-                # Add date heading with formatting
-                date_heading = doc.add_heading(f"Date: {date_str}", level=1)
-                date_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                
+            try:                             
                 spreadsheet = gspread_client.open_by_key(sheet_id)
                 all_worksheets = spreadsheet.worksheets()
                 for worksheet in all_worksheets:
@@ -622,8 +613,8 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     if sheet_name == 'Table_Range':
                         continue
                     
-                    # Add sheet heading with formatting
-                    sheet_heading = doc.add_heading(f"Sheet: {sheet_name}", level=2)
+                    # Add sheet heading with formatting (reduced spacing)
+                    sheet_heading = doc.add_heading(f"{sheet_name}", level=2)
                     sheet_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
                     
                     # Include all tables from table_range_data for each worksheet
@@ -645,15 +636,12 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             if not data or len(data) < 1:
                                 continue
                             
-                            # Add table name with formatting
+                            # Add table name with formatting (compact)
                             table_name_para = doc.add_paragraph(table_def['name'])
                             table_name_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
                             for run in table_name_para.runs:
                                 run.bold = True
-                                run.font.size = Pt(12)
-                            
-                            # Add spacing before table
-                            doc.add_paragraph()
+                                run.font.size = Pt(11)
                             
                             # Create table with proper formatting
                             max_cols = max(len(row) for row in data)
@@ -668,9 +656,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             
                             # Apply professional formatting to the table
                             format_table(table, is_header=True)
-                            
-                            # Add spacing after table
-                            doc.add_paragraph()
                             
                         except Exception as e:
                             logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
