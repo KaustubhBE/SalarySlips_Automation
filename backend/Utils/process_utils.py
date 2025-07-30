@@ -540,7 +540,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         return {"error": "No sheet IDs found for the specified date range"}
 
     # Parse table_range_data header indices robustly (excluding Sheet Name)
-    tr_headers = [h.strip() for h in table_range_data[0]]
+    tr_headers = [h.strip() for h in table_range_data[1]]
     try:
         idx_no = find_header(tr_headers, 'Table No.')
         idx_name = find_header(tr_headers, 'Table Name')
@@ -564,7 +564,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     doc.add_heading(f"Sheet: {sheet_name}", level=2)
                     # Include all tables from table_range_data for each worksheet
                     table_defs = []
-                    for row in table_range_data[1:]:
+                    for row in table_range_data[2:]:
                         if row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
                             table_defs.append({
                                 'no': int(row[idx_no]),
@@ -579,7 +579,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
                             if not data or len(data) < 1:
                                 continue
-                            doc.add_paragraph(table_def['name'], style='Heading 3')
+                            doc.add_paragraph(table_def['name'])  # No style argument
                             max_cols = max(len(row) for row in data)
                             table = doc.add_table(rows=len(data), cols=max_cols)
                             for i, row in enumerate(data):
