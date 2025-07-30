@@ -528,104 +528,78 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         shd.set(qn('w:fill'), color)
         tcPr.append(shd)
 
-    # Helper to set table borders
+    # Helper to set table borders using preset styling
     def set_table_borders(table):
-        # Set outer border with specified color and thickness
-        tbl = table._tbl
-        tblPr = tbl.get_or_add_tblPr()
+        # Use preset table style with borders
+        table.style = 'Table Grid'
         
-        # Remove existing borders
-        for border in tblPr.findall(qn('w:tblBorders')):
-            tblPr.remove(border)
-        
-        # Add new borders
-        borders = OxmlElement('w:tblBorders')
-        
-        # Top border
-        top_border = OxmlElement('w:top')
-        top_border.set(qn('w:val'), 'single')
-        top_border.set(qn('w:sz'), '16')  # 2nd level thickness (16 = 2pt)
-        top_border.set(qn('w:color'), 'e69138')
-        borders.append(top_border)
-        
-        # Bottom border
-        bottom_border = OxmlElement('w:bottom')
-        bottom_border.set(qn('w:val'), 'single')
-        bottom_border.set(qn('w:sz'), '16')  # 2nd level thickness
-        bottom_border.set(qn('w:color'), 'e69138')
-        borders.append(bottom_border)
-        
-        # Left border
-        left_border = OxmlElement('w:left')
-        left_border.set(qn('w:val'), 'single')
-        left_border.set(qn('w:sz'), '16')  # 2nd level thickness
-        left_border.set(qn('w:color'), 'e69138')
-        borders.append(left_border)
-        
-        # Right border
-        right_border = OxmlElement('w:right')
-        right_border.set(qn('w:val'), 'single')
-        right_border.set(qn('w:sz'), '16')  # 2nd level thickness
-        right_border.set(qn('w:color'), 'e69138')
-        borders.append(right_border)
-        
-        # Inside horizontal borders
-        inside_h_border = OxmlElement('w:insideH')
-        inside_h_border.set(qn('w:val'), 'single')
-        inside_h_border.set(qn('w:sz'), '4')  # Thin internal borders
-        inside_h_border.set(qn('w:color'), '000000')  # Black color
-        borders.append(inside_h_border)
-        
-        # Inside vertical borders
-        inside_v_border = OxmlElement('w:insideV')
-        inside_v_border.set(qn('w:val'), 'single')
-        inside_v_border.set(qn('w:sz'), '4')  # Thin internal borders
-        inside_v_border.set(qn('w:color'), '000000')  # Black color
-        borders.append(inside_v_border)
-        
-        tblPr.append(borders)
+        # Apply basic border styling using table properties
+        try:
+            # Set table to use grid borders
+            table.allow_autofit = True
+            
+            # Apply border styling to each cell
+            for row in table.rows:
+                for cell in row.cells:
+                    # Set cell borders
+                    cell._tc.get_or_add_tcPr()
+                    
+                    # Apply border to cell
+                    tc = cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    
+                    # Add border properties
+                    for border_name in ['top', 'bottom', 'left', 'right']:
+                        border = OxmlElement(f'w:{border_name}')
+                        border.set(qn('w:val'), 'single')
+                        border.set(qn('w:sz'), '16')  # 2pt thickness
+                        border.set(qn('w:color'), 'e69138')  # Orange-brown color
+                        tcPr.append(border)
+                        
+        except Exception as e:
+            # Fallback to basic table styling if border setting fails
+            logger.warning(f"Could not apply custom borders: {e}")
+            pass
 
-    # Helper to format table with professional styling
+    # Helper to format table with preset styling
     def format_table(table, is_header=False):
+        # Use preset table style
+        table.style = 'Table Grid'
+        
         # Set table alignment to center
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        
-        # Apply custom borders
-        set_table_borders(table)
         table.allow_autofit = True
         
-        # Format each cell
-        for row in table.rows:
-            for cell in row.cells:
+        # Format each cell with basic styling
+        for i, row in enumerate(table.rows):
+            for j, cell in enumerate(row.cells):
                 # Set vertical alignment to center
                 cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 
-                # Set paragraph alignment based on column
+                # Set paragraph alignment
                 for paragraph in cell.paragraphs:
-                    # Check if this is the first column (Particulars)
-                    if table.rows.index(row) == 0:  # Header row
+                    if i == 0:  # Header row
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     else:  # Data rows
-                        # First column (Particulars) - left align, others - center
-                        if table.rows.index(row) > 0 and cell == row.cells[0]:
+                        if j == 0:  # First column
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
                         else:
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     
-                    # Format runs (text)
+                    # Format text
                     for run in paragraph.runs:
-                        if is_header:
+                        if i == 0:  # Header row
                             run.bold = True
                             run.font.size = Pt(11)
                         else:
                             run.font.size = Pt(10)
                 
-                # Set header background color (light blue)
-                if is_header:
+                # Set background colors
+                if i == 0:  # Header row
                     set_cell_background_color(cell, "f9cb9c")
                 else:
-                    # Alternate row colors for better readability
-                    if table.rows.index(row) % 2 == 0:
+                    # Alternate row colors
+                    if i % 2 == 0:
                         set_cell_background_color(cell, "e8f0fe")
                     else:
                         set_cell_background_color(cell, "FFFFFF")
