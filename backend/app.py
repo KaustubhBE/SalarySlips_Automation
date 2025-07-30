@@ -1309,17 +1309,17 @@ def reactor_report():
             reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"  # os.getenv('REACTOR_REPORT')
             sheet_id_mapping_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
             sheet_recipients_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Recipients')
-        except Exception as e:
+                    except Exception as e:
             logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
-        
+
         # Create temporary directory for processing
         temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
         os.makedirs(temp_dir, exist_ok=True)
         template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
         if not os.path.exists(template_path):
             return jsonify({"error": "Reactor report template not found"}), 500
-        
+
         gspread_client = gspread.authorize(creds)
         
         # Call the new utility function

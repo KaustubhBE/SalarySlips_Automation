@@ -428,7 +428,7 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                 message = [
                     "Dear *{}*,".format(contact_name),
                     "",
-                    "Please find attached your *salary slip* for the month of *{} {}*.",
+                    "Please find attached your *salary slip* for the month of *{} {}*.".format(full_month, full_year),
                     "",
                     "This document includes:",
                     "   -  Earnings Breakdown",
@@ -547,36 +547,35 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                     sheet_name = worksheet.title
                     logger.info(f"Processing sheet: {sheet_name} for date {date_str}")
                     
+                    # Check if sheet has data
+                    all_values = worksheet.get_all_values()
+                    if not all_values or len(all_values) <= 1:  # Skip if empty or only headers
+                        logger.info(f"Skipping empty sheet: {sheet_name}")
+                        continue
+                    
                     # Add sheet name as subheading
                     doc.add_heading(f"Sheet: {sheet_name}", level=2)
                     
-                    # Capture screenshot of the sheet
+                    # Create a simple table representation instead of screenshot
                     try:
-                        # Create screenshot URL for the sheet
-                        screenshot_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=png&gid={worksheet.id}"
-                        
-                        # Download the screenshot
-                        response = requests.get(screenshot_url)
-                        if response.status_code == 200:
-                            # Save screenshot temporarily
-                            screenshot_path = os.path.join(output_dir, f"screenshot_{date_str}_{sheet_name}.png")
-                            with open(screenshot_path, 'wb') as f:
-                                f.write(response.content)
+                        # Create table from sheet data
+                        if len(all_values) > 0:
+                            # Determine table dimensions
+                            max_cols = max(len(row) for row in all_values)
+                            table = doc.add_table(rows=len(all_values), cols=max_cols)
                             
-                            # Add image to document
-                            doc.add_picture(screenshot_path, width=Inches(7.0))  # Adjust width as needed
-                            doc.add_paragraph()  # Add some spacing
+                            # Populate table without styling
+                            for i, row in enumerate(all_values):
+                                for j, cell_value in enumerate(row):
+                                    if j < max_cols:
+                                        table.cell(i, j).text = str(cell_value)
                             
-                            # Clean up temporary screenshot
-                            os.remove(screenshot_path)
-                        else:
-                            logger.warning(f"Failed to capture screenshot for {sheet_name}: {response.status_code}")
-                            # Add a note that screenshot couldn't be captured
-                            doc.add_paragraph(f"Screenshot not available for {sheet_name}")
+                            # Add some spacing
+                            doc.add_paragraph()
                     
                     except Exception as e:
-                        logger.error(f"Error capturing screenshot for {sheet_name}: {e}")
-                        doc.add_paragraph(f"Error capturing screenshot for {sheet_name}: {str(e)}")
+                        logger.error(f"Error creating table for {sheet_name}: {e}")
+                        doc.add_paragraph(f"Error processing data for {sheet_name}: {str(e)}")
                 
                 # Add page break between dates
                 doc.add_page_break()
@@ -594,21 +593,13 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
         logger.error(f"Error creating report document: {e}")
         return {"error": "Failed to create report document"}
 
-    # Convert to PDF (try, fallback to docx)
+    # Convert to PDF using existing function
     pdf_filename = f"reactor_report_{start_date}_to_{end_date}.pdf"
     pdf_path = os.path.join(output_dir, pdf_filename)
-    try:
-        import subprocess
-        subprocess.run([
-            'libreoffice', '--headless', '--convert-to', 'pdf', 
-            output_path, '--outdir', output_dir
-        ], check=True)
-        converted_pdf = os.path.join(output_dir, pdf_filename)
-        if os.path.exists(converted_pdf):
-            os.rename(converted_pdf, pdf_path)
-        else:
-            pdf_path = output_path
-    except Exception as e:
+    
+    if convert_docx_to_pdf(output_path, pdf_path):
+        logger.info("Successfully converted DOCX to PDF")
+    else:
         logger.warning("PDF conversion failed, using DOCX file")
         pdf_path = output_path
 
@@ -645,11 +636,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                 </html>
                 """
             success = send_email_smtp(
+                user_email=user_id,
                 recipient_email=','.join(recipients_to),
                 subject=email_subject,
                 body=email_body,
                 attachment_paths=[pdf_path],
-                user_email=user_id,
                 cc=','.join(recipients_cc) if recipients_cc else None,
                 bcc=','.join(recipients_bcc) if recipients_bcc else None
             )
