@@ -539,10 +539,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     if not date_sheet_pairs:
         return {"error": "No sheet IDs found for the specified date range"}
 
-    # Parse table_range_data header indices robustly
+    # Parse table_range_data header indices robustly (excluding Sheet Name)
     tr_headers = [h.strip() for h in table_range_data[0]]
     try:
-        idx_sheet = find_header(tr_headers, 'Sheet Name')
         idx_no = find_header(tr_headers, 'Table No.')
         idx_name = find_header(tr_headers, 'Table Name')
         idx_start = find_header(tr_headers, 'Start Range')
@@ -563,10 +562,10 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     if sheet_name == 'Table_Range':
                         continue
                     doc.add_heading(f"Sheet: {sheet_name}", level=2)
-                    # Filter and sort table ranges for this worksheet from table_range_data
+                    # Include all tables from table_range_data for each worksheet
                     table_defs = []
                     for row in table_range_data[1:]:
-                        if row[idx_sheet].strip() == sheet_name and row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
+                        if row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
                             table_defs.append({
                                 'no': int(row[idx_no]),
                                 'name': row[idx_name].strip(),
