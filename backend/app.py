@@ -39,6 +39,10 @@ import base64
 import requests
 from datetime import datetime
 import gspread
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize gspread client
 try:
@@ -1302,7 +1306,7 @@ def reactor_report():
 
         # Fetch sheet IDs from Google Sheet (mapping sheet)
         try:
-            reactor_reports_sheet_id = os.getenv('REACTOR_REPORT')
+            reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"  # os.getenv('REACTOR_REPORT')
             sheet_id_mapping_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
             sheet_recipients_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Recipients')
         except Exception as e:
