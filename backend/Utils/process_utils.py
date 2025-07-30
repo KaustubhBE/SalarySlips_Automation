@@ -503,34 +503,53 @@ def process_reports(file_path_template):
         return f"Error reading file: {str(e)}"
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
+    from datetime import datetime
+    # Helper for robust header lookup
+    def find_header(headers, name):
+        for i, h in enumerate(headers):
+            if h.strip().lower() == name.strip().lower():
+                return i
+        raise ValueError(f"{name} is not in list: {headers}")
+
     # Parse date range
     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
 
     # Build date->sheet_id mapping from sheet_id_mapping_data, and sort by date ascending
     date_sheet_pairs = []
+    date_formats = ["%d/%m/%y", "%d/%m/%Y", "%m/%d/%Y"]
     for row in sheet_id_mapping_data[1:]:
-        if len(row) >= 2:
-            date_str, sheet_id = row[0], row[1]
+        date_str = row[0].strip()
+        if not date_str or date_str.lower() == 'date':
+            continue
+        dt = None
+        for fmt in date_formats:
             try:
-                dt = datetime.strptime(date_str, "%d/%m/%y")
-                if start_dt <= dt <= end_dt:
-                    date_sheet_pairs.append((dt, date_str, sheet_id))
-            except Exception as e:
-                logger.warning(f"Error parsing date {date_str}: {e}")
+                dt = datetime.strptime(date_str, fmt)
+                break
+            except Exception:
                 continue
+        if not dt:
+            logger.warning(f"Error parsing date {date_str}: no matching format")
+            continue
+        if start_dt <= dt <= end_dt:
+            date_sheet_pairs.append((dt, date_str, row[1]))
     date_sheet_pairs.sort()  # ascending order by date
 
     if not date_sheet_pairs:
         return {"error": "No sheet IDs found for the specified date range"}
 
-    # Parse table_range_data header indices
+    # Parse table_range_data header indices robustly
     tr_headers = [h.strip() for h in table_range_data[0]]
-    idx_sheet = tr_headers.index('Sheet Name')
-    idx_no = tr_headers.index('Table No.')
-    idx_name = tr_headers.index('Table Name')
-    idx_start = tr_headers.index('Start Range')
-    idx_end = tr_headers.index('End Range')
+    try:
+        idx_sheet = find_header(tr_headers, 'Sheet Name')
+        idx_no = find_header(tr_headers, 'Table No.')
+        idx_name = find_header(tr_headers, 'Table Name')
+        idx_start = find_header(tr_headers, 'Start Range')
+        idx_end = find_header(tr_headers, 'End Range')
+    except Exception as e:
+        logger.error(f"Error finding headers in table_range_data: {e}")
+        return {"error": f"Header error: {e}"}
 
     try:
         doc = Document(template_path)
