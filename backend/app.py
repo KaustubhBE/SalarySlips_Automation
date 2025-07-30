@@ -1306,9 +1306,10 @@ def reactor_report():
 
         # Fetch sheet IDs from Google Sheet (mapping sheet)
         try:
-            reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"  # os.getenv('REACTOR_REPORT')
+            reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"
             sheet_id_mapping_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
             sheet_recipients_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Recipients')
+            table_range_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Table_Ranges')
         except Exception as e:
             logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
@@ -1326,6 +1327,7 @@ def reactor_report():
         result = process_reactor_reports(
             sheet_id_mapping_data=sheet_id_mapping_data,
             sheet_recipients_data=sheet_recipients_data,
+            table_range_data=table_range_data,
             start_date=start_date,
             end_date=end_date,
             user_id=user_id,

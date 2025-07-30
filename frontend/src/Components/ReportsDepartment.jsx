@@ -18,6 +18,14 @@ const ReportsDepartment = () => {
         >
           Section 1 Daily Reactor Reports
         </span>
+        <span 
+          onClick={() => navigate('/reports')} 
+          className="nav-link"
+          role="button"
+          tabIndex={0}
+        >
+          General Reports
+        </span>
       </div>
     </div>
   )
