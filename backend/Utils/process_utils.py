@@ -528,12 +528,70 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         shd.set(qn('w:fill'), color)
         tcPr.append(shd)
 
+    # Helper to set table borders
+    def set_table_borders(table):
+        # Set outer border with specified color and thickness
+        tbl = table._tbl
+        tblPr = tbl.get_or_add_tblPr()
+        
+        # Remove existing borders
+        for border in tblPr.findall(qn('w:tblBorders')):
+            tblPr.remove(border)
+        
+        # Add new borders
+        borders = OxmlElement('w:tblBorders')
+        
+        # Top border
+        top_border = OxmlElement('w:top')
+        top_border.set(qn('w:val'), 'single')
+        top_border.set(qn('w:sz'), '16')  # 2nd level thickness (16 = 2pt)
+        top_border.set(qn('w:color'), 'e69138')
+        borders.append(top_border)
+        
+        # Bottom border
+        bottom_border = OxmlElement('w:bottom')
+        bottom_border.set(qn('w:val'), 'single')
+        bottom_border.set(qn('w:sz'), '16')  # 2nd level thickness
+        bottom_border.set(qn('w:color'), 'e69138')
+        borders.append(bottom_border)
+        
+        # Left border
+        left_border = OxmlElement('w:left')
+        left_border.set(qn('w:val'), 'single')
+        left_border.set(qn('w:sz'), '16')  # 2nd level thickness
+        left_border.set(qn('w:color'), 'e69138')
+        borders.append(left_border)
+        
+        # Right border
+        right_border = OxmlElement('w:right')
+        right_border.set(qn('w:val'), 'single')
+        right_border.set(qn('w:sz'), '16')  # 2nd level thickness
+        right_border.set(qn('w:color'), 'e69138')
+        borders.append(right_border)
+        
+        # Inside horizontal borders
+        inside_h_border = OxmlElement('w:insideH')
+        inside_h_border.set(qn('w:val'), 'single')
+        inside_h_border.set(qn('w:sz'), '4')  # Thin internal borders
+        inside_h_border.set(qn('w:color'), '000000')  # Black color
+        borders.append(inside_h_border)
+        
+        # Inside vertical borders
+        inside_v_border = OxmlElement('w:insideV')
+        inside_v_border.set(qn('w:val'), 'single')
+        inside_v_border.set(qn('w:sz'), '4')  # Thin internal borders
+        inside_v_border.set(qn('w:color'), '000000')  # Black color
+        borders.append(inside_v_border)
+        
+        tblPr.append(borders)
+
     # Helper to format table with professional styling
     def format_table(table, is_header=False):
         # Set table alignment to center
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         
-        # Apply custom borders (no style dependency)
+        # Apply custom borders
+        set_table_borders(table)
         table.allow_autofit = True
         
         # Format each cell
@@ -564,11 +622,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 
                 # Set header background color (light blue)
                 if is_header:
-                    set_cell_background_color(cell, "E6F3FF")
+                    set_cell_background_color(cell, "f9cb9c")
                 else:
                     # Alternate row colors for better readability
                     if table.rows.index(row) % 2 == 0:
-                        set_cell_background_color(cell, "F8F9FA")
+                        set_cell_background_color(cell, "e8f0fe")
                     else:
                         set_cell_background_color(cell, "FFFFFF")
 
@@ -663,44 +721,15 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             max_cols = max(len(row) for row in data)
                             table = doc.add_table(rows=len(data), cols=max_cols)
                             
-                            # Set table alignment to center
-                            table.alignment = WD_TABLE_ALIGNMENT.CENTER
-                            table.allow_autofit = True
-                            
                             # Fill table data with proper formatting
                             for i, row in enumerate(data):
                                 for j, cell_value in enumerate(row):
                                     if j < max_cols:
                                         cell = table.cell(i, j)
                                         cell.text = str(cell_value)
-                                        
-                                        # Set vertical alignment to center
-                                        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                                        
-                                        # Set paragraph alignment based on column
-                                        for paragraph in cell.paragraphs:
-                                            if i == 0:  # Header row
-                                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                                for run in paragraph.runs:
-                                                    run.bold = True
-                                                    run.font.size = Pt(11)
-                                                # Set header background color
-                                                set_cell_background_color(cell, "E6F3FF")
-                                            else:  # Data rows
-                                                # First column (Particulars) - left align, others - center
-                                                if j == 0:
-                                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                                                else:
-                                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                                
-                                                for run in paragraph.runs:
-                                                    run.font.size = Pt(10)
-                                                
-                                                # Alternate row colors
-                                                if i % 2 == 0:
-                                                    set_cell_background_color(cell, "F8F9FA")
-                                                else:
-                                                    set_cell_background_color(cell, "FFFFFF")
+                            
+                            # Apply professional formatting to the table
+                            format_table(table, is_header=True)
                             
                             # Add spacing after table
                             doc.add_paragraph()
