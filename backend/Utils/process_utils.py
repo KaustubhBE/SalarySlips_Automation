@@ -4,7 +4,7 @@ import json
 import logging
 from docx import Document
 from flask import session
-from Utils.email_utils import send_email_smtp, get_employee_email
+from Utils.email_utils import *
 # from Utils.whatsapp_utils import *
 from Utils.drive_utils import upload_to_google_drive
 import shutil
@@ -614,15 +614,25 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
             recipients_to = []
             recipients_cc = []
             recipients_bcc = []
+                        
             for row in sheet_recipients_data[1:]:
                 if to_idx is not None and len(row) > to_idx and row[to_idx].strip():
-                    recipients_to.append(row[to_idx].strip())
+                    email = row[to_idx].strip()
+                    if is_valid_email(email):
+                        recipients_to.append(email)
                 if cc_idx is not None and len(row) > cc_idx and row[cc_idx].strip():
-                    recipients_cc.append(row[cc_idx].strip())
+                    email = row[cc_idx].strip()
+                    if is_valid_email(email):
+                        recipients_cc.append(email)
                 if bcc_idx is not None and len(row) > bcc_idx and row[bcc_idx].strip():
-                    recipients_bcc.append(row[bcc_idx].strip())
+                    email = row[bcc_idx].strip()
+                    if is_valid_email(email):
+                        recipients_bcc.append(email)
+            
             if not recipients_to:
+                logger.warning("No valid recipient emails found in Recipients sheet")
                 return {"error": "No valid recipient emails found in Recipients sheet"}
+            
             email_subject = "Reactor Report - Daily Operations Summary"
             email_body = f"""
                 <html>
@@ -635,17 +645,33 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, start_
                 </body>
                 </html>
                 """
-            success = send_email_smtp(
-                user_email=user_id,
-                recipient_email=','.join(recipients_to),
-                subject=email_subject,
-                body=email_body,
-                attachment_paths=[pdf_path],
-                cc=','.join(recipients_cc) if recipients_cc else None,
-                bcc=','.join(recipients_bcc) if recipients_bcc else None
-            )
-            if not success:
-                logger.error("Failed to send email notification")
+            
+            # Send email to each recipient individually to avoid syntax errors
+            success_count = 0
+            for recipient in recipients_to:
+                try:
+                    success = send_email_smtp(
+                        user_email=user_id,
+                        recipient_email=recipient,
+                        subject=email_subject,
+                        body=email_body,
+                        attachment_paths=[pdf_path],
+                        cc=','.join(recipients_cc) if recipients_cc else None,
+                        bcc=','.join(recipients_bcc) if recipients_bcc else None
+                    )
+                    if success:
+                        success_count += 1
+                        logger.info(f"Email sent successfully to {recipient}")
+                    else:
+                        logger.error(f"Failed to send email to {recipient}")
+                except Exception as e:
+                    logger.error(f"Error sending email to {recipient}: {e}")
+            
+            if success_count == 0:
+                logger.error("Failed to send email to any recipients")
+            else:
+                logger.info(f"Successfully sent emails to {success_count} recipients")
+                
         except Exception as e:
             logger.error(f"Error sending email notification: {e}")
 

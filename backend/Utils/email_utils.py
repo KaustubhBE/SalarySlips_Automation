@@ -8,6 +8,7 @@ from email.header import Header
 import email.utils
 from Utils.firebase_utils import get_smtp_credentials_by_email
 import smtplib
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,55 +18,85 @@ logger = logging.getLogger(__name__)
 SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
 SMTP_PORT = int(os.getenv('SMTP_PORT', "465"))
 
+# Helper function to validate email
+def is_valid_email(email):
+                
+    if not email or not email.strip():
+        return False
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email.strip()) is not None
+
+
 def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths=None, cc=None, bcc=None):
     """
     Send an email using SMTP with credentials retrieved for the given user_email.
     """
-    sender_email, sender_password = get_smtp_credentials_by_email(user_email)
-    if not sender_email or not sender_password:
-        logger.error(f"No SMTP credentials found for user: {user_email}")
-        return False
-
-    message = MIMEMultipart()
-    message['to'] = Header(recipient_email, 'utf-8')
-    message['from'] = Header(sender_email, 'utf-8')
-    message['subject'] = Header(subject, 'utf-8')
-    if cc:
-        message['cc'] = Header(cc, 'utf-8')
-    if bcc:
-        message['bcc'] = Header(bcc, 'utf-8')
-
-    # Add message body
-    msg = MIMEText(body, 'html', 'utf-8')
-    msg.replace_header('Content-Type', 'text/html; charset="utf-8"')
-    message.attach(msg)
-
-    # Add attachments if any
-    if attachment_paths:
-        if isinstance(attachment_paths, str):
-            attachment_paths = [attachment_paths]
-        for attachment_path in attachment_paths:
-            try:
-                with open(attachment_path, 'rb') as f:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(f.read())
-                    encoders.encode_base64(part)
-                    part.add_header(
-                        'Content-Disposition',
-                        f'attachment; filename={os.path.basename(attachment_path)}'
-                    )
-                    message.attach(part)
-            except Exception as e:
-                logger.error(f"Error attaching file {attachment_path}: {e}")
-                continue
-
-    recipients = extract_ascii_emails(recipient_email)
-    if cc:
-        recipients += extract_ascii_emails(cc)
-    if bcc:
-        recipients += extract_ascii_emails(bcc)
-
     try:
+        sender_email, sender_password = get_smtp_credentials_by_email(user_email)
+        if not sender_email or not sender_password:
+            logger.error(f"No SMTP credentials found for user: {user_email}")
+            return False
+
+        # Validate email addresses
+        if not recipient_email or not recipient_email.strip():
+            logger.error("Recipient email is empty or invalid")
+            return False
+
+        message = MIMEMultipart()
+        
+        # Clean and validate email addresses
+        recipient_email = recipient_email.strip()
+        message['to'] = Header(recipient_email, 'utf-8')
+        message['from'] = Header(sender_email, 'utf-8')
+        message['subject'] = Header(subject, 'utf-8')
+        
+        if cc and cc.strip():
+            message['cc'] = Header(cc.strip(), 'utf-8')
+        if bcc and bcc.strip():
+            message['bcc'] = Header(bcc.strip(), 'utf-8')
+
+        # Add message body
+        msg = MIMEText(body, 'html', 'utf-8')
+        msg.replace_header('Content-Type', 'text/html; charset="utf-8"')
+        message.attach(msg)
+
+        # Add attachments if any
+        if attachment_paths:
+            if isinstance(attachment_paths, str):
+                attachment_paths = [attachment_paths]
+            for attachment_path in attachment_paths:
+                try:
+                    if os.path.exists(attachment_path):
+                        with open(attachment_path, 'rb') as f:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(f.read())
+                            encoders.encode_base64(part)
+                            part.add_header(
+                                'Content-Disposition',
+                                f'attachment; filename={os.path.basename(attachment_path)}'
+                            )
+                            message.attach(part)
+                    else:
+                        logger.warning(f"Attachment file not found: {attachment_path}")
+                except Exception as e:
+                    logger.error(f"Error attaching file {attachment_path}: {e}")
+                    continue
+
+        recipients = extract_ascii_emails(recipient_email)
+        if cc and cc.strip():
+            recipients += extract_ascii_emails(cc)
+        if bcc and bcc.strip():
+            recipients += extract_ascii_emails(bcc)
+
+        # Remove any empty or invalid recipients
+        recipients = [r for r in recipients if r and '@' in r]
+        
+        if not recipients:
+            logger.error("No valid recipients found after processing")
+            return False
+
+        logger.info(f"Attempting to send email to: {recipients}")
+
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
             server.login(sender_email, sender_password)
             server.sendmail(
