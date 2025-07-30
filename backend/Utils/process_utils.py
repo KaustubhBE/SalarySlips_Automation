@@ -528,44 +528,8 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         shd.set(qn('w:fill'), color)
         tcPr.append(shd)
 
-    # Helper to set table borders using preset styling
-    def set_table_borders(table):
-        # Use preset table style with borders
-        table.style = 'Table Grid'
-        
-        # Apply basic border styling using table properties
-        try:
-            # Set table to use grid borders
-            table.allow_autofit = True
-            
-            # Apply border styling to each cell
-            for row in table.rows:
-                for cell in row.cells:
-                    # Set cell borders
-                    cell._tc.get_or_add_tcPr()
-                    
-                    # Apply border to cell
-                    tc = cell._tc
-                    tcPr = tc.get_or_add_tcPr()
-                    
-                    # Add border properties
-                    for border_name in ['top', 'bottom', 'left', 'right']:
-                        border = OxmlElement(f'w:{border_name}')
-                        border.set(qn('w:val'), 'single')
-                        border.set(qn('w:sz'), '16')  # 2pt thickness
-                        border.set(qn('w:color'), 'e69138')  # Orange-brown color
-                        tcPr.append(border)
-                        
-        except Exception as e:
-            # Fallback to basic table styling if border setting fails
-            logger.warning(f"Could not apply custom borders: {e}")
-            pass
-
-    # Helper to format table with preset styling
+    # Helper to format table with basic styling (no preset styles)
     def format_table(table, is_header=False):
-        # Use preset table style
-        table.style = 'Table Grid'
-        
         # Set table alignment to center
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.allow_autofit = True
