@@ -544,19 +544,33 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             # Create new borders element
             borders = OxmlElement('w:tblBorders')
             
-            # Define border properties for level 2 thickness (16 = 2pt) and color e69138
-            border_props = {
+            # Outer borders: thick orange (level 2 thickness, color e69138)
+            outer_border_props = {
                 'w:val': 'single',
                 'w:sz': '16',  # Level 2 thickness (2pt)
                 'w:color': 'e69138'
             }
             
-            # Add all border types
-            border_types = ['w:top', 'w:bottom', 'w:left', 'w:right', 'w:insideH', 'w:insideV']
+            # Internal borders: thin black
+            inner_border_props = {
+                'w:val': 'single',
+                'w:sz': '4',   # Thin internal borders (0.5pt)
+                'w:color': '000000'  # Black color
+            }
             
-            for border_type in border_types:
+            # Add outer borders (thick orange)
+            outer_border_types = ['w:top', 'w:bottom', 'w:left', 'w:right']
+            for border_type in outer_border_types:
                 border = OxmlElement(border_type)
-                for prop, value in border_props.items():
+                for prop, value in outer_border_props.items():
+                    border.set(qn(prop), value)
+                borders.append(border)
+            
+            # Add internal borders (thin black)
+            inner_border_types = ['w:insideH', 'w:insideV']
+            for border_type in inner_border_types:
+                border = OxmlElement(border_type)
+                for prop, value in inner_border_props.items():
                     border.set(qn(prop), value)
                 borders.append(border)
             
