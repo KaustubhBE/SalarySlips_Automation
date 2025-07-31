@@ -668,6 +668,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         # Track if we've added content to avoid extra page breaks
         content_added = False
         first_sheet = True
+        first_content = True  # Track if this is the first content being added
         
         for dt, date_str, sheet_id in date_sheet_pairs:
             try:                             
@@ -720,6 +721,10 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     sheet_has_content = True
                     
                     # Add sheet name as body paragraph (not heading) and center it
+                    # Only add spacing if this is not the first content
+                    if not first_content:
+                        doc.add_paragraph()
+                    
                     sheet_para = doc.add_paragraph(f"{sheet_name}")
                     sheet_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     for run in sheet_para.runs:
@@ -766,6 +771,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                 doc.add_paragraph()
                             
                             content_added = True
+                            first_content = False
                             
                         except Exception as e:
                             logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
