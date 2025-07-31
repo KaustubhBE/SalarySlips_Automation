@@ -523,17 +523,22 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         shd.set(qn('w:fill'), color)
         tcPr.append(shd)
 
-    # Helper to set table borders with custom styling
+    # Helper to set table borders with custom styling (manual approach)
     def set_table_borders(table):
         try:
             # Get the table element
             tbl = table._tbl
             
-            # Set table properties
-            tblPr = tbl.get_or_add_tblPr()
+            # Create table properties if they don't exist
+            tblPr = tbl.xpath('w:tblPr')
+            if not tblPr:
+                tblPr = OxmlElement('w:tblPr')
+                tbl.insert(0, tblPr)
+            else:
+                tblPr = tblPr[0]
             
             # Remove any existing borders
-            for border in tblPr.findall(qn('w:tblBorders')):
+            for border in tblPr.xpath('w:tblBorders'):
                 tblPr.remove(border)
             
             # Create new borders element
@@ -648,25 +653,29 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         
         # Track if we've added content to avoid extra page breaks
         content_added = False
+        first_sheet = True
         
         for dt, date_str, sheet_id in date_sheet_pairs:
             try:                             
                 spreadsheet = gspread_client.open_by_key(sheet_id)
                 all_worksheets = spreadsheet.worksheets()
+                
+                # Check if sheet has any content
+                sheet_has_content = False
+                
                 for worksheet in all_worksheets:
                     sheet_name = worksheet.title
                     if sheet_name == 'Table_Range':
                         continue
                     
-                    # Add sheet name as body paragraph (not heading) and center it
-                    sheet_para = doc.add_paragraph(f"{sheet_name}")
-                    sheet_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in sheet_para.runs:
-                        run.bold = True
-                        run.font.size = Pt(14)
-                    
-                    # Add small spacing after sheet name
-                    doc.add_paragraph()
+                    # Check if this worksheet has any data
+                    try:
+                        # Get a small range to check if sheet has content
+                        test_data = worksheet.get('A1:A10')
+                        if not test_data or all(not cell.strip() for row in test_data for cell in row):
+                            continue  # Skip blank sheets
+                    except:
+                        continue  # Skip if we can't access the sheet
                     
                     # Include all tables from table_range_data for each worksheet
                     table_defs = []
@@ -680,11 +689,37 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             })
                     table_defs.sort(key=lambda x: x['no'])
                     
+                    # Check if any tables have data
+                    has_table_data = False
+                    for table_def in table_defs:
+                        try:
+                            data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
+                            if data and len(data) > 1:  # More than just headers
+                                has_table_data = True
+                                break
+                        except:
+                            continue
+                    
+                    if not has_table_data:
+                        continue  # Skip sheets with no table data
+                    
+                    sheet_has_content = True
+                    
+                    # Add sheet name as body paragraph (not heading) and center it
+                    sheet_para = doc.add_paragraph(f"{sheet_name}")
+                    sheet_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in sheet_para.runs:
+                        run.bold = True
+                        run.font.size = Pt(14)
+                    
+                    # Add 1 line gap between sheet name and first table
+                    doc.add_paragraph()
+                    
                     # For each table, extract the range and add to doc
                     for i, table_def in enumerate(table_defs):
                         try:
                             data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
-                            if not data or len(data) < 1:
+                            if not data or len(data) < 2:  # Need at least header + 1 data row
                                 continue
                             
                             # Add table name with formatting
@@ -693,6 +728,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             for run in table_name_para.runs:
                                 run.bold = True
                                 run.font.size = Pt(11)
+                            
+                            # Add 1 line gap between table name and table
+                            doc.add_paragraph()
                             
                             # Create table with proper formatting
                             max_cols = max(len(row) for row in data)
@@ -708,8 +746,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             # Apply professional formatting to the table
                             format_table(table, is_header=True)
                             
-                            # Add spacing between tables (but not after the last table)
+                            # Add 2 lines gap between tables (but not after the last table)
                             if i < len(table_defs) - 1:
+                                doc.add_paragraph()
                                 doc.add_paragraph()
                             
                             content_added = True
@@ -719,9 +758,12 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                             error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
                             error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 
-                # Only add page break if we have more content coming and content was added
-                if content_added and date_sheet_pairs.index((dt, date_str, sheet_id)) < len(date_sheet_pairs) - 1:
-                    doc.add_page_break()
+                # Add 2 lines gap between different sheets (but not after the last sheet)
+                if sheet_has_content and date_sheet_pairs.index((dt, date_str, sheet_id)) < len(date_sheet_pairs) - 1:
+                    doc.add_paragraph()
+                    doc.add_paragraph()
+                
+                first_sheet = False
                 
             except Exception as e:
                 logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
