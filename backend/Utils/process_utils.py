@@ -510,6 +510,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     """
     Process reactor reports with dynamic column and row detection.
     
+    Expected Data Structure:
+    - Row 1 (index 0): Non-data elements (e.g., "A1:F1", "fx Time Details")
+    - Row 2 (index 1): Headers (e.g., "Particulars", "Start Date & Time", "End Date & Time")
+    - Row 3+ (index 2+): Actual data rows
+    
     This function now uses a configuration-based approach to handle future changes in:
     - Column names (e.g., 'Particulars', 'Description', 'Operation')
     - Date column names (e.g., 'Start Date & Time', 'End Date & Time')
@@ -597,8 +602,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         """
         Find a row that matches any of the given patterns in the Particulars column.
         patterns: list of strings or regex patterns to match
+        Note: data should start from Row 2 (headers), so we search from Row 3 (index 2) onwards
         """
-        for row in data[1:]:  # Skip header row
+        for row in data[2:]:  # Skip Row 1 (non-data) and Row 2 (headers), start from Row 3 (index 2)
             if len(row) <= particulars_idx:
                 continue
             particulars_text = row[particulars_idx].strip()
@@ -659,14 +665,15 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     def log_sheet_structure(headers, data, sheet_name, logger):
         """
         Log sheet structure for debugging purposes
+        Note: data should start from Row 2 (headers), so data[0] is headers, data[1:] is actual data rows
         """
         logger.info(f"Sheet '{sheet_name}' structure:")
-        logger.info(f"Headers: {headers}")
-        logger.info(f"Total rows: {len(data)}")
+        logger.info(f"Headers (Row 2): {headers}")
+        logger.info(f"Total data rows: {len(data) - 1}")  # Subtract 1 for headers
         if len(data) > 1:
-            logger.info(f"Sample data rows:")
-            for i, row in enumerate(data[1:4]):  # Show first 3 data rows
-                logger.info(f"  Row {i+1}: {row[:5]}...")  # Show first 5 columns
+            logger.info(f"Sample data rows (starting from Row 3):")
+            for i, row in enumerate(data[1:4]):  # Show first 3 data rows (Row 3, 4, 5)
+                logger.info(f"  Row {i+3}: {row[:5]}...")  # Show first 5 columns, adjust row number
 
     # Helper to set cell background color
     def set_cell_background_color(cell, color):
@@ -812,15 +819,16 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             spreadsheet = gspread_client.open_by_key(sheet_id)
             worksheet = spreadsheet.sheet1  # Assume first worksheet
             data = worksheet.get_all_values()
-            if not data or len(data) < 2:
-                logger.warning(f"Sheet for date {d} has insufficient data: {len(data) if data else 0} rows")
+            if not data or len(data) < 3:  # Need at least 3 rows: Row 1 (non-data) + Row 2 (headers) + Row 3 (data)
+                logger.warning(f"Sheet for date {d} has insufficient data: {len(data) if data else 0} rows (need at least 3)")
                 continue
             
-            headers = [h.strip() for h in data[0]]
+            # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
+            headers = [h.strip() for h in data[1]]  # Row 2 contains headers
             
             # Log sheet structure for debugging (only for first few sheets to avoid spam)
             if idx < 2:
-                log_sheet_structure(headers, data, f"Date {d}", logger)
+                log_sheet_structure(headers, data[1:], f"Date {d}", logger)  # Pass data starting from Row 2
             
             # Find operation description column dynamically (try multiple possible names)
             idx_particulars = None
@@ -941,8 +949,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
 
             for i, table_def in enumerate(table_defs):
                 try:
+                    # Get data from the specified range
+                    # Note: table_range_data should specify ranges that include headers (Row 2) and data (Row 3 onwards)
                     data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
                     if not data or len(data) < 2:  # Need at least header + 1 data row
+                        logger.warning(f"Table {table_def['name']} has insufficient data: {len(data) if data else 0} rows")
                         continue
                     # Add table name with formatting
                     doc.add_paragraph()
