@@ -507,13 +507,166 @@ def process_reports(file_path_template):
         return f"Error reading file: {str(e)}"
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
+    """
+    Process reactor reports with dynamic column and row detection.
+    
+    This function now uses a configuration-based approach to handle future changes in:
+    - Column names (e.g., 'Particulars', 'Description', 'Operation')
+    - Date column names (e.g., 'Start Date & Time', 'End Date & Time')
+    - Operation row patterns (e.g., 'charging', 'drain valve')
+    
+    To modify behavior for future data structure changes, update the REACTOR_CONFIG dictionary
+    at the top of this function rather than changing the core logic.
+    """
     from datetime import datetime, timedelta
+    
+    # Configuration for dynamic column and row matching
+    # This can be easily modified by data engineers without changing code logic
+    # 
+    # To add new operation types or modify existing ones:
+    # 1. Add new patterns to the 'patterns' list
+    # 2. Add new date column keywords to the 'date_column_keywords' list
+    # 3. The system will automatically try all patterns and keywords
+    #
+    # Example: If data engineers rename "Charging" to "Material Loading", 
+    # just add "material loading" to the charging_operations patterns list
+    REACTOR_CONFIG = {
+        'charging_operations': {
+            'patterns': [
+                'charging',
+                'charge',
+                'charging (with circulation)',
+                'charging with circulation',
+                'charging operation',
+                'start charging',
+                'reactor charging',
+                'material charging'
+            ],
+            'date_column_keywords': [
+                'Start Date & Time',
+                'Start Date',
+                'Start Time',
+                'Charging Start Date',
+                'Operation Start Date',
+                'Process Start Date',
+                'Begin Date',
+                'Initiation Date'
+            ]
+        },
+        'drain_valve_operations': {
+            'patterns': [
+                'ml & a & b drain valve',
+                'ml and a and b drain valve',
+                'drain valve',
+                'ml drain valve',
+                'a & b drain valve',
+                'drain operation',
+                'valve drain',
+                'ml drain',
+                'a b drain',
+                'drain process'
+            ],
+            'date_column_keywords': [
+                'End Date & Time',
+                'End Date',
+                'End Time',
+                'Drain End Date',
+                'Operation End Date',
+                'Process End Date',
+                'Completion Date',
+                'Finish Date',
+                'Termination Date'
+            ]
+        },
+        'required_columns': [
+            'Particulars',
+            'Description',
+            'Operation',
+            'Process Step'
+        ]
+    }
     # Helper for robust header lookup
     def find_header(headers, name):
         for i, h in enumerate(headers):
             if h.strip().lower() == name.strip().lower():
                 return i
         raise ValueError(f"{name} is not in list: {headers}")
+
+    # Helper for flexible row finding with multiple patterns
+    def find_row_by_patterns(data, particulars_idx, patterns, case_sensitive=False):
+        """
+        Find a row that matches any of the given patterns in the Particulars column.
+        patterns: list of strings or regex patterns to match
+        """
+        for row in data[1:]:  # Skip header row
+            if len(row) <= particulars_idx:
+                continue
+            particulars_text = row[particulars_idx].strip()
+            if not case_sensitive:
+                particulars_text = particulars_text.lower()
+            
+            for pattern in patterns:
+                if case_sensitive:
+                    if pattern in particulars_text:
+                        return row
+                else:
+                    if pattern.lower() in particulars_text:
+                        return row
+        return None
+
+    # Helper for flexible date column finding
+    def find_date_column(headers, date_keywords):
+        """
+        Find date column by matching against multiple possible keywords
+        """
+        for keyword in date_keywords:
+            try:
+                return find_header(headers, keyword)
+            except ValueError:
+                continue
+        return None
+
+    # Helper for robust date parsing and comparison
+    def normalize_date_for_comparison(date_str, input_date):
+        """
+        Normalize date strings for comparison, handling various formats
+        """
+        if not date_str or not input_date:
+            return None, None
+        
+        # Common date separators and formats
+        date_formats = [
+            "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d",
+            "%d/%m/%y", "%m/%d/%y", "%d-%m-%y", "%y-%m-%d"
+        ]
+        
+        # Clean the date string (remove time part if present)
+        date_part = date_str.split()[0] if ' ' in date_str else date_str
+        
+        # Try to parse the date
+        for fmt in date_formats:
+            try:
+                parsed_date = datetime.strptime(date_part, fmt)
+                # Normalize to YYYY-MM-DD format
+                normalized_date = parsed_date.strftime("%Y-%m-%d")
+                return normalized_date, parsed_date
+            except ValueError:
+                continue
+        
+        return None, None
+
+    # Helper for debugging sheet structure
+    def log_sheet_structure(headers, data, sheet_name, logger):
+        """
+        Log sheet structure for debugging purposes
+        """
+        logger.info(f"Sheet '{sheet_name}' structure:")
+        logger.info(f"Headers: {headers}")
+        logger.info(f"Total rows: {len(data)}")
+        if len(data) > 1:
+            logger.info(f"Sample data rows:")
+            for i, row in enumerate(data[1:4]):  # Show first 3 data rows
+                logger.info(f"  Row {i+1}: {row[:5]}...")  # Show first 5 columns
 
     # Helper to set cell background color
     def set_cell_background_color(cell, color):
@@ -660,39 +813,89 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             worksheet = spreadsheet.sheet1  # Assume first worksheet
             data = worksheet.get_all_values()
             if not data or len(data) < 2:
+                logger.warning(f"Sheet for date {d} has insufficient data: {len(data) if data else 0} rows")
                 continue
+            
             headers = [h.strip() for h in data[0]]
-            idx_particulars = find_header(headers, 'Particulars')
+            
+            # Log sheet structure for debugging (only for first few sheets to avoid spam)
+            if idx < 2:
+                log_sheet_structure(headers, data, f"Date {d}", logger)
+            
+            # Find operation description column dynamically (try multiple possible names)
+            idx_particulars = None
+            for col_name in REACTOR_CONFIG['required_columns']:
+                try:
+                    idx_particulars = find_header(headers, col_name)
+                    logger.info(f"Found operation column: '{col_name}' at index {idx_particulars}")
+                    break
+                except ValueError:
+                    continue
+            
+            if idx_particulars is None:
+                logger.warning(f"No operation description column found in sheet for date {d}. Available columns: {headers}")
+                continue
+            
             if idx == 0:
-                # For input date sheet: Only include if 'Charging' row's 'Start Date & Time' matches input_date
-                idx_start_date = find_header(headers, 'Start Date & Time')
-                charging_row = next((row for row in data[1:] if row[idx_particulars].strip().lower().startswith('charging')), None)
+                # For input date sheet: Only include if charging-related row's start date matches input_date
+                charging_config = REACTOR_CONFIG['charging_operations']
+                
+                idx_start_date = find_date_column(headers, charging_config['date_column_keywords'])
+                if idx_start_date is None:
+                    logger.warning(f"Start date column not found in sheet for date {d}. Available columns: {headers}")
+                    continue
+                
+                charging_row = find_row_by_patterns(data, idx_particulars, charging_config['patterns'])
                 if charging_row:
                     charging_start = charging_row[idx_start_date].strip()
                     if charging_start:
-                        # Extract date part (YYYY-MM-DD) from charging_start
-                        charging_date = charging_start.split()[0].replace('/', '-')
-                        # Normalize both to YYYY-MM-DD
-                        input_date_norm = input_date.replace('/', '-')
-                        if charging_date == input_date_norm:
+                        # Use robust date comparison
+                        charging_date_norm, _ = normalize_date_for_comparison(charging_start, input_date)
+                        input_date_norm, _ = normalize_date_for_comparison(input_date, input_date)
+                        
+                        if charging_date_norm and input_date_norm and charging_date_norm == input_date_norm:
                             sheets_to_process.append((d, sheet_id, worksheet))
+                            logger.info(f"Input date sheet {d} added - charging date matches: {charging_date_norm}")
+                        else:
+                            logger.info(f"Input date sheet {d} skipped - charging date '{charging_start}' doesn't match input date '{input_date}'")
+                else:
+                    logger.info(f"No charging operation row found in sheet for date {d}")
             else:
-                # For previous 5 sheets: Only include if 'ML & A & B Drain Valve' 'End Date & Time' is blank or matches input_date
-                idx_end_date = find_header(headers, 'End Date & Time')
-                ml_row = next((row for row in data[1:] if row[idx_particulars].strip().lower().startswith('ml') and 'drain valve' in row[idx_particulars].lower()), None)
-                if ml_row:
-                    end_date_val = ml_row[idx_end_date].strip()
+                # For previous 5 sheets: Only include if drain valve row's end date is blank or matches input_date
+                drain_config = REACTOR_CONFIG['drain_valve_operations']
+                
+                idx_end_date = find_date_column(headers, drain_config['date_column_keywords'])
+                if idx_end_date is None:
+                    logger.warning(f"End date column not found in sheet for date {d}. Available columns: {headers}")
+                    continue
+                
+                drain_valve_row = find_row_by_patterns(data, idx_particulars, drain_config['patterns'])
+                if drain_valve_row:
+                    end_date_val = drain_valve_row[idx_end_date].strip()
                     if not end_date_val:
                         sheets_to_process.append((d, sheet_id, worksheet))
+                        logger.info(f"Previous date sheet {d} added - drain valve end date is blank")
                     else:
-                        # Extract date part (YYYY-MM-DD) from end_date_val
-                        end_date = end_date_val.split()[0].replace('/', '-')
-                        input_date_norm = input_date.replace('/', '-')
-                        if end_date == input_date_norm:
+                        # Use robust date comparison
+                        end_date_norm, _ = normalize_date_for_comparison(end_date_val, input_date)
+                        input_date_norm, _ = normalize_date_for_comparison(input_date, input_date)
+                        
+                        if end_date_norm and input_date_norm and end_date_norm == input_date_norm:
                             sheets_to_process.append((d, sheet_id, worksheet))
+                            logger.info(f"Previous date sheet {d} added - drain valve end date matches: {end_date_norm}")
+                        else:
+                            logger.info(f"Previous date sheet {d} skipped - drain valve end date '{end_date_val}' doesn't match input date '{input_date}'")
+                else:
+                    logger.info(f"No drain valve operation row found in sheet for date {d}")
         except Exception as e:
             logger.error(f"Error processing sheet for date {d}: {e}")
             continue
+    
+    # Log summary of sheets found
+    logger.info(f"Processing summary: Found {len(sheets_to_process)} sheets to process out of {len(dates_to_check)} dates checked")
+    for d, sheet_id, worksheet in sheets_to_process:
+        logger.info(f"  - Date {d}: Sheet ID {sheet_id}")
+    
     # Now, for each sheet in sheets_to_process, extract tables and add to doc
     doc = Document(template_path)
     content_added = False
