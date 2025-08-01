@@ -1295,15 +1295,11 @@ def reactor_report():
         if not user_id:
             logger.error("No user_id found in session. User must be logged in to send reports.")
             return jsonify({"error": "User not authenticated"}), 401
-        
         # Get form data
         send_email = request.form.get('send_email') == 'true'
-        start_date = request.form.get('start_date')
-        end_date = request.form.get('end_date')
-
-        if not start_date or not end_date:
-            return jsonify({"error": "Start date and end date are required"}), 400
-
+        date = request.form.get('date')
+        if not date:
+            return jsonify({"error": "Date is required"}), 400
         # Fetch sheet IDs from Google Sheet (mapping sheet)
         try:
             reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"
@@ -1313,23 +1309,19 @@ def reactor_report():
         except Exception as e:
             logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
-
         # Create temporary directory for processing
         temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
         os.makedirs(temp_dir, exist_ok=True)
         template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
         if not os.path.exists(template_path):
             return jsonify({"error": "Reactor report template not found"}), 500
-
         gspread_client = gspread.authorize(creds)
-        
         # Call the new utility function
         result = process_reactor_reports(
             sheet_id_mapping_data=sheet_id_mapping_data,
             sheet_recipients_data=sheet_recipients_data,
             table_range_data=table_range_data,
-            start_date=start_date,
-            end_date=end_date,
+            input_date=date,
             user_id=user_id,
             send_email=send_email,
             template_path=template_path,
@@ -1338,7 +1330,6 @@ def reactor_report():
             logger=logger,
             send_email_smtp=send_email_smtp
         )
-
         # Clean up temporary files
         try:
             if os.path.exists(temp_dir):
@@ -1355,11 +1346,9 @@ def reactor_report():
                     logger.error(f"Failed to remove temporary directory {temp_dir}: {e}")
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
-
         if 'error' in result:
             return jsonify({"error": result['error']}), 400
         return jsonify(result), 200
-
     except Exception as e:
         logger.error(f"Error generating reactor reports: {e}")
         return jsonify({"error": str(e)}), 500

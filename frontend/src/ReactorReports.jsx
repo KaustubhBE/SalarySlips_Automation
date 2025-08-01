@@ -5,14 +5,11 @@ import { getApiUrl } from './config';
 const ReactorReports = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
-  const [startDate, setStartDate] = useState(() => {
+  const [date, setDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
-  const [endDate, setEndDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [previewItems, setPreviewItems] = useState([]);
 
   const validateSheetId = (id) => {
     const sheetIdRegex = /^[a-zA-Z0-9-_]{44}$/;
@@ -63,12 +60,8 @@ const ReactorReports = () => {
     setSheetName(e.target.value);
   };
 
-  const handleStartDateChange = (e) => {
-    setStartDate(e.target.value);
-  };
-
-  const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
+  const handleDateChange = (e) => {
+    setDate(e.target.value);
   };
 
   const handleCopyServiceAccount = useCallback(() => {
@@ -85,8 +78,8 @@ const ReactorReports = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
+    if (!date) {
+      alert('Please select a date');
       return;
     }
 
@@ -102,8 +95,7 @@ const ReactorReports = () => {
       const formData = new FormData();
 
       formData.append('send_email', sendEmail);
-      formData.append('start_date', startDate);
-      formData.append('end_date', endDate);
+      formData.append('date', date);
 
       const response = await fetch(getApiUrl('reactor-reports'), {
         method: 'POST',
@@ -126,9 +118,8 @@ const ReactorReports = () => {
       alert(result.message || 'Reports generated and sent successfully!');
 
       setSendEmail(false);
-      const today = new Date().toISOString().split('T')[0];
-      setStartDate(today);
-      setEndDate(today);
+      setPreviewItems([]);
+      setDate(new Date().toISOString().split('T')[0]);
 
       window.location.reload();
 
@@ -147,24 +138,12 @@ const ReactorReports = () => {
       <div className="sheet-id-section">
         <div className="sheet-inputs">
           <div className="sheet-input-group">
-            <label htmlFor="start-date">Start Date</label>
+            <label htmlFor="date">Charging Date</label>
             <input
               type="date"
-              id="start-date"
-              value={startDate}
-              onChange={handleStartDateChange}
-              className="sheet-input"
-              required
-            />
-          </div>
-
-          <div className="sheet-input-group">
-            <label htmlFor="end-date">End Date</label>
-            <input
-              type="date"
-              id="end-date"
-              value={endDate}
-              onChange={handleEndDateChange}
+              id="date"
+              value={date}
+              onChange={handleDateChange}
               className="sheet-input"
               required
             />

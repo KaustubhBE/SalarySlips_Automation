@@ -506,8 +506,8 @@ def process_reports(file_path_template):
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
 
-def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, start_date, end_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
-    
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
+    from datetime import datetime, timedelta
     # Helper for robust header lookup
     def find_header(headers, name):
         for i, h in enumerate(headers):
@@ -623,180 +623,165 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     else:
                         set_cell_background_color(cell, "e8f0fe")
 
-    # Parse date range
-    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-
-    # Build date->sheet_id mapping from sheet_id_mapping_data, and sort by date ascending
-    date_sheet_pairs = []
-    date_formats = ["%d/%m/%y", "%d/%m/%Y", "%m/%d/%Y"]
+    # Parse input date
+    date_formats = ["%d/%m/%y", "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d"]
+    dt_input = None
+    for fmt in date_formats:
+        try:
+            dt_input = datetime.strptime(input_date, fmt)
+            break
+        except Exception:
+            continue
+    if not dt_input:
+        return {"error": f"Could not parse input date: {input_date}"}
+    # Build date->sheet_id mapping
+    date_sheet_map = {}
     for row in sheet_id_mapping_data[1:]:
         date_str = row[0].strip()
-        if not date_str or date_str.lower() == 'date':
+        sheet_id = row[1].strip() if len(row) > 1 else None
+        if not date_str or not sheet_id:
             continue
-        dt = None
         for fmt in date_formats:
             try:
                 dt = datetime.strptime(date_str, fmt)
+                date_sheet_map[dt.date()] = sheet_id
                 break
             except Exception:
                 continue
-        if not dt:
-            logger.warning(f"Error parsing date {date_str}: no matching format")
+    # Get list of dates: input date and 5 previous dates
+    dates_to_check = [dt_input.date() - timedelta(days=i) for i in range(0, 6)]
+    sheets_to_process = []
+    for idx, d in enumerate(dates_to_check):
+        sheet_id = date_sheet_map.get(d)
+        if not sheet_id:
             continue
-        if start_dt <= dt <= end_dt:
-            date_sheet_pairs.append((dt, date_str, row[1]))
-    date_sheet_pairs.sort()  # ascending order by date
-
-    if not date_sheet_pairs:
-        return {"error": "No sheet IDs found for the specified date range"}
+        try:
+            spreadsheet = gspread_client.open_by_key(sheet_id)
+            worksheet = spreadsheet.sheet1  # Assume first worksheet
+            data = worksheet.get_all_values()
+            if not data or len(data) < 2:
+                continue
+            headers = [h.strip() for h in data[0]]
+            idx_particulars = find_header(headers, 'Particulars')
+            if idx == 0:
+                # For input date sheet: Only include if 'Charging' row's 'Start Date & Time' matches input_date
+                idx_start_date = find_header(headers, 'Start Date & Time')
+                charging_row = next((row for row in data[1:] if row[idx_particulars].strip().lower().startswith('charging')), None)
+                if charging_row:
+                    charging_start = charging_row[idx_start_date].strip()
+                    if charging_start:
+                        # Extract date part (YYYY-MM-DD) from charging_start
+                        charging_date = charging_start.split()[0].replace('/', '-')
+                        # Normalize both to YYYY-MM-DD
+                        input_date_norm = input_date.replace('/', '-')
+                        if charging_date == input_date_norm:
+                            sheets_to_process.append((d, sheet_id, worksheet))
+            else:
+                # For previous 5 sheets: Only include if 'ML & A & B Drain Valve' 'End Date & Time' is blank or matches input_date
+                idx_end_date = find_header(headers, 'End Date & Time')
+                ml_row = next((row for row in data[1:] if row[idx_particulars].strip().lower().startswith('ml') and 'drain valve' in row[idx_particulars].lower()), None)
+                if ml_row:
+                    end_date_val = ml_row[idx_end_date].strip()
+                    if not end_date_val:
+                        sheets_to_process.append((d, sheet_id, worksheet))
+                    else:
+                        # Extract date part (YYYY-MM-DD) from end_date_val
+                        end_date = end_date_val.split()[0].replace('/', '-')
+                        input_date_norm = input_date.replace('/', '-')
+                        if end_date == input_date_norm:
+                            sheets_to_process.append((d, sheet_id, worksheet))
+        except Exception as e:
+            logger.error(f"Error processing sheet for date {d}: {e}")
+            continue
+    # Now, for each sheet in sheets_to_process, extract tables and add to doc
+    doc = Document(template_path)
+    content_added = False
+    first_sheet = True
+    first_content = True  # Track if this is the first content being added
 
     # Parse table_range_data header indices robustly (excluding Sheet Name)
     tr_headers = [h.strip() for h in table_range_data[1]]
     try:
-        idx_no = find_header(tr_headers, 'Table No.')
-        idx_name = find_header(tr_headers, 'Table Name')
-        idx_start = find_header(tr_headers, 'Start Range')
-        idx_end = find_header(tr_headers, 'End Range')
+        idx_no = next(i for i, h in enumerate(tr_headers) if h.lower() == 'table no.')
+        idx_name = next(i for i, h in enumerate(tr_headers) if h.lower() == 'table name')
+        idx_start = next(i for i, h in enumerate(tr_headers) if h.lower() == 'start range')
+        idx_end = next(i for i, h in enumerate(tr_headers) if h.lower() == 'end range')
     except Exception as e:
         logger.error(f"Error finding headers in table_range_data: {e}")
         return {"error": f"Header error: {e}"}
 
-    try:
-        doc = Document(template_path)
-        
-        # Track if we've added content to avoid extra page breaks
-        content_added = False
-        first_sheet = True
-        first_content = True  # Track if this is the first content being added
-        
-        for dt, date_str, sheet_id in date_sheet_pairs:
-            try:                             
-                spreadsheet = gspread_client.open_by_key(sheet_id)
-                all_worksheets = spreadsheet.worksheets()
-                
-                # Check if sheet has any content
-                sheet_has_content = False
-                
-                for worksheet in all_worksheets:
-                    sheet_name = worksheet.title
-                    if sheet_name == 'Table_Range':
-                        continue
-                    
-                    # Check if this worksheet has any data
-                    try:
-                        # Get a small range to check if sheet has content
-                        test_data = worksheet.get('A1:A10')
-                        if not test_data or all(not cell.strip() for row in test_data for cell in row):
-                            continue  # Skip blank sheets
-                    except:
-                        continue  # Skip if we can't access the sheet
-                    
-                    # Include all tables from table_range_data for each worksheet
-                    table_defs = []
-                    for row in table_range_data[2:]:
-                        if row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
-                            table_defs.append({
-                                'no': int(row[idx_no]),
-                                'name': row[idx_name].strip(),
-                                'start': row[idx_start].strip(),
-                                'end': row[idx_end].strip()
-                            })
-                    table_defs.sort(key=lambda x: x['no'])
-                    
-                    # Check if any tables have data
-                    has_table_data = False
-                    for table_def in table_defs:
-                        try:
-                            data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
-                            if data and len(data) > 1:  # More than just headers
-                                has_table_data = True
-                                break
-                        except:
-                            continue
-                    
-                    if not has_table_data:
-                        continue  # Skip sheets with no table data
-                    
-                    sheet_has_content = True
-                    
-                    # Add sheet name as body paragraph (not heading) and center it
-                    # Only add spacing if this is not the first content
-                    if not first_content:
-                        doc.add_paragraph()
-                    
-                    sheet_para = doc.add_paragraph(f"{sheet_name}")
-                    sheet_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in sheet_para.runs:
-                        run.bold = True
-                        run.font.size = Pt(14)
-                    
-                    # Add 1 line gap between sheet name and first table
-                    doc.add_paragraph()
-                    
-                    # For each table, extract the range and add to doc
-                    for i, table_def in enumerate(table_defs):
-                        try:
-                            data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
-                            if not data or len(data) < 2:  # Need at least header + 1 data row
-                                continue
-                            
-                            # Add table name with formatting
-                            table_name_para = doc.add_paragraph(table_def['name'])
-                            table_name_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                            for run in table_name_para.runs:
-                                run.bold = True
-                                run.font.size = Pt(11)
-                            
-                            # Add 1 line gap between table name and table
-                            doc.add_paragraph()
-                            
-                            # Create table with proper formatting
-                            max_cols = max(len(row) for row in data)
-                            table = doc.add_table(rows=len(data), cols=max_cols)
-                            
-                            # Fill table data with proper formatting
-                            for i, row in enumerate(data):
-                                for j, cell_value in enumerate(row):
-                                    if j < max_cols:
-                                        cell = table.cell(i, j)
-                                        cell.text = str(cell_value)
-                            
-                            # Apply professional formatting to the table
-                            format_table(table, is_header=True)
-                            
-                            # Add 2 lines gap between tables (but not after the last table)
-                            if i < len(table_defs) - 1:
-                                doc.add_paragraph()
-                                doc.add_paragraph()
-                            
-                            content_added = True
-                            first_content = False
-                            
-                        except Exception as e:
-                            logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
-                            error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
-                            error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                
-                # Add 2 lines gap between different sheets (but not after the last sheet)
-                if sheet_has_content and date_sheet_pairs.index((dt, date_str, sheet_id)) < len(date_sheet_pairs) - 1:
-                    doc.add_paragraph()
-                    doc.add_paragraph()
-                
-                first_sheet = False
-                
-            except Exception as e:
-                logger.error(f"Error processing sheet ID {sheet_id} for date {date_str}: {e}")
-                continue
-                
-        output_filename = f"reactor_report_{start_date}_to_{end_date}.docx"
-        output_path = os.path.join(output_dir, output_filename)
-        doc.save(output_path)
-    except Exception as e:
-        logger.error(f"Error creating report document: {e}")
-        return {"error": "Failed to create report document"}
+    for d, sheet_id, worksheet in sheets_to_process:
+        try:
+            sheet_name = worksheet.title if hasattr(worksheet, 'title') else str(d)
+            # Write to the first line if it's empty, else add a new paragraph
+            if not doc.paragraphs or not doc.paragraphs[0].text.strip():
+                para = doc.paragraphs[0] if doc.paragraphs else doc.add_paragraph()
+                para.text = f"Reactor: {sheet_name}"
+            else:
+                para = doc.add_paragraph(f"Reactor: {sheet_name}")
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in para.runs:
+                run.bold = True
+                run.font.size = Pt(14)
 
-    pdf_filename = f"reactor_report_{start_date}_to_{end_date}.pdf"
+            # Extract tables as per table_range_data
+            table_defs = []
+            for row in table_range_data[2:]:
+                if row[idx_name].strip() and row[idx_start].strip() and row[idx_end].strip():
+                    table_defs.append({
+                        'no': int(row[idx_no]),
+                        'name': row[idx_name].strip(),
+                        'start': row[idx_start].strip(),
+                        'end': row[idx_end].strip()
+                    })
+            table_defs.sort(key=lambda x: x['no'])
+
+            for i, table_def in enumerate(table_defs):
+                try:
+                    data = worksheet.get(f"{table_def['start']}:{table_def['end']}")
+                    if not data or len(data) < 2:  # Need at least header + 1 data row
+                        continue
+                    # Add table name with formatting
+                    doc.add_paragraph()
+                    table_name_para = doc.add_paragraph(table_def['name'])
+                    table_name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in table_name_para.runs:
+                        run.bold = True
+                        run.font.size = Pt(11)
+                    # Create table with proper formatting
+                    max_cols = max(len(row) for row in data)
+                    table = doc.add_table(rows=len(data), cols=max_cols)
+                    # Fill table data with proper formatting
+                    for row_idx, row in enumerate(data):
+                        for col_idx, cell_value in enumerate(row):
+                            if col_idx < max_cols:
+                                cell = table.cell(row_idx, col_idx)
+                                cell.text = str(cell_value)
+                    # Apply professional formatting to the table
+                    format_table(table, is_header=True)
+                    # Add 2 lines gap between tables (but not after the last table)
+                    if i < len(table_defs) - 1:
+                        doc.add_paragraph()
+                    content_added = True
+                    first_content = False
+                except Exception as e:
+                    logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
+                    error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
+                    error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            # Add page break between different sheets (but not after the last sheet)
+            if content_added and not first_sheet:
+                doc.add_page_break()
+            first_sheet = False
+        except Exception as e:
+            logger.error(f"Error processing sheet {sheet_id}: {e}")
+            continue
+    # Save the document (output filename logic can be updated as needed)
+    output_filename = f"reactor_report_{input_date}.docx"
+    output_path = os.path.join(output_dir, output_filename)
+    doc.save(output_path)
+    # (PDF conversion and email logic as before)
+
+    pdf_filename = f"reactor_report_{input_date}.pdf"
     pdf_path = os.path.join(output_dir, pdf_filename)
     if convert_docx_to_pdf(output_path, pdf_path):
         logger.info("Successfully converted DOCX to PDF")
@@ -836,7 +821,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 <html>
                 <body>
                 <h2>Reactor Report</h2>
-                <p>Please find attached the reactor report for the period from {start_date} to {end_date}.</p>
+                <p>Please find attached the reactor report for the period from {input_date} to {input_date}.</p>
                 <p>This report contains snapshots of all reactor operations data for the specified period.</p>
                 <br>
                 <p>Best regards,<br>Reactor Automation System</p>
@@ -873,8 +858,8 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     return {
         "message": "Reactor reports generated and sent successfully",
         "generated_files": 1,
-        "date_range": f"{start_date} to {end_date}",
-        "sheets_processed": len(date_sheet_pairs),
+        "date_range": f"{input_date}",
+        "sheets_processed": len(sheets_to_process),
         "notifications_sent": {
             "email": send_email
         },
