@@ -536,107 +536,109 @@ function Dashboard() {
       
       <div className="users-list">
         <h2>Current Users</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Department</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(user => (
-              <React.Fragment key={user.id}>
-                <tr>
-                  <td>{user.username}</td>
-                  <td>{user.email}</td>
-                  <td>
-                    <select
-                      className="role-select"
-                      value={user.role}
-                      onChange={(e) => {
-                        const newRole = e.target.value;
-                        handleRoleChange(user.id, newRole);
-                      }}
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                      <option value="super-admin">Super Admin</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select
-                      className="department-select"
-                      value={user.department || ''}
-                      onChange={(e) => handleDepartmentChange(user.id, e.target.value)}
-                      disabled={user.role === 'super-admin'}
-                    >
-                      <option value="">Select Department</option>
-                      {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                        <option key={value} value={value} title={DEPARTMENT_DESCRIPTIONS[value]}>
-                          {key === 'STORE' ? 'Store' : key === 'MARKETING' ? 'Marketing' : 'Human Resource'}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <div className="user-actions-buttons">
-                      <button
-                        className="action-button edit-button"
-                        onClick={() => handleEditAppPassword(user)}
-                      >
-                        Edit Password
-                      </button>
-                      {canEditPermissions(user.role) && (
-                        <button
-                          className="action-button permissions-button"
-                          onClick={() => handleEditPermissions(user)}
-                        >
-                          Edit Permissions
-                        </button>
-                      )}
-                      <button 
-                        className="action-button delete-button"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                {editingUserId === user.id && !showPermissionsModal && (
+        <div className="users-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(user => (
+                <React.Fragment key={user.id}>
                   <tr>
-                    <td colSpan={5} className="user-actions-row">
-                      <div className="edit-app-password-inline">
-                        <input
-                          type="password"
-                          placeholder="New App Password"
-                          value={editingAppPassword}
-                          onChange={e => setEditingAppPassword(e.target.value)}
-                        />
+                    <td>{user.username}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <select
+                        className="role-select"
+                        value={user.role}
+                        onChange={(e) => {
+                          const newRole = e.target.value;
+                          handleRoleChange(user.id, newRole);
+                        }}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="super-admin">Super Admin</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        className="department-select"
+                        value={user.department || ''}
+                        onChange={(e) => handleDepartmentChange(user.id, e.target.value)}
+                        disabled={user.role === 'super-admin'}
+                      >
+                        <option value="">Select Department</option>
+                        {Object.entries(DEPARTMENTS).map(([key, value]) => (
+                          <option key={value} value={value} title={DEPARTMENT_DESCRIPTIONS[value]}>
+                            {key === 'STORE' ? 'Store' : key === 'MARKETING' ? 'Marketing' : 'Human Resource'}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <div className="user-actions-buttons">
                         <button
                           className="action-button edit-button"
-                          onClick={() => handleSaveAppPassword(user.id)}
-                          disabled={!editingAppPassword}
+                          onClick={() => handleEditAppPassword(user)}
                         >
-                          Save
+                          Edit Password
                         </button>
-                        <button
+                        {canEditPermissions(user.role) && (
+                          <button
+                            className="action-button permissions-button"
+                            onClick={() => handleEditPermissions(user)}
+                          >
+                            Edit Permissions
+                          </button>
+                        )}
+                        <button 
                           className="action-button delete-button"
-                          onClick={handleCancelEdit}
+                          onClick={() => handleDeleteUser(user.id)}
                         >
-                          Cancel
+                          Delete
                         </button>
                       </div>
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {editingUserId === user.id && !showPermissionsModal && (
+                    <tr>
+                      <td colSpan={5} className="user-actions-row">
+                        <div className="edit-app-password-inline">
+                          <input
+                            type="password"
+                            placeholder="New App Password"
+                            value={editingAppPassword}
+                            onChange={e => setEditingAppPassword(e.target.value)}
+                          />
+                          <button
+                            className="action-button edit-button"
+                            onClick={() => handleSaveAppPassword(user.id)}
+                            disabled={!editingAppPassword}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="action-button delete-button"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Permissions Modal */}
@@ -709,7 +711,7 @@ function Dashboard() {
 
             <div className="form-group">
               <label htmlFor="appPassword">App Password:</label>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="password-input-container">
                 <input
                   type={showAppPassword ? "text" : "password"}
                   id="appPassword"

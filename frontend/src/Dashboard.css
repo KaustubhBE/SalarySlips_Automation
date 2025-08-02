@@ -142,6 +142,22 @@ form button,
   box-sizing: border-box;
 }
 
+/* Password input container for responsive layout */
+.password-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.password-input-container input {
+  flex: 1;
+}
+
+.password-input-container .toggle-password-btn {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
 /* Table Styling */
 .users-table-container {
   overflow-x: auto;
@@ -535,104 +551,310 @@ table tr:hover {
   }
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
+/* Enhanced Responsive Design */
+@media (max-width: 1200px) {
   .dashboard-container {
-    margin: 60px 20px;
+    margin: 70px 20px 40px;
     padding: 25px;
   }
   
   .permissions-modal {
     width: 95vw;
+    max-width: 800px;
   }
   
   .permissions-grid {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
+}
+
+@media (max-width: 1024px) {
+  .dashboard-container {
+    margin: 60px 15px 30px;
+    padding: 20px;
+  }
+  
+  .dashboard-container h1 {
+    font-size: 2.2rem;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.6rem;
+  }
+  
+  .users-list {
+    padding: 20px 15px 25px;
+  }
+  
+  .permissions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
   
   .nested-permissions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
   .dashboard-container {
-    margin: 40px 15px;
-    padding: 20px;
+    margin: 50px 10px 20px;
+    padding: 15px;
   }
 
   .dashboard-container h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
   }
 
   .dashboard-container h2 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    margin: 20px 0 15px;
   }
 
   form {
     padding: 20px;
   }
 
+  /* Mobile table improvements */
+  .users-list {
+    padding: 15px 10px 20px;
+    overflow-x: auto;
+  }
+  
+  table {
+    min-width: 600px; /* Ensure table doesn't get too cramped */
+  }
+  
   table th,
   table td {
-    padding: 12px;
+    padding: 10px 8px;
     font-size: 0.875rem;
+  }
+  
+  .role-select,
+  .department-select {
+    min-width: 100px;
+    font-size: 0.8rem;
+    padding: 4px 8px;
   }
   
   .permissions-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
   
   .nested-permissions {
     grid-template-columns: 1fr;
     margin-left: 10px;
+    gap: 8px;
   }
   
   .modal-content {
     padding: 20px;
+    margin: 10px;
+    max-height: 85vh;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal-actions .action-button {
+    width: 100%;
   }
   
   .user-actions-buttons {
     flex-direction: column;
     gap: 5px;
+    align-items: stretch;
+  }
+  
+  .action-button {
+    margin-right: 0;
+    margin-bottom: 5px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
   }
   
   .edit-app-password-inline {
     flex-direction: column;
     gap: 8px;
+    align-items: stretch;
   }
   
   .edit-app-password-inline input[type="password"] {
     width: 100%;
-    max-width: 250px;
+    max-width: none;
+  }
+  
+  .edit-app-password-inline .action-button {
+    width: 100%;
+    margin: 0;
+  }
+  
+  .toggle-password-btn {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+  
+  .password-input-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .password-input-container .toggle-password-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  .permission-category {
+    padding: 15px;
+  }
+  
+  .permission-item {
+    padding: 10px;
+  }
+  
+  .permission-item label {
+    font-size: 0.85rem;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard-container {
-    margin: 20px 10px;
-    padding: 15px;
+    margin: 40px 5px 15px;
+    padding: 10px;
   }
 
   .dashboard-container h1 {
-    font-size: 1.75rem;
+    font-size: 1.6rem;
+    margin-bottom: 15px;
+  }
+
+  .dashboard-container h2 {
+    font-size: 1.3rem;
+    margin: 15px 0 10px;
   }
 
   form {
     padding: 15px;
   }
+  
+  form label {
+    font-size: 0.9rem;
+  }
+  
+  form input,
+  form select {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
 
   .action-button {
-    padding: 6px 12px;
+    padding: 8px 10px;
     font-size: 0.75rem;
   }
   
   .users-list {
-    padding: 12px 8px 18px 8px;
+    padding: 10px 5px 15px;
+  }
+  
+  table th,
+  table td {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+  }
+  
+  .role-select,
+  .department-select {
+    min-width: 80px;
+    font-size: 0.75rem;
+    padding: 3px 6px;
   }
   
   .nested-permissions {
     margin-left: 5px;
+  }
+  
+  .permission-category {
+    padding: 12px;
+  }
+  
+  .category-title {
+    font-size: 1rem;
+  }
+  
+  .permission-item {
+    padding: 8px;
+  }
+  
+  .permission-item label {
+    font-size: 0.8rem;
+  }
+  
+  .modal-content {
+    padding: 15px;
+    margin: 5px;
+  }
+  
+  .modal-content h3 {
+    font-size: 1.3rem;
+  }
+  
+  .password-input-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .password-input-container .toggle-password-btn {
+    width: 100%;
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-container {
+    margin: 35px 2px 10px;
+    padding: 8px;
+  }
+  
+  .dashboard-container h1 {
+    font-size: 1.4rem;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.2rem;
+  }
+  
+  form {
+    padding: 12px;
+  }
+  
+  .users-list {
+    padding: 8px 3px 12px;
+  }
+  
+  table th,
+  table td {
+    padding: 6px 4px;
+    font-size: 0.75rem;
+  }
+  
+  .action-button {
+    padding: 6px 8px;
+    font-size: 0.7rem;
+  }
+  
+  .password-input-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .password-input-container .toggle-password-btn {
+    width: 100%;
+    margin-top: 4px;
   }
 }
 

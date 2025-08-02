@@ -143,3 +143,237 @@
   color: #fff;
   cursor: pointer;
 }
+
+/* Enhanced Responsive Design */
+@media (max-width: 1024px) {
+  .navbar {
+    padding: 0 15px;
+  }
+  
+  .be-logo {
+    height: 7vh;
+    max-height: 50px;
+  }
+  
+  .burger-menu svg {
+    font-size: 22px;
+    padding-right: 15px;
+  }
+  
+  .navbar-right {
+    gap: 15px;
+    padding-right: 1%;
+  }
+  
+  .settings-icon, .logout-icon, .whatsapp-icon {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 10px;
+    height: 8vh;
+  }
+  
+  .be-logo {
+    height: 6vh;
+    max-height: 45px;
+  }
+  
+  .burger-menu svg {
+    font-size: 20px;
+    padding-right: 10px;
+  }
+  
+  .menu {
+    top: 35px;
+    left: -10px;
+    min-width: 200px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  .menu span {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .menu span:last-child {
+    border-bottom: none;
+  }
+  
+  .menu span:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .navbar-right {
+    gap: 12px;
+    padding-right: 0;
+  }
+  
+  .settings-icon, .logout-icon, .whatsapp-icon {
+    font-size: 22px;
+  }
+  
+  .qr-content {
+    padding: 1.5rem;
+    margin: 20px;
+    max-width: 90vw;
+  }
+  
+  .qr-content h2 {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 8px;
+    height: 7vh;
+  }
+  
+  .be-logo {
+    height: 5vh;
+    max-height: 40px;
+  }
+  
+  .burger-menu svg {
+    font-size: 18px;
+    padding-right: 8px;
+  }
+  
+  .menu {
+    top: 30px;
+    left: -15px;
+    min-width: 180px;
+    border-radius: 6px;
+  }
+  
+  .menu span {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+  
+  .navbar-right {
+    gap: 10px;
+  }
+  
+  .settings-icon, .logout-icon, .whatsapp-icon {
+    font-size: 20px;
+  }
+  
+  .qr-content {
+    padding: 1.2rem;
+    margin: 15px;
+  }
+  
+  .qr-content h2 {
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .qr-close-btn {
+    margin-top: 1.2rem;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar {
+    padding: 0 5px;
+    height: 6vh;
+  }
+  
+  .be-logo {
+    height: 4vh;
+    max-height: 35px;
+  }
+  
+  .burger-menu svg {
+    font-size: 16px;
+    padding-right: 6px;
+  }
+  
+  .menu {
+    top: 25px;
+    left: -20px;
+    min-width: 160px;
+  }
+  
+  .menu span {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .navbar-right {
+    gap: 8px;
+  }
+  
+  .settings-icon, .logout-icon, .whatsapp-icon {
+    font-size: 18px;
+  }
+  
+  .qr-content {
+    padding: 1rem;
+    margin: 10px;
+  }
+  
+  .qr-content h2 {
+    font-size: 1.1rem;
+  }
+  
+  .qr-close-btn {
+    margin-top: 1rem;
+    padding: 0.3rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .navbar {
+    height: 12vh;
+  }
+  
+  .be-logo {
+    height: 10vh;
+    max-height: 50px;
+  }
+  
+  .menu {
+    top: 50px;
+  }
+  
+  .qr-content {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .be-logo {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .settings-icon,
+  .logout-icon,
+  .whatsapp-icon {
+    transition: none;
+  }
+  
+  .settings-icon:hover {
+    transform: none;
+  }
+  
+  .logout-icon:hover {
+    transform: none;
+  }
+}
