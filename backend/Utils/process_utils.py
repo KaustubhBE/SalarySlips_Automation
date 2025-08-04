@@ -551,6 +551,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'Start Date & Time',
                 'Start Date',
                 'Start Time',
+                'Start Date\n& Time',
                 'Charging Start Date',
                 'Operation Start Date',
                 'Process Start Date',
@@ -575,6 +576,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'End Date & Time',
                 'End Date',
                 'End Time',
+                'End Date\n& Time',
                 'Drain End Date',
                 'Operation End Date',
                 'Process End Date',
@@ -925,6 +927,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         try:
             sheet_name = worksheet.title if hasattr(worksheet, 'title') else str(d)
             # Write to the first line if it's empty, else add a new paragraph
+            doc.add_page_break()
             if not doc.paragraphs or not doc.paragraphs[0].text.strip():
                 para = doc.paragraphs[0] if doc.paragraphs else doc.add_paragraph()
                 para.text = f"Reactor: {sheet_name}"
@@ -983,8 +986,8 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
                     error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
             # Add page break between different sheets (but not after the last sheet)
-            if content_added and not first_sheet:
-                doc.add_page_break()
+            # if content_added and not first_sheet:
+            #     doc.add_page_break()
             first_sheet = False
         except Exception as e:
             logger.error(f"Error processing sheet {sheet_id}: {e}")

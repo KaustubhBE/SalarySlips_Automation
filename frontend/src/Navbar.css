@@ -1,379 +1,413 @@
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-    background-color: #e6cfb8;
-    color: #fff;
-    position: fixed;
-    width: 100%;
-    height: 10vh;
-    top: 0;
-    left: 0;
-    z-index: 1000;
-  }
-  
-  .be-logo {
-    height: 8vh;
-    max-height: 60px;
-  }
-  
-  .clock {
-    font-size: 18px;
-    color: #987349;
-    background-color: transparent;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-right: 40px;
-  
-  }
-  
-  .burger-menu {
-    position: relative;
-    cursor: pointer;
-  }
-  
-  .burger-menu svg {
-    font-size: 24px;
-    color: #fff;
-    padding-right: 20px;
-  }
-  
-  .menu {
-    position: absolute;
-    top: 40px;
-    left: 0;
-    background-color: #987349;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .menu span {
-    display: block;
-    padding: 10px 20px;
-    color: #fff;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  
-  .menu span:hover {
-    background-color: #f0f0f0;
-  }
-  
-  .menu-divider {
-    height: 1px;
-    background-color: #e0e0e0;
-    margin: 8px 0;
-  }
-
-  .navbar-right {
-    display: flex;
-    align-items: center;
-    padding-right: 2%;
-    gap: 20px;
-  }
-
-  .settings-icon, .logout-icon {
-    font-size: 28px;
-    color: #987349;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .settings-icon:hover {
-    transform: rotate(90deg);
-  }
-
-  .logout-icon:hover {
-    transform: scale(1.1);
-    color: #7c5c3c;
-  }
-
-  .whatsapp-icon {
-    font-size: 28px;
-    color: #987349;
-    cursor: pointer;
-    transition: color 0.2s ease;
-  }
-
-  .whatsapp-icon:hover {
-    color: #25D366;
-  }
-
-.qr-modal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  background-color: #e6cfb8;
+  color: #fff;
   position: fixed;
+  width: 100%;
+  height: 60px;
+  min-height: 60px;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.8);
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+.be-logo {
+  height: 45px;
+  max-height: 45px;
+  width: auto;
+  object-fit: contain;
+}
+
+.clock {
+  font-size: 18px;
+  color: #987349;
+  background-color: transparent;
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 2000;
+  gap: 10px;
+  margin-right: 40px;
+}
+
+.burger-menu {
+  position: relative;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.burger-menu svg {
+  font-size: 24px;
+  color: #987349;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.burger-menu svg:hover {
+  color: #7c5c3c;
+}
+
+.menu {
+  position: absolute;
+  top: 65px;
+  left: 0;
+  background-color: #987349;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.menu span {
+  display: block;
+  padding: 12px 20px;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.menu span:last-child {
+  border-bottom: none;
+}
+
+.menu span:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 8px 0;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding-right: 0;
+}
+
+.settings-icon, .logout-icon, .whatsapp-icon {
+  font-size: 24px;
+  color: #987349;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 8px;
+  border-radius: 50%;
+}
+
+.settings-icon:hover {
+  transform: rotate(90deg);
+  background-color: rgba(152, 115, 73, 0.1);
+}
+
+.logout-icon:hover {
+  transform: scale(1.1);
+  color: #7c5c3c;
+  background-color: rgba(152, 115, 73, 0.1);
+}
+
+.whatsapp-icon:hover {
+  color: #25D366;
+  background-color: rgba(37, 211, 102, 0.1);
+}
+
+.qr-modal {
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: rgba(0,0,0,0.8);
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 2000;
+cursor: pointer;
 }
 
 .qr-content {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 0 20px #000;
-  position: relative;
-  cursor: auto;
+background: #fff;
+padding: 2rem;
+border-radius: 12px;
+text-align: center;
+box-shadow: 0 0 20px #000;
+position: relative;
+cursor: auto;
 }
 
 .qr-content h2 {
-  margin-bottom: 1rem;
+margin-bottom: 1rem;
 }
 
 .qr-close-btn {
-  margin-top: 1.5rem;
-  padding: 0.5rem 1.5rem;
-  font-size: 1rem;
-  border-radius: 6px;
-  border: none;
-  background: #25D366;
-  color: #fff;
-  cursor: pointer;
+margin-top: 1.5rem;
+padding: 0.5rem 1.5rem;
+font-size: 1rem;
+border-radius: 6px;
+border: none;
+background: #25D366;
+color: #fff;
+cursor: pointer;
 }
 
 /* Enhanced Responsive Design */
 @media (max-width: 1024px) {
-  .navbar {
-    padding: 0 15px;
-  }
-  
-  .be-logo {
-    height: 7vh;
-    max-height: 50px;
-  }
-  
-  .burger-menu svg {
-    font-size: 22px;
-    padding-right: 15px;
-  }
-  
-  .navbar-right {
-    gap: 15px;
-    padding-right: 1%;
-  }
-  
-  .settings-icon, .logout-icon, .whatsapp-icon {
-    font-size: 24px;
-  }
+.navbar {
+  padding: 0 15px;
+  height: 55px;
+  min-height: 55px;
+}
+
+.be-logo {
+  height: 40px;
+  max-height: 40px;
+}
+
+.burger-menu svg {
+  font-size: 22px;
+}
+
+.navbar-right {
+  gap: 12px;
+}
+
+.settings-icon, .logout-icon, .whatsapp-icon {
+  font-size: 22px;
+  padding: 6px;
+}
 }
 
 @media (max-width: 768px) {
-  .navbar {
-    padding: 0 10px;
-    height: 8vh;
-  }
-  
-  .be-logo {
-    height: 6vh;
-    max-height: 45px;
-  }
-  
-  .burger-menu svg {
-    font-size: 20px;
-    padding-right: 10px;
-  }
-  
-  .menu {
-    top: 35px;
-    left: -10px;
-    min-width: 200px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  .menu span {
-    padding: 12px 16px;
-    font-size: 0.95rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .menu span:last-child {
-    border-bottom: none;
-  }
-  
-  .menu span:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .navbar-right {
-    gap: 12px;
-    padding-right: 0;
-  }
-  
-  .settings-icon, .logout-icon, .whatsapp-icon {
-    font-size: 22px;
-  }
-  
-  .qr-content {
-    padding: 1.5rem;
-    margin: 20px;
-    max-width: 90vw;
-  }
-  
-  .qr-content h2 {
-    font-size: 1.3rem;
-  }
+.navbar {
+  padding: 0 12px;
+  height: 50px;
+  min-height: 50px;
+}
+
+.be-logo {
+  height: 35px;
+  max-height: 35px;
+}
+
+.burger-menu {
+  gap: 10px;
+}
+
+.burger-menu svg {
+  font-size: 20px;
+}
+
+.menu {
+  top: 55px;
+  left: -5px;
+  min-width: 180px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.menu span {
+  padding: 10px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu span:last-child {
+  border-bottom: none;
+}
+
+.menu span:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-right {
+  gap: 8px;
+}
+
+.settings-icon, .logout-icon, .whatsapp-icon {
+  font-size: 20px;
+  padding: 5px;
+}
+
+.qr-content {
+  padding: 1.5rem;
+  margin: 20px;
+  max-width: 90vw;
+}
+
+.qr-content h2 {
+  font-size: 1.3rem;
+}
 }
 
 @media (max-width: 480px) {
-  .navbar {
-    padding: 0 8px;
-    height: 7vh;
-  }
-  
-  .be-logo {
-    height: 5vh;
-    max-height: 40px;
-  }
-  
-  .burger-menu svg {
-    font-size: 18px;
-    padding-right: 8px;
-  }
-  
-  .menu {
-    top: 30px;
-    left: -15px;
-    min-width: 180px;
-    border-radius: 6px;
-  }
-  
-  .menu span {
-    padding: 10px 14px;
-    font-size: 0.9rem;
-  }
-  
-  .navbar-right {
-    gap: 10px;
-  }
-  
-  .settings-icon, .logout-icon, .whatsapp-icon {
-    font-size: 20px;
-  }
-  
-  .qr-content {
-    padding: 1.2rem;
-    margin: 15px;
-  }
-  
-  .qr-content h2 {
-    font-size: 1.2rem;
-    margin-bottom: 0.8rem;
-  }
-  
-  .qr-close-btn {
-    margin-top: 1.2rem;
-    padding: 0.4rem 1.2rem;
-    font-size: 0.9rem;
-  }
+.navbar {
+  padding: 0 10px;
+  height: 45px;
+  min-height: 45px;
+}
+
+.be-logo {
+  height: 30px;
+  max-height: 30px;
+}
+
+.burger-menu {
+  gap: 8px;
+}
+
+.burger-menu svg {
+  font-size: 18px;
+}
+
+.menu {
+  top: 50px;
+  left: -10px;
+  min-width: 160px;
+  border-radius: 6px;
+}
+
+.menu span {
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.navbar-right {
+  gap: 6px;
+}
+
+.settings-icon, .logout-icon, .whatsapp-icon {
+  font-size: 18px;
+  padding: 4px;
+}
+
+.qr-content {
+  padding: 1.2rem;
+  margin: 15px;
+}
+
+.qr-content h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.qr-close-btn {
+  margin-top: 1.2rem;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.9rem;
+}
 }
 
 @media (max-width: 360px) {
-  .navbar {
-    padding: 0 5px;
-    height: 6vh;
-  }
-  
-  .be-logo {
-    height: 4vh;
-    max-height: 35px;
-  }
-  
-  .burger-menu svg {
-    font-size: 16px;
-    padding-right: 6px;
-  }
-  
-  .menu {
-    top: 25px;
-    left: -20px;
-    min-width: 160px;
-  }
-  
-  .menu span {
-    padding: 8px 12px;
-    font-size: 0.85rem;
-  }
-  
-  .navbar-right {
-    gap: 8px;
-  }
-  
-  .settings-icon, .logout-icon, .whatsapp-icon {
-    font-size: 18px;
-  }
-  
-  .qr-content {
-    padding: 1rem;
-    margin: 10px;
-  }
-  
-  .qr-content h2 {
-    font-size: 1.1rem;
-  }
-  
-  .qr-close-btn {
-    margin-top: 1rem;
-    padding: 0.3rem 1rem;
-    font-size: 0.85rem;
-  }
+.navbar {
+  padding: 0 8px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.be-logo {
+  height: 25px;
+  max-height: 25px;
+}
+
+.burger-menu {
+  gap: 6px;
+}
+
+.burger-menu svg {
+  font-size: 16px;
+}
+
+.menu {
+  top: 45px;
+  left: -8px;
+  min-width: 140px;
+}
+
+.menu span {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.navbar-right {
+  gap: 4px;
+}
+
+.settings-icon, .logout-icon, .whatsapp-icon {
+  font-size: 16px;
+  padding: 3px;
+}
+
+.qr-content {
+  padding: 1rem;
+  margin: 10px;
+}
+
+.qr-content h2 {
+  font-size: 1.1rem;
+}
+
+.qr-close-btn {
+  margin-top: 1rem;
+  padding: 0.3rem 1rem;
+  font-size: 0.85rem;
+}
 }
 
 /* Landscape orientation adjustments */
 @media (max-height: 500px) and (orientation: landscape) {
-  .navbar {
-    height: 12vh;
-  }
-  
-  .be-logo {
-    height: 10vh;
-    max-height: 50px;
-  }
-  
-  .menu {
-    top: 50px;
-  }
-  
-  .qr-content {
-    max-height: 80vh;
-    overflow-y: auto;
-  }
+.navbar {
+  height: 12vh;
+}
+
+.be-logo {
+  height: 10vh;
+  max-height: 50px;
+}
+
+.menu {
+  top: 50px;
+}
+
+.qr-content {
+  max-height: 80vh;
+  overflow-y: auto;
+}
 }
 
 /* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .be-logo {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-  }
+.be-logo {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
 }
 
 /* Reduced motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .settings-icon,
-  .logout-icon,
-  .whatsapp-icon {
-    transition: none;
-  }
-  
-  .settings-icon:hover {
-    transform: none;
-  }
-  
-  .logout-icon:hover {
-    transform: none;
-  }
+.settings-icon,
+.logout-icon,
+.whatsapp-icon {
+  transition: none;
+}
+
+.settings-icon:hover {
+  transform: none;
+}
+
+.logout-icon:hover {
+  transform: none;
+}
 }
