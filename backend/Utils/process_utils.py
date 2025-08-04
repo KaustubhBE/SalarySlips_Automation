@@ -507,34 +507,8 @@ def process_reports(file_path_template):
         return f"Error reading file: {str(e)}"
 
 def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
-    """
-    Process reactor reports with dynamic column and row detection.
     
-    Expected Data Structure:
-    - Row 1 (index 0): Non-data elements (e.g., "A1:F1", "fx Time Details")
-    - Row 2 (index 1): Headers (e.g., "Particulars", "Start Date & Time", "End Date & Time")
-    - Row 3+ (index 2+): Actual data rows
-    
-    This function now uses a configuration-based approach to handle future changes in:
-    - Column names (e.g., 'Particulars', 'Description', 'Operation')
-    - Date column names (e.g., 'Start Date & Time', 'End Date & Time')
-    - Operation row patterns (e.g., 'charging', 'drain valve')
-    
-    To modify behavior for future data structure changes, update the REACTOR_CONFIG dictionary
-    at the top of this function rather than changing the core logic.
-    """
     from datetime import datetime, timedelta
-    
-    # Configuration for dynamic column and row matching
-    # This can be easily modified by data engineers without changing code logic
-    # 
-    # To add new operation types or modify existing ones:
-    # 1. Add new patterns to the 'patterns' list
-    # 2. Add new date column keywords to the 'date_column_keywords' list
-    # 3. The system will automatically try all patterns and keywords
-    #
-    # Example: If data engineers rename "Charging" to "Material Loading", 
-    # just add "material loading" to the charging_operations patterns list
     REACTOR_CONFIG = {
         'charging_operations': {
             'patterns': [
@@ -551,7 +525,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'Start Date & Time',
                 'Start Date',
                 'Start Time',
-                'Start Date\n& Time',
                 'Charging Start Date',
                 'Operation Start Date',
                 'Process Start Date',
@@ -576,7 +549,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'End Date & Time',
                 'End Date',
                 'End Time',
-                'End Date\n& Time',
                 'Drain End Date',
                 'Operation End Date',
                 'Process End Date',
@@ -601,11 +573,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
 
     # Helper for flexible row finding with multiple patterns
     def find_row_by_patterns(data, particulars_idx, patterns, case_sensitive=False):
-        """
-        Find a row that matches any of the given patterns in the Particulars column.
-        patterns: list of strings or regex patterns to match
-        Note: data should start from Row 2 (headers), so we search from Row 3 (index 2) onwards
-        """
+        
         for row in data[2:]:  # Skip Row 1 (non-data) and Row 2 (headers), start from Row 3 (index 2)
             if len(row) <= particulars_idx:
                 continue
@@ -624,9 +592,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
 
     # Helper for flexible date column finding
     def find_date_column(headers, date_keywords):
-        """
-        Find date column by matching against multiple possible keywords
-        """
         for keyword in date_keywords:
             try:
                 return find_header(headers, keyword)
@@ -636,9 +601,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
 
     # Helper for robust date parsing and comparison
     def normalize_date_for_comparison(date_str, input_date):
-        """
-        Normalize date strings for comparison, handling various formats
-        """
         if not date_str or not input_date:
             return None, None
         
@@ -665,10 +627,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
 
     # Helper for debugging sheet structure
     def log_sheet_structure(headers, data, sheet_name, logger):
-        """
-        Log sheet structure for debugging purposes
-        Note: data should start from Row 2 (headers), so data[0] is headers, data[1:] is actual data rows
-        """
+        
         logger.info(f"Sheet '{sheet_name}' structure:")
         logger.info(f"Headers (Row 2): {headers}")
         logger.info(f"Total data rows: {len(data) - 1}")  # Subtract 1 for headers
@@ -847,29 +806,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 continue
             
             if idx == 0:
-                # For input date sheet: Only include if charging-related row's start date matches input_date
-                charging_config = REACTOR_CONFIG['charging_operations']
-                
-                idx_start_date = find_date_column(headers, charging_config['date_column_keywords'])
-                if idx_start_date is None:
-                    logger.warning(f"Start date column not found in sheet for date {d}. Available columns: {headers}")
-                    continue
-                
-                charging_row = find_row_by_patterns(data, idx_particulars, charging_config['patterns'])
-                if charging_row:
-                    charging_start = charging_row[idx_start_date].strip()
-                    if charging_start:
-                        # Use robust date comparison
-                        charging_date_norm, _ = normalize_date_for_comparison(charging_start, input_date)
-                        input_date_norm, _ = normalize_date_for_comparison(input_date, input_date)
-                        
-                        if charging_date_norm and input_date_norm and charging_date_norm == input_date_norm:
-                            sheets_to_process.append((d, sheet_id, worksheet))
-                            logger.info(f"Input date sheet {d} added - charging date matches: {charging_date_norm}")
-                        else:
-                            logger.info(f"Input date sheet {d} skipped - charging date '{charging_start}' doesn't match input date '{input_date}'")
-                else:
-                    logger.info(f"No charging operation row found in sheet for date {d}")
+                # For input date sheet: Always include, no conditions
+                sheets_to_process.append((d, sheet_id, worksheet))
+                logger.info(f"Input date sheet {d} added (no conditions applied)")
             else:
                 # For previous 5 sheets: Only include if drain valve row's end date is blank or matches input_date
                 drain_config = REACTOR_CONFIG['drain_valve_operations']
@@ -927,9 +866,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         try:
             sheet_name = worksheet.title if hasattr(worksheet, 'title') else str(d)
             # Write to the first line if it's empty, else add a new paragraph
-            if content_added and not first_sheet:
-                doc.add_page_break()
-            first_sheet = False
             if not doc.paragraphs or not doc.paragraphs[0].text.strip():
                 para = doc.paragraphs[0] if doc.paragraphs else doc.add_paragraph()
                 para.text = f"Reactor: {sheet_name}"
@@ -988,9 +924,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
                     error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
             # Add page break between different sheets (but not after the last sheet)
-            # if content_added and not first_sheet:
-            #     doc.add_page_break()
-            # first_sheet = False
+            if content_added and not first_sheet:
+                doc.add_page_break()
+            first_sheet = False
         except Exception as e:
             logger.error(f"Error processing sheet {sheet_id}: {e}")
             continue
