@@ -956,6 +956,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
     
     # Apply cleanup
     remove_blank_pages_and_empty_content(doc)
+    
     # Save the document (output filename logic can be updated as needed)
     output_filename = f"reactor_report_{input_date}.docx"
     output_path = os.path.join(output_dir, output_filename)
