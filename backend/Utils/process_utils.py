@@ -146,9 +146,9 @@ def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_n
     if whatsapp_number:
         # months_list = "\n".join([f"   -  {month['month']} {month['year']}" for month in months_data]) if months_data else ""
         message = [
-            "Dear *{}*,".format(contact_name),
+            "Dear {},".format(contact_name),
             "",
-            "Please find attached your *salary slips* for the following months:",
+            "Please find attached your salary slips for the following months:",
             "",
             "These documents include:",
             "   -  Earnings Breakdown",
@@ -430,9 +430,9 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                 contact_name = placeholders.get("Name")
                 whatsapp_number = get_employee_contact(contact_name, contact_employees)
                 message = [
-                    "Dear *{}*,".format(contact_name),
+                    "Dear {},".format(contact_name),
                     "",
-                    "Please find attached your *salary slip* for the month of *{} {}*.".format(full_month, full_year),
+                    "Please find attached your salary slip for the month of {} {}.".format(full_month, full_year),
                     "",
                     "This document includes:",
                     "   -  Earnings Breakdown",
@@ -525,6 +525,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'Start Date & Time',
                 'Start Date',
                 'Start Time',
+                'Start Date\n& Time',
                 'Charging Start Date',
                 'Operation Start Date',
                 'Process Start Date',
@@ -549,6 +550,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 'End Date & Time',
                 'End Date',
                 'End Time',
+                'End Date\n& Time',
                 'Drain End Date',
                 'Operation End Date',
                 'Process End Date',
@@ -866,6 +868,9 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         try:
             sheet_name = worksheet.title if hasattr(worksheet, 'title') else str(d)
             # Write to the first line if it's empty, else add a new paragraph
+            if content_added and not first_sheet:
+                doc.add_page_break()
+            first_sheet = False
             if not doc.paragraphs or not doc.paragraphs[0].text.strip():
                 para = doc.paragraphs[0] if doc.paragraphs else doc.add_paragraph()
                 para.text = f"Reactor: {sheet_name}"
@@ -923,39 +928,32 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     logger.error(f"Error extracting table {table_def['name']} from {sheet_name}: {e}")
                     error_para = doc.add_paragraph(f"Error extracting table {table_def['name']}: {str(e)}")
                     error_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            # Add page break between different sheets (but not after the last sheet)
-            if content_added and not first_sheet:
-                doc.add_page_break()
-            first_sheet = False
+            # # Add page break between different sheets (but not after the last sheet)
+            # if content_added and not first_sheet:
+            #     doc.add_page_break()
+            # first_sheet = False
         except Exception as e:
             logger.error(f"Error processing sheet {sheet_id}: {e}")
             continue
     
-    # Clean up blank pages and empty paragraphs at the end
-    def remove_blank_pages_and_empty_content(doc):
-        # Remove empty paragraphs at the end
-        while doc.paragraphs and not doc.paragraphs[-1].text.strip():
-            p = doc.paragraphs[-1]
-            p._element.getparent().remove(p._element)
-        
-        # Remove page breaks that create blank pages
-        for i in range(len(doc.paragraphs) - 1, -1, -1):
-            para = doc.paragraphs[i]
-            # Check if this paragraph has only a page break and no text
-            if not para.text.strip() and para.runs:
-                # Check if the run contains only a page break
-                run = para.runs[0]
-                if hasattr(run, '_element') and run._element.xml.count('<w:br') > 0:
-                    # Remove the paragraph with page break
-                    para._element.getparent().remove(para._element)
-        
-        # Also check for empty sections that might create blank pages
-        for section in doc.sections:
-            # If section has no content, it might create blank pages
-            pass  # This is handled by paragraph removal above
+    # Clean up completely blank pages only
+    def remove_completely_blank_pages(doc):
+        # Check if the last paragraph is a page break that creates a blank page
+        if doc.paragraphs:
+            last_para = doc.paragraphs[-1]
+            # If the last paragraph has no text and contains only a page break
+            if not last_para.text.strip() and last_para.runs:
+                last_run = last_para.runs[0]
+                # Check if this run contains only a page break (no other content)
+                if (hasattr(last_run, '_element') and 
+                    last_run._element.xml.count('<w:br') > 0 and
+                    not last_run.text.strip()):
+                    # Remove this paragraph to eliminate the blank page
+                    last_para._element.getparent().remove(last_para._element)
+                    logger.info("Removed completely blank page at the end of document")
     
-    # Apply cleanup
-    remove_blank_pages_and_empty_content(doc)
+    # Apply cleanup for completely blank pages only
+    remove_completely_blank_pages(doc)
     
     # Save the document (output filename logic can be updated as needed)
     output_filename = f"reactor_report_{input_date}.docx"
@@ -1046,4 +1044,4 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             "email": send_email
         },
         "output_file": pdf_path
-    } 
+    }
