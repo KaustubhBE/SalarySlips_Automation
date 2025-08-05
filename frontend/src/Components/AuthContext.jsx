@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import storage from '../utils/storage';
+import { getApiUrl, ENDPOINTS } from '../config';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true by default
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const login = useCallback((userData) => {
@@ -15,11 +16,26 @@ export const AuthProvider = ({ children }) => {
     storage.set('isAuthenticated', 'true');
   }, []);
 
-  const logout = useCallback(() => {
-    storage.remove('user');
-    storage.remove('isAuthenticated');
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = useCallback(async () => {
+    try {
+      // Call backend logout endpoint
+      await fetch(getApiUrl(ENDPOINTS.LOGOUT), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Backend logout failed:', error);
+      // Continue with frontend logout even if backend fails
+    } finally {
+      // Clear frontend state and storage
+      storage.remove('user');
+      storage.remove('isAuthenticated');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -31,28 +47,10 @@ export const AuthProvider = ({ children }) => {
         if (userData && isAuth) {
           setUser(userData);
           setIsAuthenticated(true);
-        } else {
-          // Set default user data if none exists
-          const defaultUser = {
-            name: 'Default User',
-            email: 'default@example.com',
-            role: 'admin'
-          };
-          setUser(defaultUser);
-          setIsAuthenticated(true);
-          storage.setJSON('user', defaultUser);
-          storage.set('isAuthenticated', 'true');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        // Don't logout, keep authentication true
-        const defaultUser = {
-          name: 'Default User',
-          email: 'default@example.com',
-          role: 'admin'
-        };
-        setUser(defaultUser);
-        setIsAuthenticated(true);
+        logout();
       } finally {
         setLoading(false);
       }

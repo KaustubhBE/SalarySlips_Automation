@@ -97,7 +97,7 @@ function Settings({ onLogout }) {
           </button>
         )}
 
-        <button className="button logout-button" onClick={onLogout}>
+        <button className="button logout-button" onClick={async () => await onLogout()}>
           Logout
         </button>
 
