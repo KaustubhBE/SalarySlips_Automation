@@ -930,6 +930,32 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         except Exception as e:
             logger.error(f"Error processing sheet {sheet_id}: {e}")
             continue
+    
+    # Clean up blank pages and empty paragraphs at the end
+    def remove_blank_pages_and_empty_content(doc):
+        # Remove empty paragraphs at the end
+        while doc.paragraphs and not doc.paragraphs[-1].text.strip():
+            p = doc.paragraphs[-1]
+            p._element.getparent().remove(p._element)
+        
+        # Remove page breaks that create blank pages
+        for i in range(len(doc.paragraphs) - 1, -1, -1):
+            para = doc.paragraphs[i]
+            # Check if this paragraph has only a page break and no text
+            if not para.text.strip() and para.runs:
+                # Check if the run contains only a page break
+                run = para.runs[0]
+                if hasattr(run, '_element') and run._element.xml.count('<w:br') > 0:
+                    # Remove the paragraph with page break
+                    para._element.getparent().remove(para._element)
+        
+        # Also check for empty sections that might create blank pages
+        for section in doc.sections:
+            # If section has no content, it might create blank pages
+            pass  # This is handled by paragraph removal above
+    
+    # Apply cleanup
+    remove_blank_pages_and_empty_content(doc)
     # Save the document (output filename logic can be updated as needed)
     output_filename = f"reactor_report_{input_date}.docx"
     output_path = os.path.join(output_dir, output_filename)
