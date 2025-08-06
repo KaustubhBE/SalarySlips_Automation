@@ -1494,14 +1494,6 @@ def ensure_directories():
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
     try:
-        # Get user email from session
-        user_email = session.get('user', {}).get('email')
-        
-        # Clear Gmail credentials if user was logged in
-        if user_email:
-            from Utils.email_utils import clear_user_credentials
-            clear_user_credentials(user_email)
-        
         # Clear session
         session.clear()
         
@@ -1515,11 +1507,6 @@ if __name__ == "__main__":
         logger.info("Starting SS Automation backend server...")
         ensure_directories()
         logger.info("Directories ensured")
-        
-        # Start frontend opener in a separate thread
-        # frontend_thread = threading.Thread(target=delayed_open_frontend)
-        # frontend_thread.daemon = True
-        # frontend_thread.start()
         
         # Start Flask app
         app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
