@@ -142,7 +142,7 @@ const getFinancialYears = () => {
 
 function Processing({ mode = 'single' }) {
   const [sendEmail, setSendEmail] = useState(false);
-  // const [sendWhatsapp, setSendWhatsapp] = useState(false); // TEMPORARILY DISABLED WHATSAPP
+  const [sendWhatsapp, setSendWhatsapp] = useState(false); // ENABLED WHATSAPP
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedPlant, setSelectedPlant] = useState('');
   const [selectedPlantData, setSelectedPlantData] = useState({});
@@ -401,7 +401,6 @@ function Processing({ mode = 'single' }) {
                   onToggle={() => setSendEmail((prev) => !prev)}
                 />
               </div>
-              {/*
               <div className='whatsappToggle' style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <label htmlFor="whatsappToggle" style={{ margin: 0 }}>WhatsApp Message: </label>
                 <ToggleButton
@@ -409,7 +408,6 @@ function Processing({ mode = 'single' }) {
                   onToggle={() => setSendWhatsapp((prev) => !prev)}
                 />
               </div>
-              */}
             </div>
             
             <button 

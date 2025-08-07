@@ -16,6 +16,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
+from Utils.whatsapp_utils import get_whatsapp_qr, get_whatsapp_status, send_whatsapp_message, logout_whatsapp
 from firebase_admin import firestore
 from Utils.firebase_utils import (
     add_user as firebase_add_user,
@@ -1501,6 +1502,17 @@ def logout():
     except Exception as e:
         logger.error("Error during logout: {}".format(e))
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/whatsapp-login", methods=["POST"])
+def whatsapp_login():
+    """Trigger WhatsApp login (reset session and get new QR)"""
+    try:
+        from Utils.whatsapp_utils import trigger_whatsapp_login
+        result = trigger_whatsapp_login()
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Error triggering WhatsApp login: {str(e)}")
+        return jsonify({"qr": "", "error": "Failed to trigger WhatsApp login"}), 500
 
 if __name__ == "__main__":
     try:

@@ -1,3 +1,7 @@
+# =========================
+# All previous code is now commented out as per migration to whatsapp-web.js (Node.js)
+# =========================
+'''
 import os
 import logging
 import pandas as pd
@@ -336,3 +340,158 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+'''
+
+# =========================
+# WhatsApp integration using whatsapp-web.js (Node.js service)
+# This Python module provides interface to communicate with the Node.js service
+# =========================
+
+import requests
+import logging
+import json
+from typing import Optional, Dict, Any
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Configuration for Node.js whatsapp-web.js service
+WHATSAPP_NODE_SERVICE_URL = 'http://localhost:3001'  # Change to your Node.js service URL/port
+
+def get_whatsapp_qr() -> Dict[str, Any]:
+    """
+    Fetch the WhatsApp Web QR code from the Node.js whatsapp-web.js service.
+    Returns a dictionary with 'qr' field containing the QR string for frontend rendering.
+    Compatible with Navbar.jsx fetchQR function.
+    
+    Returns:
+        Dict with 'qr' field containing QR string, or empty dict on failure
+    """
+    try:
+        response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/qr", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            logger.info("Successfully retrieved WhatsApp QR code")
+            return data
+        else:
+            logger.error(f"Failed to get QR code. Status: {response.status_code}")
+            return {"qr": ""}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error connecting to WhatsApp service: {str(e)}")
+        return {"qr": ""}
+    except Exception as e:
+        logger.error(f"Unexpected error getting QR code: {str(e)}")
+        return {"qr": ""}
+
+def get_whatsapp_status() -> Dict[str, Any]:
+    """
+    Get the current status of WhatsApp Web connection.
+    
+    Returns:
+        Dict with status information (connected, ready, etc.)
+    """
+    try:
+        response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/status", timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": "disconnected", "message": "Service unavailable"}
+    except Exception as e:
+        logger.error(f"Error getting WhatsApp status: {str(e)}")
+        return {"status": "disconnected", "message": "Connection error"}
+
+def send_whatsapp_message(contact_name: str, message: str, file_paths: list = None, 
+                         file_sequence: list = None, whatsapp_number: str = None, 
+                         process_name: str = "message") -> bool:
+    """
+    Send a WhatsApp message via the Node.js whatsapp-web.js service.
+    Compatible with the existing function signature from the original code.
+    
+    Args:
+        contact_name: Name of the contact
+        message: Text message to send
+        file_paths: List of file paths to attach (optional)
+        file_sequence: Sequence information for files (optional)
+        whatsapp_number: WhatsApp number in international format
+        process_name: Type of process ("salary_slip", "report", "message")
+    
+    Returns:
+        bool: True on success, False otherwise
+    """
+    try:
+        # Prepare the payload
+        payload = {
+            "contact_name": contact_name,
+            "message": message,
+            "whatsapp_number": whatsapp_number,
+            "process_name": process_name
+        }
+        
+        # Add file information if provided
+        if file_paths:
+            payload["file_paths"] = file_paths
+        if file_sequence:
+            payload["file_sequence"] = file_sequence
+            
+        response = requests.post(
+            f"{WHATSAPP_NODE_SERVICE_URL}/send-message", 
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Successfully sent WhatsApp message to {contact_name}")
+            return True
+        else:
+            logger.error(f"Failed to send message. Status: {response.status_code}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending message: {str(e)}")
+        return False
+
+def logout_whatsapp() -> bool:
+    """
+    Logout from WhatsApp Web.
+    
+    Returns:
+        bool: True on success, False otherwise
+    """
+    try:
+        response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/logout", timeout=10)
+        if response.status_code == 200:
+            logger.info("Successfully logged out from WhatsApp")
+            return True
+        else:
+            logger.error(f"Failed to logout. Status: {response.status_code}")
+            return False
+    except Exception as e:
+        logger.error(f"Error logging out from WhatsApp: {str(e)}")
+        return False
+
+def trigger_whatsapp_login() -> dict:
+    """
+    Trigger WhatsApp login (reset session and get new QR) via Node.js service.
+    Returns a dict with 'qr' field or error info.
+    """
+    try:
+        response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/login", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"qr": "", "error": "Failed to trigger login"}
+    except Exception as e:
+        logger.error(f"Error triggering WhatsApp login: {str(e)}")
+        return {"qr": "", "error": str(e)}
+
+# Legacy function compatibility - keeping the original function signature
+def send_whatsapp_message_legacy(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name):
+    """
+    Legacy function to maintain compatibility with existing code.
+    Calls the new send_whatsapp_message function.
+    """
+    return send_whatsapp_message(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name)
