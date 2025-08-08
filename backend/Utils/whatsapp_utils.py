@@ -360,14 +360,6 @@ logger = logging.getLogger(__name__)
 WHATSAPP_NODE_SERVICE_URL = 'http://localhost:3001'  # Change to your Node.js service URL/port
 
 def get_whatsapp_qr() -> Dict[str, Any]:
-    """
-    Fetch the WhatsApp Web QR code from the Node.js whatsapp-web.js service.
-    Returns a dictionary with 'qr' field containing the QR string for frontend rendering.
-    Compatible with Navbar.jsx fetchQR function.
-    
-    Returns:
-        Dict with 'qr' field containing QR string, or empty dict on failure
-    """
     try:
         response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/qr", timeout=10)
         if response.status_code == 200:
@@ -385,12 +377,6 @@ def get_whatsapp_qr() -> Dict[str, Any]:
         return {"qr": ""}
 
 def get_whatsapp_status() -> Dict[str, Any]:
-    """
-    Get the current status of WhatsApp Web connection.
-    
-    Returns:
-        Dict with status information (connected, ready, etc.)
-    """
     try:
         response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/status", timeout=5)
         if response.status_code == 200:
@@ -404,21 +390,6 @@ def get_whatsapp_status() -> Dict[str, Any]:
 def send_whatsapp_message(contact_name: str, message: str, file_paths: list = None, 
                          file_sequence: list = None, whatsapp_number: str = None, 
                          process_name: str = "message") -> bool:
-    """
-    Send a WhatsApp message via the Node.js whatsapp-web.js service.
-    Compatible with the existing function signature from the original code.
-    
-    Args:
-        contact_name: Name of the contact
-        message: Text message to send
-        file_paths: List of file paths to attach (optional)
-        file_sequence: Sequence information for files (optional)
-        whatsapp_number: WhatsApp number in international format
-        process_name: Type of process ("salary_slip", "report", "message")
-    
-    Returns:
-        bool: True on success, False otherwise
-    """
     try:
         # Prepare the payload
         payload = {
@@ -455,12 +426,6 @@ def send_whatsapp_message(contact_name: str, message: str, file_paths: list = No
         return False
 
 def logout_whatsapp() -> bool:
-    """
-    Logout from WhatsApp Web.
-    
-    Returns:
-        bool: True on success, False otherwise
-    """
     try:
         response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/logout", timeout=10)
         if response.status_code == 200:
@@ -474,10 +439,6 @@ def logout_whatsapp() -> bool:
         return False
 
 def trigger_whatsapp_login() -> dict:
-    """
-    Trigger WhatsApp login (reset session and get new QR) via Node.js service.
-    Returns a dict with 'qr' field or error info.
-    """
     try:
         response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/login", timeout=10)
         if response.status_code == 200:
@@ -490,8 +451,5 @@ def trigger_whatsapp_login() -> dict:
 
 # Legacy function compatibility - keeping the original function signature
 def send_whatsapp_message_legacy(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name):
-    """
-    Legacy function to maintain compatibility with existing code.
-    Calls the new send_whatsapp_message function.
-    """
+ 
     return send_whatsapp_message(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name)

@@ -98,3 +98,7 @@ desktop.ini
 # Render specific
 render.yaml.local
 render.yaml.*.local
+
+#hosting Specifics
+hosting_command.txt
+hosting_specifics.txt

@@ -5,6 +5,7 @@ import { FaBars, FaCog, FaSignOutAlt, FaWhatsapp } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './Components/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { getApiUrl } from './config';
 
 const Navbar = ({ onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,13 +40,13 @@ const Navbar = ({ onLogout }) => {
     setShowQR(true);
     setQRValue('');
     try {
-      const res = await fetch('/api/whatsapp-login', { method: 'POST' });
+      const res = await fetch(getApiUrl('whatsapp-login'), { method: 'POST' });
       const data = await res.json();
       setQRValue(data.qr || '');
       if (!data.qr) setStatusMsg(data.error || 'Failed to load QR');
     } catch (err) {
       setQRValue('');
-      setStatusMsg('Failed to load QR');
+      // setStatusMsg('Failed to load QR');
     } finally {
       setLoadingQR(false);
     }
@@ -56,7 +57,7 @@ const Navbar = ({ onLogout }) => {
     if (showQR && qrValue) {
       pollingRef.current = setInterval(async () => {
         try {
-          const res = await fetch('/api/whatsapp-status');
+          const res = await fetch(getApiUrl('whatsapp-status'));
           const data = await res.json();
           if (data.status === 'authenticated' || data.status === 'ready' || data.status === true) {
             setLoginSuccess(true);
