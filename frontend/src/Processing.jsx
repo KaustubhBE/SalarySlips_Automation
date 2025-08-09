@@ -237,7 +237,6 @@ function Processing({ mode = 'single' }) {
     try {
       const endpoint = mode === 'single' ? ENDPOINTS.SINGLE_SLIP : ENDPOINTS.BATCH_SLIPS;
       const payload = {
-        employee_code: employeeDetails,
         sheet_id_salary: monthsData[0].sheet_id_salary,
         sheet_id_drive: monthsData[0].sheet_id_drive,
         full_month: monthsData[0].month,
@@ -247,6 +246,11 @@ function Processing({ mode = 'single' }) {
         send_email: sendEmail,
         attachment_sequence: attachmentSequence
       };
+      
+      // Only add employee_code for single mode
+      if (mode === 'single') {
+        payload.employee_code = employeeDetails;
+      }
 
       const response = await axios.post(getApiUrl(endpoint), payload);
 
@@ -414,7 +418,11 @@ function Processing({ mode = 'single' }) {
               type="button" 
               className="btn" 
               onClick={handleSubmit}
-              disabled={!selectedPlant || months.some(m => !m.month || !m.financialYear)}
+              disabled={
+                !selectedPlant || 
+                months.some(m => !m.month || !m.financialYear) ||
+                (mode === 'single' && (!employeeDetails || employeeDetails.trim() === ''))
+              }
             >
               Process Salary Slip{mode === 'single' ? 's' : ''}
             </button>

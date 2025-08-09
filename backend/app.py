@@ -436,8 +436,8 @@ def generate_salary_slip_single():
             return jsonify({"error": "months_data is required"}), 400
 
         employee_identifier = user_inputs.get("employee_code")
-        if not employee_identifier:
-            return jsonify({"error": "employee_code is required"}), 400
+        if not employee_identifier or employee_identifier.strip() == "":
+            return jsonify({"error": "employee_code is required and cannot be empty"}), 400
 
         send_whatsapp = user_inputs.get("send_whatsapp", False)
         send_email = user_inputs.get("send_email", False)
@@ -717,6 +717,10 @@ def generate_salary_slips_batch():
             app.logger.info("Processing salary slip for employee: {}".format(employee_name))
             try:
                 employee_data = [str(item) if item is not None else '' for item in employee]
+                # Get employee code from the employee data
+                employee_code_index = next((i for i, header in enumerate(salary_headers) if 'Employee' in header and 'Code' in header), 0)
+                employee_identifier = employee[employee_code_index] if employee_code_index < len(employee) else ''
+                
                 process_salary_slips(
                     template_path=TEMPLATE_PATH,
                     output_dir=OUTPUT_DIR,
