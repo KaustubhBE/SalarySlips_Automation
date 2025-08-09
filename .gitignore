@@ -102,3 +102,6 @@ render.yaml.*.local
 #hosting Specifics
 hosting_command.txt
 hosting_specifics.txt
+
+#config files
+frontend\src\config.js
