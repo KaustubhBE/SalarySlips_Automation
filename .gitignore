@@ -105,3 +105,4 @@ hosting_specifics.txt
 
 #config files
 frontend\src\config.js
+frontend\vite.config.js
