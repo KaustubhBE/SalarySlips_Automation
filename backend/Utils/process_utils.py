@@ -5,7 +5,11 @@ import logging
 from docx import Document
 from flask import session
 from Utils.email_utils import *
-# from Utils.whatsapp_utils import *
+from Utils.whatsapp_utils import (
+    get_employee_contact,
+    handle_whatsapp_notification as wa_handle_whatsapp_notification,
+    send_whatsapp_message as wa_send_whatsapp_message,
+)
 from Utils.drive_utils import upload_to_google_drive
 import shutil
 import subprocess
@@ -143,40 +147,20 @@ def format_months_list(months_data):
         return "".join(["<li>{} {}</li>".format(month['month'], month['year']) for month in months_data])
 
 def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
-    if whatsapp_number:
-        # months_list = "\n".join([f"   -  {month['month']} {month['year']}" for month in months_data]) if months_data else ""
-        message = [
-            "Dear {},".format(contact_name),
-            "",
-            "Please find attached your salary slips for the following months:",
-            "",
-            "These documents include:",
-            "   -  Earnings Breakdown",
-            "   -  Deductions Summary",
-            "   -  Net Salary Details",
-            "",
-            "Kindly review the salary slips, and if you have any questions or concerns, please feel free to reach out to the HR department.",
-            "",
-            "Thanks & Regards,",
-            "HR Department",
-            "Bajaj Earths Pvt. Ltd.",
-            "+91 - 86557 88172"
-        ]
-        
-        # Log attempt
-        logging.info("Attempting to send WhatsApp message to {} ({})".format(contact_name, whatsapp_number))
-        
-        # Prepare file paths - ensure we have an array
-        valid_file_paths = prepare_file_paths(file_path)
-        
-        if not valid_file_paths:
-            logging.error("No valid file paths found for {}".format(contact_name))
-            return False
-        
-        # Send message
-        open_whatsapp()
-        return send_whatsapp_message(contact_name, message, file_path, whatsapp_number, process_name="salary_slip")
-    return False
+    """Delegate to Node-backed WhatsApp notification handler"""
+    try:
+        return wa_handle_whatsapp_notification(
+            contact_name=contact_name,
+            full_month=full_month,
+            full_year=full_year,
+            whatsapp_number=whatsapp_number,
+            file_path=file_path,
+            is_special=is_special,
+            months_data=months_data,
+        )
+    except Exception as e:
+        logging.error(f"Error delegating WhatsApp notification: {e}")
+        return False
 
 # Generate and process salary slips for a single employee
 def process_salary_slip(template_path, output_dir, employee_identifier, employee_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email, is_special=False, months_data=None, collected_pdfs=None):
@@ -398,32 +382,32 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
             else:
                 logging.error("No Google Drive ID found for employee: {}".format(employee_name))
                 logging.error("Available keys in official_details: {}".format(list(official_details.keys())))
-            
+        
         # Send email if enabled
-        if send_email:
-            recipient_email = get_employee_email(placeholders.get("Name"), email_employees)
-            if recipient_email:
-                email_subject = "Salary Slip for {} {} - Bajaj Earths Pvt. Ltd.".format(full_month, full_year)
-                email_body = f"""
-                    <html>
-                    <body>
-                    <p>Dear <b>{employee_name}</b>,</p>
-                    <p>Please find attached your <b>salary slip</b> for the month of <b>{full_month} {full_year}</b>.</p>
-                    <p>This document includes:</p>
-                    <ul>
-                    <li>Earnings Breakdown</li>
-                    <li>Deductions Summary</li>
-                    <li>Net Salary Details</li>
-                    </ul>
-                    <p>Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.</p>
-                    <p>Thanks & Regards,</p>
-                    </body>
-                    </html>"""
-                logging.info(f"Sending email to {recipient_email}")
-                user_id = session.get('user', {}).get('id') or session.get('user', {}).get('email')
-                send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
-            else:
-                logging.info(f"No email found for {placeholders.get('Name')}.")
+            if send_email:
+                recipient_email = get_employee_email(placeholders.get("Name"), email_employees)
+                if recipient_email:
+                    email_subject = "Salary Slip for {} {} - Bajaj Earths Pvt. Ltd.".format(full_month, full_year)
+                    email_body = f"""
+                        <html>
+                        <body>
+                        <p>Dear <b>{employee_name}</b>,</p>
+                        <p>Please find attached your <b>salary slip</b> for the month of <b>{full_month} {full_year}</b>.</p>
+                        <p>This document includes:</p>
+                        <ul>
+                        <li>Earnings Breakdown</li>
+                        <li>Deductions Summary</li>
+                        <li>Net Salary Details</li>
+                        </ul>
+                        <p>Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.</p>
+                        <p>Thanks & Regards,</p>
+                        </body>
+                        </html>"""
+                    logging.info(f"Sending email to {recipient_email}")
+                    user_id = session.get('user', {}).get('id') or session.get('user', {}).get('email')
+                    send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
+                else:
+                    logging.info(f"No email found for {placeholders.get('Name')}.")
             
             # Send WhatsApp message if enabled
             if send_whatsapp:
@@ -447,8 +431,7 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                     "+91 - 86557 88172"
                 ]
                 file_path = os.path.join(output_dir, "Salary_Slip_{}_{}{}.pdf".format(contact_name, month, year))
-                open_whatsapp()
-                send_whatsapp_message(contact_name, message, file_path, whatsapp_number, process_name="salary_slip")
+                wa_send_whatsapp_message(contact_name, message, file_path, whatsapp_number, process_name="salary_slip")
     except Exception as e:
         logging.error("Error processing salary slip for {}: {}".format(placeholders.get('Name', 'Unknown'), e))
     logging.info("Finished process_salary_slip function")

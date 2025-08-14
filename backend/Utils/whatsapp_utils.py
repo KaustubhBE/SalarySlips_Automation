@@ -1,57 +1,91 @@
-# =========================
-# All previous code is now commented out as per migration to whatsapp-web.js (Node.js)
-# =========================
-'''
-import os
+# whatsapp_utils_node.py - Python client for Node.js WhatsApp service
+import requests
 import logging
-import pandas as pd
-import time
-import pyautogui
-import pyperclip
-from pywinauto.application import Application
-from pywinauto.keyboard import send_keys
-from pywinauto.findwindows import find_windows
-import re
-import sys
+import os
+import json
+from typing import List, Dict, Optional, Union
 
-def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    try:
-        # PyInstaller creates a temporary folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-# Now define image lists after resource_path is available
-new_chat_images = [
-    # resource_path('Utils/images/new_chat.png'),  # Original image
-    # resource_path('Utils/images/new_chat2.jpg'),
-    # resource_path('Utils/images/new_chat3.jpg'),
-    # resource_path('Utils/images/new_chat4.jpg'),
-    # resource_path('Utils/images/fullscreen_newchat.png'),  # Full screen version
-    # resource_path('Utils/images/halfscreen_newchat.png')  # Half screen version
-    'Utils/images/new_chat.png', 
-    'Utils/images/new_chat2.jpg',
-    'Utils/images/new_chat3.jpg',
-    'Utils/images/new_chat4.jpg',
-    'Utils/images/fullscreen_newchat.png',
-    'Utils/images/halfscreen_newchat.png'
-]
+class WhatsAppNodeClient:
+    """Client to interact with Node.js WhatsApp service"""
+    
+    def __init__(self, node_service_url: str = "http://localhost:3001"):
+        self.base_url = node_service_url.rstrip('/')
+        self.timeout = 30
+        
+    def check_service_health(self) -> bool:
+        """Check if WhatsApp service is running and ready"""
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=self.timeout)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('whatsappReady', False)
+            return False
+        except Exception as e:
+            logging.error(f"Error checking WhatsApp service health: {e}")
+            return False
 
-contact_not_found_images = [
-    # resource_path('Utils/images/contact_not_found.png'),
-    # resource_path('Utils/images/contact_not_found_2.jpg'),
-    # resource_path('Utils/images/contact_not_found_3.jpg'),
-    # resource_path('Utils/images/contact_not_found_4.png')
-    'Utils/images/contact_not_found.png',
-    'Utils/images/contact_not_found_2.jpg',
-    'Utils/images/contact_not_found_3.jpg'
+    def get_status(self) -> Dict:
+        """Get WhatsApp status from Node service"""
+        try:
+            response = requests.get(f"{self.base_url}/status", timeout=self.timeout)
+            if response.status_code == 200:
+                return response.json()
+            return {"isReady": False, "status": "unavailable"}
+        except Exception as e:
+            logging.error(f"Error getting WhatsApp status: {e}")
+            return {"isReady": False, "status": "error"}
 
-]
+    def get_qr(self) -> Dict:
+        """Get current QR code (if any) from Node service"""
+        try:
+            response = requests.get(f"{self.base_url}/qr", timeout=self.timeout)
+            if response.status_code == 200:
+                return response.json()
+            return {"qr": ""}
+        except Exception as e:
+            logging.error(f"Error getting WhatsApp QR: {e}")
+            return {"qr": ""}
 
-def get_employee_contact(employee_name, contact_employees):
-    """Get employee contact number from contact data."""
+    def trigger_login(self) -> Dict:
+        """Trigger login flow on Node service (refresh QR)"""
+        try:
+            response = requests.post(f"{self.base_url}/trigger-login", timeout=self.timeout)
+            if response.status_code == 200:
+                return response.json()
+            logging.error(f"Trigger login failed: {response.status_code} - {response.text}")
+            return {"qr": ""}
+        except Exception as e:
+            logging.error(f"Error triggering WhatsApp login: {e}")
+            return {"qr": ""}
+
+    def logout(self) -> bool:
+        """Logout current WhatsApp session on Node service"""
+        try:
+            response = requests.post(f"{self.base_url}/logout", timeout=self.timeout)
+            return response.status_code == 200
+        except Exception as e:
+            logging.error(f"Error logging out WhatsApp: {e}")
+            return False
+    
+    def wait_for_service(self, max_attempts: int = 30, interval: int = 5) -> bool:
+        """Wait for WhatsApp service to be ready"""
+        import time
+        
+        for attempt in range(max_attempts):
+            if self.check_service_health():
+                logging.info("WhatsApp service is ready")
+                return True
+            logging.info(f"Waiting for WhatsApp service... Attempt {attempt + 1}/{max_attempts}")
+            time.sleep(interval)
+        
+        logging.error("WhatsApp service failed to become ready")
+        return False
+
+def get_employee_contact(employee_name: str, contact_employees: List[Dict]) -> str:
+    """Get employee contact number from contact data - matches original Python function"""
     try:
         if not isinstance(contact_employees, list):
             logging.error("Error: contact_employees is not a list of dictionaries.")
@@ -72,82 +106,247 @@ def get_employee_contact(employee_name, contact_employees):
         logging.error(f"Error getting contact for {employee_name}: {str(e)}")
         return ""
 
-def open_whatsapp():
-    """Open WhatsApp using PyAutoGUI."""
-    try:
-        # Press Windows key
-        pyautogui.press('win')
-        time.sleep(2)
-        
-        # Type WhatsApp
-        pyautogui.typewrite("whatsapp")
-        time.sleep(1)
-        
-        # Press Enter to launch
-        pyautogui.press('enter')
-        time.sleep(5)  # Wait for WhatsApp to open
-        
-        logging.info("WhatsApp opened successfully")
-        return True
-    except Exception as e:
-        logging.error(f"Error opening WhatsApp: {str(e)}")
+def send_whatsapp_message(contact_name: str, message: Union[str, List[str]], 
+                         file_paths: Union[str, List[str]] = None, 
+                         file_sequence: List[Dict] = None,
+                         whatsapp_number: str = "", 
+                         process_name: str = "salary_slip") -> bool:
+    """
+    Send WhatsApp message via Node.js service - matches original Python function signature
+    """
+    client = WhatsAppNodeClient()
+    
+    # Check if service is ready
+    if not client.check_service_health():
+        logging.error("WhatsApp service is not ready")
         return False
-
-def send_message_for_salaryslip_or_report(message, process_name):
-    try:
-        if process_name == "salary_slip":
-            for line in message:
-                pyautogui.typewrite(line)
-                time.sleep(1)
-                pyautogui.hotkey('shift', 'enter')
-        elif process_name == "report": 
-            # Use pyperclip to handle multi-line messages
-            pyperclip.copy(message)
-            pyautogui.hotkey('ctrl', 'v')
-            time.sleep(1)
-            pyautogui.press('enter')
-            
-    except Exception as e:
-        logging.error(f"Error sending message: {str(e)}")
-        raise
-
-def send_files(file_path):
-    logging.info(f"Attaching file: {file_path}")
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(0.5)
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.press('enter')
-    time.sleep(2)
-    pyperclip.copy(file_path)
-    pyautogui.hotkey('ctrl', 'v')
-    time.sleep(3)
-    pyautogui.press('enter')
-    time.sleep(3)
-    pyautogui.press('enter')
-    time.sleep(3)  
-
-def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
     
     try:
-        # Initialize empty list if no file paths provided
+        # Prepare message - convert list to string if needed
+        if isinstance(message, list):
+            message_text = '\n'.join(message)
+        else:
+            message_text = message
+        
+        # Prepare file paths
+        if file_paths is None:
+            file_paths = []
+        elif isinstance(file_paths, str):
+            file_paths = [file_paths]
+        
+        # Prepare file sequence
+        if file_sequence is None:
+            file_sequence = []
+        
+        # Prepare request data
+        data = {
+            'contact_name': contact_name,
+            'message': message_text,
+            'whatsapp_number': whatsapp_number,
+            'process_name': process_name,
+            'file_sequence': json.dumps(file_sequence) if file_sequence else '[]'
+        }
+        
+        # Prepare files for upload
+        files = []
+        if file_paths:
+            for file_path in file_paths:
+                if os.path.exists(file_path):
+                    files.append(('files', open(file_path, 'rb')))
+                else:
+                    logging.warning(f"File not found: {file_path}")
+        
+        # Send request
+        response = requests.post(
+            f"{client.base_url}/send-message",
+            data=data,
+            files=files,
+            timeout=client.timeout
+        )
+        
+        # Close file handles
+        for _, file_handle in files:
+            file_handle.close()
+        
+        if response.status_code == 200:
+            result = response.json()
+            success = result.get('success', False)
+            logging.info(f"WhatsApp message {'sent successfully' if success else 'failed'} to {contact_name}")
+            return success
+        else:
+            logging.error(f"Error sending WhatsApp message: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
+        return False
+
+def get_whatsapp_status() -> Dict:
+    """Public helper to get WhatsApp status for Flask route"""
+    client = whatsapp_client
+    return client.get_status()
+
+def get_whatsapp_qr() -> Dict:
+    """Public helper to get QR for Flask route"""
+    client = whatsapp_client
+    return client.get_qr()
+
+def trigger_whatsapp_login() -> Dict:
+    """Public helper to trigger login and get QR for Flask route"""
+    client = whatsapp_client
+    return client.trigger_login()
+
+def logout_whatsapp() -> bool:
+    """Public helper to logout WhatsApp session for Flask route"""
+    client = whatsapp_client
+    return client.logout()
+
+def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: str, 
+                                whatsapp_number: str, file_path: Union[str, List[str]], 
+                                is_special: bool = False, months_data: List[Dict] = None) -> bool:
+    """
+    Handle WhatsApp notification for salary slips - matches original Python function
+    """
+    client = WhatsAppNodeClient()
+    
+    # Check if service is ready
+    if not client.check_service_health():
+        logging.error("WhatsApp service is not ready")
+        return False
+    
+    try:
+        # Prepare file paths
+        if isinstance(file_path, str):
+            file_paths = [file_path]
+        else:
+            file_paths = file_path or []
+        
+        # Prepare months data
+        if months_data is None:
+            months_data = [{"month": full_month, "year": full_year}]
+        
+        # Prepare request data
+        data = {
+            'contact_name': contact_name,
+            'full_month': full_month,
+            'full_year': full_year,
+            'whatsapp_number': whatsapp_number,
+            'is_special': is_special,
+            'months_data': json.dumps(months_data)
+        }
+        
+        # Prepare files for upload
+        files = []
+        for file_path_item in file_paths:
+            if os.path.exists(file_path_item):
+                files.append(('files', open(file_path_item, 'rb')))
+            else:
+                logging.warning(f"File not found: {file_path_item}")
+        
+        # Send request
+        response = requests.post(
+            f"{client.base_url}/send-salary-notification",
+            data=data,
+            files=files,
+            timeout=client.timeout
+        )
+        
+        # Close file handles
+        for _, file_handle in files:
+            file_handle.close()
+        
+        if response.status_code == 200:
+            result = response.json()
+            success = result.get('success', False)
+            logging.info(f"Salary slip notification {'sent successfully' if success else 'failed'} to {contact_name}")
+            return success
+        else:
+            logging.error(f"Error sending salary slip notification: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error sending salary slip notification to {contact_name}: {str(e)}")
+        return False
+
+def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[str]], 
+                               file_paths: List[str] = None, 
+                               process_name: str = "salary_slip") -> List[Dict]:
+    """
+    Send bulk WhatsApp messages - new function for batch processing
+    """
+    client = WhatsAppNodeClient()
+    
+    # Check if service is ready
+    if not client.check_service_health():
+        logging.error("WhatsApp service is not ready")
+        return []
+    
+    try:
+        # Prepare message
+        if isinstance(message, list):
+            message_text = '\n'.join(message)
+        else:
+            message_text = message
+        
+        # Prepare file paths
+        if file_paths is None:
+            file_paths = []
+        
+        # Prepare request data
+        data = {
+            'contacts': json.dumps(contacts),
+            'message': message_text,
+            'process_name': process_name,
+            'file_sequence': '[]'
+        }
+        
+        # Prepare files for upload
+        files = []
+        for file_path in file_paths:
+            if os.path.exists(file_path):
+                files.append(('files', open(file_path, 'rb')))
+            else:
+                logging.warning(f"File not found: {file_path}")
+        
+        # Send request
+        response = requests.post(
+            f"{client.base_url}/send-bulk",
+            data=data,
+            files=files,
+            timeout=client.timeout * len(contacts)  # Longer timeout for bulk
+        )
+        
+        # Close file handles
+        for _, file_handle in files:
+            file_handle.close()
+        
+        if response.status_code == 200:
+            result = response.json()
+            logging.info(f"Bulk WhatsApp messages processed: {result.get('successful', 0)}/{result.get('total_processed', 0)} successful")
+            return result.get('results', [])
+        else:
+            logging.error(f"Error sending bulk WhatsApp messages: {response.status_code} - {response.text}")
+            return []
+            
+    except Exception as e:
+        logging.error(f"Error sending bulk WhatsApp messages: {str(e)}")
+        return []
+
+
+def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
+    """Maintain original prepare_file_paths function for backward compatibility"""
+    try:
         if not file_paths:
             return []
             
-        # Convert single path to list if it's not already
         if not isinstance(file_paths, list):
             file_paths = [file_paths]
             
-        # Validate each path and collect valid ones
         valid_paths = []
-        seen_filenames = set()  # Keep track of filenames we've already processed
+        seen_filenames = set()
         
         for path in file_paths:
             if is_upload:
-                # Handle uploaded file
                 if hasattr(path, 'filename') and path.filename:
                     temp_path = os.path.join(temp_dir, path.filename)
                     path.save(temp_path)
@@ -155,7 +354,6 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
                     seen_filenames.add(path.filename)
                     logging.info(f"Saved attachment file to: {temp_path}")
             else:
-                # Handle existing file path
                 if os.path.exists(path) and os.path.isfile(path):
                     filename = os.path.basename(path)
                     if filename not in seen_filenames:
@@ -172,284 +370,29 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
     except Exception as e:
         logging.error(f"Error preparing file paths: {str(e)}")
         return []
+
+# Configuration
+WHATSAPP_NODE_SERVICE_URL = os.getenv('WHATSAPP_NODE_SERVICE_URL', 'http://localhost:3001')
+
+# Initialize client
+whatsapp_client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL)
+
+# Example usage and testing
+if __name__ == "__main__":
+    # Test the service
+    print("Testing WhatsApp Node.js service...")
     
-def find_ui_element(images, confidence=0.9, region=None, max_attempts=3):
-    try:
-        # Get screen resolution
-        screen_width, screen_height = pyautogui.size()
-        aspect_ratio = screen_width / screen_height
-        search_regions = [
-            None,  # Full screen
-            (0, 0, screen_width // 2, screen_height),  # Left half
-            (screen_width // 2, 0, screen_width // 2, screen_height),  # Right half
-            (0, 0, screen_width, screen_height // 2),  # Top half
-            (0, screen_height // 2, screen_width, screen_height // 2)  # Bottom half
-        ]
-        confidence_levels = [confidence, confidence - 0.1, confidence - 0.2]
-        for attempt in range(max_attempts):
-            for current_confidence in confidence_levels:
-                if current_confidence < 0.5:
-                    continue
-                for search_region in search_regions:
-                    for image_path in images:
-                        if not os.path.exists(image_path):
-                            logging.error(f"Image not found at: {image_path}")
-                            continue
-                        try:
-                            location = pyautogui.locateOnScreen(
-                                image_path,
-                                confidence=current_confidence,
-                                region=search_region
-                            )
-                            if location:
-                                logging.info(f"Found image at: {image_path}")
-                                return (
-                                    location.left + location.width // 2,
-                                    location.top + location.height // 2
-                                )
-                        except Exception as e:
-                            logging.debug(f"Failed to find {image_path} in region {search_region}: {str(e)}")
-                            continue
-            time.sleep(1)
-        return None
-    except Exception as e:
-        logging.error(f"Error in find_ui_element: {str(e)}")
-        return None
-
-def first_chat_or_regular(message, process_name):
-    try:
-        # Use the new robust element finding function
-        new_chat_location = find_ui_element(new_chat_images)
-        if new_chat_location:
-            logging.info("New chat detected, performing navigation.")
-            if process_name == "salary_slip":
-                send_message_for_salaryslip_or_report(message, process_name)
-            time.sleep(1)
-            pyautogui.hotkey('shift', 'tab')
-            time.sleep(1)
-            pyautogui.hotkey('shift', 'tab')
-            time.sleep(1)
-            pyautogui.hotkey('shift', 'tab')
-            time.sleep(1)
-        else:
-            logging.info("Regular chat detected.")
-            if process_name == "salary_slip":
-                send_message_for_salaryslip_or_report(message, process_name)
-            time.sleep(1)
-            pyautogui.hotkey('shift', 'tab')
-            time.sleep(1)
-    except Exception as e:
-        logging.error(f"Error in first_chat_or_regular: {str(e)}")
-        raise
-
-def send_whatsapp_message(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name):
-    try:
-        # Check if running in Docker/production
-        if os.environ.get('RENDER') or not os.environ.get('DISPLAY'):
-            logging.info(f"WhatsApp Message would be sent to {contact_name} ({whatsapp_number})")
-            try:
-                str_whatsapp_number = pd.Series(whatsapp_number)
-                whatsapp_number_str = str_whatsapp_number.to_string(index=False).strip()
-                if not whatsapp_number_str:
-                    logging.error(f"Phone number not found for {contact_name}.")
-                    return False
-                if process_name == "report":
-                    if not re.match(r'^\d+\s+\d+$', whatsapp_number_str):
-                        raise ValueError("Invalid WhatsApp number format. Expected format: 'country_code phone_number'")
-                logging.info(f"Starting WhatsApp Web interaction for {contact_name}")
-                pyautogui.hotkey('ctrl', 'n')
-                time.sleep(1)
-                pyautogui.hotkey('ctrl', 'a')
-                time.sleep(1)
-                pyautogui.typewrite(whatsapp_number_str)
-                time.sleep(2)
-                pyautogui.press('enter')
-                time.sleep(1)
-                # Check for contact not found
-                try:
-                    contact_not_found = find_ui_element(contact_not_found_images)
-                    if contact_not_found:
-                        logging.warning(f"Contact not found for {contact_name} ({whatsapp_number_str})")
-                        pyautogui.press('enter')
-                        time.sleep(1)
-                        return False
-                except pyautogui.ImageNotFoundException:
-                    pass
-                except Exception as e:
-                    logging.error(f"Error checking for contact not found: {str(e)}")
-                    return False
-                pyautogui.press('tab')
-                time.sleep(0.5)
-                pyautogui.press('tab')
-                time.sleep(0.5)
-                pyautogui.press('enter')
-                time.sleep(2)
-                valid_file_paths = prepare_file_paths(file_paths)
-
-                # Create a mapping for quick lookup of file paths by filename
-                filename_to_path_map = {os.path.basename(p): p for p in valid_file_paths}
-
-                if process_name == "salary_slip":
-                    if not valid_file_paths:
-                        send_message_for_salaryslip_or_report(message, process_name)
-                    elif valid_file_paths:
-                        send_message_for_salaryslip_or_report(message, process_name)
-                        send_files(valid_file_paths)
-                elif process_name == "report":
-                    # Sort items by sequence number to ensure correct order
-                    sorted_items = sorted(file_sequence, key=lambda x: x['sequence_no'])
-                    
-                    for item in sorted_items:
-                        try:
-                            if item['file_type'] == "message":
-                                # Send message first
-                                send_message_for_salaryslip_or_report(message, process_name)
-                                # Add delay after sending message
-                                time.sleep(2)
-                            elif item['file_type'] == "file":
-                                # Get the full file path from the mapping using the filename
-                                file_path = filename_to_path_map.get(item['file_name'])
-                                if file_path:
-                                    # Send message before file
-                                    first_chat_or_regular(message, process_name)
-                                   
-                                    # Send the file
-                                    send_files(file_path)
-                                    pyautogui.press('tab')
-                                    time.sleep(1)
-                                    
-                        except Exception as e:
-                            logging.error(f"Error processing item {item['file_name']}: {str(e)}")
-                            continue
-                    
-                logging.info(f"Successfully sent message to {contact_name} ({whatsapp_number_str}) via WhatsApp with {len(valid_file_paths)} attachments.")
-                return True
-            except ImportError:
-                logging.warning("PyAutoGUI not available - WhatsApp message logged only")
-                return True
-            except Exception as e:
-                logging.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
-                return False
-        return True   
-    except Exception as e:
-        logging.error(f"Unexpected error in send_whatsapp_message: {str(e)}")
-        return False
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-'''
-
-# =========================
-# WhatsApp integration using whatsapp-web.js (Node.js service)
-# This Python module provides interface to communicate with the Node.js service
-# =========================
-
-import requests
-import logging
-import json
-from typing import Optional, Dict, Any
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Configuration for Node.js whatsapp-web.js service
-WHATSAPP_NODE_SERVICE_URL = 'http://localhost:3001'  # Change to your Node.js service URL/port
-
-def get_whatsapp_qr() -> Dict[str, Any]:
-    try:
-        response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/qr", timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            logger.info("Successfully retrieved WhatsApp QR code")
-            return data
-        else:
-            logger.error(f"Failed to get QR code. Status: {response.status_code}")
-            return {"qr": ""}
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error connecting to WhatsApp service: {str(e)}")
-        return {"qr": ""}
-    except Exception as e:
-        logger.error(f"Unexpected error getting QR code: {str(e)}")
-        return {"qr": ""}
-
-def get_whatsapp_status() -> Dict[str, Any]:
-    try:
-        response = requests.get(f"{WHATSAPP_NODE_SERVICE_URL}/status", timeout=5)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": "disconnected", "message": "Service unavailable"}
-    except Exception as e:
-        logger.error(f"Error getting WhatsApp status: {str(e)}")
-        return {"status": "disconnected", "message": "Connection error"}
-
-def send_whatsapp_message(contact_name: str, message: str, file_paths: list = None, 
-                         file_sequence: list = None, whatsapp_number: str = None, 
-                         process_name: str = "message") -> bool:
-    try:
-        # Prepare the payload
-        payload = {
-            "contact_name": contact_name,
-            "message": message,
-            "whatsapp_number": whatsapp_number,
-            "process_name": process_name
-        }
+    if whatsapp_client.check_service_health():
+        print("✓ WhatsApp service is ready")
         
-        # Add file information if provided
-        if file_paths:
-            payload["file_paths"] = file_paths
-        if file_sequence:
-            payload["file_sequence"] = file_sequence
-            
-        response = requests.post(
-            f"{WHATSAPP_NODE_SERVICE_URL}/send-message", 
-            json=payload,
-            timeout=30
+        # Test sending a message
+        success = send_whatsapp_message(
+            contact_name="Test User",
+            message="This is a test message from Python!",
+            whatsapp_number="1234567890",
+            process_name="salary_slip"
         )
-        
-        if response.status_code == 200:
-            logger.info(f"Successfully sent WhatsApp message to {contact_name}")
-            return True
-        else:
-            logger.error(f"Failed to send message. Status: {response.status_code}")
-            return False
-            
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
-        return False
-    except Exception as e:
-        logger.error(f"Unexpected error sending message: {str(e)}")
-        return False
-
-def logout_whatsapp() -> bool:
-    try:
-        response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/logout", timeout=10)
-        if response.status_code == 200:
-            logger.info("Successfully logged out from WhatsApp")
-            return True
-        else:
-            logger.error(f"Failed to logout. Status: {response.status_code}")
-            return False
-    except Exception as e:
-        logger.error(f"Error logging out from WhatsApp: {str(e)}")
-        return False
-
-def trigger_whatsapp_login() -> dict:
-    try:
-        response = requests.post(f"{WHATSAPP_NODE_SERVICE_URL}/login", timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"qr": "", "error": "Failed to trigger login"}
-    except Exception as e:
-        logger.error(f"Error triggering WhatsApp login: {str(e)}")
-        return {"qr": "", "error": str(e)}
-
-# Legacy function compatibility - keeping the original function signature
-def send_whatsapp_message_legacy(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name):
- 
-    return send_whatsapp_message(contact_name, message, file_paths, file_sequence, whatsapp_number, process_name)
+        print(f"Test message sent: {success}")
+    else:
+        print("✗ WhatsApp service is not ready. Please start the Node.js service first.")
+        print("Run: node whatsapp-service.js")

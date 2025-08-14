@@ -14,6 +14,7 @@ const Navbar = ({ onLogout }) => {
   const [loadingQR, setLoadingQR] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [isPolling, setIsPolling] = useState(false);
   const pollingRef = useRef(null);
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -39,14 +40,32 @@ const Navbar = ({ onLogout }) => {
     setStatusMsg('');
     setShowQR(true);
     setQRValue('');
+    setIsPolling(false);
+    
     try {
-      const res = await fetch(getApiUrl('whatsapp-login'), { method: 'POST' });
+      console.log('Starting WhatsApp login...');
+      const res = await fetch(getApiUrl('whatsapp-login'), { 
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
-      setQRValue(data.qr || '');
-      if (!data.qr) setStatusMsg(data.error || 'Failed to load QR');
+      console.log('WhatsApp login response:', data);
+      
+      if (data.qr && data.qr.trim()) {
+        setQRValue(data.qr);
+        setStatusMsg('QR Code loaded. Please scan with your phone.');
+        setIsPolling(true);
+      } else {
+        setStatusMsg(data.error || 'No QR code received. Please try again.');
+      }
     } catch (err) {
-      setQRValue('');
-      // setStatusMsg('Failed to load QR');
+      console.error('WhatsApp login error:', err);
+      setStatusMsg('Failed to load QR code. Please check if the WhatsApp service is running.');
     } finally {
       setLoadingQR(false);
     }
@@ -54,33 +73,72 @@ const Navbar = ({ onLogout }) => {
 
   // Poll WhatsApp status while QR modal is open
   useEffect(() => {
-    if (showQR && qrValue) {
+    if (showQR && isPolling && qrValue) {
+      console.log('Starting status polling...');
       pollingRef.current = setInterval(async () => {
         try {
-          const res = await fetch(getApiUrl('whatsapp-status'));
+          const res = await fetch(getApiUrl('whatsapp-status'), {
+            credentials: 'include'
+          });
+          
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          
           const data = await res.json();
-          if (data.status === 'authenticated' || data.status === 'ready' || data.status === true) {
+          console.log('Status poll response:', data);
+          
+          // Check if WhatsApp is ready (authenticated)
+          if (data.isReady === true || data.status === 'ready') {
             setLoginSuccess(true);
-            setStatusMsg('WhatsApp login successful!');
+            setStatusMsg('WhatsApp login successful! You can now close this window.');
+            setIsPolling(false);
+            
+            // Auto-close after 3 seconds
             setTimeout(() => {
               setShowQR(false);
               setLoginSuccess(false);
               setStatusMsg('');
-            }, 1500);
+              setQRValue('');
+              setIsPolling(false);
+            }, 3000);
+            
             clearInterval(pollingRef.current);
           }
         } catch (e) {
-          // ignore
+          console.error('Status polling error:', e);
+          // Don't show error to user, just continue polling
         }
-      }, 2000);
-      return () => clearInterval(pollingRef.current);
-    } else {
+      }, 3000); // Poll every 3 seconds
+      
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+        }
+      };
+    }
+  }, [showQR, isPolling, qrValue]);
+
+  // Clean up polling on unmount or modal close
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
+  // Close modal and cleanup
+  const closeQRModal = () => {
+    setShowQR(false);
+    setLoginSuccess(false);
+    setStatusMsg('');
+    setQRValue('');
+    setIsPolling(false);
+    if (pollingRef.current) {
       clearInterval(pollingRef.current);
     }
-  }, [showQR, qrValue]);
-
-  // Clean up polling on unmount
-  useEffect(() => () => clearInterval(pollingRef.current), []);
+  };
 
   return (
     <div className='navbar'>
@@ -111,13 +169,46 @@ const Navbar = ({ onLogout }) => {
         <FaCog className="settings-icon" onClick={() => navigate('/settings')} title="Settings" />
       </div>
       {showQR && (
-        <div className="qr-modal" onClick={() => setShowQR(false)}>
+        <div className="qr-modal" onClick={closeQRModal}>
           <div className="qr-content" onClick={e => e.stopPropagation()}>
             <h2>WhatsApp Web QR</h2>
-            {loadingQR ? <div>Loading...</div> : qrValue ? <QRCodeSVG value={qrValue} size={300} /> : <div style={{color:'red'}}>{statusMsg || 'Failed to load QR'}</div>}
-            {loginSuccess && <div style={{color:'green', marginTop:10}}>{statusMsg}</div>}
-            {!loginSuccess && statusMsg && !qrValue && <div style={{color:'red', marginTop:10}}>{statusMsg}</div>}
-            <button className="qr-close-btn" onClick={() => setShowQR(false)}>Close</button>
+            
+            {loadingQR ? (
+              <div className="loading-message">Loading QR Code...</div>
+            ) : qrValue ? (
+              <div className="qr-container">
+                <QRCodeSVG value={qrValue} size={300} />
+                <p className="qr-instructions">Scan this QR code with your WhatsApp mobile app</p>
+                {isPolling && (
+                  <div className="polling-status">
+                    <span className="polling-indicator">●</span> Waiting for authentication...
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="error-message">{statusMsg || 'Failed to load QR'}</div>
+            )}
+            
+            {loginSuccess && (
+              <div className="success-message">{statusMsg}</div>
+            )}
+            
+            {!loginSuccess && statusMsg && !qrValue && (
+              <div className="error-message">{statusMsg}</div>
+            )}
+            
+            <div className="qr-actions">
+              <button 
+                className="qr-retry-btn" 
+                onClick={startWhatsappLogin}
+                disabled={loadingQR}
+              >
+                Retry
+              </button>
+              <button className="qr-close-btn" onClick={closeQRModal}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

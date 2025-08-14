@@ -16,7 +16,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
-from Utils.whatsapp_utils import get_whatsapp_qr, get_whatsapp_status, send_whatsapp_message, logout_whatsapp
+from Utils.whatsapp_utils import (
+    get_whatsapp_qr,
+    get_whatsapp_status,
+    send_whatsapp_message,
+    logout_whatsapp,
+    handle_whatsapp_notification,
+    get_employee_contact,
+)
 from firebase_admin import firestore
 from Utils.firebase_utils import (
     add_user as firebase_add_user,
@@ -872,7 +879,7 @@ def generate_report():
                 return jsonify({"error": "Failed to read template content"}), 500
             
             if send_whatsapp:
-                open_whatsapp()
+                pass
 
             # Process each row of data
             for row in data_rows:
@@ -1152,7 +1159,7 @@ def retry_reports():
                     continue
                 
                 if send_whatsapp:
-                    open_whatsapp()
+                    pass
                 
                 # Process each row of data
                 for row in data_rows:
@@ -1517,6 +1524,29 @@ def whatsapp_login():
     except Exception as e:
         logger.error(f"Error triggering WhatsApp login: {str(e)}")
         return jsonify({"qr": "", "error": "Failed to trigger WhatsApp login"}), 500
+
+@app.route("/api/whatsapp-status", methods=["GET"])
+def whatsapp_status():
+    """Get WhatsApp status from Node service (used by Navbar polling)"""
+    try:
+        status = get_whatsapp_status()
+        # Ensure a consistent shape for the frontend
+        return jsonify({
+            "isReady": bool(status.get("isReady")),
+            "status": status.get("status", "initializing")
+        }), 200
+    except Exception as e:
+        logger.error(f"Error getting WhatsApp status: {str(e)}")
+        return jsonify({"isReady": False, "status": "error"}), 200
+
+@app.route("/api/whatsapp-logout", methods=["POST"])
+def whatsapp_logout():
+    try:
+        success = logout_whatsapp()
+        return jsonify({"success": bool(success)}), 200 if success else 500
+    except Exception as e:
+        logger.error(f"Error logging out WhatsApp: {str(e)}")
+        return jsonify({"success": False}), 500
 
 if __name__ == "__main__":
     try:
