@@ -506,10 +506,10 @@ const Reports = () => {
       alert('Please select at least one notification method (WhatsApp or Email)');
       return;
     }
-    if (!sendEmail) {
-      alert('Please select at least one notification method (Email)');
-      return;
-    }
+    // if (!sendEmail) {
+    //   alert('Please select at least one notification method (Email)');
+    //   return;
+    // }
 
     setIsLoading(true);
 

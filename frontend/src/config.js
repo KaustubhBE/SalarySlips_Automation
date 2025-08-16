@@ -7,6 +7,8 @@ const isDevelopment = window.location.hostname === 'localhost' || window.locatio
 
 // Default backend URL
 const DEFAULT_BACKEND_URL = 'http://localhost:5000';
+// WhatsApp service URL
+const WHATSAPP_SERVICE_URL = 'http://localhost:3001';
 
 // Determine the base API URL
 const getApiBaseUrl = () => {
@@ -70,6 +72,11 @@ export const getCurrentBackendUrl = () => {
     return getApiBaseUrl();
 };
 
+// Get WhatsApp service URL
+export const getWhatsAppServiceUrl = (endpoint) => {
+    return `${WHATSAPP_SERVICE_URL}/${endpoint}`;
+};
+
 // Common API endpoints
 export const ENDPOINTS = {
     // Auth
@@ -97,6 +104,20 @@ export const ENDPOINTS = {
     HEALTH: 'health',
     PROCESS_SINGLE: 'process_single',
     PROCESS_BATCH: 'process_batch'
+};
+
+// WhatsApp service endpoints
+export const WHATSAPP_ENDPOINTS = {
+    HEALTH: 'health',
+    STATUS: 'status',
+    QR: 'qr',
+    TRIGGER_LOGIN: 'trigger-login',
+    LOGOUT: 'logout',
+    AUTH_STATUS: 'auth-status', // Add this missing endpoint
+    SEND_MESSAGE: 'send-message',
+    SEND_BULK: 'send-bulk',
+    SEND_SALARY_NOTIFICATION: 'send-salary-notification',
+    SEND_REACTOR_REPORT: 'send-reactor-report'
 };
 
 // API call with fetch

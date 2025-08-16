@@ -17,10 +17,7 @@ from functools import wraps
 from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
 from Utils.whatsapp_utils import (
-    get_whatsapp_qr,
-    get_whatsapp_status,
     send_whatsapp_message,
-    logout_whatsapp,
     handle_whatsapp_notification,
     get_employee_contact,
 )
@@ -1309,6 +1306,7 @@ def reactor_report():
             return jsonify({"error": "User not authenticated"}), 401
         # Get form data
         send_email = request.form.get('send_email') == 'true'
+        send_whatsapp = request.form.get('send_whatsapp') == 'true'
         date = request.form.get('date')
         if not date:
             return jsonify({"error": "Date is required"}), 400
@@ -1336,6 +1334,7 @@ def reactor_report():
             input_date=date,
             user_id=user_id,
             send_email=send_email,
+            send_whatsapp=send_whatsapp,
             template_path=template_path,
             output_dir=temp_dir,
             gspread_client=gspread_client,
