@@ -7,8 +7,8 @@ from flask import session
 from Utils.email_utils import *
 from Utils.whatsapp_utils import (
     get_employee_contact,
-    handle_whatsapp_notification,
-    send_whatsapp_message,
+    handle_whatsapp_notification as wa_handle_whatsapp_notification,
+    send_whatsapp_message as wa_send_whatsapp_message,
 )
 from Utils.drive_utils import upload_to_google_drive
 import shutil
@@ -149,7 +149,7 @@ def format_months_list(months_data):
 def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
     """Delegate to Node-backed WhatsApp notification handler"""
     try:
-        return handle_whatsapp_notification(
+        return wa_handle_whatsapp_notification(
             contact_name=contact_name,
             full_month=full_month,
             full_year=full_year,
@@ -293,22 +293,14 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                 if whatsapp_number:
                     # If this is a single month, send immediately
                     if not is_special:
-                        try:
-                            # Call the imported function directly
-                            success = handle_whatsapp_notification(
-                                contact_name=contact_name,
-                                full_month=full_month,
-                                full_year=full_year,
-                                whatsapp_number=whatsapp_number,
-                                file_path=output_pdf,
-                                is_special=False
-                            )
-                            if success:
-                                logging.info(f"WhatsApp notification sent successfully to {contact_name}")
-                            else:
-                                logging.warning(f"Failed to send WhatsApp notification to {contact_name}")
-                        except Exception as e:
-                            logging.error(f"Error sending WhatsApp notification to {contact_name}: {e}")
+                        handle_whatsapp_notification(
+                            contact_name=contact_name,
+                            full_month=full_month,
+                            full_year=full_year,
+                            whatsapp_number=whatsapp_number,
+                            file_path=output_pdf,
+                            is_special=False
+                        )
                     # For multiple months, the calling function will handle sending all files together
                     return output_pdf
                     
@@ -439,7 +431,7 @@ def process_salary_slips(template_path, output_dir, employee_data, headers, driv
                     "+91 - 86557 88172"
                 ]
                 file_path = os.path.join(output_dir, "Salary_Slip_{}_{}{}.pdf".format(contact_name, month, year))
-                send_whatsapp_message(contact_name, message, file_path, whatsapp_number, process_name="salary_slip")
+                wa_send_whatsapp_message(contact_name, message, file_path, whatsapp_number, process_name="salary_slip")
     except Exception as e:
         logging.error("Error processing salary slip for {}: {}".format(placeholders.get('Name', 'Unknown'), e))
     logging.info("Finished process_salary_slip function")
@@ -497,7 +489,7 @@ def process_reports(file_path_template):
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
 
-def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp):
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, template_path, output_dir, gspread_client, logger, send_email_smtp):
     
     from datetime import datetime, timedelta
     REACTOR_CONFIG = {
@@ -1026,63 +1018,13 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         except Exception as e:
             logger.error(f"Error sending email notification: {e}")
 
-    # Send WhatsApp messages if enabled
-    if send_whatsapp:
-        try:
-            from Utils.whatsapp_utils import handle_reactor_report_notification
-            success = handle_reactor_report_notification(
-                recipients_data=sheet_recipients_data,
-                input_date=input_date,
-                file_path=pdf_path,
-                sheets_processed=len(sheets_to_process)
-            )
-            if success:
-                logger.info("Reactor report WhatsApp notifications sent successfully")
-            else:
-                logger.warning("Some or all reactor report WhatsApp notifications failed")
-        except Exception as e:
-            logger.error(f"Error processing WhatsApp notifications: {e}")
-
     return {
         "message": "Reactor reports generated and sent successfully",
         "generated_files": 1,
         "date_range": f"{input_date}",
         "sheets_processed": len(sheets_to_process),
         "notifications_sent": {
-            "email": send_email,
-            "whatsapp": send_whatsapp
+            "email": send_email
         },
         "output_file": pdf_path
     }
-
-def process_batch_salary_slips(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_month, input_year, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp):
-    # ... existing code ...
-    
-    # Send WhatsApp notifications if enabled
-    if send_whatsapp:
-        try:
-            from Utils.whatsapp_utils import handle_whatsapp_notification
-            
-            for employee_data in processed_employees:
-                contact_name = employee_data.get("Name")
-                whatsapp_number = get_employee_contact(contact_name, contact_employees)
-                file_path = employee_data.get("pdf_path")
-                
-                if whatsapp_number and file_path and os.path.exists(file_path):
-                    success = handle_whatsapp_notification(
-                        contact_name=contact_name,
-                        full_month=input_month,
-                        full_year=input_year,
-                        whatsapp_number=whatsapp_number,
-                        file_path=[file_path],  # Pass as list
-                        is_special=False
-                    )
-                    if success:
-                        logger.info(f"WhatsApp notification sent successfully to {contact_name}")
-                    else:
-                        logger.warning(f"Failed to send WhatsApp notification to {contact_name}")
-                else:
-                    logger.warning(f"Skipping WhatsApp notification for {contact_name}: Missing contact or file")
-                    
-        except Exception as e:
-            logger.error(f"Error processing WhatsApp notifications: {e}")

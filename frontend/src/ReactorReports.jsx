@@ -1,19 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import './Reports.css';
 import { getApiUrl } from './config';
 
 const ReactorReports = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
-  const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [date, setDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const [previewItems, setPreviewItems] = useState([]);
+
+  const validateSheetId = (id) => {
+    const sheetIdRegex = /^[a-zA-Z0-9-_]{44}$/;
+    return sheetIdRegex.test(id);
+  };
+
+  const extractSheetId = (url) => {
+    try {
+      let sheetId = url;
+      if (url.includes('docs.google.com')) {
+        const match = url.match(/\/d\/([a-zA-Z0-9-_]{44})/);
+        if (match && match[1]) {
+          sheetId = match[1];
+        }
+      }
+      return sheetId;
+    } catch (error) {
+      console.error('Error extracting sheet ID:', error);
+      return url;
+    }
+  };
+
+  const handleDailySheetIdChange = (e) => {
+    const value = e.target.value.trim();
+    const extractedId = extractSheetId(value);
+    setDailySheetID(extractedId);
+
+    if (extractedId && !validateSheetId(extractedId)) {
+      setSheetError('Invalid Google Sheet ID format');
+    } else {
+      setSheetError('');
+    }
+  };
+
+  const handleSheetIdChange = (e) => {
+    const value = e.target.value.trim();
+    const extractedId = extractSheetId(value);
+    setSheetId(extractedId);
+
+    if (extractedId && !validateSheetId(extractedId)) {
+      setSheetError('Invalid Google Sheet ID format');
+    } else {
+      setSheetError('');
+    }
+  };
+
+  const handleSheetNameChange = (e) => {
+    setSheetName(e.target.value);
+  };
 
   const handleDateChange = (e) => {
     setDate(e.target.value);
   };
+
+  const handleCopyServiceAccount = useCallback(() => {
+    const serviceAccountEmail = "ems-974@be-ss-automation-445106.iam.gserviceaccount.com";
+    navigator.clipboard.writeText(serviceAccountEmail).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    });
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,10 +83,11 @@ const ReactorReports = () => {
       return;
     }
 
-    if (!sendWhatsapp && !sendEmail) {
-      alert('Please select at least one notification method (WhatsApp or Email)');
+    if (!sendEmail) {
+      alert('Please select at least one notification method (Email)');
       return;
     }
+
 
     setIsLoading(true);
 
@@ -34,7 +95,6 @@ const ReactorReports = () => {
       const formData = new FormData();
 
       formData.append('send_email', sendEmail);
-      formData.append('send_whatsapp', sendWhatsapp);
       formData.append('date', date);
 
       const response = await fetch(getApiUrl('reactor-reports'), {
@@ -58,7 +118,7 @@ const ReactorReports = () => {
       alert(result.message || 'Reports generated and sent successfully!');
 
       setSendEmail(false);
-      setSendWhatsapp(false);
+      setPreviewItems([]);
       setDate(new Date().toISOString().split('T')[0]);
 
       window.location.reload();
@@ -105,25 +165,13 @@ const ReactorReports = () => {
             </label>
             <span className="toggle-label">Send via Email</span>
           </div>
-
-          <div className="toggle-item">
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={sendWhatsapp}
-                onChange={(e) => setSendWhatsapp(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-            <span className="toggle-label">Send via WhatsApp</span>
-          </div>
         </div>
       </div>
 
       <button
         className="submit-button"
         onClick={handleSubmit}
-        disabled={isLoading || (!sendWhatsapp && !sendEmail)}
+        disabled={ isLoading || !sendEmail}
       >
         {isLoading ? 'Generating Reports...' : 'Generate Reports'}
       </button>

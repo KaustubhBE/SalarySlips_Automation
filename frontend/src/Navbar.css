@@ -257,43 +257,6 @@ background: #1ea952;
 transform: translateY(-1px);
 }
 
-.qr-logout-btn {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-right: 10px;
-}
-
-.qr-logout-btn:hover {
-  background-color: #c82333;
-}
-
-.auth-status {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.user-info {
-  background-color: #f8f9fa;
-  padding: 15px;
-  border-radius: 8px;
-  margin: 15px 0;
-  border: 1px solid #dee2e6;
-}
-
-.user-info p {
-  margin: 8px 0;
-  font-size: 14px;
-}
-
-.user-info strong {
-  color: #495057;
-}
-
 /* Enhanced Responsive Design */
 @media (max-width: 1024px) {
 .navbar {

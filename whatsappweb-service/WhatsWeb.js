@@ -12,15 +12,12 @@ class WhatsAppService {
             }
         });
 
+        this.initializeClient();
         this.isReady = false;
         this.currentQR = null;
-        this.isInitialized = false;
-        
-        // Set up event listeners but don't initialize yet
-        this.setupEventListeners();
     }
 
-    setupEventListeners() {
+    initializeClient() {
         // Generate QR code for authentication
         this.client.on('qr', (qr) => {
             console.log('QR Code received, scan with your phone');
@@ -51,6 +48,9 @@ class WhatsAppService {
             this.isReady = false;
             this.currentQR = null;
         });
+
+        // Initialize the client
+        this.client.initialize();
     }
 
     async waitForReady() {
@@ -67,137 +67,60 @@ class WhatsAppService {
 
     async triggerLogin(timeoutMs = 10000) {
         try {
-            // If already ready and authenticated, return status instead of forcing new login
             if (this.isReady) {
-                try {
-                    // Get the authenticated user's info
-                    const contacts = await this.client.getContacts();
-                    const me = contacts.find(contact => contact.isMe);
-                    
-                    if (me) {
-                        const userInfo = {
-                            isReady: true,
-                            qr: '',
-                            authenticated: true,
-                            userInfo: {
-                                name: me.name || 'Unknown',
-                                phoneNumber: me.number || 'Unknown',
-                                pushName: me.pushname || 'Unknown'
-                            }
-                        };
-                        console.log('User already authenticated:', userInfo.userInfo);
-                        return userInfo;
-                    }
-                } catch (error) {
-                    console.log('Could not get user info, but client is ready');
-                }
-                
-                return { 
-                    isReady: true, 
-                    qr: '',
-                    authenticated: true,
-                    message: 'Already authenticated'
-                };
+                return { isReady: true, qr: '' };
             }
-            
-            // Initialize client if not already done
-            if (!this.isInitialized) {
-                this.isInitialized = true;
+            // Attempt to logout to force a fresh QR if a stale session exists
+            try {
+                await this.client.logout();
+            } catch (e) {
+                // ignore if already logged out / not authenticated
+            }
+            this.isReady = false;
+            this.currentQR = null;
+
+            // Re-initialize to trigger QR event
+            try {
                 this.client.initialize();
-            }
-            
-            // Only logout if we're not ready (avoid unnecessary logout for authenticated users)
-            if (!this.isReady) {
-                try {
-                    await this.client.logout();
-                } catch (e) {
-                    // ignore if already logged out / not authenticated
-                }
-                this.currentQR = null;
+            } catch (e) {
+                // initialization is already called in constructor; ignore
             }
 
             // Wait for QR or ready status
             const result = await new Promise((resolve) => {
                 if (this.currentQR) {
-                    return resolve({ 
-                        isReady: this.isReady, 
-                        qr: this.currentQR,
-                        authenticated: false 
-                    });
+                    return resolve({ isReady: this.isReady, qr: this.currentQR });
                 }
-                
                 let resolved = false;
-                
                 const onQR = (qr) => {
                     if (!resolved) {
                         resolved = true;
-                        resolve({ 
-                            isReady: this.isReady, 
-                            qr,
-                            authenticated: false 
-                        });
+                        resolve({ isReady: this.isReady, qr });
                     }
                 };
-                
-                const onReady = () => {
-                    if (!resolved) {
-                        resolved = true;
-                        resolve({ 
-                            isReady: true, 
-                            qr: '',
-                            authenticated: true,
-                            message: 'Authentication successful'
-                        });
-                    }
-                };
-                
-                // Listen for both QR and ready events
                 this.client.once('qr', onQR);
-                this.client.once('ready', onReady);
-                
-                // Timeout fallback
                 setTimeout(() => {
                     if (!resolved) {
                         resolved = true;
-                        resolve({ 
-                            isReady: this.isReady, 
-                            qr: this.currentQR || '',
-                            authenticated: this.isReady,
-                            message: this.isReady ? 'Already authenticated' : 'No QR received'
-                        });
+                        resolve({ isReady: this.isReady, qr: this.currentQR || '' });
                     }
                 }, timeoutMs);
             });
-            
             return result;
         } catch (error) {
             console.error('Error triggering login:', error);
-            return { 
-                isReady: false, 
-                qr: '',
-                authenticated: false,
-                error: error.message 
-            };
+            return { isReady: false, qr: '' };
         }
     }
 
     async logout() {
         try {
-            if (this.isReady) {
-                await this.client.logout();
-                this.isReady = false;
-                this.currentQR = null;
-                this.isInitialized = false;
-                console.log('WhatsApp client logged out successfully');
-                return true;
-            } else {
-                console.log('WhatsApp client not ready, no logout needed');
-                return true;
-            }
-        } catch (error) {
-            console.error('Error during logout:', error);
-            return false;
+            await this.client.logout();
+        } catch (e) {
+            console.warn('Logout warning:', e && e.message ? e.message : e);
         }
+        this.isReady = false;
+        this.currentQR = null;
     }
 
     /**
@@ -353,55 +276,32 @@ class WhatsAppService {
                     }
                 }
             } else if (processName === 'report') {
-                // Send message first
-                if (message) {
-                    if (Array.isArray(message)) {
-                        await this.client.sendMessage(formattedNumber, message.join('\n'));
-                    } else {
-                        await this.client.sendMessage(formattedNumber, message);
-                    }
-                    console.log(`Report message sent to ${contactName}`);
-                }
+                // Sort items by sequence number
+                const sortedItems = fileSequence.sort((a, b) => a.sequence_no - b.sequence_no);
 
-                // Send files if any
-                if (validFilePaths.length > 0) {
-                    for (const filePath of validFilePaths) {
-                        try {
-                            const media = MessageMedia.fromFilePath(filePath);
-                            await this.client.sendMessage(formattedNumber, media);
-                            console.log(`Report file sent: ${path.basename(filePath)}`);
-                            
-                            // Add delay between files
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } catch (error) {
-                            console.error(`Error sending report file ${filePath}:`, error);
+                for (const item of sortedItems) {
+                    try {
+                        if (item.file_type === 'message') {
+                            // Send message
+                            await this.client.sendMessage(formattedNumber, message);
+                            console.log(`Message sent to ${contactName}`);
+                        } else if (item.file_type === 'file') {
+                            // Get file path from mapping
+                            const filePath = filenameToPathMap[item.file_name];
+                            if (filePath) {
+                                const media = MessageMedia.fromFilePath(filePath);
+                                await this.client.sendMessage(formattedNumber, media);
+                                console.log(`File sent: ${item.file_name}`);
+                            } else {
+                                console.error(`File not found: ${item.file_name}`);
+                            }
                         }
-                    }
-                }
-            } else if (processName === 'reactor_report') {
-                // Send message first
-                if (message) {
-                    if (Array.isArray(message)) {
-                        await this.client.sendMessage(formattedNumber, message.join('\n'));
-                    } else {
-                        await this.client.sendMessage(formattedNumber, message);
-                    }
-                    console.log(`Reactor report message sent to ${contactName}`);
-                }
 
-                // Send files if any
-                if (validFilePaths.length > 0) {
-                    for (const filePath of validFilePaths) {
-                        try {
-                            const media = MessageMedia.fromFilePath(filePath);
-                            await this.client.sendMessage(formattedNumber, media);
-                            console.log(`Reactor report file sent: ${path.basename(filePath)}`);
-                            
-                            // Add delay between files
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } catch (error) {
-                            console.error(`Error sending reactor report file ${filePath}:`, error);
-                        }
+                        // Add delay between items
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    } catch (error) {
+                        console.error(`Error processing item ${item.file_name}:`, error);
+                        continue;
                     }
                 }
             }
@@ -469,10 +369,8 @@ class WhatsAppServer {
 
     setupMiddleware() {
         this.app.use(cors({
-            origin: ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'], // React frontend and Python backend
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+            origin: ['http://localhost:3000', 'http://localhost:5000'], // React frontend and Python backend
+            credentials: true
         }));
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -494,10 +392,7 @@ class WhatsAppServer {
         this.app.get('/health', (req, res) => {
             res.json({ 
                 status: 'ok', 
-                whatsappReady: this.whatsappService.isReady,
-                whatsappInitialized: this.whatsappService.isInitialized,
-                hasQR: !!this.whatsappService.currentQR,
-                timestamp: new Date().toISOString()
+                whatsappReady: this.whatsappService.isReady 
             });
         });
 
@@ -514,115 +409,25 @@ class WhatsAppServer {
             res.json({ qr: this.whatsappService.currentQR || '' });
         });
 
-        // Route for checking authentication status
-        this.app.get('/auth-status', async (req, res) => {
-            try {
-                if (this.whatsappService.isReady) {
-                    try {
-                        const contacts = await this.whatsappService.client.getContacts();
-                        const me = contacts.find(contact => contact.isMe);
-                        
-                        if (me) {
-                            res.json({
-                                authenticated: true,
-                                userInfo: {
-                                    name: me.pushname || me.name || 'Unknown',
-                                    phoneNumber: me.number || 'Unknown',
-                                    pushName: me.pushname || 'Unknown'
-                                }
-                            });
-                        } else {
-                            res.json({
-                                authenticated: true,
-                                userInfo: {
-                                    name: 'Authenticated User',
-                                    phoneNumber: 'Unknown',
-                                    pushName: 'Unknown'
-                                }
-                            });
-                        }
-                    } catch (error) {
-                        console.error('Error getting user info:', error);
-                        res.json({
-                            authenticated: true,
-                            userInfo: {
-                                name: 'Authenticated User',
-                                phoneNumber: 'Unknown',
-                                pushName: 'Unknown'
-                            }
-                        });
-                    }
-                } else {
-                    res.json({
-                        authenticated: false,
-                        userInfo: null
-                    });
-                }
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                res.status(500).json({
-                    authenticated: false,
-                    userInfo: null,
-                    error: error.message
-                });
-            }
-        });
-
-        // Route for logout
-        this.app.post('/logout', async (req, res) => {
-            try {
-                const success = await this.whatsappService.logout();
-                if (success) {
-                    res.json({ success: true, message: 'Logged out successfully' });
-                } else {
-                    res.status(500).json({ success: false, message: 'Logout failed' });
-                }
-            } catch (error) {
-                console.error('Error during logout:', error);
-                res.status(500).json({ success: false, message: 'Logout error: ' + error.message });
-            }
-        });
-
         // Trigger a fresh login (refresh QR)
         this.app.post('/trigger-login', async (req, res) => {
             try {
                 const result = await this.whatsappService.triggerLogin();
-                
-                // Return different response based on authentication status
-                if (result.authenticated && result.isReady) {
-                    if (result.userInfo) {
-                        res.json({ 
-                            qr: '',
-                            authenticated: true,
-                            userInfo: result.userInfo,
-                            message: `Already authenticated as ${result.userInfo.name} (${result.userInfo.phoneNumber})`
-                        });
-                    } else {
-                        res.json({ 
-                            qr: '',
-                            authenticated: true,
-                            message: 'Already authenticated'
-                        });
-                    }
-                } else if (result.qr) {
-                    res.json({ 
-                        qr: result.qr,
-                        authenticated: false,
-                        message: 'QR code generated, please scan'
-                    });
-                } else {
-                    res.json({ 
-                        qr: '',
-                        authenticated: false,
-                        message: result.message || 'No QR code received'
-                    });
-                }
+                res.json({ qr: result.qr || '' });
             } catch (error) {
                 console.error('Error in /trigger-login:', error);
-                res.status(500).json({ 
-                    error: error.message,
-                    authenticated: false 
-                });
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Logout current WhatsApp session
+        this.app.post('/logout', async (req, res) => {
+            try {
+                await this.whatsappService.logout();
+                res.json({ success: true });
+            } catch (error) {
+                console.error('Error in /logout:', error);
+                res.status(500).json({ error: error.message });
             }
         });
 
@@ -828,7 +633,7 @@ class WhatsAppServer {
                             filePaths,
                             [],
                             phoneNumber,
-                            'reactor_report'
+                            'report'
                         );
                         
                         results.push({
@@ -859,53 +664,15 @@ class WhatsAppServer {
                 res.status(500).json({ error: error.message });
             }
         });
-
-        // Route for general reports (matching send-reports functionality)
-        this.app.post('/send-general-report', this.upload.array('files'), async (req, res) => {
-            try {
-                const {
-                    contact_name,
-                    message,
-                    whatsapp_number,
-                    file_sequence
-                } = req.body;
-
-                // Parse file_sequence if it's a string
-                let parsedFileSequence = [];
-                if (file_sequence) {
-                    parsedFileSequence = typeof file_sequence === 'string' 
-                        ? JSON.parse(file_sequence) 
-                        : file_sequence;
-                }
-
-                // Get uploaded file paths
-                const filePaths = req.files ? req.files.map(file => file.path) : [];
-
-                const result = await this.whatsappService.sendWhatsAppMessage(
-                    contact_name,
-                    message,
-                    filePaths,
-                    parsedFileSequence,
-                    whatsapp_number,
-                    'report'
-                );
-
-                res.json({ success: result, contact_name });
-            } catch (error) {
-                console.error('Error in /send-general-report:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
     }
 
     async start() {
-        // Don't wait for WhatsApp to be ready before starting server
-        // The service will be ready when explicitly requested through API calls
+        // Wait for WhatsApp to be ready before starting server
+        await this.whatsappService.waitForReady();
         
         this.app.listen(this.port, () => {
             console.log(`WhatsApp server running on port ${this.port}`);
             console.log(`Health check: http://localhost:${this.port}/health`);
-            console.log('WhatsApp service is ready to accept requests');
         });
     }
 
@@ -915,3 +682,16 @@ class WhatsAppServer {
 }
 
 module.exports = { WhatsAppService, WhatsAppServer };
+
+// Start server if this file is run directly
+if (require.main === module) {
+    const server = new WhatsAppServer(3001);
+    server.start().catch(console.error);
+    
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+        console.log('Shutting down WhatsApp server...');
+        await server.stop();
+        process.exit(0);
+    });
+}
