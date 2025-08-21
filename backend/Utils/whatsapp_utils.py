@@ -231,7 +231,7 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
         return False
 
 def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: str, 
-                                whatsapp_number: str, file_path: Union[str, List[str]], 
+                                whatsapp_number: str, file_path: Union[str, List[str], Dict], 
                                 is_special: bool = False, months_data: List[Dict] = None) -> bool:
     """
     Handle WhatsApp notification for salary slips - matches original Python function
@@ -244,11 +244,39 @@ def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: 
         return False
     
     try:
-        # Prepare file paths
-        if isinstance(file_path, str):
+        # Handle different input types for file_path
+        file_paths = []
+        
+        if isinstance(file_path, dict):
+            # If it's a dictionary (result object), extract the file path
+            if 'output_file' in file_path:
+                file_paths = [file_path['output_file']]
+                logging.info(f"Extracted file path from dict: {file_path['output_file']}")
+            else:
+                logging.error(f"Dictionary provided but no 'output_file' key found: {file_path}")
+                return False
+        elif isinstance(file_path, str):
             file_paths = [file_path]
+        elif isinstance(file_path, list):
+            # Handle list that might contain dicts or strings
+            for item in file_path:
+                if isinstance(item, dict):
+                    if 'output_file' in item:
+                        file_paths.append(item['output_file'])
+                    else:
+                        logging.warning(f"Dict in list missing 'output_file' key: {item}")
+                elif isinstance(item, (str, bytes, os.PathLike)):
+                    file_paths.append(item)
+                else:
+                    logging.warning(f"Invalid item type in file_path list: {type(item)}")
         else:
-            file_paths = file_path or []
+            logging.error(f"Invalid file_path type: {type(file_path)}. Expected str, list, or dict, got: {file_path}")
+            return False
+        
+        # Validate that we have at least one file path
+        if not file_paths:
+            logging.error("No valid file paths found after processing input")
+            return False
         
         # Prepare months data
         if months_data is None:
@@ -267,10 +295,28 @@ def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: 
         # Prepare files for upload
         files = []
         for file_path_item in file_paths:
-            if os.path.exists(file_path_item):
-                files.append(('files', open(file_path_item, 'rb')))
+            # Convert to string and normalize path separators
+            file_path_str = str(file_path_item)
+            
+            # Normalize path separators (convert \\ to / or use os.path.normpath)
+            normalized_path = os.path.normpath(file_path_str)
+            
+            logging.info(f"Processing file path: {normalized_path}")
+            
+            # Validate that the normalized path is a string
+            if not isinstance(normalized_path, (str, bytes, os.PathLike)):
+                logging.error(f"Invalid file path after normalization: {type(normalized_path)}")
+                continue
+            
+            if os.path.exists(normalized_path):
+                files.append(('files', open(normalized_path, 'rb')))
+                logging.info(f"Added file for upload: {normalized_path}")
             else:
-                logging.warning(f"File not found: {file_path_item}")
+                logging.warning(f"File not found: {normalized_path}")
+        
+        if not files:
+            logging.error("No valid files found for upload")
+            return False
         
         # Send request
         response = requests.post(
@@ -426,9 +472,6 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
 def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[str]], 
                                file_paths: List[str] = None, 
                                process_name: str = "salary_slip") -> List[Dict]:
-    """
-    Send bulk WhatsApp messages - new function for batch processing
-    """
     client = WhatsAppNodeClient()
     
     # Check if service is ready
@@ -498,15 +541,34 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
             
         valid_paths = []
         seen_filenames = set()
+
+        def _remove_numeric_prefix(filename: str) -> str:
+            """Remove a leading long numeric prefix followed by '-' from filename.
+            Example: '1755776006074-reactor_report_2025-08-02.pdf' -> 'reactor_report_2025-08-02.pdf'
+            Keeps the original name otherwise.
+            """
+            try:
+                base_name = os.path.basename(filename)
+                parts = base_name.split('-', 1)
+                if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) >= 10:
+                    return parts[1]
+                return base_name
+            except Exception:
+                return os.path.basename(filename)
         
         for path in file_paths:
             if is_upload:
                 if hasattr(path, 'filename') and path.filename:
-                    temp_path = os.path.join(temp_dir, path.filename)
+                    # Normalize and clean the filename to avoid unwanted numeric prefixes
+                    original_filename = os.path.basename(path.filename)
+                    cleaned_filename = _remove_numeric_prefix(original_filename)
+                    if temp_dir and not os.path.exists(temp_dir):
+                        os.makedirs(temp_dir, exist_ok=True)
+                    temp_path = os.path.join(temp_dir, cleaned_filename) if temp_dir else cleaned_filename
                     path.save(temp_path)
                     valid_paths.append(temp_path)
-                    seen_filenames.add(path.filename)
-                    logging.info(f"Saved attachment file to: {temp_path}")
+                    seen_filenames.add(cleaned_filename)
+                    logging.info(f"Saved attachment file as '{cleaned_filename}' (original: '{original_filename}') to: {temp_path}")
             else:
                 if os.path.exists(path) and os.path.isfile(path):
                     filename = os.path.basename(path)

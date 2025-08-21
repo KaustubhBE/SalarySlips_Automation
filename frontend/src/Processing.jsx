@@ -242,7 +242,7 @@ function Processing({ mode = 'single' }) {
         full_month: monthsData[0].month,
         full_year: monthsData[0].year,
         months_data: monthsData,
-        email_message: emailMessage,
+        send_whatsapp: sendWhatsapp,
         send_email: sendEmail,
         attachment_sequence: attachmentSequence
       };

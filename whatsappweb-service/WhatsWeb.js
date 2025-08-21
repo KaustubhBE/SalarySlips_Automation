@@ -478,15 +478,39 @@ class WhatsAppServer {
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
         
         // Setup multer for file uploads
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
         const storage = multer.diskStorage({
             destination: (req, file, cb) => {
-                cb(null, 'uploads/');
+                cb(null, uploadsDir);
             },
             filename: (req, file, cb) => {
-                cb(null, Date.now() + '-' + file.originalname);
+                // Preserve original filename (strip any leading numeric prefixes if present)
+                const original = file.originalname;
+                const parts = original.split('-', 2);
+                const cleaned = (parts.length === 2 && /^\d{10,}$/.test(parts[0])) ? parts[1] : original;
+                cb(null, cleaned);
             }
         });
         this.upload = multer({ storage });
+
+        // Helper to clean uploads directory
+        this.cleanUploads = () => {
+            try {
+                const files = fs.readdirSync(uploadsDir);
+                for (const f of files) {
+                    try {
+                        fs.unlinkSync(path.join(uploadsDir, f));
+                    } catch (e) {
+                        console.warn('Failed to delete upload file', f, e.message);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to read uploads directory', e.message);
+            }
+        };
     }
 
     setupRoutes() {
@@ -661,6 +685,8 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-message:', error);
                 res.status(500).json({ error: error.message });
+            } finally {
+                this.cleanUploads();
             }
         });
 
@@ -723,6 +749,8 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-bulk:', error);
                 res.status(500).json({ error: error.message });
+            } finally {
+                this.cleanUploads();
             }
         });
 
@@ -779,6 +807,8 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-salary-notification:', error);
                 res.status(500).json({ error: error.message });
+            } finally {
+                this.cleanUploads();
             }
         });
 
@@ -857,6 +887,8 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-reactor-report:', error);
                 res.status(500).json({ error: error.message });
+            } finally {
+                this.cleanUploads();
             }
         });
 
@@ -894,6 +926,8 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-general-report:', error);
                 res.status(500).json({ error: error.message });
+            } finally {
+                this.cleanUploads();
             }
         });
     }
