@@ -107,5 +107,18 @@ hosting_specifics.txt
 frontend\src\config.js
 frontend\vite.config.js
 
-#whatsappweb-service
-whatsappweb-service\.wwebjs_auth\*
+# WhatsApp Web JS sessions, cache, and uploads (do not commit)
+whatsappweb-service/.wwebjs_auth/
+whatsappweb-service/.wwebjs_auth/**
+whatsappweb-service/.wwebjs_cache/
+whatsappweb-service/.wwebjs_cache/**
+whatsappweb-service/uploads/
+whatsappweb-service/uploads/**
+
+# Fallback patterns if service is run from repo root
+.wwebjs_auth/
+.wwebjs_auth/**
+.wwebjs_cache/
+.wwebjs_cache/**
+uploads/
+uploads/**
