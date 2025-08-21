@@ -247,8 +247,11 @@ def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: 
         # Prepare file paths
         if isinstance(file_path, str):
             file_paths = [file_path]
-        else:
+        elif isinstance(file_path, list):
             file_paths = file_path or []
+        else:
+            logging.error(f"Invalid file_path type: {type(file_path)}. Expected str or list, got: {file_path}")
+            return False
         
         # Prepare months data
         if months_data is None:
@@ -267,6 +270,11 @@ def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: 
         # Prepare files for upload
         files = []
         for file_path_item in file_paths:
+            # Validate that each item is a string path
+            if not isinstance(file_path_item, (str, bytes, os.PathLike)):
+                logging.error(f"Invalid file path item type: {type(file_path_item)}. Expected string/path, got: {file_path_item}")
+                continue
+                
             if os.path.exists(file_path_item):
                 files.append(('files', open(file_path_item, 'rb')))
             else:

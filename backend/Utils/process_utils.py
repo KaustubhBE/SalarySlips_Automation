@@ -7,7 +7,7 @@ from flask import session
 from Utils.email_utils import *
 from Utils.whatsapp_utils import (
     get_employee_contact,
-    handle_whatsapp_notification,
+    handle_whatsapp_notification as whatsapp_notification_handler,
     send_whatsapp_message,
 )
 from Utils.drive_utils import upload_to_google_drive
@@ -149,7 +149,7 @@ def format_months_list(months_data):
 def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
     """Delegate to Node-backed WhatsApp notification handler"""
     try:
-        return handle_whatsapp_notification(
+        return whatsapp_notification_handler(
             contact_name=contact_name,
             full_month=full_month,
             full_year=full_year,
@@ -295,7 +295,7 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                     if not is_special:
                         try:
                             # Call the imported function directly
-                            success = handle_whatsapp_notification(
+                            success = whatsapp_notification_handler(
                                 contact_name=contact_name,
                                 full_month=full_month,
                                 full_year=full_year,
