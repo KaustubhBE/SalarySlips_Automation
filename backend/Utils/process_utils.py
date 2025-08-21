@@ -1054,35 +1054,3 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         },
         "output_file": pdf_path
     }
-
-def process_batch_salary_slips(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_month, input_year, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp):
-    # ... existing code ...
-    
-    # Send WhatsApp notifications if enabled
-    if send_whatsapp:
-        try:
-            from Utils.whatsapp_utils import handle_whatsapp_notification
-            
-            for employee_data in processed_employees:
-                contact_name = employee_data.get("Name")
-                whatsapp_number = get_employee_contact(contact_name, contact_employees)
-                file_path = employee_data.get("pdf_path")
-                
-                if whatsapp_number and file_path and os.path.exists(file_path):
-                    success = handle_whatsapp_notification(
-                        contact_name=contact_name,
-                        full_month=input_month,
-                        full_year=input_year,
-                        whatsapp_number=whatsapp_number,
-                        file_path=[file_path],  # Pass as list
-                        is_special=False
-                    )
-                    if success:
-                        logger.info(f"WhatsApp notification sent successfully to {contact_name}")
-                    else:
-                        logger.warning(f"Failed to send WhatsApp notification to {contact_name}")
-                else:
-                    logger.warning(f"Skipping WhatsApp notification for {contact_name}: Missing contact or file")
-                    
-        except Exception as e:
-            logger.error(f"Error processing WhatsApp notifications: {e}")
