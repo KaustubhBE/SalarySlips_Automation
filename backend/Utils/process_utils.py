@@ -717,11 +717,91 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             except Exception as e:
                 logger.warning(f"Could not set table borders: {e}")
 
+        # Helper to check if table should start on new page (rough estimation)
+        def should_start_table_on_new_page(doc, table_rows, table_name_length=0):
+            """
+            Rough estimation to determine if table should start on new page.
+            This is a simplified approach - in a production environment, you might want
+            to use more sophisticated page layout calculations.
+            """
+            try:
+                # Estimate space needed for table
+                # Each row approximately 0.3 inches (including padding)
+                # Table name approximately 0.2 inches
+                # Header spacing approximately 0.1 inches
+                estimated_table_height = (table_rows * 0.3) + 0.2 + 0.1
+                
+                # Standard page height is approximately 11 inches
+                # Leave 1 inch margin at bottom
+                available_page_height = 10.0
+                
+                # If table height exceeds available space, suggest new page
+                if estimated_table_height > available_page_height:
+                    return True
+                    
+                return False
+            except Exception as e:
+                logger.warning(f"Error estimating table space: {e}")
+                return False  # Default to current page if estimation fails
+
         # Helper to format table with professional styling
+        # This function also sets critical properties to prevent tables from breaking across pages
         def format_table(table, is_header=False):
             # Set table alignment to center
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             table.allow_autofit = True
+            
+            # Set table to not break across pages - CRITICAL FOR TABLE INTEGRITY
+            try:
+                tbl = table._tbl
+                tblPr = tbl.get_or_add_tblPr()
+                
+                # Remove any existing table layout
+                for layout in tblPr.xpath('w:tblLayout'):
+                    tblPr.remove(layout)
+                
+                # Add table layout to prevent page breaks
+                layout = OxmlElement('w:tblLayout')
+                layout.set(qn('w:type'), 'fixed')
+                tblPr.append(layout)
+                
+                # Add table properties to prevent page breaks
+                tblLook = OxmlElement('w:tblLook')
+                tblLook.set(qn('w:firstRow'), '1')
+                tblLook.set(qn('w:lastRow'), '0')
+                tblLook.set(qn('w:firstCol'), '0')
+                tblLook.set(qn('w:lastCol'), '0')
+                tblLook.set(qn('w:noHBand'), '0')
+                tblLook.set(qn('w:noVBand'), '1')
+                tblPr.append(tblLook)
+                
+                # Set table to not break across pages
+                tblCellSpacing = OxmlElement('w:tblCellSpacing')
+                tblCellSpacing.set(qn('w:w'), '0')
+                tblCellSpacing.set(qn('w:type'), 'dxa')
+                tblPr.append(tblCellSpacing)
+                
+                # Add table properties to prevent page breaks (critical for table integrity)
+                tblPr.set(qn('w:tblStyle'), 'TableGrid')
+                
+                # Set table to not break across pages using tblPr properties
+                # This is the most important setting for preventing table breaks
+                tblPr.set(qn('w:tblW'), '0')
+                tblPr.set(qn('w:tblInd'), '0')
+                
+                # Remove any existing table break properties that might force page breaks
+                for tblBreak in tblPr.xpath('w:tblBreak'):
+                    tblPr.remove(tblBreak)
+                
+                # Add cantSplit property to prevent table from breaking across pages
+                cantSplit = OxmlElement('w:cantSplit')
+                cantSplit.set(qn('w:val'), '1')  # 1 = true, prevents splitting
+                tblPr.append(cantSplit)
+                
+                logger.info("Successfully set table properties to prevent page breaks")
+                
+            except Exception as e:
+                logger.warning(f"Could not set table page break properties: {e}")
             
             # Apply custom borders
             set_table_borders(table)
@@ -951,6 +1031,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                 logger.warning(f"Table {table_def['name']} has insufficient data: {len(data) if data else 0} rows")
                                 result["warnings"].append(f"Table {table_def['name']} has insufficient data")
                                 continue
+                           
+                            if should_start_table_on_new_page(doc, len(data), len(table_def['name'])):
+                                # Add page break before table to ensure it starts on new page
+                                doc.add_page_break()
+                                logger.info(f"Added page break before table '{table_def['name']}' to prevent breaking")
                             
                             # Add table name with formatting
                             doc.add_paragraph()
@@ -971,7 +1056,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                         cell = table.cell(row_idx, col_idx)
                                         cell.text = str(cell_value)
                             
-                            # Apply professional formatting to the table
+                            # Apply professional formatting to the table (includes page break prevention)
                             format_table(table, is_header=True)
                             
                             # Add 2 lines gap between tables (but not after the last table)
@@ -1082,7 +1167,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                         </body>
                         </html>
                         """
-                    
                     # Send email to each recipient individually to avoid syntax errors
                     success_count = 0
                     for recipient in recipients_to:

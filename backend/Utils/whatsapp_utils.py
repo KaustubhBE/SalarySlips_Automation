@@ -133,7 +133,8 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
                          file_paths: Union[str, List[str]] = None, 
                          file_sequence: List[Dict] = None,
                          whatsapp_number: str = "", 
-                         process_name: str = "salary_slip") -> bool:
+                         process_name: str = "salary_slip",
+                         options: Optional[Dict] = None) -> bool:
     """
     Send WhatsApp message via Node.js service - matches original Python function signature
     """
@@ -181,7 +182,8 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
                     'phone': whatsapp_number
                 }]),
                 'input_date': datetime.now().strftime('%Y-%m-%d'),
-                'sheets_processed': 1
+                'sheets_processed': 1,
+                'options': json.dumps(options or {})
             }
         else:
             # For other processes, use standard format
@@ -190,7 +192,8 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
                 'message': message_text,
                 'whatsapp_number': whatsapp_number,
                 'process_name': process_name,
-                'file_sequence': json.dumps(file_sequence) if file_sequence else '[]'
+                'file_sequence': json.dumps(file_sequence) if file_sequence else '[]',
+                'options': json.dumps(options or {})
             }
         
         # Prepare files for upload
@@ -219,7 +222,14 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
         
         if response.status_code == 200:
             result = response.json()
-            success = result.get('success', False)
+            # Support both legacy and new response shapes
+            if isinstance(result, dict) and 'data' in result and isinstance(result['data'], dict):
+                # Prefer explicit sent flag when available
+                sent = result['data'].get('sent')
+                if sent is not None:
+                    logging.info(f"WhatsApp message {'sent successfully' if sent else 'failed'} to {contact_name}")
+                    return bool(sent)
+            success = bool(result.get('success', False))
             logging.info(f"WhatsApp message {'sent successfully' if success else 'failed'} to {contact_name}")
             return success
         else:

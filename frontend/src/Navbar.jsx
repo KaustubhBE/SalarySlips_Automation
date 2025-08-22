@@ -19,7 +19,7 @@ const Navbar = ({ onLogout }) => {
   const [userInfo, setUserInfo] = useState(null);
   const pollingRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -39,7 +39,10 @@ const Navbar = ({ onLogout }) => {
   const checkWhatsAppAuthStatus = async () => {
     try {
       const res = await fetch(getWhatsAppServiceUrl(WHATSAPP_ENDPOINTS.AUTH_STATUS), {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'X-User-Email': user?.email || ''
+        }
       });
       
       if (res.ok) {
@@ -76,7 +79,12 @@ const Navbar = ({ onLogout }) => {
       console.log('Starting WhatsApp login...');
       const res = await fetch(getWhatsAppServiceUrl(WHATSAPP_ENDPOINTS.TRIGGER_LOGIN), { 
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': user?.email || ''
+        },
+        body: JSON.stringify({ email: user?.email || '' })
       });
       
       if (!res.ok) {
@@ -117,7 +125,10 @@ const Navbar = ({ onLogout }) => {
     try {
       const res = await fetch(getWhatsAppServiceUrl(WHATSAPP_ENDPOINTS.LOGOUT), {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'X-User-Email': user?.email || ''
+        }
       });
       
       if (res.ok) {
@@ -129,11 +140,8 @@ const Navbar = ({ onLogout }) => {
           setQRValue('');
           setIsPolling(false);
           
-          // Auto-hide after 2 seconds
-          setTimeout(() => {
-            setShowQR(false);
-            setStatusMsg('');
-          }, 2000);
+          // After logout immediately trigger new login to fetch fresh QR for this user
+          await startWhatsappLogin();
         } else {
           setStatusMsg('Logout failed: ' + data.message);
         }
@@ -158,7 +166,10 @@ const Navbar = ({ onLogout }) => {
       pollingRef.current = setInterval(async () => {
         try {
           const res = await fetch(getWhatsAppServiceUrl(WHATSAPP_ENDPOINTS.STATUS), {
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+              'X-User-Email': user?.email || ''
+            }
           });
           
           if (!res.ok) {
@@ -281,7 +292,7 @@ const Navbar = ({ onLogout }) => {
               <div className="loading-message">Checking WhatsApp status...</div>
             )}
             
-            {loginSuccess && (
+            {loginSuccess && !isAuthenticated && (
               <div className="success-message">{statusMsg}</div>
             )}
             

@@ -31,7 +31,7 @@ axios.defaults.baseURL = getApiBaseUrl();
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.timeout = 10000;
+axios.defaults.timeout = 2 * 24 * 60 * 60 * 1000; // 2 days timeout
 
 // Feature flags (optional)
 export const FEATURES = {

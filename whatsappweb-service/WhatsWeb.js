@@ -3,9 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 class WhatsAppService {
-    constructor() {
+    constructor(clientId = 'default') {
+        this.clientId = String(clientId);
         this.client = new Client({
-            authStrategy: new LocalAuth(),
+            authStrategy: new LocalAuth({ clientId: this.clientId }),
             puppeteer: {
                 headless: true, // Set to false for debugging
                 args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -15,8 +16,28 @@ class WhatsAppService {
         this.isReady = false;
         this.currentQR = null;
         this.isInitialized = false;
+        this._lastUserInfoErrorLoggedAt = 0;
         
         // Set up event listeners but don't initialize yet
+        this.setupEventListeners();
+    }
+
+    async resetClient(reason = 'unknown') {
+        try {
+            console.warn('Resetting WhatsApp client due to:', reason);
+            try { await this.client.destroy(); } catch (_) {}
+        } catch (_) {}
+        // Recreate client
+        this.client = new Client({
+            authStrategy: new LocalAuth({ clientId: this.clientId }),
+            puppeteer: {
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            }
+        });
+        this.isReady = false;
+        this.currentQR = null;
+        this.isInitialized = false;
         this.setupEventListeners();
     }
 
@@ -89,15 +110,23 @@ class WhatsAppService {
                         return userInfo;
                     }
                 } catch (error) {
-                    console.log('Could not get user info, but client is ready');
+                    const msg = (error && error.message) || '';
+                    // If session/page was closed while AFK, reset client and fall back to QR flow
+                    if (msg.includes('Session closed')) {
+                        await this.resetClient('puppeteer session closed');
+                    } else {
+                        // Soft warning, do not spam
+                        const now = Date.now();
+                        if (now - this._lastUserInfoErrorLoggedAt > 15000) {
+                            console.log('Could not get user info, but client is ready');
+                            this._lastUserInfoErrorLoggedAt = now;
+                        }
+                        // Still return authenticated state
+                        return { isReady: true, qr: '', authenticated: true };
+                    }
                 }
                 
-                return { 
-                    isReady: true, 
-                    qr: '',
-                    authenticated: true,
-                    message: 'Already authenticated'
-                };
+                // If we didn't return yet, we'll proceed to init below to get fresh QR
             }
             
             // Initialize client if not already done
@@ -106,15 +135,8 @@ class WhatsAppService {
                 this.client.initialize();
             }
             
-            // Only logout if we're not ready (avoid unnecessary logout for authenticated users)
-            if (!this.isReady) {
-                try {
-                    await this.client.logout();
-                } catch (e) {
-                    // ignore if already logged out / not authenticated
-                }
-                this.currentQR = null;
-            }
+            // Ensure currentQR is clear before new login
+            this.currentQR = null;
 
             // Wait for QR or ready status
             const result = await new Promise((resolve) => {
@@ -195,6 +217,15 @@ class WhatsAppService {
                 return true;
             }
         } catch (error) {
+            const msg = (error && error.message) || '';
+            if (msg.includes('Session closed')) {
+                // Treat as already logged out
+                this.isReady = false;
+                this.currentQR = null;
+                this.isInitialized = false;
+                console.log('Logout: session already closed, state cleared');
+                return true;
+            }
             console.error('Error during logout:', error);
             return false;
         }
@@ -296,7 +327,7 @@ class WhatsAppService {
     /**
      * Send WhatsApp message with attachments
      */
-    async sendWhatsAppMessage(contactName, message, filePaths = [], fileSequence = [], whatsappNumber, processName) {
+    async sendWhatsAppMessage(contactName, message, filePaths = [], fileSequence = [], whatsappNumber, processName, options = {}) {
         try {
             await this.waitForReady();
 
@@ -326,6 +357,7 @@ class WhatsAppService {
                 filenameToPathMap[filename] = filePath;
             });
 
+            const perFileDelayMs = Number(options.perFileDelayMs || 1000);
             if (processName === 'salary_slip') {
                 // Send message first
                 if (message) {
@@ -345,8 +377,8 @@ class WhatsAppService {
                             await this.client.sendMessage(formattedNumber, media);
                             console.log(`File sent: ${path.basename(filePath)}`);
                             
-                            // Add delay between files
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            // Add delay between files (configurable)
+                            await new Promise(resolve => setTimeout(resolve, perFileDelayMs));
                         } catch (error) {
                             console.error(`Error sending file ${filePath}:`, error);
                         }
@@ -371,8 +403,8 @@ class WhatsAppService {
                             await this.client.sendMessage(formattedNumber, media);
                             console.log(`Report file sent: ${path.basename(filePath)}`);
                             
-                            // Add delay between files
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            // Add delay between files (configurable)
+                            await new Promise(resolve => setTimeout(resolve, perFileDelayMs));
                         } catch (error) {
                             console.error(`Error sending report file ${filePath}:`, error);
                         }
@@ -397,8 +429,8 @@ class WhatsAppService {
                             await this.client.sendMessage(formattedNumber, media);
                             console.log(`Reactor report file sent: ${path.basename(filePath)}`);
                             
-                            // Add delay between files
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            // Add delay between files (configurable)
+                            await new Promise(resolve => setTimeout(resolve, perFileDelayMs));
                         } catch (error) {
                             console.error(`Error sending reactor report file ${filePath}:`, error);
                         }
@@ -418,8 +450,9 @@ class WhatsAppService {
     /**
      * Send message to multiple contacts
      */
-    async sendBulkMessages(contacts, message, filePaths = [], processName = 'salary_slip') {
+    async sendBulkMessages(contacts, message, filePaths = [], processName = 'salary_slip', options = {}) {
         const results = [];
+        const perContactDelayMs = Number(options.perContactDelayMs || 3000);
         
         for (const contact of contacts) {
             const result = await this.sendWhatsAppMessage(
@@ -428,7 +461,8 @@ class WhatsAppService {
                 filePaths,
                 contact.fileSequence || [],
                 contact.phoneNumber,
-                processName
+                processName,
+                options
             );
             
             results.push({
@@ -438,7 +472,7 @@ class WhatsAppService {
             });
 
             // Add delay between contacts to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, perContactDelayMs));
         }
 
         return results;
@@ -462,7 +496,35 @@ class WhatsAppServer {
     constructor(port = 3001) {
         this.app = express();
         this.port = port;
-        this.whatsappService = new WhatsAppService();
+        // Map of email -> WhatsAppService (isolated sessions)
+        this.services = new Map();
+        const sanitizeClientId = (value) => {
+            try {
+                return String(value || 'default')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_-]/g, '_')
+                    .slice(0, 64);
+            } catch (_) {
+                return 'default';
+            }
+        };
+        this.getServiceKey = (req) => {
+            try {
+                const bodyEmail = (req.body && (req.body.user_email || req.body.email)) || '';
+                const headerEmail = req.headers['x-user-email'] || '';
+                const raw = String(bodyEmail || headerEmail || 'default').toLowerCase();
+                return sanitizeClientId(raw) || 'default';
+            } catch (_) {
+                return 'default';
+            }
+        };
+        this.getServiceForRequest = (req) => {
+            const key = this.getServiceKey(req);
+            if (!this.services.has(key)) {
+                this.services.set(key, new WhatsAppService(key));
+            }
+            return this.services.get(key);
+        };
         this.setupMiddleware();
         this.setupRoutes();
     }
@@ -472,7 +534,7 @@ class WhatsAppServer {
             origin: ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'], // React frontend and Python backend
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email']
         }));
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -516,34 +578,40 @@ class WhatsAppServer {
     setupRoutes() {
         // Health check
         this.app.get('/health', (req, res) => {
+            const svc = this.getServiceForRequest(req);
             res.json({ 
                 status: 'ok', 
-                whatsappReady: this.whatsappService.isReady,
-                whatsappInitialized: this.whatsappService.isInitialized,
-                hasQR: !!this.whatsappService.currentQR,
+                whatsappReady: svc.isReady,
+                whatsappInitialized: svc.isInitialized,
+                hasQR: !!svc.currentQR,
                 timestamp: new Date().toISOString()
             });
         });
 
         // Get WhatsApp status
         this.app.get('/status', (req, res) => {
+            const svc = this.getServiceForRequest(req);
             res.json({
-                isReady: this.whatsappService.isReady,
-                status: this.whatsappService.isReady ? 'ready' : 'initializing'
+                isReady: svc.isReady,
+                status: svc.isReady ? 'ready' : 'initializing'
             });
         });
 
         // Get current QR (if any)
         this.app.get('/qr', (req, res) => {
-            res.json({ qr: this.whatsappService.currentQR || '' });
+            const svc = this.getServiceForRequest(req);
+            const qr = svc.currentQR || '';
+            // Include both new and legacy shapes
+            res.json({ success: true, data: { qr }, qr });
         });
 
         // Route for checking authentication status
         this.app.get('/auth-status', async (req, res) => {
             try {
-                if (this.whatsappService.isReady) {
+                const svc = this.getServiceForRequest(req);
+                if (svc.isReady) {
                     try {
-                        const contacts = await this.whatsappService.client.getContacts();
+                        const contacts = await svc.client.getContacts();
                         const me = contacts.find(contact => contact.isMe);
                         
                         if (me) {
@@ -595,7 +663,7 @@ class WhatsAppServer {
         // Route for logout
         this.app.post('/logout', async (req, res) => {
             try {
-                const success = await this.whatsappService.logout();
+                const success = await this.getServiceForRequest(req).logout();
                 if (success) {
                     res.json({ success: true, message: 'Logged out successfully' });
                 } else {
@@ -610,43 +678,44 @@ class WhatsAppServer {
         // Trigger a fresh login (refresh QR)
         this.app.post('/trigger-login', async (req, res) => {
             try {
-                const result = await this.whatsappService.triggerLogin();
+                const result = await this.getServiceForRequest(req).triggerLogin();
                 
                 // Return different response based on authentication status
                 if (result.authenticated && result.isReady) {
                     if (result.userInfo) {
-                        res.json({ 
+                        const payload = { 
                             qr: '',
                             authenticated: true,
                             userInfo: result.userInfo,
                             message: `Already authenticated as ${result.userInfo.name} (${result.userInfo.phoneNumber})`
-                        });
+                        };
+                        res.json({ success: true, data: payload, ...payload });
                     } else {
-                        res.json({ 
+                        const payload = { 
                             qr: '',
                             authenticated: true,
                             message: 'Already authenticated'
-                        });
+                        };
+                        res.json({ success: true, data: payload, ...payload });
                     }
                 } else if (result.qr) {
-                    res.json({ 
+                    const payload = { 
                         qr: result.qr,
                         authenticated: false,
                         message: 'QR code generated, please scan'
-                    });
+                    };
+                    res.json({ success: true, data: payload, ...payload });
                 } else {
-                    res.json({ 
+                    const payload = { 
                         qr: '',
                         authenticated: false,
                         message: result.message || 'No QR code received'
-                    });
+                    };
+                    res.json({ success: true, data: payload, ...payload });
                 }
             } catch (error) {
                 console.error('Error in /trigger-login:', error);
-                res.status(500).json({ 
-                    error: error.message,
-                    authenticated: false 
-                });
+                res.status(500).json({ success: false, error: error.message });
             }
         });
 
@@ -658,7 +727,8 @@ class WhatsAppServer {
                     message,
                     whatsapp_number,
                     process_name = 'salary_slip',
-                    file_sequence
+                    file_sequence,
+                    options
                 } = req.body;
 
                 // Parse file_sequence if it's a string
@@ -672,19 +742,20 @@ class WhatsAppServer {
                 // Get uploaded file paths
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const result = await this.whatsappService.sendWhatsAppMessage(
+                const result = await this.getServiceForRequest(req).sendWhatsAppMessage(
                     contact_name,
                     message,
                     filePaths,
                     parsedFileSequence,
                     whatsapp_number,
-                    process_name
+                    process_name,
+                    options || {}
                 );
 
-                res.json({ success: result, contact_name });
+                res.json({ success: true, data: { sent: !!result, contact_name } });
             } catch (error) {
                 console.error('Error in /send-message:', error);
-                res.status(500).json({ error: error.message });
+                res.status(500).json({ success: false, error: error.message });
             } finally {
                 this.cleanUploads();
             }
@@ -697,7 +768,8 @@ class WhatsAppServer {
                     contacts, // Array of contact objects
                     message,
                     process_name = 'salary_slip',
-                    file_sequence
+                    file_sequence,
+                    options
                 } = req.body;
 
                 // Parse contacts and file_sequence if they're strings
@@ -708,47 +780,26 @@ class WhatsAppServer {
                 // Get uploaded file paths
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const results = [];
-                
-                for (const contact of parsedContacts) {
-                    try {
-                        const result = await this.whatsappService.sendWhatsAppMessage(
-                            contact.name,
-                            message,
-                            filePaths,
-                            parsedFileSequence,
-                            contact.whatsapp_number,
-                            process_name
-                        );
-                        
-                        results.push({
-                            name: contact.name,
-                            whatsapp_number: contact.whatsapp_number,
-                            success: result
-                        });
+                const results = await this.getServiceForRequest(req).sendBulkMessages(
+                    parsedContacts.map(c => ({
+                        name: c.name,
+                        phoneNumber: c.whatsapp_number,
+                        fileSequence: c.fileSequence || []
+                    })),
+                    message,
+                    filePaths,
+                    process_name,
+                    options || {}
+                );
 
-                        // Add delay between contacts to avoid rate limiting
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    } catch (error) {
-                        console.error(`Error sending to ${contact.name}:`, error);
-                        results.push({
-                            name: contact.name,
-                            whatsapp_number: contact.whatsapp_number,
-                            success: false,
-                            error: error.message
-                        });
-                    }
-                }
-
-                res.json({ 
-                    success: true, 
+                res.json({ success: true, data: { 
                     results,
                     total_processed: results.length,
                     successful: results.filter(r => r.success).length
-                });
+                }});
             } catch (error) {
                 console.error('Error in /send-bulk:', error);
-                res.status(500).json({ error: error.message });
+                res.status(500).json({ success: false, error: error.message });
             } finally {
                 this.cleanUploads();
             }
@@ -763,7 +814,8 @@ class WhatsAppServer {
                     full_year,
                     whatsapp_number,
                     is_special = false,
-                    months_data
+                    months_data,
+                    options
                 } = req.body;
 
                 // Parse months_data if it's a string
@@ -794,19 +846,20 @@ class WhatsAppServer {
                 // Get uploaded file paths
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const result = await this.whatsappService.sendWhatsAppMessage(
+                const result = await this.getServiceForRequest(req).sendWhatsAppMessage(
                     contact_name,
                     message.join('\n'),
                     filePaths,
                     [],
                     whatsapp_number,
-                    'salary_slip'
+                    'salary_slip',
+                    options || {}
                 );
 
-                res.json({ success: result, contact_name });
+                res.json({ success: true, data: { sent: !!result, contact_name } });
             } catch (error) {
                 console.error('Error in /send-salary-notification:', error);
-                res.status(500).json({ error: error.message });
+                res.status(500).json({ success: false, error: error.message });
             } finally {
                 this.cleanUploads();
             }
@@ -818,7 +871,8 @@ class WhatsAppServer {
                 const {
                     recipients, // Array of email recipients from sheet_recipients_data
                     input_date,
-                    sheets_processed
+                    sheets_processed,
+                    options
                 } = req.body;
 
                 // Parse recipients if it's a string
@@ -841,52 +895,23 @@ class WhatsAppServer {
                 // Get uploaded file paths  
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const results = [];
-                
-                for (const recipient of parsedRecipients) {
-                    try {
-                        // Extract phone number from recipient data if available
-                        const phoneNumber = recipient.phone || recipient.whatsapp_number;
-                        if (!phoneNumber) {
-                            console.warn(`No phone number found for ${recipient.name}`);
-                            continue;
-                        }
+                const results = await this.getServiceForRequest(req).sendBulkMessages(
+                    parsedRecipients
+                        .filter(r => (r.phone || r.whatsapp_number))
+                        .map(r => ({ name: r.name, phoneNumber: r.phone || r.whatsapp_number })),
+                    message.join('\n'),
+                    filePaths,
+                    'reactor_report',
+                    Object.assign({ perContactDelayMs: 2000 }, options || {})
+                );
 
-                        const result = await this.whatsappService.sendWhatsAppMessage(
-                            recipient.name,
-                            message.join('\n'),
-                            filePaths,
-                            [],
-                            phoneNumber,
-                            'reactor_report'
-                        );
-                        
-                        results.push({
-                            name: recipient.name,
-                            phone_number: phoneNumber,
-                            success: result
-                        });
-
-                        // Add delay between messages
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    } catch (error) {
-                        console.error(`Error sending to ${recipient.name}:`, error);
-                        results.push({
-                            name: recipient.name,
-                            success: false,
-                            error: error.message
-                        });
-                    }
-                }
-
-                res.json({ 
-                    success: true, 
+                res.json({ success: true, data: { 
                     results,
                     message: "Reactor report notifications sent"
-                });
+                }});
             } catch (error) {
                 console.error('Error in /send-reactor-report:', error);
-                res.status(500).json({ error: error.message });
+                res.status(500).json({ success: false, error: error.message });
             } finally {
                 this.cleanUploads();
             }
@@ -899,7 +924,8 @@ class WhatsAppServer {
                     contact_name,
                     message,
                     whatsapp_number,
-                    file_sequence
+                    file_sequence,
+                    options
                 } = req.body;
 
                 // Parse file_sequence if it's a string
@@ -919,13 +945,14 @@ class WhatsAppServer {
                     filePaths,
                     parsedFileSequence,
                     whatsapp_number,
-                    'report'
+                    'report',
+                    options || {}
                 );
 
-                res.json({ success: result, contact_name });
+                res.json({ success: true, data: { sent: !!result, contact_name } });
             } catch (error) {
                 console.error('Error in /send-general-report:', error);
-                res.status(500).json({ error: error.message });
+                res.status(500).json({ success: false, error: error.message });
             } finally {
                 this.cleanUploads();
             }
@@ -948,4 +975,8 @@ class WhatsAppServer {
     }
 }
 
-module.exports = { WhatsAppService, WhatsAppServer };
+function createService() {
+    return new WhatsAppService();
+}
+
+module.exports = { WhatsAppService, WhatsAppServer, createService };
