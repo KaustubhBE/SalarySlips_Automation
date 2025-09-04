@@ -7,15 +7,14 @@ from flask import session
 from Utils.email_utils import *
 from Utils.whatsapp_utils import (
     get_employee_contact,
-    handle_whatsapp_notification,
     send_whatsapp_message,
 )
 from Utils.drive_utils import upload_to_google_drive
 import shutil
 import subprocess
 import platform
-import pythoncom
-from comtypes.client import CreateObject
+# import pythoncom
+# from comtypes.client import CreateObject
 from datetime import datetime
 import os
 from docx import Document
@@ -97,22 +96,22 @@ def preprocess_headers(headers):
 
 def convert_docx_to_pdf(input_path, output_path):
     try:
-        # process = subprocess.Popen([
-        #     'libreoffice', '--headless', '--convert-to', 'pdf',
-        #     '--outdir', os.path.dirname(output_path),
-        #     input_path
-        # ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # process.wait()
+        process = subprocess.Popen([
+            'libreoffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', os.path.dirname(output_path),
+            input_path
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.wait()
 
-        pythoncom.CoInitialize()
-        word = CreateObject('Word.Application')
-        word.Visible = False  # Keep Word hidden
-        doc = word.Documents.Open(input_path)
-        doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
-        doc.Close()
-        word.Quit()
-        print(f'Converted {input_path} to {output_path}')
-        return True
+        # pythoncom.CoInitialize()
+        # word = CreateObject('Word.Application')
+        # word.Visible = False  # Keep Word hidden
+        # doc = word.Documents.Open(input_path)
+        # doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
+        # doc.Close()
+        # word.Quit()
+        # print(f'Converted {input_path} to {output_path}')
+        # return True
 
         return True
     except Exception as e:
@@ -155,14 +154,15 @@ def format_months_list(months_data):
 def handle_whatsapp_notification(contact_name, full_month, full_year, whatsapp_number, file_path, is_special=False, months_data=None):
     """Delegate to Node-backed WhatsApp notification handler"""
     try:
-        return handle_whatsapp_notification(
+        # Call the actual WhatsApp sending function with file paths
+        # Message content will be handled by the WhatsApp service using templates
+        return send_whatsapp_message(
             contact_name=contact_name,
-            full_month=full_month,
-            full_year=full_year,
+            message="",  # Empty message - will use template
+            file_paths=file_path,
             whatsapp_number=whatsapp_number,
-            file_path=file_path,
-            is_special=is_special,
-            months_data=months_data,
+            process_name="salary_slip",
+            options={"isMultiple": is_special, "variables": {"full_month": full_month, "full_year": full_year, "months_data": months_data}}
         )
     except Exception as e:
         logging.error(f"Error delegating WhatsApp notification: {e}")
@@ -192,7 +192,7 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
         placeholders["Year"] = full_year
 
         # Merge data from "Official Details" sheet
-        logging.info("Looking for employee code: {}".format(placeholders.get('Employee\nCode')))
+        logging.info("Looking for employee code: {}".format(employee_identifier))
         logging.info("First few items in drive_data: {}".format(drive_data[:2]))
         official_details = next((item for item in drive_data if item.get("Employee\nCode") == employee_identifier), {})
         logging.info("Found official details: {}".format(official_details))
@@ -309,10 +309,32 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                             </html>
                             """
                             logging.info(f"Sending email to {recipient_email}")
-                            user_id = session.get('user', {}).get('id') or session.get('user', {}).get('email')
-                            email_success = send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
-                            if not email_success:
-                                errors.append(f"Failed to send email to {recipient_email}")
+                            user_id = session.get('user', {}).get('email') or session.get('user', {}).get('id')
+                            if not user_id:
+                                errors.append("User session expired. Please log in again.")
+                                logging.error("No user ID found in session for email")
+                            else:
+                                email_success = send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
+                                if email_success == "TOKEN_EXPIRED":
+                                    errors.append("Email token expired. Please refresh your credentials.")
+                                elif email_success == "USER_NOT_LOGGED_IN":
+                                    errors.append("User session expired. Please log in again.")
+                                elif email_success == "NO_SMTP_CREDENTIALS":
+                                    errors.append("Email credentials not found. Please check your settings.")
+                                elif email_success == "INVALID_RECIPIENT":
+                                    errors.append(f"Invalid recipient email address: {recipient_email}")
+                                elif email_success == "NO_VALID_RECIPIENTS":
+                                    errors.append("No valid recipient emails found.")
+                                elif email_success == "SMTP_AUTH_FAILED":
+                                    errors.append("Email authentication failed. Please check your credentials.")
+                                elif email_success == "SMTP_ERROR":
+                                    errors.append("Email service error. Please try again later.")
+                                elif email_success == "EMAIL_SEND_ERROR":
+                                    errors.append(f"Failed to send email to {recipient_email}")
+                                elif not email_success:
+                                    errors.append(f"Failed to send email to {recipient_email}")
+                                else:
+                                    logging.info(f"Email sent successfully to {recipient_email}")
                         else:
                             warnings.append(f"No email found for {placeholders.get('Name')}")
                             logging.info(f"No email found for {placeholders.get('Name')}.")
@@ -321,37 +343,59 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                         logging.error(f"Error sending email: {e}")
                 
                 # Send WhatsApp message if enabled
-                if send_whatsapp:
+                # WhatsApp notifications are now handled by the calling function to prevent duplicates
+                # Only send immediate notifications for standalone single month processing
+                if send_whatsapp and not is_special and not collected_pdfs:
                     try:
                         contact_name = placeholders.get("Name")
                         whatsapp_number = get_employee_contact(contact_name, contact_employees)
                         if whatsapp_number:
-                            # If this is a single month, send immediately
-                            if not is_special:
-                                try:
-                                    # Call the imported function directly
-                                    success = handle_whatsapp_notification(
-                                        contact_name=contact_name,
-                                        full_month=full_month,
-                                        full_year=full_year,
-                                        whatsapp_number=whatsapp_number,
-                                        file_path=output_pdf,
-                                        is_special=False
-                                    )
-                                    if success:
-                                        logging.info(f"WhatsApp notification sent successfully to {contact_name}")
-                                    else:
-                                        errors.append(f"Failed to send WhatsApp notification to {contact_name}")
-                                        logging.warning(f"Failed to send WhatsApp notification to {contact_name}")
-                                except Exception as e:
-                                    errors.append(f"Error sending WhatsApp notification to {contact_name}: {e}")
-                                    logging.error(f"Error sending WhatsApp notification to {contact_name}: {e}")
-                            # For multiple months, the calling function will handle sending all files together
+                            try:
+                                # Call the imported function directly
+                                success = handle_whatsapp_notification(
+                                    contact_name=contact_name,
+                                    full_month=full_month,
+                                    full_year=full_year,
+                                    whatsapp_number=whatsapp_number,
+                                    file_path=output_pdf,
+                                    is_special=False
+                                )
+                                if success is True:
+                                    logging.info(f"WhatsApp notification sent successfully to {contact_name}")
+                                elif success == "USER_NOT_LOGGED_IN":
+                                    errors.append("User session expired. Please log in again.")
+                                elif success == "WHATSAPP_SERVICE_NOT_READY":
+                                    errors.append("WhatsApp service is not ready. Please try again later.")
+                                elif success == "INVALID_FILE_PATH":
+                                    errors.append("Invalid file path for WhatsApp message.")
+                                elif success == "INVALID_FILE_PATH_TYPE":
+                                    errors.append("Invalid file path type for WhatsApp message.")
+                                elif success == "NO_VALID_FILES":
+                                    errors.append("No valid files found for WhatsApp message.")
+                                elif success == "NO_FILES_FOR_UPLOAD":
+                                    errors.append("No files available for WhatsApp upload.")
+                                elif success == "WHATSAPP_API_ERROR":
+                                    errors.append("WhatsApp API error. Please try again later.")
+                                elif success == "WHATSAPP_CONNECTION_ERROR":
+                                    errors.append("WhatsApp connection error. Please try again later.")
+                                elif success == "WHATSAPP_TIMEOUT_ERROR":
+                                    errors.append("WhatsApp timeout error. Please try again later.")
+                                elif success == "WHATSAPP_SEND_ERROR":
+                                    errors.append(f"Failed to send WhatsApp notification to {contact_name}")
+                                else:
+                                    errors.append(f"Failed to send WhatsApp notification to {contact_name}")
+                                    logging.warning(f"Failed to send WhatsApp notification to {contact_name}")
+                            except Exception as e:
+                                errors.append(f"Error sending WhatsApp notification to {contact_name}: {e}")
+                                logging.error(f"Error sending WhatsApp notification to {contact_name}: {e}")
                         else:
                             warnings.append(f"No WhatsApp number found for {contact_name}")
                     except Exception as e:
                         errors.append(f"Error processing WhatsApp notification: {str(e)}")
                         logging.error(f"Error processing WhatsApp notification: {e}")
+                elif send_whatsapp and (is_special or collected_pdfs):
+                    # Log that WhatsApp will be handled by calling function
+                    logging.info(f"WhatsApp notification for {placeholders.get('Name', 'Unknown')} will be sent by calling function to prevent duplicates")
             else:
                 errors.append("Failed to convert DOCX to PDF")
                 
@@ -1180,9 +1224,30 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                 cc=','.join(recipients_cc) if recipients_cc else None,
                                 bcc=','.join(recipients_bcc) if recipients_bcc else None
                             )
-                            if success:
+                            if success is True:
                                 success_count += 1
                                 logger.info(f"Email sent successfully to {recipient}")
+                            elif success == "USER_NOT_LOGGED_IN":
+                                result["errors"].append(f"User session expired for {recipient}. Please log in again.")
+                                logger.error(f"User session expired for {recipient}")
+                            elif success == "NO_SMTP_CREDENTIALS":
+                                result["errors"].append(f"Email credentials not found for {recipient}. Please check your settings.")
+                                logger.error(f"Email credentials not found for {recipient}")
+                            elif success == "INVALID_RECIPIENT":
+                                result["errors"].append(f"Invalid recipient email address: {recipient}")
+                                logger.error(f"Invalid recipient email address: {recipient}")
+                            elif success == "NO_VALID_RECIPIENTS":
+                                result["errors"].append(f"No valid recipient emails found for {recipient}")
+                                logger.error(f"No valid recipient emails found for {recipient}")
+                            elif success == "SMTP_AUTH_FAILED":
+                                result["errors"].append(f"Email authentication failed for {recipient}. Please check your credentials.")
+                                logger.error(f"Email authentication failed for {recipient}")
+                            elif success == "SMTP_ERROR":
+                                result["errors"].append(f"Email service error for {recipient}. Please try again later.")
+                                logger.error(f"Email service error for {recipient}")
+                            elif success == "EMAIL_SEND_ERROR":
+                                result["errors"].append(f"Failed to send email to {recipient}")
+                                logger.error(f"Failed to send email to {recipient}")
                             else:
                                 result["errors"].append(f"Failed to send email to {recipient}")
                                 logger.error(f"Failed to send email to {recipient}")
@@ -1210,9 +1275,27 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     file_path=result["output_file"],
                     sheets_processed=result["sheets_processed"]
                 )
-                if success:
+                if success is True:
                     result["notifications_sent"]["whatsapp"] = True
                     logger.info("Reactor report WhatsApp notifications sent successfully")
+                elif success == "USER_NOT_LOGGED_IN":
+                    result["errors"].append("User session expired. Please log in again.")
+                    logger.error("User session expired for WhatsApp notifications")
+                elif success == "WHATSAPP_SERVICE_NOT_READY":
+                    result["warnings"].append("WhatsApp service is not ready. Please try again later.")
+                    logger.warning("WhatsApp service is not ready")
+                elif success == "NO_RECIPIENTS_DATA":
+                    result["warnings"].append("No recipients data provided for WhatsApp notifications.")
+                    logger.warning("No recipients data provided for WhatsApp notifications")
+                elif success == "MISSING_REQUIRED_COLUMNS":
+                    result["warnings"].append("Required columns for WhatsApp notifications not found.")
+                    logger.warning("Required columns for WhatsApp notifications not found")
+                elif success == "NO_SUCCESSFUL_NOTIFICATIONS":
+                    result["warnings"].append("No WhatsApp notifications were sent successfully.")
+                    logger.warning("No WhatsApp notifications were sent successfully")
+                elif success == "REACTOR_NOTIFICATION_ERROR":
+                    result["warnings"].append("Error processing WhatsApp notifications.")
+                    logger.warning("Error processing WhatsApp notifications")
                 else:
                     result["warnings"].append("Some or all reactor report WhatsApp notifications failed")
                     logger.warning("Some or all reactor report WhatsApp notifications failed")

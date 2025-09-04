@@ -1,6 +1,7 @@
 const { WhatsAppServer } = require('./WhatsWeb.js');
 
-const server = new WhatsAppServer(3001);
+// Create server instance binding to all interfaces for domain access
+const server = new WhatsAppServer(8092, '0.0.0.0');
 
 server.start().catch(console.error);
 

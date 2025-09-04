@@ -1,10 +1,22 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
 
-// https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const isDev = mode === 'development'
+
+  // Optional SSL for dev (only if cert files exist)
+  const sslKeyPath = '/etc/letsencrypt/live/admin.bajajearths.com/privkey.pem'
+  const sslCertPath = '/etc/letsencrypt/live/admin.bajajearths.com/fullchain.pem'
+  const httpsConfig = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)
+    ? {
+        key: fs.readFileSync(sslKeyPath),
+        cert: fs.readFileSync(sslCertPath)
+      }
+    : false
+
   return {
     base: '/',
     plugins: [react()],
@@ -21,7 +33,7 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: mode === 'development',
+      sourcemap: isDev,
       assetsDir: 'assets',
       emptyOutDir: true,
       rollupOptions: {
@@ -35,44 +47,52 @@ export default defineConfig(({ command, mode }) => {
             }
             return 'assets/[name][extname]';
           },
-          chunkFileNames: 'assets/js/[name].js',
-          entryFileNames: 'assets/js/[name].js',
-        },
-      },
-      minify: mode === 'production',
-      target: 'es2018',
-      commonjsOptions: {
-        transformMixedEsModules: true,
-      },
-    },
-    server: {
-      port: 3000,
-      strictPort: true,
-      host: 'localhost'
-    },
-    preview: {
-      port: 3000,
-      strictPort: true,
-      host: 'localhost'
-    },
-    esbuild: {
-      loader: 'jsx',
-      include: /src\/.*\.jsx?$/,
-      exclude: [],
-      target: 'es2018'
-    },
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(mode),
+          chunkFileNames: 'assets/js/[name].js',                                                                                                              
+          entryFileNames: 'assets/js/[name].js',                                                                                                              
+        },                                                                                                                                                    
+      },                                                                                                                                                      
+      minify: !isDev,                                                                                                                                         
+      target: 'es2018',                                                                                                                                       
+      commonjsOptions: {                                                                                                                                      
+        transformMixedEsModules: true,                                                                                                                        
+      },                                                                                                                                                      
+    },                                                                                                                                                        
+    server: isDev                                                                                                                                             
+      ? {                                                                                                                                                     
+          port: 8089,                                                                                                                                         
+          strictPort: true,                                                                                                                                   
+          host: '0.0.0.0',                                                                                                                                    
+          https: httpsConfig, // Optional: use HTTPS if certs are found                                                                                       
+          allowedHosts: ['admin.bajajearths.com'],                                                                                                            
+          hmr: {                                                                                                                                              
+            protocol: httpsConfig ? 'wss' : 'ws',                                                                                                             
+            host: 'admin.bajajearths.com',                                                                                                                    
+            port: httpsConfig ? 443 : 8089,                                                                                                                   
+          }
+        }                                                                                                                                                     
+      : undefined,                                                                                                                                            
+    preview: {                                                                                                                                                
+      port: 8089,                                                                                                                                             
+      strictPort: true,                                                                                                                                       
+      host: '0.0.0.0'                                                                                                                                         
+    },                                                                                                                                                        
+    esbuild: {                                                                                                                                                
+      loader: 'jsx',                                                                                                                                          
+      include: /src\/.*\.jsx?$/,                                                                                                                              
+      exclude: [],                                                                                                                                            
+      target: 'es2018'                                                                                                                                        
+    },                                                                                                                                                        
+    define: {                                                                                                                                                 
       'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
-      'global': 'globalThis'
-    },
-    optimizeDeps: {
-      esbuildOptions: {
-        define: {
-          global: 'globalThis'
-        }
-      },
-      include: ['react', 'react-dom', 'react-router-dom'],
-    }
-  }
+      'global': 'globalThis'                                                                                                                                  
+    },                                                                                                                                                        
+    optimizeDeps: {                                                                                                                                           
+      esbuildOptions: {                                                                                                                                       
+        define: {                                                                                                                                             
+          global: 'globalThis'                                                                                                                                
+        }                                                                                                                                                     
+      },                                                                                                                                                      
+      include: ['react', 'react-dom', 'react-router-dom'],                                                                                                    
+    }                                                                                                                                                         
+  }                                                                                                                                                           
 })

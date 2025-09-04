@@ -37,6 +37,8 @@ function Login() {
       
       if (response.data?.success && response.data?.user) {
         const userData = response.data.user;
+        console.log('Login successful - User data received:', userData);
+        console.log('User permissions:', userData.permissions);
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
         login(userData);

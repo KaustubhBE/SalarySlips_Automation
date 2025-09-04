@@ -12,7 +12,7 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None, department=None, permissions=None):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None, permissions=None):
     """Add a new user to Firestore"""
     user_data = {
         'username': username,
@@ -26,8 +26,6 @@ def add_user(username, email, role, password_hash, client_id=None, client_secret
         user_data['client_secret'] = client_secret
     if app_password:
         user_data['app_password'] = app_password
-    if department:
-        user_data['department'] = department
     if permissions:
         user_data['permissions'] = permissions
     user_ref = db.collection('USERS').document()
@@ -87,6 +85,17 @@ def update_user_permissions(user_id, permissions):
     user_ref = db.collection('USERS').document(user_id)
     user_ref.update({'permissions': permissions})
 
+def update_user_comprehensive_permissions(user_id, permissions_data):
+    """Update user permissions only"""
+    user_ref = db.collection('USERS').document(user_id)
+    
+    update_data = {}
+    if 'permissions' in permissions_data:
+        update_data['permissions'] = permissions_data['permissions']
+    
+    if update_data:
+        user_ref.update(update_data)
+
 def update_user_app_password(user_id, app_password):
     """Update a user's app password"""
     user_ref = db.collection('USERS').document(user_id)
@@ -104,10 +113,7 @@ def update_user_password(user_id, password_hash):
     user_ref = db.collection('USERS').document(user_id)
     user_ref.update({'password_hash': password_hash})
 
-def update_user_department(user_id, department):
-    """Update a user's department"""
-    user_ref = db.collection('USERS').document(user_id)
-    user_ref.update({'department': department})
+# Removed update_user_departments - no longer needed with tree_permissions only
 
 def update_user(user_id, **kwargs):
     """Update multiple user fields at once"""

@@ -4,7 +4,8 @@ import logging
 import os
 import json
 from typing import List, Dict, Optional, Union
-from datetime import datetime  # Add this import
+from datetime import datetime
+from flask import session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,15 +13,31 @@ logging.basicConfig(level=logging.INFO)
 class WhatsAppNodeClient:
     """Client to interact with Node.js WhatsApp service"""
     
-    def __init__(self, node_service_url: str = "http://localhost:3001"):
+    def __init__(self, node_service_url: str = "http://whatsapp.bajajearths.com", user_email: str = None):
         self.base_url = node_service_url.rstrip('/')
-        self.timeout = 30
+        self.timeout = 3600  # 1 hour timeout for WhatsApp operations (QR scanning, login, etc.)
+        # Use provided user_email or fall back to session
+        self.user_email = get_user_email_from_session(user_email)
         
+        # Log the initialization with more detail
+        if self.user_email:
+            logging.info(f"WhatsApp client initialized for user: {self.user_email}")
+            # Log session details for debugging
+            try:
+                from flask import session
+                session_user = session.get('user', {})
+                logging.debug(f"Session user data: id={session_user.get('id')}, email={session_user.get('email')}")
+            except:
+                pass
+        else:
+            logging.warning("WhatsApp client initialized without user email - some features may not work properly")
+    
     def check_service_health(self) -> bool:
         """Check if WhatsApp service is running and ready"""
         try:
             logging.info(f"Checking WhatsApp service health at: {self.base_url}/health")
-            response = requests.get(f"{self.base_url}/health", timeout=self.timeout)
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.get(f"{self.base_url}/health", headers=headers, timeout=self.timeout)
             logging.info(f"Health check response status: {response.status_code}")
             
             if response.status_code == 200:
@@ -31,13 +48,28 @@ class WhatsAppNodeClient:
                 has_qr = data.get('hasQR', False)
                 
                 logging.info(f"Service status - Ready: {whatsapp_ready}, Initialized: {whatsapp_initialized}, Has QR: {has_qr}")
+                
+                if not whatsapp_ready:
+                    if not whatsapp_initialized:
+                        logging.error("WhatsApp service is not initialized. User needs to scan QR code first.")
+                    elif has_qr:
+                        logging.error("QR code is available but not yet scanned. User needs to scan the QR code.")
+                    else:
+                        logging.error("WhatsApp service is not ready. Make sure to authenticate first through the UI.")
+                    
+                    # Additional debug info
+                    if self.user_email:
+                        logging.info(f"Checking status for user: {self.user_email}")
+                    else:
+                        logging.error("No user email provided. Make sure to pass the user's email when creating the client.")
+                        
                 return whatsapp_ready
             else:
                 logging.error(f"Health check failed with status {response.status_code}: {response.text}")
                 return False
         except requests.exceptions.ConnectionError as e:
             logging.error(f"Connection error to WhatsApp service: {e}")
-            logging.error("This usually means the service is not running on port 3001")
+            logging.error("This usually means the service is not running on port 8092")
             return False
         except requests.exceptions.Timeout as e:
             logging.error(f"Timeout error connecting to WhatsApp service: {e}")
@@ -53,18 +85,28 @@ class WhatsAppNodeClient:
     def get_status(self) -> Dict:
         """Get WhatsApp status from Node service"""
         try:
-            response = requests.get(f"{self.base_url}/status", timeout=self.timeout)
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            # Use /auth-status endpoint to get full authentication status including user info
+            response = requests.get(f"{self.base_url}/auth-status", headers=headers, timeout=self.timeout)
             if response.status_code == 200:
-                return response.json()
-            return {"isReady": False, "status": "unavailable"}
+                data = response.json()
+                # Convert the response to match the expected format
+                return {
+                    "isReady": data.get("authenticated", False),
+                    "status": "ready" if data.get("authenticated", False) else "initializing",
+                    "authenticated": data.get("authenticated", False),
+                    "userInfo": data.get("userInfo")
+                }
+            return {"isReady": False, "status": "unavailable", "authenticated": False, "userInfo": None}
         except Exception as e:
             logging.error(f"Error getting WhatsApp status: {e}")
-            return {"isReady": False, "status": "error"}
+            return {"isReady": False, "status": "error", "authenticated": False, "userInfo": None}
 
     def get_qr(self) -> Dict:
         """Get current QR code (if any) from Node service"""
         try:
-            response = requests.get(f"{self.base_url}/qr", timeout=self.timeout)
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.get(f"{self.base_url}/qr", headers=headers, timeout=self.timeout)
             if response.status_code == 200:
                 return response.json()
             return {"qr": ""}
@@ -75,22 +117,44 @@ class WhatsAppNodeClient:
     def trigger_login(self) -> Dict:
         """Trigger login flow on Node service (refresh QR)"""
         try:
-            response = requests.post(f"{self.base_url}/trigger-login", timeout=self.timeout)
+            headers = {'X-User-Email': self.user_email, 'Content-Type': 'application/json'} if self.user_email else {'Content-Type': 'application/json'}
+            data = {'email': self.user_email} if self.user_email else {}
+            response = requests.post(f"{self.base_url}/trigger-login", headers=headers, json=data, timeout=self.timeout)
+            
             if response.status_code == 200:
-                return response.json()
+                result = response.json()
+                if not result.get('authenticated'):
+                    # Add special flag for frontend to show QR modal
+                    result['requiresQRScan'] = True
+                    result['userEmail'] = self.user_email
+                    # Log that QR scan needed
+                    logging.info(f"WhatsApp authentication required for {self.user_email}. QR scan needed.")
+                return result
+                
             logging.error(f"Trigger login failed: {response.status_code} - {response.text}")
-            return {"qr": ""}
+            return {"qr": "", "requiresQRScan": True, "userEmail": self.user_email}
         except Exception as e:
             logging.error(f"Error triggering WhatsApp login: {e}")
-            return {"qr": ""}
+            return {"qr": "", "requiresQRScan": True, "userEmail": self.user_email}
 
     def logout(self) -> bool:
         """Logout current WhatsApp session on Node service"""
         try:
-            response = requests.post(f"{self.base_url}/logout", timeout=self.timeout)
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.post(f"{self.base_url}/logout", headers=headers, timeout=self.timeout)
             return response.status_code == 200
         except Exception as e:
             logging.error(f"Error logging out WhatsApp: {e}")
+            return False
+
+    def force_new_session(self) -> bool:
+        """Force a new WhatsApp session by clearing existing session"""
+        try:
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.post(f"{self.base_url}/force-new-session", headers=headers, timeout=self.timeout)
+            return response.status_code == 200
+        except Exception as e:
+            logging.error(f"Error forcing new WhatsApp session: {e}")
             return False
     
     def wait_for_service(self, max_attempts: int = 30, interval: int = 5) -> bool:
@@ -106,293 +170,274 @@ class WhatsAppNodeClient:
         
         logging.error("WhatsApp service failed to become ready")
         return False
+    
+    def has_user_email(self) -> bool:
+        """Check if this client has a valid user email"""
+        return has_user_email(self.user_email)
 
-def get_employee_contact(employee_name: str, contact_employees: List[Dict]) -> str:
-    """Get employee contact number from contact data - matches original Python function"""
-    try:
-        if not isinstance(contact_employees, list):
-            logging.error("Error: contact_employees is not a list of dictionaries.")
-            return ""
+    def send_message(self, 
+                    contact_name: str, 
+                    whatsapp_number: str,
+                    process_name: str = "salary_slip",
+                    message: str = "",
+                    file_paths: List[str] = None,
+                    variables: Dict = None,
+                    options: Dict = None) -> Union[bool, str]:
+        try:
+            # Validate that we have a user email
+            if not self.has_user_email():
+                logging.error("No user email available for WhatsApp message. Please ensure user is logged in.")
+                return "USER_NOT_LOGGED_IN"
             
-        for record in contact_employees:
-            if isinstance(record, dict) and record.get("Name") == employee_name:
-                contact = str(record.get("Contact No.", ""))
-                if contact:
-                    logging.info(f"Found contact for {employee_name}: {contact}")
-                else:
-                    logging.warning(f"No contact found for {employee_name}")
-                return contact
+            # Check if service is ready
+            if not self.check_service_health():
+                logging.error("WhatsApp service is not ready")
+                return "WHATSAPP_SERVICE_NOT_READY"
+            
+            # Prepare file paths
+            if file_paths is None:
+                file_paths = []
+            elif isinstance(file_paths, str):
+                file_paths = [file_paths]
+            
+            # Prepare variables
+            if variables is None:
+                variables = {}
+            
+            # Prepare options
+            if options is None:
+                options = {}
+            
+            # Prepare request data
+            data = {
+                'contact_name': contact_name,
+                'whatsapp_number': whatsapp_number,
+                'process_name': process_name,
+                'message': message,
+                'variables': json.dumps(variables),
+                'options': json.dumps(options)
+            }
+            
+            # Prepare files for upload
+            files = []
+            if file_paths:
+                for file_path in file_paths:
+                    if os.path.exists(file_path):
+                        files.append(('files', open(file_path, 'rb')))
+                        logging.info(f"Added file for upload: {file_path}")
+                    else:
+                        logging.warning(f"File not found: {file_path}")
+            
+            logging.info(f"Sending WhatsApp message to {contact_name} ({whatsapp_number}) with process: {process_name}")
+            
+            # Send request with email header
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.post(
+                f"{self.base_url}/send-message",
+                headers=headers,
+                data=data,
+                files=files,
+                timeout=self.timeout
+            )
+            
+            # Close file handles
+            for _, file_handle in files:
+                file_handle.close()
+            
+            if response.status_code == 200:
+                result = response.json()
+                success = bool(result.get('success', False))
+                logging.info(f"WhatsApp message {'sent successfully' if success else 'failed'} to {contact_name} on {whatsapp_number}")
+                return success
+            else:
+                logging.error(f"Error sending WhatsApp message: {response.status_code} - {response.text}")
+                return "WHATSAPP_API_ERROR"
                 
-        logging.warning(f"No contact record found for {employee_name}")
-        return ""
-    except Exception as e:
-        logging.error(f"Error getting contact for {employee_name}: {str(e)}")
-        return ""
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f"Connection error to WhatsApp service: {e}")
+            return "WHATSAPP_CONNECTION_ERROR"
+        except requests.exceptions.Timeout as e:
+            logging.error(f"Timeout error connecting to WhatsApp service: {e}")
+            return "WHATSAPP_TIMEOUT_ERROR"
+        except Exception as e:
+            logging.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
+            return "WHATSAPP_SEND_ERROR"
 
+    def send_bulk_messages(self, 
+                          contacts: List[Dict], 
+                          process_name: str = "salary_slip",
+                          message: str = "",
+                          file_paths: List[str] = None,
+                          variables: Dict = None,
+                          options: Dict = None) -> List[Dict]:
+        """
+        Send bulk WhatsApp messages to multiple contacts
+        
+        Args:
+            contacts: List of contact dictionaries with 'name' and 'phoneNumber' keys
+            process_name: Process type (salary_slip, reactor_report, report, etc.)
+            message: Custom message (optional, will use template if empty)
+            file_paths: List of file paths to attach
+            variables: Variables for message template substitution
+            options: Additional options (perContactDelayMs, perFileDelayMs, etc.)
+        
+        Returns:
+            List of results for each contact
+        """
+        try:
+            # Validate that we have a user email
+            if not self.has_user_email():
+                logging.error("No user email available for bulk WhatsApp messages. Please ensure user is logged in.")
+                return []
+            
+            # Check if service is ready
+            if not self.check_service_health():
+                logging.error("WhatsApp service is not ready")
+                return []
+            
+            # Prepare file paths
+            if file_paths is None:
+                file_paths = []
+            
+            # Prepare variables
+            if variables is None:
+                variables = {}
+            
+            # Prepare options
+            if options is None:
+                options = {}
+            
+            # Prepare request data
+            data = {
+                'contacts': json.dumps(contacts),
+                'process_name': process_name,
+                'message': message,
+                'variables': json.dumps(variables),
+                'options': json.dumps(options)
+            }
+            
+            # Prepare files for upload
+            files = []
+            for file_path in file_paths:
+                if os.path.exists(file_path):
+                    files.append(('files', open(file_path, 'rb')))
+                else:
+                    logging.warning(f"File not found: {file_path}")
+            
+            logging.info(f"Sending bulk WhatsApp messages to {len(contacts)} contacts with process: {process_name}")
+            
+            # Send request with email header
+            headers = {'X-User-Email': self.user_email} if self.user_email else {}
+            response = requests.post(
+                f"{self.base_url}/send-bulk",
+                headers=headers,
+                data=data,
+                files=files,
+                timeout=self.timeout * max(len(contacts), 1)  # Longer timeout for bulk, minimum 60s
+            )
+            
+            # Close file handles
+            for _, file_handle in files:
+                file_handle.close()
+            
+            if response.status_code == 200:
+                result = response.json()
+                logging.info(f"Bulk WhatsApp messages processed: {result.get('successful', 0)}/{result.get('total_processed', 0)} successful")
+                return result.get('results', [])
+            else:
+                logging.error(f"Error sending bulk WhatsApp messages: {response.status_code} - {response.text}")
+                return []
+                
+        except Exception as e:
+            logging.error(f"Error sending bulk WhatsApp messages: {str(e)}")
+            return []
+
+
+# Legacy function wrappers for backward compatibility
 def send_whatsapp_message(contact_name: str, message: Union[str, List[str]], 
                          file_paths: Union[str, List[str]] = None, 
                          file_sequence: List[Dict] = None,
                          whatsapp_number: str = "", 
                          process_name: str = "salary_slip",
-                         options: Optional[Dict] = None) -> bool:
+                         options: Optional[Dict] = None,
+                         user_email: str = None) -> Union[bool, str]:
     """
-    Send WhatsApp message via Node.js service - matches original Python function signature
+    Legacy wrapper for the unified send_message function
     """
-    client = WhatsAppNodeClient()
+    client = WhatsAppNodeClient(user_email=user_email)
     
-    # Check if service is ready
-    if not client.check_service_health():
-        logging.error("WhatsApp service is not ready")
-        return False
+    # Convert message to string if it's a list
+    if isinstance(message, list):
+        message_text = '\n'.join(message)
+    else:
+        message_text = message or ""
     
-    try:
-        # Prepare message - convert list to string if needed
-        if isinstance(message, list):
-            message_text = '\n'.join(message)
-        else:
-            message_text = message
-        
-        # Prepare file paths
-        if file_paths is None:
-            file_paths = []
-        elif isinstance(file_paths, str):
-            file_paths = [file_paths]
-        
-        # Prepare file sequence
-        if file_sequence is None:
-            file_sequence = []
-        
-        # Choose the correct endpoint based on process_name
-        endpoint = '/send-message'  # default
-        if process_name == 'reactor_report':
-            endpoint = '/send-reactor-report'
-        elif process_name == 'salary_slip':
-            endpoint = '/send-salary-notification'
-        elif process_name == 'report':
-            endpoint = '/send-general-report'  # Use general report endpoint
-        
-        logging.info(f"Using endpoint: {endpoint} for process: {process_name}")
-        
-        # Prepare request data based on endpoint
-        if endpoint == '/send-reactor-report':
-            # For reactor reports, we need to send recipients data
-            data = {
-                'recipients': json.dumps([{
-                    'name': contact_name,
-                    'phone': whatsapp_number
-                }]),
-                'input_date': datetime.now().strftime('%Y-%m-%d'),
-                'sheets_processed': 1,
-                'options': json.dumps(options or {})
-            }
-        else:
-            # For other processes, use standard format
-            data = {
-                'contact_name': contact_name,
-                'message': message_text,
-                'whatsapp_number': whatsapp_number,
-                'process_name': process_name,
-                'file_sequence': json.dumps(file_sequence) if file_sequence else '[]',
-                'options': json.dumps(options or {})
-            }
-        
-        # Prepare files for upload
-        files = []
-        if file_paths:
-            for file_path in file_paths:
-                if os.path.exists(file_path):
-                    files.append(('files', open(file_path, 'rb')))
-                    logging.info(f"Added file for upload: {file_path}")
-                else:
-                    logging.warning(f"File not found: {file_path}")
-        
-        logging.info(f"Sending request to {endpoint} with {len(files)} files")
-        
-        # Send request
-        response = requests.post(
-            f"{client.base_url}{endpoint}",
-            data=data,
-            files=files,
-            timeout=client.timeout
-        )
-        
-        # Close file handles
-        for _, file_handle in files:
-            file_handle.close()
-        
-        if response.status_code == 200:
-            result = response.json()
-            # Support both legacy and new response shapes
-            if isinstance(result, dict) and 'data' in result and isinstance(result['data'], dict):
-                # Prefer explicit sent flag when available
-                sent = result['data'].get('sent')
-                if sent is not None:
-                    logging.info(f"WhatsApp message {'sent successfully' if sent else 'failed'} to {contact_name}")
-                    return bool(sent)
-            success = bool(result.get('success', False))
-            logging.info(f"WhatsApp message {'sent successfully' if success else 'failed'} to {contact_name}")
-            return success
-        else:
-            logging.error(f"Error sending WhatsApp message: {response.status_code} - {response.text}")
-            return False
-            
-    except Exception as e:
-        logging.error(f"Error sending WhatsApp message to {contact_name}: {str(e)}")
-        return False
-
-def handle_whatsapp_notification(contact_name: str, full_month: str, full_year: str, 
-                                whatsapp_number: str, file_path: Union[str, List[str], Dict], 
-                                is_special: bool = False, months_data: List[Dict] = None) -> bool:
-    """
-    Handle WhatsApp notification for salary slips - matches original Python function
-    """
-    client = WhatsAppNodeClient()
-    
-    # Check if service is ready
-    if not client.check_service_health():
-        logging.error("WhatsApp service is not ready")
-        return False
-    
-    try:
-        # Handle different input types for file_path
+    # Convert file_paths to list if it's a string
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    elif file_paths is None:
         file_paths = []
-        
-        if isinstance(file_path, dict):
-            # If it's a dictionary (result object), extract the file path
-            if 'output_file' in file_path:
-                file_paths = [file_path['output_file']]
-                logging.info(f"Extracted file path from dict: {file_path['output_file']}")
-            else:
-                logging.error(f"Dictionary provided but no 'output_file' key found: {file_path}")
-                return False
-        elif isinstance(file_path, str):
-            file_paths = [file_path]
-        elif isinstance(file_path, list):
-            # Handle list that might contain dicts or strings
-            for item in file_path:
-                if isinstance(item, dict):
-                    if 'output_file' in item:
-                        file_paths.append(item['output_file'])
-                    else:
-                        logging.warning(f"Dict in list missing 'output_file' key: {item}")
-                elif isinstance(item, (str, bytes, os.PathLike)):
-                    file_paths.append(item)
-                else:
-                    logging.warning(f"Invalid item type in file_path list: {type(item)}")
-        else:
-            logging.error(f"Invalid file_path type: {type(file_path)}. Expected str, list, or dict, got: {file_path}")
-            return False
-        
-        # Validate that we have at least one file path
-        if not file_paths:
-            logging.error("No valid file paths found after processing input")
-            return False
-        
-        # Prepare months data
-        if months_data is None:
-            months_data = [{"month": full_month, "year": full_year}]
-        
-        # Prepare request data
-        data = {
-            'contact_name': contact_name,
-            'full_month': full_month,
-            'full_year': full_year,
-            'whatsapp_number': whatsapp_number,
-            'is_special': is_special,
-            'months_data': json.dumps(months_data)
-        }
-        
-        # Prepare files for upload
-        files = []
-        for file_path_item in file_paths:
-            # Convert to string and normalize path separators
-            file_path_str = str(file_path_item)
-            
-            # Normalize path separators (convert \\ to / or use os.path.normpath)
-            normalized_path = os.path.normpath(file_path_str)
-            
-            logging.info(f"Processing file path: {normalized_path}")
-            
-            # Validate that the normalized path is a string
-            if not isinstance(normalized_path, (str, bytes, os.PathLike)):
-                logging.error(f"Invalid file path after normalization: {type(normalized_path)}")
-                continue
-            
-            if os.path.exists(normalized_path):
-                files.append(('files', open(normalized_path, 'rb')))
-                logging.info(f"Added file for upload: {normalized_path}")
-            else:
-                logging.warning(f"File not found: {normalized_path}")
-        
-        if not files:
-            logging.error("No valid files found for upload")
-            return False
-        
-        # Send request
-        response = requests.post(
-            f"{client.base_url}/send-salary-notification",
-            data=data,
-            files=files,
-            timeout=client.timeout
-        )
-        
-        # Close file handles
-        for _, file_handle in files:
-            file_handle.close()
-        
-        if response.status_code == 200:
-            result = response.json()
-            success = result.get('success', False)
-            logging.info(f"Salary slip notification {'sent successfully' if success else 'failed'} to {contact_name}")
-            return success
-        else:
-            logging.error(f"Error sending salary slip notification: {response.status_code} - {response.text}")
-            return False
-            
-    except Exception as e:
-        logging.error(f"Error sending salary slip notification to {contact_name}: {str(e)}")
-        return False
+    
+    # Extract variables from options
+    variables = options.get('variables', {}) if options else {}
+    
+    return client.send_message(
+        contact_name=contact_name,
+        whatsapp_number=whatsapp_number,
+        process_name=process_name,
+        message=message_text,
+        file_paths=file_paths,
+        variables=variables,
+        options=options
+    )
 
-def handle_reactor_report_notification(recipients_data, input_date, file_path, sheets_processed):
+
+def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[str]], 
+                               file_paths: List[str] = None, 
+                               process_name: str = "salary_slip",
+                               user_email: str = None) -> List[Dict]:
     """
-    Handle WhatsApp notification for reactor reports - new function for reactor reports
+    Legacy wrapper for the unified send_bulk_messages function
     """
-    client = WhatsAppNodeClient()
+    client = WhatsAppNodeClient(user_email=user_email)
     
-    # Add detailed debugging
-    logging.info(f"Attempting to check WhatsApp service health...")
-    logging.info(f"Service URL: {client.base_url}")
+    # Convert message to string if it's a list
+    if isinstance(message, list):
+        message_text = '\n'.join(message)
+    else:
+        message_text = message or ""
     
-    # Check if service is ready with detailed error handling
-    try:
-        health_status = client.check_service_health()
-        logging.info(f"WhatsApp service health check result: {health_status}")
-        
-        if not health_status:
-            logging.error("WhatsApp service health check failed")
-            logging.error("This could mean:")
-            logging.error("1. WhatsApp service is not running on port 3001")
-            logging.error("2. Network connectivity issues")
-            logging.error("3. Service is not responding")
-            
-            # Try to get more details
-            try:
-                status_response = client.get_status()
-                logging.info(f"Service status response: {status_response}")
-            except Exception as status_error:
-                logging.error(f"Could not get service status: {status_error}")
-            
-            return False
-    except Exception as health_error:
-        logging.error(f"Error during service health check: {health_error}")
-        logging.error(f"Health check exception type: {type(health_error)}")
-        return False
+    return client.send_bulk_messages(
+        contacts=contacts,
+        process_name=process_name,
+        message=message_text,
+        file_paths=file_paths,
+        variables={},
+        options={}
+    )
+
+
+def handle_reactor_report_notification(recipients_data, input_date, file_path, sheets_processed, user_email: str = None):
+    """
+    Legacy function for reactor report notifications - now uses unified approach
+    """
+    client = WhatsAppNodeClient(user_email=user_email)
+    
+    # Validate that we have a user email
+    if not client.has_user_email():
+        logging.error("No user email available for reactor report notification. Please ensure user is logged in.")
+        return "USER_NOT_LOGGED_IN"
+    
+    # Check if service is ready
+    if not client.check_service_health():
+        logging.error("WhatsApp service is not ready")
+        return "WHATSAPP_SERVICE_NOT_READY"
     
     try:
         # Parse recipients from recipients_data
         if not recipients_data or len(recipients_data) < 2:
             logging.error("No recipients data provided for reactor report")
-            return False
+            return "NO_RECIPIENTS_DATA"
         
         headers = [h.strip() for h in recipients_data[0]]
         logging.info(f"Available headers: {headers}")
@@ -417,7 +462,7 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
         if name_idx is None or (phone_idx is None and whatsapp_idx is None):
             logging.error("Required columns for WhatsApp notifications not found in recipients data")
             logging.error(f"Available headers: {headers}")
-            return False
+            return "MISSING_REQUIRED_COLUMNS"
         
         success_count = 0
         total_recipients = 0
@@ -437,35 +482,25 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
                     if recipient_name and contact_number:
                         total_recipients += 1
                         
-                        # Create reactor report message
-                        message = [
-                            "Reactor Report - Daily Operations Summary",
-                            "",
-                            f"Please find attached the reactor report for the period from {input_date} to {input_date}.",
-                            "",
-                            "This report contains snapshots of all reactor operations data for the specified period.",
-                            "",
-                            f"Sheets processed: {sheets_processed}",
-                            "",
-                            "Best regards,",
-                            "Reactor Automation System"
-                        ]
-                        
-                        # Send WhatsApp message with the generated PDF
-                        success = send_whatsapp_message(
+                        # Send WhatsApp message using unified function
+                        success = client.send_message(
                             contact_name=recipient_name,
-                            message=message,
-                            file_paths=[file_path],
-                            file_sequence=[],
                             whatsapp_number=contact_number,
-                            process_name="reactor_report"
+                            process_name="reactor_report",
+                            message="",  # Empty message - will use template
+                            file_paths=[file_path],
+                            variables={
+                                "input_date": input_date,
+                                "sheets_processed": sheets_processed
+                            },
+                            options={}
                         )
                         
-                        if success:
+                        if success is True:
                             success_count += 1
                             logging.info(f"Reactor report WhatsApp message sent successfully to {recipient_name}")
                         else:
-                            logging.error(f"Failed to send reactor report WhatsApp message to {recipient_name}")
+                            logging.error(f"Failed to send reactor report WhatsApp message to {recipient_name}: {success}")
                     else:
                         logging.warning(f"Skipping WhatsApp notification for {recipient_name}: Missing contact number")
             except Exception as e:
@@ -473,72 +508,38 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
                 continue
         
         logging.info(f"Reactor report WhatsApp notifications: {success_count}/{total_recipients} successful")
-        return success_count > 0
+        if success_count > 0:
+            return True
+        else:
+            return "NO_SUCCESSFUL_NOTIFICATIONS"
         
     except Exception as e:
         logging.error(f"Error processing reactor report WhatsApp notifications: {e}")
-        return False
+        return "REACTOR_NOTIFICATION_ERROR"
 
-def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[str]], 
-                               file_paths: List[str] = None, 
-                               process_name: str = "salary_slip") -> List[Dict]:
-    client = WhatsAppNodeClient()
-    
-    # Check if service is ready
-    if not client.check_service_health():
-        logging.error("WhatsApp service is not ready")
-        return []
-    
+
+def get_employee_contact(employee_name: str, contact_employees: List[Dict]) -> str:
+    """Get employee contact number from contact data - matches original Python function"""
     try:
-        # Prepare message
-        if isinstance(message, list):
-            message_text = '\n'.join(message)
-        else:
-            message_text = message
-        
-        # Prepare file paths
-        if file_paths is None:
-            file_paths = []
-        
-        # Prepare request data
-        data = {
-            'contacts': json.dumps(contacts),
-            'message': message_text,
-            'process_name': process_name,
-            'file_sequence': '[]'
-        }
-        
-        # Prepare files for upload
-        files = []
-        for file_path in file_paths:
-            if os.path.exists(file_path):
-                files.append(('files', open(file_path, 'rb')))
-            else:
-                logging.warning(f"File not found: {file_path}")
-        
-        # Send request
-        response = requests.post(
-            f"{client.base_url}/send-bulk",
-            data=data,
-            files=files,
-            timeout=client.timeout * len(contacts)  # Longer timeout for bulk
-        )
-        
-        # Close file handles
-        for _, file_handle in files:
-            file_handle.close()
-        
-        if response.status_code == 200:
-            result = response.json()
-            logging.info(f"Bulk WhatsApp messages processed: {result.get('successful', 0)}/{result.get('total_processed', 0)} successful")
-            return result.get('results', [])
-        else:
-            logging.error(f"Error sending bulk WhatsApp messages: {response.status_code} - {response.text}")
-            return []
+        if not isinstance(contact_employees, list):
+            logging.error("Error: contact_employees is not a list of dictionaries.")
+            return ""
             
+        for record in contact_employees:
+            if isinstance(record, dict) and record.get("Name") == employee_name:
+                contact = str(record.get("Contact No.", ""))
+                if contact:
+                    logging.info(f"Found contact for {employee_name}: {contact}")
+                else:
+                    logging.warning(f"No contact found for {employee_name}")
+                return contact
+                
+        logging.warning(f"No contact record found for {employee_name}")
+        return ""
     except Exception as e:
-        logging.error(f"Error sending bulk WhatsApp messages: {str(e)}")
-        return []
+        logging.error(f"Error getting contact for {employee_name}: {str(e)}")
+        return ""
+
 
 def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
     """Maintain original prepare_file_paths function for backward compatibility"""
@@ -597,8 +598,69 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
         logging.error(f"Error preparing file paths: {str(e)}")
         return []
 
+
 # Configuration
-WHATSAPP_NODE_SERVICE_URL = os.getenv('WHATSAPP_NODE_SERVICE_URL', 'http://localhost:3001')
+WHATSAPP_NODE_SERVICE_URL = os.getenv('WHATSAPP_NODE_SERVICE_URL', 'https://whatsapp.bajajearths.com')
+
+def get_user_email_from_session(user_email: str = None) -> str:
+    """
+    Get user email from parameter or fall back to session.
+    This function can be used by other modules to get the current user's email.
+    """
+    if user_email:
+        return user_email
+    try:
+        session_email = session.get('user', {}).get('email') or session.get('user', {}).get('id')
+        if session_email:
+            logging.info(f"Retrieved user identifier from session: {session_email}")
+            logging.debug(f"Session contains: email={session.get('user', {}).get('email')}, id={session.get('user', {}).get('id')}")
+        else:
+            logging.warning("No user email found in session")
+        return session_email
+    except Exception as e:
+        logging.warning(f"Could not get user email from session: {e}")
+        return None
+
+def has_user_email(user_email: str = None) -> bool:
+    """
+    Check if a user email is available (either provided or in session).
+    """
+    email = get_user_email_from_session(user_email)
+    return email is not None and email.strip() != ""
+
+def initialize_whatsapp_client(user_email: str = None) -> bool:
+    """
+    Initialize WhatsApp client for a specific user and ensure they're authenticated.
+    Returns True if the client is ready to use.
+    """
+    client = WhatsAppNodeClient(user_email=user_email)
+    
+    # Validate that we have a user email
+    if not client.has_user_email():
+        logging.error("No user email available for WhatsApp client initialization. Please ensure user is logged in.")
+        return False
+    
+    # First check if already authenticated
+    try:
+        if client.check_service_health():
+            logging.info(f"WhatsApp client already initialized and ready for user: {client.user_email}")
+            return True
+            
+        # If not ready, try to trigger login to get QR code
+        login_result = client.trigger_login()
+        
+        if login_result.get('authenticated'):
+            logging.info(f"WhatsApp client authenticated for user: {client.user_email}")
+            return True
+        elif login_result.get('qr'):
+            logging.info(f"QR code generated for user: {client.user_email}. User needs to scan QR code.")
+            return False
+        else:
+            logging.error(f"Failed to initialize WhatsApp client for user: {client.user_email}")
+            return False
+    except Exception as e:
+        logging.error(f"Error initializing WhatsApp client for user {client.user_email}: {str(e)}")
+        return False
 
 # Initialize client
 whatsapp_client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL)

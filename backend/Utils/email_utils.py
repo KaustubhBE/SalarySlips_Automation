@@ -32,15 +32,20 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
     Send an email using SMTP with credentials retrieved for the given user_email.
     """
     try:
+        # Validate user_email parameter
+        if not user_email or not user_email.strip():
+            logger.error("No SMTP credentials found for user: None or empty")
+            return "USER_NOT_LOGGED_IN"  # Return specific error code for frontend
+        
         sender_email, sender_password = get_smtp_credentials_by_email(user_email)
         if not sender_email or not sender_password:
             logger.error(f"No SMTP credentials found for user: {user_email}")
-            return False
+            return "NO_SMTP_CREDENTIALS"  # Return specific error code for frontend
 
         # Validate email addresses
         if not recipient_email or not recipient_email.strip():
             logger.error("Recipient email is empty or invalid")
-            return False
+            return "INVALID_RECIPIENT"  # Return specific error code for frontend
 
         message = MIMEMultipart()
         
@@ -93,7 +98,7 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
         
         if not recipients:
             logger.error("No valid recipients found after processing")
-            return False
+            return "NO_VALID_RECIPIENTS"  # Return specific error code for frontend
 
         logger.info(f"Attempting to send email to: {recipients}")
 
@@ -106,9 +111,15 @@ def send_email_smtp(user_email, recipient_email, subject, body, attachment_paths
             )
         logger.info(f"Email sent to {recipient_email} via SMTP for user {user_email}")
         return True
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP authentication failed for user {user_email}: {e}")
+        return "SMTP_AUTH_FAILED"  # Return specific error code for frontend
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error for user {user_email}: {e}")
+        return "SMTP_ERROR"  # Return specific error code for frontend
     except Exception as e:
         logger.error(f"Error sending email via SMTP for user {user_email}: {e}")
-        return False
+        return "EMAIL_SEND_ERROR"  # Return specific error code for frontend
 
 def extract_ascii_emails(addresses):
     if not addresses:

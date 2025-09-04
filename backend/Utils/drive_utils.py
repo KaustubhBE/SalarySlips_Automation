@@ -1,4 +1,5 @@
 from Utils.config import drive
+import logging
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
@@ -20,11 +21,11 @@ def verify_folder_permissions(folder_id):
         return True
     except HttpError as e:
         if e.resp.status == 404:
-            print("Folder {} not found".format(folder_id))
+            logging.error("Folder {} not found".format(folder_id))
         elif e.resp.status == 403:
-            print("No access to folder {}. Please share the folder with Editor access".format(folder_id))
+            logging.error("No access to folder {}. Please share the folder with Editor access".format(folder_id))
         else:
-            print("Error verifying folder permissions: {}".format(str(e)))
+            logging.error("Error verifying folder permissions: {}".format(str(e)))
         return False
 
 def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
@@ -54,7 +55,7 @@ def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
             # Delete existing files if found
             if existing_files:
                 for file in existing_files:
-                    print(f"Found existing file {file['name']}. Attempting to delete...")
+                    logging.info(f"Found existing file {file['name']}. Attempting to delete...")
                     try:
                         # Verify we have delete permission
                         if not file.get('capabilities', {}).get('canDelete', False):
@@ -62,12 +63,12 @@ def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
                             continue
                             
                         drive.files().delete(fileId=file['id']).execute()
-                        print(f"Successfully deleted {file['name']}")
+                        logging.info(f"Successfully deleted {file['name']}")
                     except HttpError as delete_error:
                         if delete_error.resp.status == 403:
-                            print(f"Permission denied to delete {file['name']}")
+                            logging.error(f"Permission denied to delete {file['name']}")
                         else:
-                            print(f"Error deleting file: {str(delete_error)}")
+                            logging.error(f"Error deleting file: {str(delete_error)}")
 
             # Create file metadata
             file_metadata = {
@@ -90,14 +91,14 @@ def upload_to_google_drive(output_pdf, folder_id, employee_name, month, year):
                 fields='id'
             ).execute()
 
-            print(f"Successfully uploaded {employee_name}'s salary slip to folder {folder_id}")
+            logging.info(f"Successfully uploaded {employee_name}'s salary slip to folder {folder_id}")
             return True
 
         except HttpError as e:
             if e.resp.status == 403:
-                print(f"Permission denied. Please ensure the service account has proper access.")
+                logging.error(f"Permission denied. Please ensure the service account has proper access.")
             else:
-                print(f"Drive API Error: {str(e)}")
+                logging.error(f"Drive API Error: {str(e)}")
             return False
 
     except Exception as e:

@@ -7,7 +7,8 @@ import './Processing.css';
 import Navbar from './Navbar';
 import Settings from './Components/Settings';
 import { Route, Routes } from 'react-router-dom';
-import { getApiUrl, makeApiCall, ENDPOINTS } from './config.js';
+import { getApiUrl, makeApiCall, ENDPOINTS, hasPermission } from './config.js';
+import { useAuth } from './Components/AuthContext';
 import axios from 'axios';
 import AttachmentSequence from './Components/AttachmentSequence';
 
@@ -42,6 +43,12 @@ const plantData = [
     employee_salary_sheet_id_2024_25: '1qCmbnZpgtGrN6M0J3KFWi6p3-mKKT1xctjyZgmIN0J0', 
     employee_salary_sheet_id_2025_26: '1PfX_m8MXmfu94zlT6xjzIHFIfYjYhTPzyXjKnoXYslI'
   },
+  {
+    name: 'Padmavati',
+    employee_drive_id: '', 
+    employee_salary_sheet_id_2024_25: '', 
+    employee_salary_sheet_id_2025_26: ''
+  }
 ];
 
 // Helper function to get previous month and year
@@ -141,6 +148,7 @@ const getFinancialYears = () => {
 };
 
 function Processing({ mode = 'single' }) {
+  const { user } = useAuth();
   const [sendEmail, setSendEmail] = useState(false);
   const [sendWhatsapp, setSendWhatsapp] = useState(false); // ENABLED WHATSAPP
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -160,6 +168,22 @@ function Processing({ mode = 'single' }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [attachmentSequence, setAttachmentSequence] = useState([]);
+
+  // Get accessible plants based on user's factory permissions
+  const getAccessiblePlants = () => {
+    if (!user) return [];
+    
+    const userRole = user.role || 'user';
+    const userPermissions = user.permissions || {};
+    
+    if (userRole === 'admin') {
+      // Admin can access all plants
+      return plantData;
+    } else {
+      // Regular users can access all plants (simplified for 2-layer RBAC)
+      return plantData;
+    }
+  };
   
   const handleSelectChange = (event) => {
     const selectedPlantName = event.target.value;
@@ -256,7 +280,81 @@ function Processing({ mode = 'single' }) {
 
       setResult(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred while processing the request');
+      const errorData = err.response?.data;
+      let errorMessage = 'An error occurred while processing the request';
+      
+      if (errorData?.error) {
+        switch (errorData.error) {
+          case 'USER_NOT_LOGGED_IN':
+            errorMessage = 'Your session has expired. Please log in again.';
+            // Redirect to login or show login modal
+            break;
+          case 'TOKEN_EXPIRED':
+            errorMessage = 'Your authentication token has expired. Please refresh your credentials.';
+            break;
+          case 'NO_SMTP_CREDENTIALS':
+            errorMessage = 'Email credentials not found. Please check your settings.';
+            break;
+          case 'INVALID_RECIPIENT':
+            errorMessage = 'Invalid recipient email address.';
+            break;
+          case 'NO_VALID_RECIPIENTS':
+            errorMessage = 'No valid recipient emails found.';
+            break;
+          case 'SMTP_AUTH_FAILED':
+            errorMessage = 'Email authentication failed. Please check your credentials.';
+            break;
+          case 'SMTP_ERROR':
+            errorMessage = 'Email service error. Please try again later.';
+            break;
+          case 'EMAIL_SEND_ERROR':
+            errorMessage = 'Failed to send email. Please try again.';
+            break;
+          case 'EMAIL_SEND_FAILED':
+            errorMessage = 'Failed to send email. Please try again.';
+            break;
+          case 'WHATSAPP_SERVICE_NOT_READY':
+            errorMessage = 'WhatsApp service is not ready. Please try again later.';
+            break;
+          case 'INVALID_FILE_PATH':
+            errorMessage = 'Invalid file path for WhatsApp message.';
+            break;
+          case 'INVALID_FILE_PATH_TYPE':
+            errorMessage = 'Invalid file path type for WhatsApp message.';
+            break;
+          case 'NO_VALID_FILES':
+            errorMessage = 'No valid files found for WhatsApp message.';
+            break;
+          case 'NO_FILES_FOR_UPLOAD':
+            errorMessage = 'No files available for WhatsApp upload.';
+            break;
+          case 'WHATSAPP_API_ERROR':
+            errorMessage = 'WhatsApp API error. Please try again later.';
+            break;
+          case 'WHATSAPP_CONNECTION_ERROR':
+            errorMessage = 'WhatsApp connection error. Please try again later.';
+            break;
+          case 'WHATSAPP_TIMEOUT_ERROR':
+            errorMessage = 'WhatsApp timeout error. Please try again later.';
+            break;
+          case 'WHATSAPP_SEND_ERROR':
+            errorMessage = 'Failed to send WhatsApp message. Please try again.';
+            break;
+          case 'WHATSAPP_SEND_FAILED':
+            errorMessage = 'Failed to send WhatsApp message. Please try again.';
+            break;
+          default:
+            errorMessage = errorData.message || errorData.error || errorMessage;
+        }
+      }
+      
+      setError(errorMessage);
+      
+      // If user is not logged in, redirect to login
+      if (errorData?.error === 'USER_NOT_LOGGED_IN') {
+        // You can add logic here to redirect to login or show login modal
+        console.log('User session expired, redirecting to login...');
+      }
     } finally {
       setLoading(false);
     }
@@ -271,6 +369,36 @@ function Processing({ mode = 'single' }) {
       financialYear: fy
     }]);
   };
+
+  // Check if user has permission to access this processing mode
+  const hasProcessingPermission = () => {
+    if (!user) return false;
+    
+    const userRole = user.role || 'user';
+    const userPermissions = user.permissions || {};
+    
+    if (userRole === 'super-admin') return true;
+    
+    // Check for specific processing permissions
+    const requiredPermission = mode === 'single' ? 'single_processing' : 'batch_processing';
+    return hasPermission(userPermissions, requiredPermission);
+  };
+
+  // If user doesn't have permission, show access denied message
+  if (!hasProcessingPermission()) {
+    return (
+      <>
+        <Navbar />
+        <div className="input-elements">
+          <div className="access-denied">
+            <h2>Access Denied</h2>
+            <p>You don't have permission to access {mode} salary processing.</p>
+            <p>Please contact your administrator if you believe this is an error.</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -296,7 +424,7 @@ function Processing({ mode = 'single' }) {
             <label htmlFor="plantDropdown">Select Plant:</label>
             <select id="plantDropdown" value={selectedPlant} onChange={handleSelectChange}>
               <option value="" disabled>Select Plant</option>
-              {plantData.map((plant, index) => (
+              {getAccessiblePlants().map((plant, index) => (
                 <option key={index} value={plant.name}>{plant.name}</option>
               ))}
             </select>

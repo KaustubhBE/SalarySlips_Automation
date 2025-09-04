@@ -9,6 +9,26 @@
   box-sizing: border-box;
 }
 
+/* Access denied styles */
+.access-denied {
+  text-align: center;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.access-denied h2 {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.access-denied p {
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
 .input-elements {
   display: flex;
   flex-direction: column;

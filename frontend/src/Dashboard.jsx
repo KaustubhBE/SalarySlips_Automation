@@ -1,347 +1,217 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { getApiUrl, ENDPOINTS } from './config';
-import './Dashboard.css'; // Import the CSS file
+import { 
+  getApiUrl, 
+  ENDPOINTS, 
+  ALL_PERMISSIONS, 
+  PERMISSION_DESCRIPTIONS, 
+  canEditUser,
+  canCreateUser,
+  FACTORY_NAMES,
+  DEPARTMENT_NAMES,
+  SERVICE_NAMES
+} from './config';
+import { useAuth } from './Components/AuthContext';
+import './Dashboard.css';
 
-// Define available departments and permissions
-const DEPARTMENTS = {
-  STORE: 'store',
-  MARKETING: 'marketing',
-  HUMANRESOURCE: 'humanresource'
-};
-
-// Department descriptions
-const DEPARTMENT_DESCRIPTIONS = {
-  [DEPARTMENTS.STORE]: 'Store Department - Inventory Management',
-  [DEPARTMENTS.MARKETING]: 'Marketing Department - Marketing Campaigns and Analysis',
-  [DEPARTMENTS.HUMANRESOURCE]: 'Human Resource Department - Salary Processing and Employee Management'
-};
-
-// All available permissions organized by category
-const ALL_PERMISSIONS = {
-  GENERAL: {
-    REPORTS: 'reports', // Single general reports permission
-    SETTINGS_ACCESS: 'settings_access',
-    USER_MANAGEMENT: 'user_management',
-    CAN_CREATE_ADMIN: 'can_create_admin'
-  },
-  STORE: {
-    INVENTORY: 'inventory'
-  },
-  HR_DEPARTMENT: {
-    SALARY_PROCESSING: {
-      SINGLE_PROCESSING: 'single_processing',
-      BATCH_PROCESSING: 'batch_processing',
-    }
-  },
-  MARKETING: {
-    MARKETING_CAMPAIGNS: 'marketing_campaigns'
-  },
-  ACCOUNTS: {
-    EXPENSE_MANAGEMENT: 'expense_management'
-  }
-};
-
-// Permission descriptions for tooltips
-const PERMISSION_DESCRIPTIONS = {
-  [ALL_PERMISSIONS.GENERAL.REPORTS]: 'Access to all reports across departments',
-  [ALL_PERMISSIONS.GENERAL.SETTINGS_ACCESS]: 'Access system settings',
-  [ALL_PERMISSIONS.GENERAL.USER_MANAGEMENT]: 'Manage users and roles',
-  [ALL_PERMISSIONS.GENERAL.CAN_CREATE_ADMIN]: 'Create admin users',
-  [ALL_PERMISSIONS.STORE.INVENTORY]: 'Manage inventory operations',
-  [ALL_PERMISSIONS.HR_DEPARTMENT.SALARY_PROCESSING.SINGLE_PROCESSING]: 'Process individual salary slips',
-  [ALL_PERMISSIONS.HR_DEPARTMENT.SALARY_PROCESSING.BATCH_PROCESSING]: 'Process multiple salary slips at once',
-  [ALL_PERMISSIONS.MARKETING.MARKETING_CAMPAIGNS]: 'Manage marketing campaigns',
-  [ALL_PERMISSIONS.ACCOUNTS.EXPENSE_MANAGEMENT]: 'Manage expenses'
-};
-
-// Default permissions for each department (reports can be false)
-const DEPARTMENT_DEFAULT_PERMISSIONS = {
-  [DEPARTMENTS.STORE]: {
-    [ALL_PERMISSIONS.GENERAL.REPORTS]: false, // Can be toggled by admin
-    [ALL_PERMISSIONS.STORE.INVENTORY]: true
-  },
-  [DEPARTMENTS.MARKETING]: {
-    [ALL_PERMISSIONS.GENERAL.REPORTS]: false, // Can be toggled by admin
-    [ALL_PERMISSIONS.MARKETING.MARKETING_CAMPAIGNS]: true
-  },
-  [DEPARTMENTS.HUMANRESOURCE]: {
-    [ALL_PERMISSIONS.HR_DEPARTMENT.SALARY_PROCESSING.SINGLE_PROCESSING]: true,
-    [ALL_PERMISSIONS.HR_DEPARTMENT.SALARY_PROCESSING.BATCH_PROCESSING]: true,
-    [ALL_PERMISSIONS.GENERAL.REPORTS]: false // Can be toggled by admin
-  }
-};
-
-// Super admin gets all permissions
-const SUPER_ADMIN_PERMISSIONS = Object.values(ALL_PERMISSIONS).reduce((acc, category) => {
-  Object.values(category).forEach(permission => {
-    if (typeof permission === 'object') {
-      // Handle nested permissions like SALARY_PROCESSING
-      Object.values(permission).forEach(nestedPerm => {
-        acc[nestedPerm] = true;
-      });
-    } else {
-      acc[permission] = true;
-    }
-  });
-  return acc;
-}, {});
-
-// Separate PermissionsGrid component
-const PermissionsGrid = ({ 
+// Simple Permissions Component for service-based permissions
+const SimplePermissions = ({ 
   permissions, 
   onPermissionChange, 
   isEditing = false, 
   targetUserRole = 'user',
-  currentUserRole = 'super-admin' 
+  currentUserRole = 'admin'
 }) => {
-  const [expandedCategories, setExpandedCategories] = useState({});
-
-  const toggleCategory = (categoryName) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryName]: !prev[categoryName]
-    }));
+  // Define all available permissions
+  const allPermissions = {
+    'inventory': 'Inventory Management',
+    'reports': 'Reports',
+    'single_processing': 'Single Processing',
+    'batch_processing': 'Batch Processing',
+    'expense_management': 'Expense Management',
+    'marketing_campaigns': 'Marketing Campaigns',
+    'reactor_reports': 'Reactor Reports'
   };
 
-  const renderNestedPermissions = (nestedPerms, permissionsToShow, categoryName) => {
-    const canEditThisNestedPermission = isEditing && (
-      currentUserRole === 'super-admin' || 
-      (currentUserRole === 'admin' && targetUserRole === 'user')
-    );
-    
-    return Object.entries(nestedPerms).map(([permKey, permValue]) => {
-      return (
-        <div key={permValue} className="permission-item nested-permission">
-          <label title={PERMISSION_DESCRIPTIONS[permValue]}>
-            <input
-              type="checkbox"
-              checked={permissionsToShow[permValue] || false}
-              onChange={() => onPermissionChange(permValue)}
-              disabled={!canEditThisNestedPermission}
-            />
-            {permKey.replace('_', ' ')}
-          </label>
-        </div>
-      );
-    });
-  };
-
-  // Determine which permissions to show based on current user role and target user role
-  let availablePermissions = {};
-  
-  if (currentUserRole === 'super-admin') {
-    // Super admin can edit all permissions for any user role
-    availablePermissions = ALL_PERMISSIONS;
-  } else if (currentUserRole === 'admin') {
-    // Admin can edit user permissions (but not admin permissions)
-    if (targetUserRole === 'user') {
-      availablePermissions = {
-        GENERAL: ALL_PERMISSIONS.GENERAL,
-        STORE: ALL_PERMISSIONS.STORE,
-        HR_DEPARTMENT: ALL_PERMISSIONS.HR_DEPARTMENT,
-        MARKETING: ALL_PERMISSIONS.MARKETING,
-        ACCOUNTS: ALL_PERMISSIONS.ACCOUNTS
-      };
+  // Handle permission change
+  const handlePermissionChange = (permissionKey, checked) => {
+    const updatedPermissions = { ...permissions };
+    if (checked) {
+      updatedPermissions[permissionKey] = true;
+    } else {
+      delete updatedPermissions[permissionKey];
     }
-    // If admin tries to create admin/super-admin, no permissions shown (handled by role restrictions)
-  }
+    onPermissionChange(updatedPermissions);
+  };
 
+  // Check if a permission is granted
+  const isPermissionGranted = (permissionKey) => {
+    return permissions[permissionKey] === true;
+  };
+
+  // Check if user can edit permissions
+  const canEdit = isEditing && currentUserRole === 'admin';
+    
   return (
-    <div className="permissions-categories">
-      {Object.entries(availablePermissions).map(([categoryName, categoryPerms]) => (
-        <div key={categoryName} className="permission-category">
-          <h4 className="category-title">{categoryName.replace('_', ' ')}</h4>
-          <div className="permissions-grid">
-            {Object.entries(categoryPerms).map(([permKey, permValue]) => {
-              // Handle nested permissions (like SALARY_PROCESSING)
-              if (typeof permValue === 'object') {
-                return (
-                  <div key={permKey} className="permission-group">
-                    <div className="permission-item">
-                      <label 
-                        className="expandable-label"
-                        onClick={() => toggleCategory(`${categoryName}-${permKey}`)}
-                      >
-                        <span className="expand-icon">
-                          {expandedCategories[`${categoryName}-${permKey}`] ? '▼' : '▶'}
-                        </span>
-                        {permKey.replace('_', ' ')}
-                      </label>
-                    </div>
-                    {expandedCategories[`${categoryName}-${permKey}`] && (
-                      <div className="nested-permissions">
-                        {renderNestedPermissions(permValue, permissions, categoryName)}
-                      </div>
-                    )}
-                  </div>
-                );
-              } else {
-                // Super admin can edit all permissions, admin can edit user permissions
-                const canEditThisPermission = isEditing && (
-                  currentUserRole === 'super-admin' || 
-                  (currentUserRole === 'admin' && targetUserRole === 'user')
-                );
-                
-                return (
-                  <div key={permValue} className="permission-item">
-                    <label title={PERMISSION_DESCRIPTIONS[permValue]}>
-                      <input
-                        type="checkbox"
-                        checked={permissions[permValue] || false}
-                        onChange={() => onPermissionChange(permValue)}
-                        disabled={!canEditThisPermission}
-                      />
-                      {permKey.replace('_', ' ')}
-                    </label>
-                  </div>
-                );
-              }
-            })}
+    <div className="simple-permissions-container">
+      <div className="permissions-header">
+        <h4>Service Permissions</h4>
+        <p className="permissions-description">
+          Select specific services to grant access to the user.
+        </p>
+      </div>
+      
+      <div className="permissions-list">
+        {Object.entries(allPermissions).map(([permissionKey, permissionName]) => (
+          <div key={permissionKey} className="permission-item">
+            <label className="permission-checkbox">
+              <input
+                type="checkbox"
+                checked={isPermissionGranted(permissionKey)}
+                onChange={(e) => handlePermissionChange(permissionKey, e.target.checked)}
+                disabled={!canEdit}
+              />
+              <span className="permission-name">{permissionName}</span>
+            </label>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
 
+
+
 function Dashboard() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [appPassword, setAppPassword] = useState("");
-  const [showAppPassword, setShowAppPassword] = useState(false);
-  const [role, setRole] = useState('user');
-  const [department, setDepartment] = useState('');
-  const [permissions, setPermissions] = useState({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingAppPassword, setEditingAppPassword] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
+    console.log('Dashboard component mounted, fetching users...');
     fetchUsers();
   }, []);
 
-  // Set default permissions when role or department changes
-  useEffect(() => {
-    if (role === 'super-admin') {
-      setPermissions(SUPER_ADMIN_PERMISSIONS);
-      setDepartment(''); // Clear department for super-admin
-    } else if (role === 'admin') {
-      setPermissions({
-        [ALL_PERMISSIONS.GENERAL.REPORTS]: true,
-        [ALL_PERMISSIONS.GENERAL.USER_MANAGEMENT]: true,
-        [ALL_PERMISSIONS.GENERAL.SETTINGS_ACCESS]: true,
-        [ALL_PERMISSIONS.GENERAL.CAN_CREATE_ADMIN]: false
-      });
-      } else {
-        // For regular users, set department-specific permissions
-        if (department && DEPARTMENT_DEFAULT_PERMISSIONS[department]) {
-          setPermissions(DEPARTMENT_DEFAULT_PERMISSIONS[department]);
-        } else {
-          setPermissions({
-            [ALL_PERMISSIONS.GENERAL.REPORTS]: false // Default to false, can be enabled by admin
-          });
-        }
-      }
-  }, [role, department]);
 
-  const fetchUsers = async () => {
+
+  // Auto-clear success messages after 5 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  // Handle Escape key to close permissions modal
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape' && showPermissionsModal) {
+        handleCancelEdit();
+      }
+    };
+
+    if (showPermissionsModal) {
+      document.addEventListener('keydown', handleEscapeKey);
+      document.body.style.overflow = 'hidden';
+      
+      const firstFocusableElement = document.querySelector('.permissions-modal button, .permissions-modal input, .permissions-modal select');
+      if (firstFocusableElement) {
+        firstFocusableElement.focus();
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showPermissionsModal]);
+
+  const fetchUsers = async (retryCount = 0) => {
+    const maxRetries = 3;
     try {
+      console.log(`Fetching users... (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      
       const response = await axios.get(getApiUrl(ENDPOINTS.GET_USERS), {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        timeout: 10000 // 10 second timeout
       });
       
+      console.log('Raw API response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response data type:', typeof response.data);
+      console.log('Is array:', Array.isArray(response.data));
+      
       if (Array.isArray(response.data)) {
-        const usersWithIds = response.data.map(user => ({
-          ...user,
-          id: user.docId || user.id
-        }));
+        const usersWithIds = response.data.map((user, index) => {
+          const processedUser = {
+            ...user,
+            id: user.docId || user.id || `user_${index}` // Fallback ID if none exists
+          };
+          
+          // Ensure permissions exists
+          if (!processedUser.permissions) {
+            processedUser.permissions = {};
+          }
+          
+          return processedUser;
+        });
+        
+        console.log(`Successfully fetched ${usersWithIds.length} users:`, usersWithIds);
+        
+        // Debug: Log detailed info for each user
+        usersWithIds.forEach((user, index) => {
+          console.log(`User ${index + 1}:`, {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            permissions: user.permissions,
+            hasPermissions: Object.keys(user.permissions || {}).length > 0
+          });
+        });
+        
         setUsers(usersWithIds);
         setError('');
+        
+        // Verify all users were loaded
+        if (usersWithIds.length === 0) {
+          console.warn('No users found in response');
+          setError('No users found');
+        } else {
+          console.log(`✅ Successfully loaded ${usersWithIds.length} users`);
+        }
+        
       } else {
-        setError('Unexpected response format');
+        console.error('Unexpected response format:', response.data);
+        setError(`Unexpected response format: ${typeof response.data}`);
         setUsers([]);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Error fetching users');
-      setUsers([]);
-    }
-  };
-
-  const handleDepartmentChange = async (userId, newDepartment) => {
-    try {
-      // Get default permissions for the new department
-      const defaultPerms = DEPARTMENT_DEFAULT_PERMISSIONS[newDepartment] || {};
+      console.error(`Error fetching users (attempt ${retryCount + 1}):`, err);
       
-      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_USER),
-        { 
-          user_id: userId, 
-          department: newDepartment,
-          permissions: defaultPerms // Set default permissions for the department
-        },
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.data.message) {
-        setSuccess('Department updated successfully with default permissions');
-        fetchUsers();
+      if (retryCount < maxRetries) {
+        console.log(`Retrying in 2 seconds... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          fetchUsers(retryCount + 1);
+        }, 2000);
+      } else {
+        const errorMessage = err.response?.data?.error || err.message || 'Error fetching users';
+        console.error('Final error after all retries:', errorMessage);
+        setError(`Failed to fetch users after ${maxRetries + 1} attempts: ${errorMessage}`);
+        setUsers([]);
       }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error updating department');
-    }
-  };
-
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.post(getApiUrl(ENDPOINTS.ADD_USER), 
-        { 
-          username, 
-          email, 
-          password, 
-          appPassword,
-          role,
-          department: role === 'super-admin' ? null : department,
-          permissions
-        },
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.data.message) {
-        setSuccess(response.data.message);
-        setError('');
-        fetchUsers();
-        // Clear form
-        setUsername('');
-        setEmail('');
-        setPassword('');
-        setAppPassword('');
-        setRole('user');
-        setDepartment('');
-        setPermissions({});
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error adding user');
-      setSuccess('');
     }
   };
 
@@ -358,7 +228,10 @@ function Dashboard() {
       );
       if (response.data.message) {
         setSuccess(response.data.message);
-        fetchUsers();
+        // Refresh users list after successful deletion
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
       } else {
         setError(response.data.error);
       }
@@ -383,7 +256,10 @@ function Dashboard() {
       );
       if (response.data.message) {
         setSuccess(response.data.message);
-        fetchUsers();
+        // Refresh users list after successful role update
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
       } else {
         setError(response.data.error);
       }
@@ -394,11 +270,14 @@ function Dashboard() {
 
   const handleUpdatePermissions = async (userId, updatedPermissions) => {
     try {
-      const response = await axios.post(getApiUrl('update_permissions'), 
-        { 
+      // Prepare permissions data only
+      const permissionsData = {
           user_id: userId, 
           permissions: updatedPermissions
-        },
+      };
+      
+      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_PERMISSIONS), 
+        permissionsData,
         {
           withCredentials: true,
           headers: {
@@ -408,9 +287,13 @@ function Dashboard() {
       );
       if (response.data.message) {
         setSuccess(response.data.message);
-        fetchUsers();
         setShowPermissionsModal(false);
         setEditingPermissions({});
+        setSelectedUser(null);
+        // Refresh users list after successful permission update
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
       } else {
         setError(response.data.error);
       }
@@ -419,18 +302,8 @@ function Dashboard() {
     }
   };
 
-  const handlePermissionChange = (permission) => {
-    setPermissions(prev => ({
-      ...prev,
-      [permission]: !prev[permission]
-    }));
-  };
-
-  const handleEditPermissionChange = (permission) => {
-    setEditingPermissions(prev => ({
-      ...prev,
-      [permission]: !prev[permission]
-    }));
+  const handleEditPermissionChange = (updatedPermissions) => {
+    setEditingPermissions(updatedPermissions);
   };
 
   const handleEditAppPassword = (user) => {
@@ -440,13 +313,33 @@ function Dashboard() {
 
   const handleEditPermissions = (user) => {
     setEditingUserId(user.id);
-    setEditingPermissions(user.permissions || {});
+    setSelectedUser(user);
+    // Use only permissions
+    const permissions = user.permissions || {};
+    
+    // If user has no permissions at all, show a message
+    const hasAnyPermissions = Object.keys(permissions).length > 0;
+    if (!hasAnyPermissions) {
+      console.log(`User ${user.username} has no permissions set`);
+    }
+    
+    console.log(`Loading permissions for user ${user.username}:`, {
+      permissions: permissions,
+      hasAnyPermissions: hasAnyPermissions
+    });
+    setEditingPermissions(permissions);
     setShowPermissionsModal(true);
+  };
+
+  const handleModalOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleCancelEdit();
+    }
   };
 
   const handleSaveAppPassword = async (userId) => {
     try {
-      const response = await axios.post(getApiUrl("update_app_password"), {
+      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_APP_PASSWORD), {
         user_id: userId,
         appPassword: editingAppPassword
       }, {
@@ -458,7 +351,10 @@ function Dashboard() {
         setError("");
         setEditingUserId(null);
         setEditingAppPassword("");
-        fetchUsers();
+        // Refresh users list after successful password update
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
       } else {
         setError(response.data.error);
       }
@@ -472,64 +368,66 @@ function Dashboard() {
     setEditingAppPassword("");
     setShowPermissionsModal(false);
     setEditingPermissions({});
+    setSelectedUser(null);
   };
 
+  // Get current user info from auth context
   const getCurrentUserRole = () => {
-    // This should come from your authentication context
-    // For now, assuming super-admin for demonstration
-    return 'super-admin';
+    return currentUser?.role || 'user';
   };
 
   const getCurrentUserPermissions = () => {
-    // This should come from your authentication context
-    // For demonstration, returning super-admin permissions
-    return {
-      'reports': true,
-      'settings_access': true,
-      'user_management': true,
-      'can_create_admin': true,
-      'inventory': true,
-      'single_processing': true,
-      'batch_processing': true,
-      'marketing_campaigns': true,
-      'expense_management': true
-    };
+    return currentUser?.permissions || {};
   };
 
-  const hasPermission = (permission) => {
-    const userPermissions = getCurrentUserPermissions();
-    return userPermissions[permission] || false;
+  const hasUserPermission = (permission) => {
+    return getCurrentUserPermissions()[permission] || false;
   };
 
-  const canAccessDepartment = (department) => {
-    const currentRole = getCurrentUserRole();
-    if (currentRole === 'super-admin') return true;
-    if (currentRole === 'admin') return true;
-    
-    // For regular users, check department-specific permissions
-    const userPermissions = getCurrentUserPermissions();
-    switch (department) {
-      case 'store':
-        return userPermissions['inventory'] || false;
-      case 'marketing':
-        return userPermissions['marketing_campaigns'] || false;
-      case 'humanresource':
-        return userPermissions['single_processing'] || userPermissions['batch_processing'] || false;
-      default:
-        return false;
-    }
+  // Filter users based on current user's role
+  const getFilteredUsers = () => {
+    // Only admins can access this page, so return all users
+      return users;
   };
 
   const canEditPermissions = (targetUserRole) => {
-    const currentRole = getCurrentUserRole();
-    if (currentRole === 'super-admin') return true;
-    if (currentRole === 'admin' && targetUserRole === 'user') return true;
-    return false;
+    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+  };
+
+  const canEditRole = (targetUserRole) => {
+    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+  };
+
+  const canEditPassword = (targetUserRole) => {
+    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+  };
+
+  const canDeleteUser = (targetUserRole) => {
+    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+  };
+
+  const canCreateRole = (targetRole) => {
+    return canCreateUser(getCurrentUserRole(), getCurrentUserPermissions());
   };
 
   return (
-    <div className="dashboard-container">
-      <h1>User Management</h1>
+    <div className="dashboard-container centered">
+      <div className="dashboard-header">
+        <div className="header-left">
+          <h1>User Management Dashboard</h1>
+          <div className="user-count">
+            {getFilteredUsers().length} user{getFilteredUsers().length !== 1 ? 's' : ''} loaded
+          </div>
+        </div>
+        <div className="dashboard-actions">
+            <button 
+              className="add-user-btn"
+              onClick={() => window.location.href = '/add-user'}
+            >
+              Add New User
+            </button>
+        </div>
+      </div>
       
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
@@ -543,73 +441,65 @@ function Dashboard() {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Department</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map(user => (
+              {getFilteredUsers().map(user => (
                 <React.Fragment key={user.id}>
                   <tr>
-                    <td>{user.username}</td>
-                    <td>{user.email}</td>
+                    <td title={user.username}>{user.username}</td>
+                    <td title={user.email}>{user.email}</td>
                     <td>
                       <select
                         className="role-select"
                         value={user.role}
                         onChange={(e) => {
                           const newRole = e.target.value;
+                          console.log('Role change for user:', user.email, 'from', user.role, 'to', newRole);
                           handleRoleChange(user.id, newRole);
                         }}
+                        disabled={!canEditRole(user.role)}
                       >
                         <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        <option value="super-admin">Super Admin</option>
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        className="department-select"
-                        value={user.department || ''}
-                        onChange={(e) => handleDepartmentChange(user.id, e.target.value)}
-                        disabled={user.role === 'super-admin'}
-                      >
-                        <option value="">Select Department</option>
-                        {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                          <option key={value} value={value} title={DEPARTMENT_DESCRIPTIONS[value]}>
-                            {key === 'STORE' ? 'Store' : key === 'MARKETING' ? 'Marketing' : 'Human Resource'}
-                          </option>
-                        ))}
+                        {getCurrentUserRole() === 'admin' && <option value="admin">Admin</option>}
                       </select>
                     </td>
                     <td>
                       <div className="user-actions-buttons">
-                        <button
-                          className="action-button edit-button"
-                          onClick={() => handleEditAppPassword(user)}
-                        >
-                          Edit Password
-                        </button>
+                        {canEditPassword(user.role) && (
+                          <button
+                            className="action-button edit-button"
+                            onClick={() => handleEditAppPassword(user)}
+                            title="Edit Password"
+                          >
+                            Password
+                          </button>
+                        )}
                         {canEditPermissions(user.role) && (
                           <button
                             className="action-button permissions-button"
                             onClick={() => handleEditPermissions(user)}
+                            title="Edit Permissions"
                           >
-                            Edit Permissions
+                            Permissions
                           </button>
                         )}
-                        <button 
-                          className="action-button delete-button"
-                          onClick={() => handleDeleteUser(user.id)}
-                        >
-                          Delete
-                        </button>
+                        {canDeleteUser(user.role) && (
+                          <button 
+                            className="action-button delete-button"
+                            onClick={() => handleDeleteUser(user.id)}
+                            title="Delete User"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                   {editingUserId === user.id && !showPermissionsModal && (
                     <tr>
-                      <td colSpan={5} className="user-actions-row">
+                      <td colSpan={4} className="user-actions-row">
                         <div className="edit-app-password-inline">
                           <input
                             type="password"
@@ -641,16 +531,38 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Permissions Modal */}
-      {showPermissionsModal && (
-        <div className="modal-overlay">
-          <div className="modal-content permissions-modal">
-            <h3>Edit Permissions</h3>
-            <PermissionsGrid
+      {/* Simplified Permissions Modal */}
+      {showPermissionsModal && selectedUser && (
+        <div className="modal-overlay" onClick={handleModalOverlayClick}>
+          <div className="modal-content permissions-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Permissions - {selectedUser.username}</h3>
+              <div className="user-info">
+                <span className="user-role">Role: {selectedUser.role === 'admin' ? 'Admin' : 'User'}</span>
+                {Object.keys(editingPermissions).length === 0 && (
+                  <div className="no-permissions-warning" style={{ 
+                    color: '#ff6b6b', 
+                    fontSize: '14px', 
+                    marginTop: '5px',
+                    fontStyle: 'italic'
+                  }}>
+                    ⚠️ This user currently has no permissions assigned
+                  </div>
+                )}
+              </div>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelEdit}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <SimplePermissions
               permissions={editingPermissions}
               onPermissionChange={handleEditPermissionChange}
               isEditing={true}
-              targetUserRole={users.find(u => u.id === editingUserId)?.role}
+              targetUserRole={selectedUser.role}
               currentUserRole={getCurrentUserRole()}
             />
             <div className="modal-actions">
@@ -670,118 +582,8 @@ function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Only show Add User form if user has user_management permission */}
-      {hasPermission('user_management') && (
-        <div className="add-user-form">
-          <h2>Add New User</h2>
-          <form onSubmit={handleAddUser}>
-            <div className="form-group">
-              <label htmlFor="username">Username:</label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="email">Email:</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="password">Password:</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="appPassword">App Password:</label>
-              <div className="password-input-container">
-                <input
-                  type={showAppPassword ? "text" : "password"}
-                  id="appPassword"
-                  value={appPassword}
-                  onChange={(e) => setAppPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowAppPassword((prev) => !prev)}
-                  tabIndex={-1}
-                >
-                  {showAppPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="role">Base Role:</label>
-              <select 
-                id="role" 
-                value={role} 
-                onChange={(e) => setRole(e.target.value)}
-                required
-              >
-                <option value="user">User</option>
-                {hasPermission('can_create_admin') && <option value="admin">Admin</option>}
-                {hasPermission('can_create_admin') && <option value="super-admin">Super Admin</option>}
-              </select>
-            </div>
-
-            {role !== 'super-admin' && (
-              <div className="form-group">
-                <label htmlFor="department">Department:</label>
-                <select 
-                  id="department" 
-                  value={department} 
-                  onChange={(e) => setDepartment(e.target.value)}
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {Object.entries(DEPARTMENTS)
-                    .filter(([key, value]) => canAccessDepartment(value))
-                    .map(([key, value]) => (
-                    <option key={value} value={value} title={DEPARTMENT_DESCRIPTIONS[value]}>
-                      {key === 'STORE' ? 'Store' : key === 'MARKETING' ? 'Marketing' : key=== 'Human Resource' ? 'Human Resource' : 'ACCOUNTS'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="form-group permissions-section">
-              <label>Permissions:</label>
-              <PermissionsGrid
-                permissions={permissions}
-                onPermissionChange={handlePermissionChange}
-                isEditing={true}
-                targetUserRole={role}
-                currentUserRole={getCurrentUserRole()}
-              />
-            </div>
-            
-            <button type="submit">Add User</button>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
 
-export default Dashboard; 
+export default Dashboard;

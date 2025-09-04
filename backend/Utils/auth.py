@@ -99,18 +99,46 @@ def login():
             except Exception as e:
                 logger.error(f"OAuth token error for user {email}: {e}", exc_info=True)
 
-        # Assign default permissions based on role
+        # Get role and permissions
         role = user.get('role')
-        permissions = user.get('permissions') or {}
-
-        if not permissions and role == 'super-admin':
+        permissions = user.get('permissions', {})
+        tree_permissions = user.get('tree_permissions', {})
+        
+        # For admins, give them all permissions
+        if role == 'admin':
             permissions = {
+                'inventory': True,
+                'reports': True,
                 'single_processing': True,
                 'batch_processing': True,
-                'user_management': True,
-                'settings_access': True,
-                'can_create_admin': True
+                'expense_management': True,
+                'marketing_campaigns': True,
+                'reactor_reports': True
             }
+        # For regular users, convert tree_permissions to simple permissions if needed
+        elif not permissions and tree_permissions:
+            # Convert tree_permissions to simple permissions
+            permissions = {}
+            for tree_key, tree_value in tree_permissions.items():
+                if isinstance(tree_value, bool) and tree_value:
+                    # Extract service name from tree key (e.g., "gulbarga.humanresource.single_processing" -> "single_processing")
+                    parts = tree_key.split('.')
+                    if len(parts) >= 3:
+                        service_name = parts[2]  # e.g., "single_processing"
+                        permissions[service_name] = True
+            
+            # Update user in Firebase with new permissions structure
+            try:
+                from Utils.firebase_utils import db
+                user_ref = db.collection('USERS').document(user.get('id'))
+                user_ref.update({'permissions': permissions})
+                logger.info(f"Updated user {email} with simple permissions: {permissions}")
+            except Exception as e:
+                logger.error(f"Failed to update user permissions: {e}")
+        
+        # If still no permissions, set empty object
+        if not permissions:
+            permissions = {}
 
         user_data = {
             'id': user.get('id'),
@@ -121,7 +149,9 @@ def login():
         }
 
         session['user'] = user_data
+        session.permanent = True  # Make session permanent
         logger.info(f"Login successful: {email}")
+        logger.info(f"User permissions: {permissions}")
         return jsonify({'success': True, 'user': user_data}), 200
 
     except Exception as e:

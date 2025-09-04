@@ -18,8 +18,9 @@ from Utils.auth import auth_bp
 from Utils.email_utils import send_email_smtp
 from Utils.whatsapp_utils import (
     send_whatsapp_message,
-    handle_whatsapp_notification,
     get_employee_contact,
+    WhatsAppNodeClient,
+    WHATSAPP_NODE_SERVICE_URL
 )
 from firebase_admin import firestore
 from Utils.firebase_utils import (
@@ -31,9 +32,8 @@ from Utils.firebase_utils import (
     delete_user as firebase_delete_user,
     add_salary_slip,
     get_salary_slips_by_user,
-    update_user_permissions,
+
     update_user_app_password,
-    update_user_department,
     update_user,
     db
 )
@@ -42,12 +42,14 @@ from docx import Document
 import re
 import base64
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Removed complex thread pool executor - using direct client calls instead
 
 # Initialize gspread client
 try:
@@ -62,47 +64,27 @@ DEPARTMENTS = {
     'STORE': 'store',
     'MARKETING': 'marketing',
     'HUMANRESOURCE': 'humanresource',
-    'Accounts': 'accounts'
+    'ACCOUNTS': 'accounts',
+    'REPORTS_DEPARTMENT': 'reports_department',
+    'OPERATIONS_DEPARTMENT': 'operations_department'
 }
 
-# Define default permissions for each role (aligned with Dashboard.jsx)
-ROLE_PERMISSIONS = {
-    'super-admin': {
-        'reports': True,
-        'settings_access': True,
-        'user_management': True,
-        'can_create_admin': True,
-        'inventory': True,
-        'single_processing': True,
-        'batch_processing': True,
-        'marketing_campaigns': True,
-        'expense_management': True
-    },
-    'admin': {
-        'reports': True,
-        'settings_access': True,
-        'user_management': True,
-        'can_create_admin': False
-    },
-    'user': {
-        'reports': False  # Will be overridden by department permissions
-    }
+# Note: Admin role doesn't need specific permissions - they have access to everything by design
+# Regular users get permissions assigned through the Dashboard interface
+
+# Define departments (aligned with frontend config)
+DEPARTMENTS_CONFIG = {
+    'STORE': 'store',
+    'MARKETING': 'marketing', 
+    'HUMANRESOURCE': 'humanresource',
+    'ACCOUNTS': 'accounts',
+    'OPERATIONS_DEPARTMENT': 'operations_department',
+    'REPORTS_DEPARTMENT': 'reports_department'
 }
 
-# Department-based default permissions (aligned with Dashboard.jsx)
-DEPARTMENT_DEFAULT_PERMISSIONS = {
-    DEPARTMENTS['STORE']: {
-        'inventory': True
-    },
-    DEPARTMENTS['MARKETING']: {
-        'marketing_campaigns': True
-    },
-    DEPARTMENTS['HUMANRESOURCE']: {
-        'single_processing': True,
-        'batch_processing': True,
-    },
-    DEPARTMENTS["Accounts"]: {}
-}
+
+
+
 
 # Configure logging first
 logging.basicConfig(
@@ -118,6 +100,18 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_default_secret_key")  # Set secret key for sessions
+
+# Configure session settings
+app.config.update(
+    SESSION_COOKIE_SECURE=True,  # Only send cookie over HTTPS
+    SESSION_COOKIE_HTTPONLY=True,  # Prevent JavaScript access
+    SESSION_COOKIE_SAMESITE='Lax',  # Allow cross-site requests
+    SESSION_COOKIE_DOMAIN='.bajajearths.com',  # Set domain to allow subdomain access
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=24),  # Session expires in 24 hours
+    SESSION_COOKIE_PATH='/',  # Set cookie path
+    SESSION_REFRESH_EACH_REQUEST=True  # Refresh session on each request
+)
+
 logger.info("Flask app initialized")
 
 # Frontend URL
@@ -155,28 +149,28 @@ if not app.logger.handlers:
     app.logger.setLevel(logging.INFO)
     handler.propagate = False
 
-# CORS configuration
+from flask_cors import CORS
+
+# CORS Configuration
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
-    "http://localhost:3000"
+    "https://admin.bajajearths.com",
+    "https://whatsapp.bajajearths.com",
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role"]
-app.config['CORS_EXPOSE_HEADERS'] = ["Content-Type", "Authorization"]
+app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role", "X-User-Email"]
+app.config['CORS_EXPOSE_HEADERS'] = ["Content-Type", "Authorization", "X-User-Email"]
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_MAX_AGE'] = 120
 
-# Initialize CORS
+# Initialize CORS with proper configuration
 CORS(app, 
-     resources={r"/*": {
-         "origins": app.config['CORS_ORIGINS'],
-         "methods": app.config['CORS_METHODS'],
-         "allow_headers": app.config['CORS_ALLOW_HEADERS'],
-         "expose_headers": app.config['CORS_EXPOSE_HEADERS'],
-         "supports_credentials": app.config['CORS_SUPPORTS_CREDENTIALS'],
-         "max_age": app.config['CORS_MAX_AGE']
-     }},
-     supports_credentials=True)
+     origins=app.config['CORS_ORIGINS'],
+     methods=app.config['CORS_METHODS'],
+     allow_headers=app.config['CORS_ALLOW_HEADERS'],
+     expose_headers=app.config['CORS_EXPOSE_HEADERS'],
+     supports_credentials=True,
+     max_age=app.config['CORS_MAX_AGE'])
 
 @app.before_request
 def log_request_info():
@@ -192,41 +186,18 @@ def log_request_info():
 @app.after_request
 def after_request(response):
     """Add CORS headers to all responses, but do not log response status or headers."""
-    # Remove verbose logs
+    # Flask-CORS is already handling CORS headers, so we don't need to add them manually
     # logger.info('Response status: %s', response.status)
     # logger.info('Response headers: %s', response.headers)
     # origin = request.headers.get('Origin')
     # logger.info('Request origin: %s', origin)
-    origin = request.headers.get('Origin')
-    if origin in app.config['CORS_ORIGINS']:
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Headers', ','.join(app.config['CORS_ALLOW_HEADERS']))
-        response.headers.add('Access-Control-Allow-Methods', ','.join(app.config['CORS_METHODS']))
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Max-Age', str(app.config['CORS_MAX_AGE']))
-    # logger.info('Preflight response headers: %s', response.headers)
     return response
 
-# Handle OPTIONS requests
-@app.route("/api/preview-file", methods=["OPTIONS"])
-def handle_preflight():
-    logger.info('Handling preflight request for /api/preview-file')
-    response = app.make_default_options_response()
-    origin = request.headers.get('Origin')
-    if origin in app.config['CORS_ORIGINS']:
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Headers', ','.join(app.config['CORS_ALLOW_HEADERS']))
-        response.headers.add('Access-Control-Allow-Methods', ','.join(app.config['CORS_METHODS']))
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Max-Age', str(app.config['CORS_MAX_AGE']))
-    # logger.info('Preflight response headers: %s', response.headers)
-    return response
+# Flask-CORS automatically handles OPTIONS preflight requests, so we don't need manual handlers
 
-@app.route("/api/preview-file", methods=["POST", "OPTIONS"])
+@app.route("/api/preview-file", methods=["POST"])
 def preview_file():
     logger.info('Handling preview file request')
-    if request.method == "OPTIONS":
-        return handle_preflight()
 
     temp_path = None
     try:
@@ -311,11 +282,22 @@ def add_user():
         role = data.get('role')
         password = generate_password_hash(data.get('password'))
         app_password = data.get('appPassword') or data.get('app_password')
-        department = data.get('department')
         permissions = data.get('permissions', {})
 
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
+
+        # Admin role gets all permissions automatically
+        if role == 'admin':
+            permissions = {
+                'inventory': True,
+                'reports': True,
+                'single_processing': True,
+                'batch_processing': True,
+                'expense_management': True,
+                'marketing_campaigns': True,
+                'reactor_reports': True
+            }
 
         user_id = firebase_add_user(
             username=username, 
@@ -323,7 +305,6 @@ def add_user():
             role=role, 
             password_hash=password, 
             app_password=app_password,
-            department=department,
             permissions=permissions
         )
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
@@ -335,14 +316,33 @@ def add_user():
 @app.route("/api/delete_user", methods=["POST"])
 def delete_user():
     try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
         data = request.json
         user_id = data.get('user_id')
 
         if not user_id:
             return jsonify({"error": "User ID is required"}), 400
 
-        firebase_delete_user(user_id)
-        return jsonify({"message": "User deleted successfully"}), 200
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
+
+        # Admin can delete any user
+        if current_user_role == 'admin':
+            firebase_delete_user(user_id)
+            return jsonify({"message": "User deleted successfully"}), 200
+        
+        # Regular users cannot delete other users
+        else:
+            return jsonify({"error": "Insufficient permissions to delete users"}), 403
 
     except Exception as e:
         logger.error("Error deleting user: {}".format(e))
@@ -351,6 +351,11 @@ def delete_user():
 @app.route("/api/update_role", methods=["POST"])
 def update_role():
     try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
         data = request.json
         user_id = data.get('user_id')
         new_role = data.get('role')
@@ -358,51 +363,47 @@ def update_role():
         if not all([user_id, new_role]):
             return jsonify({"error": "User ID and role are required"}), 400
 
-        # Use the role permissions defined at the top of the file
-        role_permissions = ROLE_PERMISSIONS
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
 
-        # Update role
-        firebase_update_role(user_id, new_role)
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
+
+        # Admin can update any user's role
+        if current_user_role == 'admin':
+            # Update role
+            firebase_update_role(user_id, new_role)
+            
+            # Only update permissions if changing TO admin (admin gets all permissions)
+            # or if changing FROM admin (preserve existing permissions for regular users)
+            if new_role == 'admin':
+                # Admin role gets all permissions automatically
+                update_user_comprehensive_permissions(user_id, {
+                    'permissions': {
+                        'inventory': True,
+                        'reports': True,
+                        'single_processing': True,
+                        'batch_processing': True,
+                        'expense_management': True,
+                        'marketing_campaigns': True,
+                        'reactor_reports': True
+                    }
+                })
+            # For other role changes, preserve existing permissions (don't overwrite)
+            
+            return jsonify({"message": "Role updated successfully"}), 200
         
-        # Update permissions based on role
-        update_user_permissions(user_id, role_permissions.get(new_role, role_permissions['user']))
-        
-        # Clear department for super-admin
-        if new_role == 'super-admin':
-            update_user_department(user_id, None)
-        
-        return jsonify({"message": "Role and permissions updated successfully"}), 200
+        # Regular users cannot update roles
+        else:
+            return jsonify({"error": "Insufficient permissions to update user roles"}), 403
 
     except Exception as e:
         logger.error("Error updating role: {}".format(e))
         return jsonify({"error": str(e)}), 500
     
-@app.route("/api/update_department", methods=["POST"])
-def update_department():
-    try:
-        data = request.json
-        user_id = data.get('user_id')
-        new_department = data.get('department')
 
-        if not all([user_id, new_department]):
-            return jsonify({"error": "User ID and role are required"}), 400
-
-        # Use the role permissions defined at the top of the file
-        department_permissions = DEPARTMENT_DEFAULT_PERMISSIONS
-
-        # Update role
-        firebase_update_role(user_id, new_department)
-        
-        # Update permissions based on role
-        update_user_department(user_id, department_permissions.get(new_department, department_permissions['depaartment']))
-
-
-        
-        return jsonify({"message": "Department updated successfully"}), 200
-
-    except Exception as e:
-        logger.error("Error updating role: {}".format(e))
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/get_users", methods=["GET"])
 def get_users():
@@ -560,21 +561,21 @@ def generate_salary_slip_single():
                         months_data=user_inputs["months_data"],
                         collected_pdfs=collected_pdfs
                     )
-                    if pdf_path:
-                        collected_pdfs.append(pdf_path)
+                    if pdf_path and pdf_path.get("success") and pdf_path.get("output_file"):
+                        collected_pdfs.append(pdf_path["output_file"])
                         results.append({
                             "month": full_month,
                             "year": full_year,
                             "status": "success",
                             "message": "Salary slip generated successfully",
-                            "pdf_path": pdf_path
+                            "pdf_path": pdf_path["output_file"]
                         })
                     else:
                         results.append({
                             "month": full_month,
                             "year": full_year,
                             "status": "error",
-                            "message": "Failed to generate salary slip"
+                            "message": "Failed to generate salary slip" + (f": {pdf_path.get('errors', [])}" if pdf_path and isinstance(pdf_path, dict) else "")
                         })
                 except Exception as e:
                     results.append({
@@ -593,6 +594,7 @@ def generate_salary_slip_single():
                 })
 
         # Only proceed with notifications if we have successfully generated PDFs
+        # Note: WhatsApp notifications are sent here to prevent duplicates from process_salary_slip function
         if collected_pdfs and employee and drive_employees and email_employees and contact_employees:
             # Send email if enabled
             if send_email:
@@ -631,12 +633,30 @@ def generate_salary_slip_single():
                         )
                         if success == "TOKEN_EXPIRED":
                             return jsonify({"error": "TOKEN_EXPIRED"}), 401
-                        if success:
-                            logging.info("Email sent to {}".format(recipient_email))
-                        else:
+                        elif success == "USER_NOT_LOGGED_IN":
+                            return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                        elif success == "NO_SMTP_CREDENTIALS":
+                            return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                        elif success == "INVALID_RECIPIENT":
+                            return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
+                        elif success == "NO_VALID_RECIPIENTS":
+                            return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
+                        elif success == "SMTP_AUTH_FAILED":
+                            return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
+                        elif success == "SMTP_ERROR":
+                            return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
+                        elif success == "EMAIL_SEND_ERROR":
+                            return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                        elif not success:
                             logging.error("Failed to send email to {}".format(recipient_email))
+                            return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
+                        else:
+                            logging.info("Email sent to {}".format(recipient_email))
+                    else:
+                        logging.warning("No email found for {}".format(employee.get("Name")))
                 except Exception as e:
                     logging.error("Error sending email: {}".format(str(e)))
+                    return jsonify({"error": "EMAIL_ERROR", "message": f"Error sending email: {str(e)}"}), 500
 
             # Send WhatsApp messages if enabled
             if send_whatsapp:
@@ -644,8 +664,10 @@ def generate_salary_slip_single():
                     contact_name = employee.get("Name")
                     whatsapp_number = get_employee_contact(contact_name, contact_employees)
                     if whatsapp_number and collected_pdfs:
+                        logging.info(f"Sending WhatsApp notification to {contact_name} for {len(collected_pdfs)} PDF(s)")
+                        logging.info(f"PDF files to send: {collected_pdfs}")
                         # Send all collected PDFs in one WhatsApp message
-                        handle_whatsapp_notification(
+                        success = handle_whatsapp_notification(
                             contact_name=contact_name,
                             full_month=full_month,
                             full_year=full_year,
@@ -654,8 +676,41 @@ def generate_salary_slip_single():
                             is_special=len(user_inputs["months_data"]) > 1,
                             months_data=user_inputs["months_data"]
                         )
+                        
+                        if success == "USER_NOT_LOGGED_IN":
+                            return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                        elif success == "WHATSAPP_SERVICE_NOT_READY":
+                            # Instead of returning 503, log a warning and continue
+                            logging.warning("WhatsApp service is not ready. Salary slips generated but WhatsApp messages could not be sent.")
+                            app.logger.warning("WhatsApp service is not ready. Please authenticate WhatsApp first.")
+                            # Continue processing - don't return error
+                            # return jsonify({"error": "WHATSAPP_SERVICE_NOT_READY", "message": "WhatsApp service is not ready. Please try again later."}), 503
+                        elif success == "INVALID_FILE_PATH":
+                            return jsonify({"error": "INVALID_FILE_PATH", "message": "Invalid file path for WhatsApp message."}), 400
+                        elif success == "INVALID_FILE_PATH_TYPE":
+                            return jsonify({"error": "INVALID_FILE_PATH_TYPE", "message": "Invalid file path type for WhatsApp message."}), 400
+                        elif success == "NO_VALID_FILES":
+                            return jsonify({"error": "NO_VALID_FILES", "message": "No valid files found for WhatsApp message."}), 400
+                        elif success == "NO_FILES_FOR_UPLOAD":
+                            return jsonify({"error": "NO_FILES_FOR_UPLOAD", "message": "No files available for WhatsApp upload."}), 400
+                        elif success == "WHATSAPP_API_ERROR":
+                            return jsonify({"error": "WHATSAPP_API_ERROR", "message": "WhatsApp API error. Please try again later."}), 500
+                        elif success == "WHATSAPP_CONNECTION_ERROR":
+                            return jsonify({"error": "WHATSAPP_CONNECTION_ERROR", "message": "WhatsApp connection error. Please try again later."}), 500
+                        elif success == "WHATSAPP_TIMEOUT_ERROR":
+                            return jsonify({"error": "WHATSAPP_TIMEOUT_ERROR", "message": "WhatsApp timeout error. Please try again later."}), 500
+                        elif success == "WHATSAPP_SEND_ERROR":
+                            return jsonify({"error": "WHATSAPP_SEND_ERROR", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                        elif not success:
+                            logging.error("Failed to send WhatsApp message to {}".format(contact_name))
+                            return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                        else:
+                            logging.info("WhatsApp message sent successfully to {}".format(contact_name))
+                    else:
+                        logging.warning("No WhatsApp number found for {}".format(contact_name))
                 except Exception as e:
                     logging.error("Error sending WhatsApp message: {}".format(str(e)))
+                    return jsonify({"error": "WHATSAPP_ERROR", "message": f"Error sending WhatsApp message: {str(e)}"}), 500
 
         # Return results for all processed months
         return jsonify({
@@ -744,9 +799,107 @@ def generate_salary_slips_batch():
                 if send_email:
                     app.logger.info("Sending email to {}".format(employee[5]))  # Assuming email is at index 5
                     user_email = session.get('user', {}).get('email')
-                    app.logger.info("Email sent to {}".format(employee[5]))        
+                    if not user_email:
+                        return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                    
+                    # Get recipient email
+                    recipient_email = get_employee_email(employee[4], email_employees)  # Assuming name is at index 4
+                    if recipient_email:
+                        email_subject = "Salary Slip - Bajaj Earths Pvt. Ltd."
+                        email_body = f"""
+                        <html>
+                        <body>
+                        <p>Dear <b>{employee[4]}</b>,</p>
+                        <p>Please find attached your <b>salary slip</b> for the month of <b>{full_month} {full_year}</b>.</p>
+                        <p>This document includes:</p>
+                        <ul>
+                        <li>Earnings Breakdown</li>
+                        <li>Deductions Summary</li>
+                        <li>Net Salary Details</li>
+                        </ul>
+                        <p>Kindly review the salary slip, and if you have any questions or concerns, please feel free to reach out to the HR department.</p>
+                        <p>Thanks & Regards,</p>
+                        </body>
+                        </html>
+                        """
+                        
+                        success = send_email_smtp(
+                            recipient_email=recipient_email,
+                            subject=email_subject,
+                            body=email_body,
+                            attachment_paths=[output_pdf] if 'output_pdf' in locals() else [],
+                            user_email=user_email
+                        )
+                        
+                        if success == "TOKEN_EXPIRED":
+                            return jsonify({"error": "TOKEN_EXPIRED"}), 401
+                        elif success == "USER_NOT_LOGGED_IN":
+                            return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                        elif success == "NO_SMTP_CREDENTIALS":
+                            return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                        elif success == "INVALID_RECIPIENT":
+                            return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
+                        elif success == "NO_VALID_RECIPIENTS":
+                            return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
+                        elif success == "SMTP_AUTH_FAILED":
+                            return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
+                        elif success == "SMTP_ERROR":
+                            return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
+                        elif success == "EMAIL_SEND_ERROR":
+                            return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                        elif not success:
+                            app.logger.error("Failed to send email to {}".format(recipient_email))
+                            return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
+                    else:
+                        app.logger.warning("No email found for {}".format(employee[4]))
+                        
                 if send_whatsapp:
                     app.logger.info("Sending WhatsApp message to {}".format(employee[6]))  # Assuming phone number is at index 6
+                    user_email = session.get('user', {}).get('email')
+                    if not user_email:
+                        return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                    
+                    contact_name = employee[4]  # Assuming name is at index 4
+                    whatsapp_number = get_employee_contact(contact_name, contact_employees)
+                    if whatsapp_number:
+                        success = handle_whatsapp_notification(
+                            contact_name=contact_name,
+                            full_month=full_month,
+                            full_year=full_year,
+                            whatsapp_number=whatsapp_number,
+                            file_path=[output_pdf] if 'output_pdf' in locals() else [],
+                            is_special=False
+                        )
+                        
+                        if success == "USER_NOT_LOGGED_IN":
+                            return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                        elif success == "WHATSAPP_SERVICE_NOT_READY":
+                            # Instead of returning 503, log a warning and continue
+                            logging.warning("WhatsApp service is not ready. Salary slips generated but WhatsApp messages could not be sent.")
+                            app.logger.warning("WhatsApp service is not ready. Please authenticate WhatsApp first.")
+                            # Continue processing - don't return error
+                            # return jsonify({"error": "WHATSAPP_SERVICE_NOT_READY", "message": "WhatsApp service is not ready. Please try again later."}), 503
+                        elif success == "INVALID_FILE_PATH":
+                            return jsonify({"error": "INVALID_FILE_PATH", "message": "Invalid file path for WhatsApp message."}), 400
+                        elif success == "INVALID_FILE_PATH_TYPE":
+                            return jsonify({"error": "INVALID_FILE_PATH_TYPE", "message": "Invalid file path type for WhatsApp message."}), 400
+                        elif success == "NO_VALID_FILES":
+                            return jsonify({"error": "NO_VALID_FILES", "message": "No valid files found for WhatsApp message."}), 400
+                        elif success == "NO_FILES_FOR_UPLOAD":
+                            return jsonify({"error": "NO_FILES_FOR_UPLOAD", "message": "No files available for WhatsApp upload."}), 400
+                        elif success == "WHATSAPP_API_ERROR":
+                            return jsonify({"error": "WHATSAPP_API_ERROR", "message": "WhatsApp API error. Please try again later."}), 500
+                        elif success == "WHATSAPP_CONNECTION_ERROR":
+                            return jsonify({"error": "WHATSAPP_CONNECTION_ERROR", "message": "WhatsApp connection error. Please try again later."}), 500
+                        elif success == "WHATSAPP_TIMEOUT_ERROR":
+                            return jsonify({"error": "WHATSAPP_TIMEOUT_ERROR", "message": "WhatsApp timeout error. Please try again later."}), 500
+                        elif success == "WHATSAPP_SEND_ERROR":
+                            return jsonify({"error": "WHATSAPP_SEND_ERROR", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                        elif not success:
+                            app.logger.error("Failed to send WhatsApp message to {}".format(contact_name))
+                            return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                        else:
+                            app.logger.info("WhatsApp message sent successfully to {}".format(contact_name))
             except Exception as e:
                 error_msg = "Error processing salary slip for employee {}: {}".format(employee_name, e)
                 app.logger.error(error_msg)
@@ -778,6 +931,11 @@ def home():
 @app.route("/api/update_permissions", methods=["POST"])
 def update_permissions():
     try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
         data = request.json
         user_id = data.get('user_id')
         permissions = data.get('permissions')
@@ -785,18 +943,27 @@ def update_permissions():
         if not all([user_id, permissions]):
             return jsonify({"error": "User ID and permissions are required"}), 400
 
-        # Get current user
-        user = get_user_by_id(user_id)
-        if not user:
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
             return jsonify({"error": "User not found"}), 404
 
-        # Only allow permission updates for non-admin roles
-        if user.get('role') in ['admin', 'super-admin']:
-            return jsonify({"error": "Cannot update permissions for admin or super-admin roles"}), 403
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
 
-        # Update permissions
-        update_user_permissions(user_id, permissions)
-        return jsonify({"message": "Permissions updated successfully"}), 200
+        # Admin can update permissions for any user
+        if current_user_role == 'admin':
+            # Update user with tree-based permissions only
+            from Utils.firebase_utils import update_user_comprehensive_permissions
+            update_user_comprehensive_permissions(user_id, {
+                'permissions': permissions
+            })
+            
+            return jsonify({"message": "Permissions updated successfully"}), 200
+        
+        # Regular users cannot update permissions
+        else:
+            return jsonify({"error": "Insufficient permissions to update user permissions"}), 403
 
     except Exception as e:
         logger.error("Error updating permissions: {}".format(e))
@@ -934,15 +1101,36 @@ def generate_report():
                             # Send WhatsApp message with attachments
                             success = send_whatsapp_message(
                                 contact_name=recipient_name,
-                                message=message_content,
+                                message="",  # Empty message - will use template
                                 file_paths=attachment_paths,
                                 file_sequence = file_sequence,
                                 whatsapp_number=recipient_phone,
                                 process_name="report"
                             )
                             
-                            if not success:
+                            if success == "USER_NOT_LOGGED_IN":
+                                return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                            elif success == "WHATSAPP_SERVICE_NOT_READY":
+                                return jsonify({"error": "WHATSAPP_SERVICE_NOT_READY", "message": "WhatsApp service is not ready. Please try again later."}), 503
+                            elif success == "INVALID_FILE_PATH":
+                                return jsonify({"error": "INVALID_FILE_PATH", "message": "Invalid file path for WhatsApp message."}), 400
+                            elif success == "INVALID_FILE_PATH_TYPE":
+                                return jsonify({"error": "INVALID_FILE_PATH_TYPE", "message": "Invalid file path type for WhatsApp message."}), 400
+                            elif success == "NO_VALID_FILES":
+                                return jsonify({"error": "NO_VALID_FILES", "message": "No valid files found for WhatsApp message."}), 400
+                            elif success == "NO_FILES_FOR_UPLOAD":
+                                return jsonify({"error": "NO_FILES_FOR_UPLOAD", "message": "No files available for WhatsApp upload."}), 400
+                            elif success == "WHATSAPP_API_ERROR":
+                                return jsonify({"error": "WHATSAPP_API_ERROR", "message": "WhatsApp API error. Please try again later."}), 500
+                            elif success == "WHATSAPP_CONNECTION_ERROR":
+                                return jsonify({"error": "WHATSAPP_CONNECTION_ERROR", "message": "WhatsApp connection error. Please try again later."}), 500
+                            elif success == "WHATSAPP_TIMEOUT_ERROR":
+                                return jsonify({"error": "WHATSAPP_TIMEOUT_ERROR", "message": "WhatsApp timeout error. Please try again later."}), 500
+                            elif success == "WHATSAPP_SEND_ERROR":
+                                return jsonify({"error": "WHATSAPP_SEND_ERROR", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                            elif not success:
                                 logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
+                                return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
 
                         except Exception as e:
                             logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
@@ -1008,8 +1196,23 @@ def generate_report():
                                     "error": "TOKEN_EXPIRED",
                                     "request_data": request_data
                                 }), 401
-                            if not success:
+                            elif success == "USER_NOT_LOGGED_IN":
+                                return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                            elif success == "NO_SMTP_CREDENTIALS":
+                                return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                            elif success == "INVALID_RECIPIENT":
+                                return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
+                            elif success == "NO_VALID_RECIPIENTS":
+                                return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
+                            elif success == "SMTP_AUTH_FAILED":
+                                return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
+                            elif success == "SMTP_ERROR":
+                                return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
+                            elif success == "EMAIL_SEND_ERROR":
+                                return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                            elif not success:
                                 logger.error("Failed to send email to {}".format(recipient_email))
+                                return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
                         except Exception as e:
                             logger.error("Error sending email: {}".format(str(e)))
 
@@ -1214,16 +1417,37 @@ def retry_reports():
                                 # Send WhatsApp message with attachments
                                 success = send_whatsapp_message(
                                     contact_name=recipient_name,
-                                    message=message_content,
+                                    message="",  # Empty message - will use template
                                     file_paths=attachment_paths,
                                     file_sequence=file_sequence,
                                     whatsapp_number=recipient_phone,
                                     process_name="report"
                                 )
                                 
-                                if not success:
+                                if success == "USER_NOT_LOGGED_IN":
+                                    return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                                elif success == "WHATSAPP_SERVICE_NOT_READY":
+                                    return jsonify({"error": "WHATSAPP_SERVICE_NOT_READY", "message": "WhatsApp service is not ready. Please try again later."}), 503
+                                elif success == "INVALID_FILE_PATH":
+                                    return jsonify({"error": "INVALID_FILE_PATH", "message": "Invalid file path for WhatsApp message."}), 400
+                                elif success == "INVALID_FILE_PATH_TYPE":
+                                    return jsonify({"error": "INVALID_FILE_PATH_TYPE", "message": "Invalid file path type for WhatsApp message."}), 400
+                                elif success == "NO_VALID_FILES":
+                                    return jsonify({"error": "NO_VALID_FILES", "message": "No valid files found for WhatsApp message."}), 400
+                                elif success == "NO_FILES_FOR_UPLOAD":
+                                    return jsonify({"error": "NO_FILES_FOR_UPLOAD", "message": "No files available for WhatsApp upload."}), 400
+                                elif success == "WHATSAPP_API_ERROR":
+                                    return jsonify({"error": "WHATSAPP_API_ERROR", "message": "WhatsApp API error. Please try again later."}), 500
+                                elif success == "WHATSAPP_CONNECTION_ERROR":
+                                    return jsonify({"error": "WHATSAPP_CONNECTION_ERROR", "message": "WhatsApp connection error. Please try again later."}), 500
+                                elif success == "WHATSAPP_TIMEOUT_ERROR":
+                                    return jsonify({"error": "WHATSAPP_TIMEOUT_ERROR", "message": "WhatsApp timeout error. Please try again later."}), 500
+                                elif success == "WHATSAPP_SEND_ERROR":
+                                    return jsonify({"error": "WHATSAPP_SEND_ERROR", "message": "Failed to send WhatsApp message. Please try again."}), 500
+                                elif not success:
                                     logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
-                                    
+                                    return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
+
                             except Exception as e:
                                 logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
                         
@@ -1253,8 +1477,23 @@ def retry_reports():
                                 )
                                 if success == "TOKEN_EXPIRED":
                                     return jsonify({"error": "TOKEN_EXPIRED"}), 401
-                                if not success:
+                                elif success == "USER_NOT_LOGGED_IN":
+                                    return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
+                                elif success == "NO_SMTP_CREDENTIALS":
+                                    return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                                elif success == "INVALID_RECIPIENT":
+                                    return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
+                                elif success == "NO_VALID_RECIPIENTS":
+                                    return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
+                                elif success == "SMTP_AUTH_FAILED":
+                                    return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
+                                elif success == "SMTP_ERROR":
+                                    return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
+                                elif success == "EMAIL_SEND_ERROR":
+                                    return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                                elif not success:
                                     logger.error("Failed to send email to {}".format(recipient_email))
+                                    return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
                             except Exception as e:
                                 logger.error("Error sending email: {}".format(str(e)))
                                 
@@ -1369,13 +1608,35 @@ def reactor_report():
 @app.route("/api/update_app_password", methods=["POST"])
 def update_app_password():
     try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
         data = request.json
         user_id = data.get('user_id')
         app_password = data.get('appPassword') or data.get('app_password')
+        
         if not user_id or not app_password:
             return jsonify({"error": "User ID and app password are required"}), 400
-        update_user_app_password(user_id, app_password)
-        return jsonify({"message": "App password updated successfully"}), 200
+
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
+
+        # Admin can update any user's app password
+        if current_user_role == 'admin':
+            update_user_app_password(user_id, app_password)
+            return jsonify({"message": "App password updated successfully"}), 200
+        
+        # Regular users cannot update other users' app passwords
+        else:
+            return jsonify({"error": "Insufficient permissions to update app passwords"}), 403
+
     except Exception as e:
         logger.error("Error updating app password: {}".format(e))
         return jsonify({"error": str(e)}), 500
@@ -1383,32 +1644,49 @@ def update_app_password():
 @app.route("/api/update_user", methods=["POST"])
 def update_user_endpoint():
     try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
         data = request.json
         user_id = data.get('user_id')
-        department = data.get('department')
         permissions = data.get('permissions')
         
         if not user_id:
             return jsonify({"error": "User ID is required"}), 400
+
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
+
+        # Admin can update any user
+        if current_user_role == 'admin':
+                # Prepare update data
+                update_data = {}
+                if permissions is not None:
+                    update_data['permissions'] = permissions
+                    
+                if not update_data:
+                    return jsonify({"error": "No valid update data provided"}), 400
+                
+                # Update user permissions
+                from Utils.firebase_utils import update_user_comprehensive_permissions
+                
+                if 'permissions' in update_data:
+                    update_user_comprehensive_permissions(user_id, {
+                        'permissions': update_data['permissions']
+                    })
+                
+                return jsonify({"message": "User updated successfully"}), 200
         
-        # If department is provided, update with default permissions for that department
-        if department and department in DEPARTMENT_DEFAULT_PERMISSIONS:
-            permissions = DEPARTMENT_DEFAULT_PERMISSIONS[department]
-        
-        # Prepare update data
-        update_data = {}
-        if department is not None:
-            update_data['department'] = department
-        if permissions is not None:
-            update_data['permissions'] = permissions
-            
-        if not update_data:
-            return jsonify({"error": "No valid update data provided"}), 400
-        
-        # Update user
-        update_user(user_id, **update_data)
-        
-        return jsonify({"message": "User updated successfully"}), 200
+        # Regular users cannot update other users
+        else:
+            return jsonify({"error": "Insufficient permissions to update users"}), 403
         
     except Exception as e:
         logger.error("Error updating user: {}".format(e))
@@ -1515,37 +1793,184 @@ def logout():
 
 @app.route("/api/whatsapp-login", methods=["POST"])
 def whatsapp_login():
-    """Trigger WhatsApp login (reset session and get new QR)"""
+    """Simple WhatsApp login endpoint - no complex threading"""
     try:
-        from Utils.whatsapp_utils import trigger_whatsapp_login
-        result = trigger_whatsapp_login()
-        return jsonify(result), 200
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        if not user_email:
+            return jsonify({"error": "No user email found"}), 400
+        
+        logging.info(f"Starting WhatsApp login for user: {user_email}")
+        
+        # Create WhatsApp client directly
+        client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL, user_email)
+        
+        # Trigger login and get QR code
+        result = client.trigger_login()
+        logging.info(f"WhatsApp login result: {result}")
+        
+        # Return clean response
+        return jsonify({
+            "qr": result.get("qr", ""),
+            "authenticated": result.get("authenticated", False),
+            "message": result.get("message", ""),
+            "userInfo": result.get("userInfo")
+        })
+        
     except Exception as e:
-        logger.error(f"Error triggering WhatsApp login: {str(e)}")
-        return jsonify({"qr": "", "error": "Failed to trigger WhatsApp login"}), 500
+        logging.error(f"Error in WhatsApp login: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/whatsapp-phone-login", methods=["POST"])
+def whatsapp_phone_login():
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        data = request.get_json()
+        phone_number = data.get('phoneNumber')
+        code = data.get('code')
+        
+        if not phone_number:
+            return jsonify({"error": "Phone number is required"}), 400
+        
+        # Use thread pool for WhatsApp phone authentication
+        future = whatsapp_executor.submit(whatsapp_phone_login_worker, user_email, phone_number, code)
+        
+        try:
+            result = future.result(timeout=60)  # 60 second timeout for phone login
+            return jsonify(result)
+        except concurrent.futures.TimeoutError:
+            return jsonify({"error": "WhatsApp phone authentication timeout"}), 408
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    except Exception as e:
+        logging.error(f"Error in WhatsApp phone login: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Removed complex worker functions - using direct client calls instead
 
 @app.route("/api/whatsapp-status", methods=["GET"])
 def whatsapp_status():
-    """Get WhatsApp status from Node service (used by Navbar polling)"""
+    """Simple WhatsApp status endpoint - no complex threading"""
     try:
-        status = get_whatsapp_status()
-        # Ensure a consistent shape for the frontend
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        if not user_email:
+            return jsonify({"error": "No user email found"}), 400
+        
+        logging.info(f"Checking WhatsApp status for user: {user_email}")
+        
+        # Create WhatsApp client directly
+        client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL, user_email)
+        
+        # Get status
+        result = client.get_status()
+        logging.info(f"WhatsApp status result: {result}")
+        
+        # Return clean response
         return jsonify({
-            "isReady": bool(status.get("isReady")),
-            "status": status.get("status", "initializing")
-        }), 200
+            "isReady": result.get("isReady", False),
+            "status": result.get("status", "unavailable"),
+            "authenticated": result.get("authenticated", False),
+            "userInfo": result.get("userInfo")
+        })
+        
     except Exception as e:
-        logger.error(f"Error getting WhatsApp status: {str(e)}")
-        return jsonify({"isReady": False, "status": "error"}), 200
+        logging.error(f"Error in WhatsApp status: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Removed complex worker functions - using direct client calls instead
+
+@app.route("/api/whatsapp-force-new-session", methods=["POST"])
+def whatsapp_force_new_session():
+    """Simple WhatsApp force new session endpoint - no complex threading"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        if not user_email:
+            return jsonify({"error": "No user email found"}), 400
+        
+        logging.info(f"Forcing new WhatsApp session for user: {user_email}")
+        
+        # Create WhatsApp client directly
+        client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL, user_email)
+        
+        # Force new session
+        success = client.force_new_session()
+        logging.info(f"WhatsApp force new session result: {success}")
+        
+        if success:
+            return jsonify({"success": True, "message": "Session cleared successfully"})
+        else:
+            return jsonify({"success": False, "message": "Failed to clear session"})
+        
+    except Exception as e:
+        logging.error(f"Error in WhatsApp force new session: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Removed complex worker functions - using direct client calls instead
 
 @app.route("/api/whatsapp-logout", methods=["POST"])
 def whatsapp_logout():
+    """Simple WhatsApp logout endpoint - no complex threading"""
     try:
-        success = logout_whatsapp()
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        if not user_email:
+            return jsonify({"error": "No user email found"}), 400
+        
+        logging.info(f"Logging out WhatsApp for user: {user_email}")
+        
+        # Create WhatsApp client directly
+        client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL, user_email)
+        
+        # Logout
+        success = client.logout()
+        logging.info(f"WhatsApp logout result: {success}")
+        
         return jsonify({"success": bool(success)}), 200 if success else 500
+        
     except Exception as e:
-        logger.error(f"Error logging out WhatsApp: {str(e)}")
+        logging.error(f"Error logging out WhatsApp: {str(e)}")
         return jsonify({"success": False}), 500
+
+@app.route("/api/test-session", methods=["GET"])
+def test_session():
+    """Test endpoint to check if session is working properly"""
+    try:
+        logger.info(f"Test session endpoint called")
+        logger.info(f"Request cookies: {request.cookies}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Session contents: {session}")
+        logger.info(f"User in session: {session.get('user')}")
+        
+        if 'user' in session:
+            return jsonify({
+                "success": True,
+                "session_working": True,
+                "user": session['user'],
+                "message": "Session is working properly"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "session_working": False,
+                "message": "No user found in session"
+            }), 401
+    except Exception as e:
+        logger.error(f"Error in test session endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     try:
