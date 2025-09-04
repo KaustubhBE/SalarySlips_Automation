@@ -179,7 +179,6 @@ class WhatsAppNodeClient:
                     contact_name: str, 
                     whatsapp_number: str,
                     process_name: str = "salary_slip",
-                    message: str = "",
                     file_paths: List[str] = None,
                     variables: Dict = None,
                     options: Dict = None) -> Union[bool, str]:
@@ -213,20 +212,26 @@ class WhatsAppNodeClient:
                 'contact_name': contact_name,
                 'whatsapp_number': whatsapp_number,
                 'process_name': process_name,
-                'message': message,
                 'variables': json.dumps(variables),
                 'options': json.dumps(options)
             }
             
-            # Prepare files for upload
+            # Prepare files for upload - deduplicate file paths
             files = []
+            seen_files = set()  # Track unique file paths to prevent duplicates
             if file_paths:
                 for file_path in file_paths:
-                    if os.path.exists(file_path):
-                        files.append(('files', open(file_path, 'rb')))
-                        logging.info(f"Added file for upload: {file_path}")
+                    # Normalize the file path to handle different representations of the same file
+                    normalized_path = os.path.abspath(file_path)
+                    if normalized_path not in seen_files:
+                        seen_files.add(normalized_path)
+                        if os.path.exists(file_path):
+                            files.append(('files', open(file_path, 'rb')))
+                            logging.info(f"Added file for upload: {file_path}")
+                        else:
+                            logging.warning(f"File not found: {file_path}")
                     else:
-                        logging.warning(f"File not found: {file_path}")
+                        logging.info(f"Skipping duplicate file: {file_path}")
             
             logging.info(f"Sending WhatsApp message to {contact_name} ({whatsapp_number}) with process: {process_name}")
             
@@ -247,8 +252,18 @@ class WhatsAppNodeClient:
             if response.status_code == 200:
                 result = response.json()
                 success = bool(result.get('success', False))
-                logging.info(f"WhatsApp message {'sent successfully' if success else 'failed'} to {contact_name} on {whatsapp_number}")
-                return success
+                
+                # Check for detailed error information in the response
+                if not success:
+                    error_message = result.get('error', 'Unknown error')
+                    error_details = result.get('details', '')
+                    logging.error(f"WhatsApp message failed to {contact_name} on {whatsapp_number}: {error_message}")
+                    if error_details:
+                        logging.error(f"Error details: {error_details}")
+                    return "WHATSAPP_SEND_ERROR"
+                else:
+                    logging.info(f"WhatsApp message sent successfully to {contact_name} on {whatsapp_number}")
+                    return success
             else:
                 logging.error(f"Error sending WhatsApp message: {response.status_code} - {response.text}")
                 return "WHATSAPP_API_ERROR"
@@ -266,24 +281,10 @@ class WhatsAppNodeClient:
     def send_bulk_messages(self, 
                           contacts: List[Dict], 
                           process_name: str = "salary_slip",
-                          message: str = "",
                           file_paths: List[str] = None,
                           variables: Dict = None,
                           options: Dict = None) -> List[Dict]:
-        """
-        Send bulk WhatsApp messages to multiple contacts
-        
-        Args:
-            contacts: List of contact dictionaries with 'name' and 'phoneNumber' keys
-            process_name: Process type (salary_slip, reactor_report, report, etc.)
-            message: Custom message (optional, will use template if empty)
-            file_paths: List of file paths to attach
-            variables: Variables for message template substitution
-            options: Additional options (perContactDelayMs, perFileDelayMs, etc.)
-        
-        Returns:
-            List of results for each contact
-        """
+
         try:
             # Validate that we have a user email
             if not self.has_user_email():
@@ -311,18 +312,25 @@ class WhatsAppNodeClient:
             data = {
                 'contacts': json.dumps(contacts),
                 'process_name': process_name,
-                'message': message,
                 'variables': json.dumps(variables),
                 'options': json.dumps(options)
             }
             
-            # Prepare files for upload
+            # Prepare files for upload - deduplicate file paths
             files = []
+            seen_files = set()  # Track unique file paths to prevent duplicates
             for file_path in file_paths:
-                if os.path.exists(file_path):
-                    files.append(('files', open(file_path, 'rb')))
+                # Normalize the file path to handle different representations of the same file
+                normalized_path = os.path.abspath(file_path)
+                if normalized_path not in seen_files:
+                    seen_files.add(normalized_path)
+                    if os.path.exists(file_path):
+                        files.append(('files', open(file_path, 'rb')))
+                        logging.info(f"Added file for bulk upload: {file_path}")
+                    else:
+                        logging.warning(f"File not found: {file_path}")
                 else:
-                    logging.warning(f"File not found: {file_path}")
+                    logging.info(f"Skipping duplicate file in bulk upload: {file_path}")
             
             logging.info(f"Sending bulk WhatsApp messages to {len(contacts)} contacts with process: {process_name}")
             
@@ -342,7 +350,15 @@ class WhatsAppNodeClient:
             
             if response.status_code == 200:
                 result = response.json()
-                logging.info(f"Bulk WhatsApp messages processed: {result.get('successful', 0)}/{result.get('total_processed', 0)} successful")
+                successful = result.get('successful', 0)
+                total_processed = result.get('total_processed', 0)
+                logging.info(f"Bulk WhatsApp messages processed: {successful}/{total_processed} successful")
+                
+                # Check if there were any failures
+                if successful < total_processed:
+                    failed_count = total_processed - successful
+                    logging.warning(f"Bulk WhatsApp messages: {failed_count} messages failed out of {total_processed}")
+                
                 return result.get('results', [])
             else:
                 logging.error(f"Error sending bulk WhatsApp messages: {response.status_code} - {response.text}")
@@ -385,7 +401,6 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
         contact_name=contact_name,
         whatsapp_number=whatsapp_number,
         process_name=process_name,
-        message=message_text,
         file_paths=file_paths,
         variables=variables,
         options=options
@@ -410,7 +425,6 @@ def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[s
     return client.send_bulk_messages(
         contacts=contacts,
         process_name=process_name,
-        message=message_text,
         file_paths=file_paths,
         variables={},
         options={}
@@ -487,7 +501,6 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
                             contact_name=recipient_name,
                             whatsapp_number=contact_number,
                             process_name="reactor_report",
-                            message="",  # Empty message - will use template
                             file_paths=[file_path],
                             variables={
                                 "input_date": input_date,

@@ -100,15 +100,69 @@ class WhatsAppMessaging {
                 // Continue anyway - sometimes state check fails but messaging works
             }
 
-            // Wait for WhatsApp Web Store objects to be available
-            await this.waitForWhatsAppStore();
+            // Wait for WhatsApp Web Store objects to be available (with timeout)
+            console.log('Waiting for WhatsApp Web Store objects to be available...');
+            await this.waitForWhatsAppStore(120000); // Wait up to 2 minutes for proper initialization
 
             let contact;
             try {
-                contact = await this.authClient.client.getContactById(formattedNumber);
-                if (!contact) {
-                    console.error(`Contact not found: ${contactName} (${formattedNumber})`);
-                    return false;
+                // Check if page is available before trying to get contact
+                const page = this.authClient.client.pupPage;
+                if (!page) {
+                    console.log(`Page not available, attempting to send message directly to ${formattedNumber}`);
+                } else {
+                    // First, let's test what the WhatsApp Web library is actually trying to access
+                    const testResult = await page.evaluate(() => {
+                        try {
+                            // Test the exact same code that whatsapp-web.js is trying to execute
+                            const result = {
+                                storeExists: !!window.Store,
+                                contactStoreExists: !!(window.Store && window.Store.Contact),
+                                getContactExists: !!(window.Store && window.Store.Contact && window.Store.Contact.get),
+                                getContactType: window.Store && window.Store.Contact && window.Store.Contact.get ? typeof window.Store.Contact.get : 'undefined',
+                                storeKeys: window.Store ? Object.keys(window.Store) : [],
+                                contactKeys: window.Store && window.Store.Contact ? Object.keys(window.Store.Contact) : []
+                            };
+                            
+                            // Try to actually call the function and check if it's properly initialized
+                            if (window.Store && window.Store.Contact && window.Store.Contact.get) {
+                                try {
+                                    const testCall = window.Store.Contact.get('test@c.us');
+                                    result.testCallSuccess = true;
+                                    result.testCallResult = 'success';
+                                } catch (e) {
+                                    result.testCallError = e.message;
+                                    result.testCallSuccess = false;
+                                    
+                                    // Check if it's a proper WhatsApp error (function is working) or an undefined error (function not ready)
+                                    if (e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties')) {
+                                        result.testCallResult = 'whatsapp_error'; // Function is working but WhatsApp returned an error
+                                    } else {
+                                        result.testCallResult = 'function_not_ready'; // Function is not properly initialized
+                                    }
+                                }
+                            } else {
+                                result.testCallResult = 'function_not_available';
+                            }
+                            
+                            return result;
+                        } catch (e) {
+                            return { error: e.message };
+                        }
+                    });
+                    
+                    console.log('WhatsApp Web Store test result:', JSON.stringify(testResult, null, 2));
+                    
+                    // Only try to get contact if Store objects are properly initialized
+                    if (testResult.testCallResult === 'success' || testResult.testCallResult === 'whatsapp_error') {
+                        contact = await this.authClient.client.getContactById(formattedNumber);
+                        if (!contact) {
+                            console.error(`Contact not found: ${contactName} (${formattedNumber})`);
+                            return false;
+                        }
+                    } else {
+                        console.log(`Store objects not ready for contact lookup, proceeding with direct messaging to ${formattedNumber}`);
+                    }
                 }
             } catch (contactError) {
                 console.error(`Error getting contact ${contactName}:`, contactError);
@@ -150,10 +204,72 @@ class WhatsAppMessaging {
 
                 while (!messageSent && retryCount < maxRetries) {
                     try {
-                        if (Array.isArray(finalMessage)) {
-                            await this.authClient.client.sendMessage(formattedNumber, finalMessage.join('\n'));
+                        // Test WhatsApp Web Store objects before sending message
+                        const page = this.authClient.client.pupPage;
+                        let sendTestResult = null;
+                        
+                        if (page) {
+                            sendTestResult = await page.evaluate(() => {
+                                try {
+                                    const result = {
+                                        storeExists: !!window.Store,
+                                        chatStoreExists: !!(window.Store && window.Store.Chat),
+                                        getChatExists: !!(window.Store && window.Store.Chat && window.Store.Chat.get),
+                                        getChatType: window.Store && window.Store.Chat && window.Store.Chat.get ? typeof window.Store.Chat.get : 'undefined',
+                                        storeKeys: window.Store ? Object.keys(window.Store) : [],
+                                        chatKeys: window.Store && window.Store.Chat ? Object.keys(window.Store.Chat) : []
+                                    };
+                                    
+                                    // Try to actually call the function and check if it's properly initialized
+                                    if (window.Store && window.Store.Chat && window.Store.Chat.get) {
+                                        try {
+                                            const testCall = window.Store.Chat.get('test@c.us');
+                                            result.testCallSuccess = true;
+                                            result.testCallResult = 'success';
+                                        } catch (e) {
+                                            result.testCallError = e.message;
+                                            result.testCallSuccess = false;
+                                            
+                                            // Check if it's a proper WhatsApp error (function is working) or an undefined error (function not ready)
+                                            if (e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties')) {
+                                                result.testCallResult = 'whatsapp_error'; // Function is working but WhatsApp returned an error
+                                            } else {
+                                                result.testCallResult = 'function_not_ready'; // Function is not properly initialized
+                                            }
+                                        }
+                                    } else {
+                                        result.testCallResult = 'function_not_available';
+                                    }
+                                    
+                                    return result;
+                                } catch (e) {
+                                    return { error: e.message };
+                                }
+                            });
+                            
+                            console.log('WhatsApp Web Store test result for sendMessage:', JSON.stringify(sendTestResult, null, 2));
+                        }
+                        
+                        // Only proceed with sending if Store objects are properly initialized
+                        if (!sendTestResult || sendTestResult.testCallResult === 'success' || sendTestResult.testCallResult === 'whatsapp_error') {
+                            if (Array.isArray(finalMessage)) {
+                                await this.authClient.client.sendMessage(formattedNumber, finalMessage.join('\n'));
+                            } else {
+                                await this.authClient.client.sendMessage(formattedNumber, finalMessage);
+                            }
                         } else {
-                            await this.authClient.client.sendMessage(formattedNumber, finalMessage);
+                            // If Store objects aren't ready, try a different approach
+                            console.log(`Store objects not ready (${sendTestResult.testCallResult}), attempting direct messaging...`);
+                            
+                            // Wait a bit more and try again
+                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            
+                            // Try to send message directly without Store validation
+                            if (Array.isArray(finalMessage)) {
+                                await this.authClient.client.sendMessage(formattedNumber, finalMessage.join('\n'));
+                            } else {
+                                await this.authClient.client.sendMessage(formattedNumber, finalMessage);
+                            }
                         }
                         console.log(`Message sent to ${contactName}`);
                         messageSent = true;
@@ -175,9 +291,9 @@ class WhatsAppMessaging {
                                 console.warn(`Could not get client state:`, stateError.message);
                             }
                             
-                            // Wait for Store objects to be available before retry
+                            // Wait for Store objects before retry
                             console.log(`Waiting for Store objects before retry ${retryCount + 1}/${maxRetries}`);
-                            await this.waitForWhatsAppStore(10000); // Wait up to 10 seconds for Store
+                            await this.waitForWhatsAppStore(30000); // Wait up to 30 seconds for retry
                         }
                     }
                 }
@@ -293,25 +409,123 @@ class WhatsAppMessaging {
         const startTime = Date.now();
         const checkInterval = 1000; // Check every 1 second
         
-        console.log('Waiting for WhatsApp Web Store objects to be available...');
+        console.log(`Waiting for WhatsApp Web Store objects to be available (max ${maxWaitMs/1000}s)...`);
         
         while (Date.now() - startTime < maxWaitMs) {
             try {
                 const page = this.authClient.client.pupPage;
                 if (!page) {
-                    throw new Error('Page not available');
+                    console.log('Page not available, waiting...');
+                    await new Promise(resolve => setTimeout(resolve, checkInterval));
+                    continue;
                 }
                 
-                const storeAvailable = await page.evaluate(() => {
-                    return window.Store && window.Store.Msg && window.Store.Chat;
+                const storeStatus = await page.evaluate(() => {
+                    const storeExists = !!window.Store;
+                    const msgExists = !!(window.Store && window.Store.Msg);
+                    const chatExists = !!(window.Store && window.Store.Chat);
+                    
+                    // Test if the actual functions are available and working
+                    let getContactWorks = false;
+                    let getChatWorks = false;
+                    let contactStoreExists = false;
+                    let chatStoreExists = false;
+                    let contactGetFunctionExists = false;
+                    let chatGetFunctionExists = false;
+                    
+                    try {
+                        if (window.Store && window.Store.Contact) {
+                            contactStoreExists = true;
+                            contactGetFunctionExists = typeof window.Store.Contact.get === 'function';
+                            
+                            // Test if the function is actually callable (not just defined)
+                            if (contactGetFunctionExists) {
+                                try {
+                                    // Try to call the function with a dummy parameter to see if it's properly initialized
+                                    const testResult = window.Store.Contact.get('test@c.us');
+                                    getContactWorks = true; // If no error, it's working
+                                } catch (e) {
+                                    // If it throws an error but it's a WhatsApp-specific error (not undefined), it's working
+                                    getContactWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getContact');
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        getContactWorks = false;
+                    }
+                    
+                    try {
+                        if (window.Store && window.Store.Chat) {
+                            chatStoreExists = true;
+                            chatGetFunctionExists = typeof window.Store.Chat.get === 'function';
+                            
+                            // Test if the function is actually callable (not just defined)
+                            if (chatGetFunctionExists) {
+                                try {
+                                    // Try to call the function with a dummy parameter to see if it's properly initialized
+                                    const testResult = window.Store.Chat.get('test@c.us');
+                                    getChatWorks = true; // If no error, it's working
+                                } catch (e) {
+                                    // If it throws an error but it's a WhatsApp-specific error (not undefined), it's working
+                                    getChatWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getChat');
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        getChatWorks = false;
+                    }
+                    
+                    // Check if WhatsApp Web interface is actually loaded
+                    const whatsappLoaded = document.title.includes('WhatsApp') || 
+                                         document.body.innerHTML.includes('WhatsApp') ||
+                                         !!document.querySelector('[data-testid="chat-list"]') ||
+                                         !!document.querySelector('#main');
+                    
+                    // Get more detailed Store object information
+                    let storeDetails = {};
+                    try {
+                        if (window.Store) {
+                            storeDetails = {
+                                hasContact: !!window.Store.Contact,
+                                hasChat: !!window.Store.Chat,
+                                hasMsg: !!window.Store.Msg,
+                                contactMethods: window.Store.Contact ? Object.getOwnPropertyNames(window.Store.Contact) : [],
+                                chatMethods: window.Store.Chat ? Object.getOwnPropertyNames(window.Store.Chat) : [],
+                                storeKeys: Object.getOwnPropertyNames(window.Store),
+                                contactGetType: window.Store.Contact ? typeof window.Store.Contact.get : 'undefined',
+                                chatGetType: window.Store.Chat ? typeof window.Store.Chat.get : 'undefined'
+                            };
+                        }
+                    } catch (e) {
+                        storeDetails = { error: e.message };
+                    }
+                    
+                    return {
+                        storeExists,
+                        msgExists,
+                        chatExists,
+                        contactStoreExists,
+                        chatStoreExists,
+                        contactGetFunctionExists,
+                        chatGetFunctionExists,
+                        getContactWorks,
+                        getChatWorks,
+                        whatsappLoaded,
+                        storeDetails,
+                        allLoaded: storeExists && msgExists && chatExists && getContactWorks && getChatWorks && whatsappLoaded
+                    };
                 });
                 
-                if (storeAvailable) {
-                    console.log('WhatsApp Web Store objects are now available');
+                if (storeStatus.allLoaded) {
+                    const elapsed = Date.now() - startTime;
+                    console.log(`✅ WhatsApp Web Store objects are now available after ${elapsed}ms`);
                     return true;
                 }
                 
-                console.log('Store objects not yet available, waiting...');
+                const elapsed = Date.now() - startTime;
+                console.log(`Store objects not ready yet (${elapsed}ms): Store=${storeStatus.storeExists}, Msg=${storeStatus.msgExists}, Chat=${storeStatus.chatExists}, ContactStore=${storeStatus.contactStoreExists}, ChatStore=${storeStatus.chatStoreExists}, contactGetFunc=${storeStatus.contactGetFunctionExists}, chatGetFunc=${storeStatus.chatGetFunctionExists}, getContact=${storeStatus.getContactWorks}, getChat=${storeStatus.getChatWorks}, whatsappLoaded=${storeStatus.whatsappLoaded}`);
+                console.log(`Store details:`, JSON.stringify(storeStatus.storeDetails, null, 2));
+                
                 await new Promise(resolve => setTimeout(resolve, checkInterval));
                 
             } catch (error) {
@@ -320,7 +534,74 @@ class WhatsAppMessaging {
             }
         }
         
-        console.warn(`Store objects not available after ${maxWaitMs}ms, proceeding anyway`);
+        const totalElapsed = Date.now() - startTime;
+        console.warn(`⚠️ Store objects not available after ${totalElapsed}ms, attempting page refresh...`);
+        
+        // Try to refresh the WhatsApp Web page
+        try {
+            const page = this.authClient.client.pupPage;
+            if (page) {
+                console.log('Refreshing WhatsApp Web page...');
+                await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+                console.log('Page refreshed, waiting 10 seconds for WhatsApp Web to reload...');
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                
+                // Check again after refresh with more thorough validation
+                const refreshedStatus = await page.evaluate(() => {
+                    const storeExists = !!window.Store;
+                    const msgExists = !!(window.Store && window.Store.Msg);
+                    const chatExists = !!(window.Store && window.Store.Chat);
+                    
+                    let getContactWorks = false;
+                    let getChatWorks = false;
+                    
+                    try {
+                        if (window.Store && window.Store.Contact && typeof window.Store.Contact.get === 'function') {
+                            try {
+                                const testResult = window.Store.Contact.get('test@c.us');
+                                getContactWorks = true;
+                            } catch (e) {
+                                getContactWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getContact');
+                            }
+                        }
+                    } catch (e) {
+                        getContactWorks = false;
+                    }
+                    
+                    try {
+                        if (window.Store && window.Store.Chat && typeof window.Store.Chat.get === 'function') {
+                            try {
+                                const testResult = window.Store.Chat.get('test@c.us');
+                                getChatWorks = true;
+                            } catch (e) {
+                                getChatWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getChat');
+                            }
+                        }
+                    } catch (e) {
+                        getChatWorks = false;
+                    }
+                    
+                    return {
+                        storeExists,
+                        msgExists,
+                        chatExists,
+                        getContactWorks,
+                        getChatWorks,
+                        allLoaded: storeExists && msgExists && chatExists && getContactWorks && getChatWorks
+                    };
+                });
+                
+                if (refreshedStatus.allLoaded) {
+                    console.log('✅ WhatsApp Web Store objects are now available after page refresh');
+                    return true;
+                } else {
+                    console.warn('⚠️ Store objects still not available after page refresh, proceeding anyway');
+                }
+            }
+        } catch (refreshError) {
+            console.warn(`Error refreshing page: ${refreshError.message}`);
+        }
+        
         return false;
     }
 

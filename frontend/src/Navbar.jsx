@@ -32,12 +32,44 @@ const Navbar = ({ onLogout }) => {
   const [isPolling, setIsPolling] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState({});
+  const [authStartTime, setAuthStartTime] = useState(null);
+  const [authElapsedTime, setAuthElapsedTime] = useState(0);
   
   const pollingRef = useRef(null);
   const menuRef = useRef(null);
   const burgerRef = useRef(null);
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+
+  // Format time in a readable format
+  const formatTime = (seconds) => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}m`;
+    }
+  };
+
+  // Calculate estimated completion time based on elapsed time
+  const getEstimatedCompletion = (elapsedSeconds) => {
+    if (elapsedSeconds < 30) {
+      return "Initializing... (30-60s estimated)";
+    } else if (elapsedSeconds < 60) {
+      return "Loading WhatsApp Web... (1-2m estimated)";
+    } else if (elapsedSeconds < 120) {
+      return "Syncing data... (2-5m estimated)";
+    } else if (elapsedSeconds < 300) {
+      return "Finalizing sync... (3-10m estimated)";
+    } else {
+      return "Completing authentication... (5-15m estimated)";
+    }
+  };
 
   // Get the correct user identifier (email is preferred, fallback to username)
   const getUserIdentifier = () => {
@@ -319,6 +351,8 @@ const Navbar = ({ onLogout }) => {
     setShowQR(true);
     setQRValue('');
     setIsPolling(false);
+    setAuthStartTime(Date.now());
+    setAuthElapsedTime(0);
     
     try {
       console.log(`Starting WhatsApp login for user: ${userIdentifier}`);
@@ -554,6 +588,26 @@ const Navbar = ({ onLogout }) => {
     };
   }, []);
 
+  // Update elapsed time every second during authentication
+  useEffect(() => {
+    let interval = null;
+    
+    if (authStartTime && (showQR || isPolling) && !isAuthenticated) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - authStartTime) / 1000);
+        setAuthElapsedTime(elapsed);
+      }, 1000);
+    } else {
+      setAuthElapsedTime(0);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [authStartTime, showQR, isPolling, isAuthenticated]);
+
   // Close modal and cleanup
   const closeQRModal = () => {
     setShowQR(false);
@@ -561,6 +615,8 @@ const Navbar = ({ onLogout }) => {
     setStatusMsg('');
     setQRValue('');
     setIsPolling(false);
+    setAuthStartTime(null);
+    setAuthElapsedTime(0);
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
     }
@@ -725,7 +781,15 @@ const Navbar = ({ onLogout }) => {
             <p className="user-identifier">User: {getUserIdentifier()}</p>
             
             {loadingQR ? (
-              <div className="loading-message">Loading QR Code...</div>
+              <div className="loading-message">
+                <div>Loading QR Code...</div>
+                {authElapsedTime > 0 && (
+                  <div className="auth-timing">
+                    <div>Elapsed: {formatTime(authElapsedTime)}</div>
+                    <div className="estimated-time">{getEstimatedCompletion(authElapsedTime)}</div>
+                  </div>
+                )}
+              </div>
             ) : isAuthenticated ? (
               <div className="auth-status">
                 <div className="success-message">{statusMsg}</div>
@@ -741,11 +805,25 @@ const Navbar = ({ onLogout }) => {
                 {isPolling && (
                   <div className="polling-status">
                     <span className="polling-indicator">●</span> Waiting for authentication...
+                    {authElapsedTime > 0 && (
+                      <div className="auth-timing">
+                        <div>Elapsed: {formatTime(authElapsedTime)}</div>
+                        <div className="estimated-time">{getEstimatedCompletion(authElapsedTime)}</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="loading-message">Checking WhatsApp status...</div>
+              <div className="loading-message">
+                <div>Checking WhatsApp status...</div>
+                {authElapsedTime > 0 && (
+                  <div className="auth-timing">
+                    <div>Elapsed: {formatTime(authElapsedTime)}</div>
+                    <div className="estimated-time">{getEstimatedCompletion(authElapsedTime)}</div>
+                  </div>
+                )}
+              </div>
             )}
             
             {loginSuccess && !isAuthenticated && (

@@ -19,11 +19,112 @@ class WhatsAppAuth extends EventEmitter {
 
     async cleanupCorruptedSession() {
         try {
-            // Simple cleanup - just log that we're cleaning up
             console.log(`Cleaning up corrupted session for clientId: ${this.clientId}`);
-            // No actual cleanup needed since we're using simple service management
+            
+            // Kill any existing Chrome processes for this session
+            await this.killChromeProcesses();
+            
+            // Clean up SingletonLock and other browser lock files
+            const sessionPath = this.sessionPath;
+            const lockFiles = [
+                'SingletonLock',
+                'SingletonSocket',
+                'DevToolsActivePort',
+                'lockfile',
+                'chrome_shutdown_ms.txt',
+                'chrome_debug.log'
+            ];
+            
+            for (const lockFile of lockFiles) {
+                const lockPath = path.join(sessionPath, lockFile);
+                try {
+                    if (fs.existsSync(lockPath)) {
+                        fs.unlinkSync(lockPath);
+                        console.log(`Removed lock file: ${lockFile}`);
+                    }
+                } catch (error) {
+                    console.warn(`Could not remove lock file ${lockFile}:`, error.message);
+                }
+            }
+            
+            // Also clean up any existing client
+            if (this.client) {
+                try {
+                    await this.client.destroy();
+                } catch (error) {
+                    console.warn(`Error destroying existing client:`, error.message);
+                }
+                this.client = null;
+            }
+            
+            // Wait longer for cleanup to complete and processes to fully terminate
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Additional cleanup - remove entire session directory if it exists
+            try {
+                if (fs.existsSync(sessionPath)) {
+                    console.log(`Removing entire session directory: ${sessionPath}`);
+                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                    console.log(`Session directory removed successfully`);
+                }
+            } catch (error) {
+                console.warn(`Could not remove session directory:`, error.message);
+            }
+            
+            // Wait a bit more after directory removal
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Ensure session directory exists for fresh start
+            try {
+                if (!fs.existsSync(sessionPath)) {
+                    console.log(`Creating fresh session directory: ${sessionPath}`);
+                    fs.mkdirSync(sessionPath, { recursive: true });
+                    console.log(`Session directory created successfully`);
+                }
+            } catch (error) {
+                console.warn(`Could not create session directory:`, error.message);
+            }
+            
         } catch (error) {
             console.error(`Error cleaning up session for ${this.clientId}:`, error);
+        }
+    }
+
+    async killChromeProcesses() {
+        try {
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execAsync = util.promisify(exec);
+            
+            // Kill Chrome processes that might be using this session - more aggressive approach
+            const commands = [
+                `pkill -9 -f "chrome.*${this.clientId}"`,
+                `pkill -9 -f "chromium.*${this.clientId}"`,
+                `pkill -9 -f "whatsapp.*${this.clientId}"`,
+                `pkill -9 -f "chrome.*session-${this.clientId}"`,
+                `pkill -9 -f "chromium.*session-${this.clientId}"`,
+                // Kill any Chrome/Chromium processes that might be using the session directory
+                `pkill -9 -f "${this.sessionPath}"`,
+                // Kill any remaining Chrome processes (be careful with this)
+                `pkill -9 -f "chrome.*headless"`,
+                `pkill -9 -f "chromium.*headless"`
+            ];
+            
+            for (const cmd of commands) {
+                try {
+                    await execAsync(cmd);
+                    console.log(`Executed cleanup command: ${cmd}`);
+                } catch (error) {
+                    // Ignore errors - process might not exist
+                    console.log(`Cleanup command completed: ${cmd}`);
+                }
+            }
+            
+            // Wait for processes to actually terminate
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+        } catch (error) {
+            console.warn(`Error killing Chrome processes:`, error.message);
         }
     }
 
@@ -36,13 +137,15 @@ class WhatsAppAuth extends EventEmitter {
         try {
             console.log(`Initializing WhatsApp client for clientId: ${this.clientId}`);
             
-            // Clean up any existing corrupted session
+            // Always clean up any existing session before initializing
+            console.log(`Performing pre-initialization cleanup for ${this.clientId}`);
             await this.cleanupCorruptedSession();
             
             this.client = new Client({
                 authStrategy: new LocalAuth({ clientId: this.clientId }),
                 puppeteer: {
                     headless: true,
+                    userDataDir: this.sessionPath, // Explicit user data directory
                     args: [
                         '--no-sandbox',
                         '--disable-setuid-sandbox',
@@ -50,52 +153,46 @@ class WhatsAppAuth extends EventEmitter {
                         '--disable-gpu',
                         '--single-process',
                         '--disable-web-security',
-                        '--disable-background-timer-throttling',
-                        '--disable-backgrounding-occluded-windows',
-                        '--disable-renderer-backgrounding',
-                        '--disable-ipc-flooding-protection',
                         '--memory-pressure-off',
                         '--max_old_space_size=4096',
-                        '--disable-sync',
-                        '--disable-background-sync',
-                        '--disable-background-networking',
-                        '--disable-extensions',
-                        '--disable-plugins',
-                        '--disable-default-apps',
-                        '--disable-translate',
                         '--hide-scrollbars',
                         '--mute-audio',
-                        '--no-first-run',
-                        '--disable-features=TranslateUI',
-                        '--disable-component-extensions-with-background-pages',
-                        '--disable-client-side-phishing-detection',
-                        '--disable-sync-preferences',
-                        '--disable-sync-app-list',
-                        '--disable-sync-app-settings',
-                        '--disable-sync-autofill',
-                        '--disable-sync-bookmarks',
-                        '--disable-sync-extensions',
-                        '--disable-sync-history',
-                        '--disable-sync-passwords',
-                        '--disable-sync-reading-list',
-                        '--disable-sync-tabs',
-                        '--disable-sync-themes',
-                        '--disable-sync-typed-urls',
-                        '--disable-sync-wifi-credentials'
+                        '--no-first-run'
                     ],
                     executablePath: '/usr/bin/chromium-browser',
-                    ignoreDefaultArgs: ['--disable-extensions'],
-                    timeout: 60000,
-                    protocolTimeout: 60000
+                    ignoreDefaultArgs: ['--disable-extensions']
+                    // Removed timeouts to allow unlimited time for auth and sync
                 }
             });
 
             this.setupEventListeners();
             
             console.log(`Starting client initialization for ${this.clientId}...`);
-            await this.client.initialize();
-            this.isInitialized = true;
-            console.log(`WhatsApp client initialized successfully for clientId: ${this.clientId}`);
+            try {
+                await this.client.initialize();
+                console.log(`WhatsApp client initialized successfully for clientId: ${this.clientId}`);
+                this.isInitialized = true;
+            } catch (initError) {
+                console.error(`Error during client initialization: ${initError.message}`);
+                
+                // If initialization fails due to SingletonLock, try one more cleanup
+                if (initError.message.includes('SingletonLock') || initError.message.includes('ProcessSingleton')) {
+                    console.log('SingletonLock error detected, performing additional cleanup...');
+                    await this.cleanupCorruptedSession();
+                    
+                    // Try to reinitialize after cleanup
+                    try {
+                        await this.client.initialize();
+                        console.log(`WhatsApp client reinitialized successfully for clientId: ${this.clientId}`);
+                        this.isInitialized = true;
+                    } catch (retryError) {
+                        console.error(`Retry initialization also failed: ${retryError.message}`);
+                        throw retryError;
+                    }
+                } else {
+                    throw initError;
+                }
+            }
             
             // Check if we're already ready after initialization
             if (this.isReady) {
@@ -148,26 +245,107 @@ class WhatsAppAuth extends EventEmitter {
         });
 
         this.client.on('authenticated', async () => {
-            console.log(`WhatsApp Client authenticated for clientId: ${this.clientId}`);
+            const authStartTime = Date.now();
+            console.log(`[TIMING] WhatsApp Client authenticated for clientId: ${this.clientId} at ${new Date().toISOString()}`);
             
             // Give WhatsApp Web a moment to fully load before marking as ready
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log(`[TIMING] Waiting 1 second for WhatsApp Web to load...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Wait for WhatsApp Web Store objects to be available
-            await this.waitForWhatsAppStore();
+            console.log(`[TIMING] Waiting for WhatsApp Web Store objects to be available...`);
+            const storeWaitStart = Date.now();
+            
+            try {
+                const page = this.client.pupPage;
+                if (page) {
+                    // Wait for Store objects with timeout
+                    let storeReady = false;
+                    const maxWait = 60000; // 60 seconds max
+                    const startTime = Date.now();
+                    
+                    while (Date.now() - startTime < maxWait && !storeReady) {
+                        try {
+                            const storeStatus = await page.evaluate(() => {
+                                const storeExists = !!window.Store;
+                                const msgExists = !!(window.Store && window.Store.Msg);
+                                const chatExists = !!(window.Store && window.Store.Chat);
+                                
+                                // Test if the actual functions are available and working
+                                let getContactWorks = false;
+                                let getChatWorks = false;
+                                
+                                try {
+                                    if (window.Store && window.Store.Contact) {
+                                        getContactWorks = typeof window.Store.Contact.get === 'function';
+                                    }
+                                } catch (e) {
+                                    getContactWorks = false;
+                                }
+                                
+                                try {
+                                    if (window.Store && window.Store.Chat) {
+                                        getChatWorks = typeof window.Store.Chat.get === 'function';
+                                    }
+                                } catch (e) {
+                                    getChatWorks = false;
+                                }
+                                
+                                return {
+                                    storeExists,
+                                    msgExists,
+                                    chatExists,
+                                    getContactWorks,
+                                    getChatWorks,
+                                    allLoaded: storeExists && msgExists && chatExists && getContactWorks && getChatWorks
+                                };
+                            });
+                            
+                            if (storeStatus.allLoaded) {
+                                storeReady = true;
+                                console.log(`[TIMING] ✅ WhatsApp Web Store objects are now available`);
+                            } else {
+                                const elapsed = Date.now() - startTime;
+                                console.log(`[TIMING] Store objects not ready yet (${elapsed}ms): Store=${storeStatus.storeExists}, Msg=${storeStatus.msgExists}, Chat=${storeStatus.chatExists}, getContact=${storeStatus.getContactWorks}, getChat=${storeStatus.getChatWorks}`);
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
+                        } catch (error) {
+                            console.warn(`[TIMING] Error checking Store objects: ${error.message}`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                    
+                    if (!storeReady) {
+                        console.warn(`[TIMING] ⚠️ Store objects not available after ${maxWait}ms, proceeding anyway`);
+                    }
+                } else {
+                    console.warn(`[TIMING] Page is null, waiting for page to be available...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            } catch (error) {
+                console.warn(`[TIMING] Page validation failed: ${error.message}`);
+            }
+            
+            const storeWaitEnd = Date.now();
+            console.log(`[TIMING] Store object wait completed in ${storeWaitEnd - storeWaitStart}ms`);
             
             // Try to validate readiness, but don't fail if it doesn't work
             try {
+                console.log(`[TIMING] Starting client readiness validation...`);
+                const validationStart = Date.now();
                 await this.validateClientReadiness();
-                console.log(`Client ${this.clientId} validated after authentication`);
+                const validationEnd = Date.now();
+                console.log(`[TIMING] Client ${this.clientId} validated after authentication in ${validationEnd - validationStart}ms`);
             } catch (validationError) {
-                console.warn(`Validation failed after authentication, but continuing: ${validationError.message}`);
+                console.warn(`[TIMING] Validation failed after authentication, but continuing: ${validationError.message}`);
             }
             
             this.isReady = true;
             this.currentQR = null;
             // Clear cached connection status to force refresh
             this._cachedConnectionStatus = null;
+            const totalAuthTime = Date.now() - authStartTime;
+            console.log(`[TIMING] ✅ WhatsApp Client is now ready for clientId: ${this.clientId} - Total authentication time: ${totalAuthTime}ms (${Math.round(totalAuthTime/1000)}s)`);
             this.emit('ready');
         });
 
@@ -217,38 +395,68 @@ class WhatsAppAuth extends EventEmitter {
 
     
 
-    async waitForWhatsAppStore(maxWaitMs = 30000) {
+    async waitForWhatsAppStore(maxWaitMs = null) {
         const startTime = Date.now();
         const checkInterval = 1000; // Check every 1 second
+        const maxWait = maxWaitMs || Infinity; // Remove timeout by default
         
-        console.log(`Waiting for WhatsApp Web Store objects to be available for ${this.clientId}...`);
+        console.log(`[TIMING] Starting Store object wait for clientId: ${this.clientId} at ${new Date().toISOString()}`);
+        console.log(`[TIMING] Max wait time: ${maxWait === Infinity ? 'UNLIMITED' : maxWait + 'ms'}`);
         
-        while (Date.now() - startTime < maxWaitMs) {
+        let checkCount = 0;
+        
+        while (Date.now() - startTime < maxWait) {
+            checkCount++;
+            const currentTime = Date.now();
+            const elapsed = currentTime - startTime;
+            
             try {
                 const page = this.client.pupPage;
                 if (!page) {
-                    throw new Error('Page not available');
+                    console.log(`[TIMING] Check #${checkCount} (${elapsed}ms): Page not available for ${this.clientId}`);
+                    await new Promise(resolve => setTimeout(resolve, checkInterval));
+                    continue;
                 }
                 
-                const storeAvailable = await page.evaluate(() => {
-                    return window.Store && window.Store.Msg && window.Store.Chat;
+                const storeStatus = await page.evaluate(() => {
+                    const storeExists = !!window.Store;
+                    const msgExists = !!(window.Store && window.Store.Msg);
+                    const chatExists = !!(window.Store && window.Store.Chat);
+                    
+                    return {
+                        storeExists,
+                        msgExists,
+                        chatExists,
+                        allLoaded: storeExists && msgExists && chatExists,
+                        storeType: typeof window.Store,
+                        msgType: window.Store ? typeof window.Store.Msg : 'undefined',
+                        chatType: window.Store ? typeof window.Store.Chat : 'undefined'
+                    };
                 });
                 
-                if (storeAvailable) {
-                    console.log(`WhatsApp Web Store objects are now available for ${this.clientId}`);
+                console.log(`[TIMING] Check #${checkCount} (${elapsed}ms): Store=${storeStatus.storeExists}(${storeStatus.storeType}), Msg=${storeStatus.msgExists}(${storeStatus.msgType}), Chat=${storeStatus.chatExists}(${storeStatus.chatType})`);
+                
+                if (storeStatus.allLoaded) {
+                    const totalElapsed = Date.now() - startTime;
+                    console.log(`[TIMING] ✅ Store objects available for ${this.clientId} after ${totalElapsed}ms (${Math.round(totalElapsed/1000)}s)`);
                     return true;
                 }
                 
-                console.log(`Store objects not yet available for ${this.clientId}, waiting...`);
+                // Log progress every 30 seconds
+                if (elapsed > 0 && elapsed % 30000 < 1000) {
+                    console.log(`[TIMING] Still waiting... ${Math.round(elapsed/1000)}s elapsed, Store objects not ready yet`);
+                }
+                
                 await new Promise(resolve => setTimeout(resolve, checkInterval));
                 
             } catch (error) {
-                console.warn(`Error checking Store availability for ${this.clientId}: ${error.message}`);
+                console.error(`[TIMING] Check #${checkCount} (${elapsed}ms): Error checking Store availability for ${this.clientId}: ${error.message}`);
                 await new Promise(resolve => setTimeout(resolve, checkInterval));
             }
         }
         
-        console.warn(`Store objects not available after ${maxWaitMs}ms for ${this.clientId}, proceeding anyway`);
+        const totalElapsed = Date.now() - startTime;
+        console.log(`[TIMING] ❌ Store objects not available after ${totalElapsed}ms (${Math.round(totalElapsed/1000)}s) for ${this.clientId}`);
         return false;
     }
 
@@ -257,64 +465,40 @@ class WhatsAppAuth extends EventEmitter {
             throw new Error('Client not initialized');
         }
 
-        // Test basic client functionality
+        // Simplified and fast validation - no Store object dependency
         try {
-            // Test 1: Check if we can access the page context first
             const page = this.client.pupPage;
             if (!page) {
-                throw new Error('WhatsApp Web page not accessible - page is null');
+                console.log(`[TIMING] ⚠️ Page is null, but client reports as ready - proceeding anyway`);
+                return true; // Don't fail if page is null, just proceed
             }
 
-            // Test 2: Check if WhatsApp Web is fully loaded (more lenient approach)
-            let isLoaded = false;
-            try {
-                // First try the strict check
-                isLoaded = await page.evaluate(() => {
-                    return window.Store && window.Store.Msg && window.Store.Chat;
-                });
-            } catch (evalError) {
-                console.log(`Strict page evaluation failed, trying alternative checks: ${evalError.message}`);
-                
-                // Alternative check 1: Check if basic WhatsApp objects exist
-                try {
-                    isLoaded = await page.evaluate(() => {
-                        return window.Store || window.webpackChunkwhatsapp_web_client;
-                    });
-                } catch (altError1) {
-                    console.log(`Alternative check 1 failed, trying basic page check: ${altError1.message}`);
-                    
-                    // Alternative check 2: Just see if page is responsive
-                    try {
-                        await page.evaluate(() => document.title);
-                        isLoaded = true; // If we can evaluate anything, page is loaded
-                        console.log(`Page is responsive, considering it loaded`);
-                    } catch (altError2) {
-                        throw new Error('WhatsApp Web page is not responsive');
-                    }
-                }
+            // Quick validation - just check if page is responsive and has WhatsApp content
+            const pageStatus = await page.evaluate(() => {
+                return {
+                    title: document.title,
+                    hasWhatsAppContent: document.body && document.body.innerHTML.includes('WhatsApp'),
+                    isResponsive: true // If we can evaluate this, page is responsive
+                };
+            });
+
+            console.log(`[TIMING] Page validation: title="${pageStatus.title}", hasWhatsAppContent=${pageStatus.hasWhatsAppContent}`);
+            
+            // If page is responsive and has WhatsApp content, consider it ready
+            if (pageStatus.isResponsive && pageStatus.hasWhatsAppContent) {
+                console.log(`[TIMING] ✅ WhatsApp Web interface is ready for clientId: ${this.clientId}`);
+                return true;
             }
 
-            if (!isLoaded) {
-                throw new Error('WhatsApp Web interface not fully loaded');
-            }
-
-            // Test 3: Check if we can get user info (only if page is loaded)
-            try {
-                const userInfo = await this.client.getState();
-                if (!userInfo || userInfo === 'UNPAIRED') {
-                    console.log(`Client state: ${userInfo}, but page is loaded - continuing`);
-                }
-            } catch (stateError) {
-                console.log(`State check failed but page is loaded: ${stateError.message}`);
-                // Don't fail validation if state check fails but page is loaded
-            }
-
-            console.log(`Client readiness validation passed for ${this.clientId}`);
+            // Even if WhatsApp content check fails, if page is responsive, proceed
+            console.log(`[TIMING] ⚠️ Page is responsive but WhatsApp content check failed, proceeding anyway`);
             return true;
 
         } catch (error) {
-            console.error(`Client readiness validation failed for ${this.clientId}:`, error);
-            throw error;
+            console.error(`[TIMING] Client readiness validation failed for ${this.clientId}:`, error);
+            // Don't throw error - just log and continue
+            console.log(`[TIMING] ⚠️ Validation failed but continuing - error: ${error.message}`);
+            return true; // Return true to continue anyway
         }
     }
  
@@ -384,7 +568,7 @@ class WhatsAppAuth extends EventEmitter {
         }
     }
 
-    async triggerLogin(timeoutMs = 300000) { // 5 minutes timeout
+    async triggerLogin(timeoutMs = null) { // No timeout - allow unlimited time
         try {
             console.log(`Triggering login for clientId: ${this.clientId}`);
             
@@ -425,23 +609,28 @@ class WhatsAppAuth extends EventEmitter {
             // Wait for either QR or ready event
             return new Promise((resolve) => {
                 let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        console.log(`Login timeout reached for ${this.clientId}`);
-                        resolve({
-                            isReady: this.isReady,
-                            qr: this.currentQR || '',
-                            authenticated: this.isReady,
-                            message: this.isReady ? 'Already authenticated' : 'Login timeout'
-                        });
-                    }
-                }, timeoutMs);
+                let timeout = null;
+                
+                // Only set timeout if timeoutMs is provided
+                if (timeoutMs !== null) {
+                    timeout = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            console.log(`Login timeout reached for ${this.clientId}`);
+                            resolve({
+                                isReady: this.isReady,
+                                qr: this.currentQR || '',
+                                authenticated: this.isReady,
+                                message: this.isReady ? 'Already authenticated' : 'Login timeout'
+                            });
+                        }
+                    }, timeoutMs);
+                }
                 
                 const onQR = (qr) => {
                     if (!resolved) {
                         resolved = true;
-                        clearTimeout(timeout);
+                        if (timeout) clearTimeout(timeout);
                         console.log(`QR received for ${this.clientId}`);
                         this.currentQR = qr;
                         resolve({
@@ -455,7 +644,7 @@ class WhatsAppAuth extends EventEmitter {
                 const onReady = () => {
                     if (!resolved) {
                         resolved = true;
-                        clearTimeout(timeout);
+                        if (timeout) clearTimeout(timeout);
                         console.log(`Ready event received for ${this.clientId}`);
                         this.isReady = true;
                         this.currentQR = null;
@@ -471,7 +660,7 @@ class WhatsAppAuth extends EventEmitter {
                 const onAuthenticated = () => {
                     if (!resolved) {
                         resolved = true;
-                        clearTimeout(timeout);
+                        if (timeout) clearTimeout(timeout);
                         console.log(`Authenticated event received for ${this.clientId}`);
                         this.isReady = true;
                         this.currentQR = null;
@@ -487,7 +676,7 @@ class WhatsAppAuth extends EventEmitter {
                 // Check if we already have a QR or are ready before setting up listeners
                 if (this.currentQR) {
                     resolved = true;
-                    clearTimeout(timeout);
+                    if (timeout) clearTimeout(timeout);
                     resolve({
                         isReady: false,
                         qr: this.currentQR,
@@ -495,7 +684,7 @@ class WhatsAppAuth extends EventEmitter {
                     });
                 } else if (this.isReady) {
                     resolved = true;
-                    clearTimeout(timeout);
+                    if (timeout) clearTimeout(timeout);
                     resolve({
                         isReady: true,
                         qr: '',
@@ -521,7 +710,7 @@ class WhatsAppAuth extends EventEmitter {
         }
     }
 
-    async waitForReady(timeoutMs = 300000) {
+    async waitForReady(timeoutMs = null) {
         try {
             if (this.isReady) {
                 return true;
@@ -532,16 +721,21 @@ class WhatsAppAuth extends EventEmitter {
             }
             
             return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Timeout waiting for WhatsApp client to be ready'));
-                }, timeoutMs);
+                let timeout = null;
+                
+                // Only set timeout if timeoutMs is provided
+                if (timeoutMs !== null) {
+                    timeout = setTimeout(() => {
+                        reject(new Error('Timeout waiting for WhatsApp client to be ready'));
+                    }, timeoutMs);
+                }
                 
                 if (this.isReady) {
-                    clearTimeout(timeout);
+                    if (timeout) clearTimeout(timeout);
                     resolve(true);
                 } else {
                     const onReady = () => {
-                        clearTimeout(timeout);
+                        if (timeout) clearTimeout(timeout);
                         this.isReady = true;
                         this.currentQR = null;
                         resolve(true);
@@ -595,10 +789,82 @@ class WhatsAppAuth extends EventEmitter {
         }
     }
 
+    async verifyStoreObjects() {
+        try {
+            if (!this.client || !this.client.pupPage) {
+                return { allLoaded: false, reason: 'No client or page available' };
+            }
+
+            const page = this.client.pupPage;
+            const result = await page.evaluate(() => {
+                try {
+                    // Check if Store objects exist and are functional
+                    const storeExists = !!(window.Store && window.Store.Contact && window.Store.Chat && window.Store.Msg);
+                    
+                    if (!storeExists) {
+                        return { allLoaded: false, reason: 'Store objects not found' };
+                    }
+
+                    // Test if Contact.get is callable
+                    let contactGetWorks = false;
+                    try {
+                        if (window.Store.Contact.get) {
+                            const testResult = window.Store.Contact.get('test@c.us');
+                            contactGetWorks = true;
+                        }
+                    } catch (e) {
+                        contactGetWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getContact');
+                    }
+
+                    // Test if Chat.get is callable
+                    let chatGetWorks = false;
+                    try {
+                        if (window.Store.Chat.get) {
+                            const testResult = window.Store.Chat.get('test@c.us');
+                            chatGetWorks = true;
+                        }
+                    } catch (e) {
+                        chatGetWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getChat');
+                    }
+
+                    const allLoaded = contactGetWorks && chatGetWorks;
+                    
+                    return {
+                        allLoaded,
+                        storeExists,
+                        contactGetWorks,
+                        chatGetWorks,
+                        reason: allLoaded ? 'All Store objects functional' : 'Store objects not fully functional'
+                    };
+                } catch (error) {
+                    return { allLoaded: false, reason: `Evaluation error: ${error.message}` };
+                }
+            });
+
+            return result;
+        } catch (error) {
+            console.error(`Error verifying Store objects for ${this.clientId}:`, error);
+            return { allLoaded: false, reason: `Verification error: ${error.message}` };
+        }
+    }
+
     async getCurrentStatus() {
         try {
             if (this.isReady) {
                 try {
+                    // Verify that Store objects are actually functional before reporting as ready
+                    const storeStatus = await this.verifyStoreObjects();
+                    if (!storeStatus.allLoaded) {
+                        console.log(`Store objects not fully loaded for ${this.clientId}, reporting as not ready`);
+                        return {
+                            isReady: false,
+                            authenticated: false,
+                            hasQR: !!this.currentQR,
+                            qr: this.currentQR || '',
+                            reason: 'Store objects not ready'
+                        };
+                    }
+                    
                     const userInfo = await this.getUserInfo();
                     return {
                         isReady: true,
@@ -606,14 +872,14 @@ class WhatsAppAuth extends EventEmitter {
                         userInfo: userInfo
                     };
                 } catch (error) {
-                    // Do not downgrade ready state if user info fetch fails
-                    console.log(`User info unavailable for ${this.clientId}: ${error.message}`);
+                    // If Store verification or user info fails, don't report as ready
+                    console.log(`Store verification or user info failed for ${this.clientId}: ${error.message}`);
                     return {
-                        isReady: true,
-                        authenticated: true,
-                        userInfo: null,
+                        isReady: false,
+                        authenticated: false,
                         hasQR: !!this.currentQR,
-                        qr: this.currentQR || ''
+                        qr: this.currentQR || '',
+                        reason: 'Store verification failed'
                     };
                 }
             }

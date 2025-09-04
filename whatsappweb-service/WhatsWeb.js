@@ -361,7 +361,7 @@ class WhatsAppServer {
 
                 const result = await this.getServiceForRequest(req).sendWhatsAppMessage(
                     contact_name,
-                    message,
+                    '', // Empty message - will use template from message.json
                     filePaths,
                     [], // file_sequence not needed in unified approach
                     whatsapp_number,
@@ -372,7 +372,13 @@ class WhatsAppServer {
                     }
                 );
 
-                res.json({ success: true, data: { sent: !!result, contact_name } });
+                // Check if the message was actually sent successfully
+                const messageSent = !!result;
+                if (messageSent) {
+                    res.json({ success: true, data: { sent: true, contact_name } });
+                } else {
+                    res.json({ success: false, error: `Failed to send message to ${contact_name}`, details: 'Message sending failed after all retry attempts' });
+                }
             } catch (error) {
                 console.error('Error in /send-message:', error);
                 res.status(500).json({ success: false, error: error.message });
@@ -423,7 +429,7 @@ class WhatsAppServer {
                         name: c.name,
                         phoneNumber: c.whatsapp_number || c.phoneNumber || c.phone
                     })),
-                    message,
+                    '', // Empty message - will use template from message.json
                     filePaths,
                     process_name,
                     {
