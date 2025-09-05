@@ -50,7 +50,7 @@ const Department = () => {
               key: service.key,
               name: service.name,
               description: service.description,
-              route: `/${departmentKey}/${service.key}`
+              route: `/${service.key}`
             });
           }
         });
@@ -68,7 +68,7 @@ const Department = () => {
         if (service.subServices) {
           // Handle sub-services (like single_processing, batch_processing)
           Object.values(service.subServices).forEach(subService => {
-            if (canAccessService(subService.permission)) {
+            if (canAccessService(subService.permission, factoryKey, departmentKey)) {
               services.push({
                 key: subService.key,
                 name: subService.name,
@@ -77,7 +77,7 @@ const Department = () => {
               });
             }
           });
-        } else if (service.permission && canAccessService(service.permission)) {
+        } else if (service.permission && canAccessService(service.permission, factoryKey, departmentKey)) {
           // Handle direct services
           services.push({
             key: service.key,
@@ -103,13 +103,13 @@ const Department = () => {
 
   // Helper function to check if user has permission for a specific service
   const hasUserPermission = (serviceKey) => {
-    if (!user || !departmentKey) return false;
+    if (!user || !departmentKey || !factoryKey) return false;
     
     // Admin has access to everything
     if (isAdmin) return true;
     
-    // Check if user has the specific service permission
-    return canAccessService(serviceKey);
+    // Check if user has the specific service permission in this factory and department
+    return canAccessService(serviceKey, factoryKey, departmentKey);
   };
 
   // Check if user is authenticated

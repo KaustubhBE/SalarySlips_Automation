@@ -180,10 +180,10 @@ export const DEPARTMENTS_CONFIG = {
     }
   },
   OPERATIONS: {
-    key: 'operations-department',
+    key: 'operations_department',
     name: 'Operations Department',
     description: 'Operations Department - Manage Operations',
-    route: '/operations-department',
+    route: '/operations_department',
     services: {
       INVENTORY: {
         key: 'inventory',
