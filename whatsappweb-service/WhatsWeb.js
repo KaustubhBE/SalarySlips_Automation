@@ -4,6 +4,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { WhatsAppService } = require('./service');
+const { sessionManager } = require('./sessionManager');
 
 class WhatsAppServer {
     constructor(port = 8092, host = '0.0.0.0') {
@@ -40,17 +41,17 @@ class WhatsAppServer {
             }
         };
         
-        this.getServiceForRequest = (req) => {
+        this.getServiceForRequest = async (req) => {
             const key = this.getServiceKey(req);
-            if (!this.services.has(key)) {
-                this.services.set(key, new WhatsAppService(key));
-            }
-            return this.services.get(key);
+            // Use sessionManager for proper session management and concurrency control
+            return await sessionManager.getServiceForClient(key);
         };
         
         this.setupMiddleware();
         this.setupRoutes();
     }
+
+    // Removed performStartupCleanup - cleanup only happens in start.js now
 
     setupMiddleware() {
         this.app.use(cors({
@@ -101,24 +102,33 @@ class WhatsAppServer {
     }
 
     setupRoutes() {
-        this.app.get('/health', (req, res) => {
-            const svc = this.getServiceForRequest(req);
-            res.json({ 
-                status: 'ok', 
-                whatsappReady: svc.isReady,
-                whatsappInitialized: svc.isInitialized,
-                hasQR: !!svc.currentQR,
-                timestamp: new Date().toISOString()
-            });
+        this.app.get('/health', async (req, res) => {
+            try {
+                const svc = await this.getServiceForRequest(req);
+                res.json({ 
+                    status: 'ok', 
+                    whatsappReady: svc.isReady,
+                    whatsappInitialized: svc.isInitialized,
+                    hasQR: !!svc.currentQR,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error('Error in /health:', error);
+                res.status(500).json({ 
+                    status: 'error', 
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
         });
 
 
         this.app.get('/status', async (req, res) => {
             try {
-            const svc = this.getServiceForRequest(req);
+                const svc = await this.getServiceForRequest(req);
                 const status = await svc.getCurrentStatus();
                 
-            res.json({
+                res.json({
                     ...status,
                     status: status.isReady ? 'ready' : 'initializing'
                 });
@@ -135,7 +145,7 @@ class WhatsAppServer {
         // Alias for /status to match frontend expectations
         this.app.get('/api/whatsapp-status', async (req, res) => {
             try {
-                const svc = this.getServiceForRequest(req);
+                const svc = await this.getServiceForRequest(req);
                 const status = await svc.getCurrentStatus();
                 const connectionStatus = await svc.checkConnectionStatus();
                 
@@ -155,32 +165,40 @@ class WhatsAppServer {
         });
 
         // QR code endpoint
-        this.app.get('/api/qr', (req, res) => {
-            const svc = this.getServiceForRequest(req);
-            const qr = svc.currentQR || '';
-            res.json({ 
-                success: true, 
-                data: { qr }, 
-                qr,
-                isReady: svc.isReady,
-                authenticated: svc.isReady
-            });
+        this.app.get('/api/qr', async (req, res) => {
+            try {
+                const svc = await this.getServiceForRequest(req);
+                const qr = svc.currentQR || '';
+                res.json({ 
+                    success: true, 
+                    data: { qr }, 
+                    qr,
+                    isReady: svc.isReady,
+                    authenticated: svc.isReady
+                });
+            } catch (error) {
+                console.error('Error in /api/qr:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
         });
 
         this.app.get('/auth-status', async (req, res) => {
             try {
-                const svc = this.getServiceForRequest(req);
+                const svc = await this.getServiceForRequest(req);
                 const status = await svc.getCurrentStatus();
                         
                 if (status.isReady && status.authenticated) {
-                            res.json({
-                                authenticated: true,
+                    res.json({
+                        authenticated: true,
                         userInfo: status.userInfo || {
-                                    name: 'Authenticated User',
-                                    phoneNumber: 'Unknown',
-                                    pushName: 'Unknown'
-                                }
-                            });
+                            name: 'Authenticated User',
+                            phoneNumber: 'Unknown',
+                            pushName: 'Unknown'
+                        }
+                    });
                 } else {
                     res.json({
                         authenticated: false,
@@ -199,7 +217,8 @@ class WhatsAppServer {
 
         this.app.post('/logout', async (req, res) => {
             try {
-                const success = await this.getServiceForRequest(req).logout();
+                const svc = await this.getServiceForRequest(req);
+                const success = await svc.logout();
                 if (success) {
                     res.json({ success: true, message: 'Logged out successfully' });
                 } else {
@@ -216,7 +235,7 @@ class WhatsAppServer {
         // Alias for /trigger-login to match frontend expectations
         this.app.post('/api/whatsapp-login', async (req, res) => {
             try {
-                const service = this.getServiceForRequest(req);
+                const service = await this.getServiceForRequest(req);
                 
                 // If service is already ready, return immediately
                 if (service.isReady) {
@@ -225,8 +244,8 @@ class WhatsAppServer {
                         if (status.isReady && status.authenticated && status.userInfo) {
                             const result = {
                                 isReady: true,
-                            qr: '',
-                            authenticated: true,
+                                qr: '',
+                                authenticated: true,
                                 userInfo: status.userInfo
                             };
                             return res.json({
@@ -274,7 +293,7 @@ class WhatsAppServer {
 
         this.app.post('/trigger-login', async (req, res) => {
             try {
-                const service = this.getServiceForRequest(req);
+                const service = await this.getServiceForRequest(req);
                 
                 // If service is already ready, return immediately
                 if (service.isReady) {
@@ -283,8 +302,8 @@ class WhatsAppServer {
                         if (status.isReady && status.authenticated && status.userInfo) {
                             const result = {
                                 isReady: true,
-                            qr: '',
-                            authenticated: true,
+                                qr: '',
+                                authenticated: true,
                                 userInfo: status.userInfo
                             };
                             return res.json({
@@ -359,7 +378,8 @@ class WhatsAppServer {
 
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const result = await this.getServiceForRequest(req).sendWhatsAppMessage(
+                const service = await this.getServiceForRequest(req);
+                const result = await service.sendWhatsAppMessage(
                     contact_name,
                     '', // Empty message - will use template from message.json
                     filePaths,
@@ -424,7 +444,8 @@ class WhatsAppServer {
                 // Get uploaded file paths
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
-                const results = await this.getServiceForRequest(req).sendBulkMessages(
+                const service = await this.getServiceForRequest(req);
+                const results = await service.sendBulkMessages(
                     parsedContacts.map(c => ({
                         name: c.name,
                         phoneNumber: c.whatsapp_number || c.phoneNumber || c.phone

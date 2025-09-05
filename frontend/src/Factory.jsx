@@ -6,7 +6,7 @@ import './App.css';
 
 const DepartmentNavigation = () => {
   const navigate = useNavigate();
-  const { factoryKey } = useParams();
+  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessDepartment, canAccessFactoryDepartment } = useAuth();
   const [accessibleDepartments, setAccessibleDepartments] = useState([]);
   
@@ -46,7 +46,7 @@ const DepartmentNavigation = () => {
 
   // Handle department navigation
   const handleDepartmentNavigation = (department) => {
-    navigate(`/department/${department.key}`);
+    navigate(`/${factoryKey}/${department.key}`);
   };
 
   if (!user) {
@@ -83,8 +83,11 @@ const DepartmentNavigation = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           Factory Key: {factoryKey}<br/>
+          Department Key: {departmentKey}<br/>
           User Role: {user?.role}<br/>
           User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
+          User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+          User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
           Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
         </div>
       )}

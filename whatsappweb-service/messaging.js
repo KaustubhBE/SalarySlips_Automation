@@ -151,7 +151,6 @@ class WhatsAppMessaging {
                         }
                     });
                     
-                    console.log('WhatsApp Web Store test result:', JSON.stringify(testResult, null, 2));
                     
                     // Only try to get contact if Store objects are properly initialized
                     if (testResult.testCallResult === 'success' || testResult.testCallResult === 'whatsapp_error') {
@@ -246,8 +245,6 @@ class WhatsAppMessaging {
                                     return { error: e.message };
                                 }
                             });
-                            
-                            console.log('WhatsApp Web Store test result for sendMessage:', JSON.stringify(sendTestResult, null, 2));
                         }
                         
                         // Only proceed with sending if Store objects are properly initialized

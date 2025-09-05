@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash, generate_password_hash
-from Utils.firebase_utils import db, get_user_by_email
+from Utils.firebase_utils import db, get_user_by_email, get_user_by_email_with_metadata
 import logging
 import os
 import requests
@@ -63,7 +63,8 @@ def login():
         if not email:
             return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-        user = get_user_by_email(email)
+        # Use the new function that fetches complete permission metadata
+        user = get_user_by_email_with_metadata(email)
         if not user:
             return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
 
@@ -99,12 +100,13 @@ def login():
             except Exception as e:
                 logger.error(f"OAuth token error for user {email}: {e}", exc_info=True)
 
-        # Get role and permissions
+        # Get role and complete RBAC structure
         role = user.get('role')
         permissions = user.get('permissions', {})
         tree_permissions = user.get('tree_permissions', {})
+        permission_metadata = user.get('permission_metadata', {})
         
-        # For admins, give them all permissions
+        # For admins, give them all permissions and complete metadata
         if role == 'admin':
             permissions = {
                 'inventory': True,
@@ -115,43 +117,106 @@ def login():
                 'marketing_campaigns': True,
                 'reactor_reports': True
             }
-        # For regular users, convert tree_permissions to simple permissions if needed
-        elif not permissions and tree_permissions:
-            # Convert tree_permissions to simple permissions
+            # Set admin permission metadata to allow access to all factories and departments
+            permission_metadata = {
+                'factories': ['gulbarga', 'kerur'],
+                'departments': {
+                    'gulbarga': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'],
+                    'kerur': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department']
+                },
+                'services': {
+                    'gulbarga.humanresource': ['single_processing', 'batch_processing', 'reports'],
+                    'gulbarga.store': ['inventory', 'reports'],
+                    'gulbarga.marketing': ['marketing_campaigns', 'reports'],
+                    'gulbarga.accounts': ['expense_management', 'reports'],
+                    'gulbarga.reports_department': ['reports', 'reactor_reports'],
+                    'gulbarga.operations_department': ['inventory', 'reports', 'reactor_reports'],
+                    'kerur.humanresource': ['single_processing', 'batch_processing', 'reports'],
+                    'kerur.store': ['inventory', 'reports'],
+                    'kerur.marketing': ['marketing_campaigns', 'reports'],
+                    'kerur.accounts': ['expense_management', 'reports'],
+                    'kerur.reports_department': ['reports', 'reactor_reports'],
+                    'kerur.operations_department': ['inventory', 'reports', 'reactor_reports']
+                }
+            }
+        # For regular users, use the existing permission_metadata or convert tree_permissions
+        elif not permission_metadata and tree_permissions:
+            # Convert tree_permissions to permission_metadata structure
+            permission_metadata = {
+                'factories': [],
+                'departments': {},
+                'services': {}
+            }
+            
+            for tree_key, tree_value in tree_permissions.items():
+                if isinstance(tree_value, bool) and tree_value:
+                    # Parse tree key (e.g., "gulbarga.humanresource.single_processing")
+                    parts = tree_key.split('.')
+                    if len(parts) >= 3:
+                        factory = parts[0]
+                        department = parts[1]
+                        service = parts[2]
+                        
+                        # Add factory if not already present
+                        if factory not in permission_metadata['factories']:
+                            permission_metadata['factories'].append(factory)
+                        
+                        # Add department to factory
+                        if factory not in permission_metadata['departments']:
+                            permission_metadata['departments'][factory] = []
+                        if department not in permission_metadata['departments'][factory]:
+                            permission_metadata['departments'][factory].append(department)
+                        
+                        # Add service to department
+                        service_key = f"{factory}.{department}"
+                        if service_key not in permission_metadata['services']:
+                            permission_metadata['services'][service_key] = []
+                        if service not in permission_metadata['services'][service_key]:
+                            permission_metadata['services'][service_key].append(service)
+            
+            # Also convert to simple permissions for backward compatibility
             permissions = {}
             for tree_key, tree_value in tree_permissions.items():
                 if isinstance(tree_value, bool) and tree_value:
-                    # Extract service name from tree key (e.g., "gulbarga.humanresource.single_processing" -> "single_processing")
                     parts = tree_key.split('.')
                     if len(parts) >= 3:
                         service_name = parts[2]  # e.g., "single_processing"
                         permissions[service_name] = True
             
-            # Update user in Firebase with new permissions structure
+            # Update user in Firebase with new permission structure
             try:
                 from Utils.firebase_utils import db
                 user_ref = db.collection('USERS').document(user.get('id'))
-                user_ref.update({'permissions': permissions})
-                logger.info(f"Updated user {email} with simple permissions: {permissions}")
+                user_ref.update({
+                    'permissions': permissions,
+                    'permission_metadata': permission_metadata
+                })
+                logger.info(f"Updated user {email} with permission_metadata: {permission_metadata}")
             except Exception as e:
                 logger.error(f"Failed to update user permissions: {e}")
         
-        # If still no permissions, set empty object
+        # If still no permissions, set empty objects
         if not permissions:
             permissions = {}
+        if not permission_metadata:
+            permission_metadata = {}
 
         user_data = {
             'id': user.get('id'),
             'email': user['email'],
             'role': role,
             'username': user['username'],
-            'permissions': permissions
+            'permissions': permissions,
+            'permission_metadata': permission_metadata,
+            'tree_permissions': tree_permissions
         }
 
         session['user'] = user_data
         session.permanent = True  # Make session permanent
         logger.info(f"Login successful: {email}")
         logger.info(f"User permissions: {permissions}")
+        logger.info(f"User permission_metadata: {permission_metadata}")
+        logger.info(f"User tree_permissions: {tree_permissions}")
         return jsonify({'success': True, 'user': user_data}), 200
 
     except Exception as e:

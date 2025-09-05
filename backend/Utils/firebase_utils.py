@@ -45,10 +45,34 @@ def get_user_by_email(email):
     users_ref = db.collection('USERS')
     query = users_ref.where(filter=FieldFilter('email', '==', email)).limit(1)
     results = query.get()
+    logging.info(f"Result {results}")
     if results:
         user_doc = results[0]
         user_data = user_doc.to_dict()
         user_data['id'] = user_doc.id
+        return user_data
+    return None
+
+def get_user_by_email_with_metadata(email):
+    """Get a user by their email with complete permission metadata for RBAC"""
+    users_ref = db.collection('USERS')
+    query = users_ref.where(filter=FieldFilter('email', '==', email)).limit(1)
+    results = query.get()
+    logging.info(f"Result {results}")
+    if results:
+        user_doc = results[0]
+        user_data = user_doc.to_dict()
+        user_data['id'] = user_doc.id
+        
+        # Ensure we have the complete RBAC structure
+        if 'permission_metadata' not in user_data:
+            user_data['permission_metadata'] = {}
+        
+        # Log the complete permission structure for debugging
+        logging.info(f"User {email} permission_metadata: {user_data.get('permission_metadata')}")
+        logging.info(f"User {email} tree_permissions: {user_data.get('tree_permissions')}")
+        logging.info(f"User {email} basic permissions: {user_data.get('permissions')}")
+        
         return user_data
     return None
 
@@ -95,6 +119,45 @@ def update_user_comprehensive_permissions(user_id, permissions_data):
     
     if update_data:
         user_ref.update(update_data)
+
+def clean_user_permission_metadata(user_id):
+    """Clean a users permisssion befor saving new"""
+    user_ref = db.collection('USERS').document(user_id)
+    user_ref.update({'permission_metadata':{}})
+
+def update_user_permission_metadata(user_id, permission_metadata):
+    """Update a user's permission metadata for RBAC"""
+    user_ref = db.collection('USERS').document(user_id)
+    
+    # Log the update operation
+    logging.info(f"Updating permission metadata for user {user_id}: {permission_metadata}")
+    
+    # This will completely overwrite existing permission_metadata
+    user_ref.update({'permission_metadata': permission_metadata})
+    logging.info(f"Successfully updated permission metadata for user {user_id}")
+
+def update_user_complete_rbac(user_id, permissions, permission_metadata, tree_permissions=None):
+    """Update complete RBAC structure for a user"""
+    user_ref = db.collection('USERS').document(user_id)
+    
+    # Log the update operation
+    logging.info(f"Updating RBAC for user {user_id}:")
+    logging.info(f"  - Permissions count: {len(permissions) if permissions else 0}")
+    logging.info(f"  - Permission metadata: {permission_metadata}")
+    logging.info(f"  - Tree permissions: {tree_permissions is not None}")
+    
+    # Prepare update data - this will completely overwrite existing permission_metadata
+    update_data = {
+        'permissions': permissions,
+        'permission_metadata': permission_metadata  # This will overwrite any existing permission_metadata
+    }
+    
+    if tree_permissions is not None:
+        update_data['tree_permissions'] = tree_permissions
+    
+    # Single atomic update that clears old permission_metadata and sets new data
+    user_ref.update(update_data)
+    logging.info(f"Successfully updated RBAC for user {user_id}")
 
 def update_user_app_password(user_id, app_password):
     """Update a user's app password"""

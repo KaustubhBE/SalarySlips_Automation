@@ -5,35 +5,21 @@ import '../App.css'
 
 const ReportsDepartment = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isAuthenticated, canAccessService, canAccessDepartment, canAccessFactory } = useAuth()
 
-  // Function to check if user is admin
-  const isAdmin = user?.role === 'admin'
-
-  // Check if user has specific permission
-  const hasUserPermission = (permission) => {
-    // Admin has access to everything
-    if (isAdmin) {
-      return true
-    }
-    
-    // Check if user has the specific permission
-    return user?.permissions && user.permissions[permission] === true
-  }
-
-  // Check if user is authenticated
-  const isAuthenticated = !!user
+  // Function to check if user is admin (role or wildcard permission)
+  const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true)
 
   // Handle back to main menu navigation
   const handleBackToMain = () => {
     navigate('/app')
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return <div>Please log in to access reports department.</div>
   }
 
-  if (!hasUserPermission('reports')) {
+  if (!canAccessService('reports')) {
     return (
       <div className="splash-page">
         <h1>Access Denied</h1>
@@ -52,7 +38,11 @@ const ReportsDepartment = () => {
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
           User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
-          Has Reports Permission: {hasUserPermission('reports') ? 'Yes' : 'No'}
+          User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+          User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
+          Has Reports Permission: {canAccessService('reports') ? 'Yes' : 'No'}<br/>
+          Can Access Store: {canAccessDepartment('store') ? 'Yes' : 'No'}<br/>
+          Can Access Human Resource: {canAccessDepartment('humanresource') ? 'Yes' : 'No'}
         </div>
       )}
       

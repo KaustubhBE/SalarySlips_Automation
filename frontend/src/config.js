@@ -172,7 +172,7 @@ export const DEPARTMENTS_CONFIG = {
         permission: 'reactor_reports'
       },
       GENERAL_REPORTS: {
-        key: 'general-reports',
+        key: 'reports',
         name: 'General Reports',
         description: 'Generate general reports',
         permission: 'reports'

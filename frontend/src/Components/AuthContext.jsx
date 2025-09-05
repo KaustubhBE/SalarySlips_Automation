@@ -23,38 +23,103 @@ export const AuthProvider = ({ children }) => {
     return deptKey.toString().trim().toLowerCase().replace(/-/g, '_');
   }, []);
 
-  // Simple permission checking function
-  const hasPermission = useCallback((permission) => {
+  // Enhanced permission checking function using permission_metadata
+  const hasPermission = useCallback((permission, factory = null, department = null) => {
     if (!user) return false;
     
     // Admin or wildcard has access to everything
     if (isAdminUser()) return true;
     if (user.permissions && user.permissions['*'] === true) return true;
     
-    // Check if user has the specific permission
-    const hasPermissionResult = user.permissions && user.permissions[permission] === true;
+    // Use permission_metadata for RBAC if available
+    const permissionMetadata = user.permission_metadata || {};
+    const services = permissionMetadata.services || {};
+    
+    // If factory and department are specified, check specific access
+    if (factory && department) {
+      const normalizedFactory = normalizeDepartmentKey(factory);
+      const normalizedDept = normalizeDepartmentKey(department);
+      const serviceKey = `${normalizedFactory}.${normalizedDept}`;
+      const allowedServices = services[serviceKey] || [];
+      const normalizedPermission = normalizeDepartmentKey(permission);
+      
+      const hasAccess = allowedServices.some(s => normalizeDepartmentKey(s) === normalizedPermission);
+      
+      // Debug logging (remove in production)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('hasPermission - Checking specific permission:', {
+          permission,
+          factory,
+          department,
+          serviceKey,
+          allowedServices,
+          hasAccess,
+          permissionMetadata
+        });
+      }
+      
+      return hasAccess;
+    }
+    
+    // Check if user has access to this permission in any factory/department
+    const normalizedPermission = normalizeDepartmentKey(permission);
+    for (const serviceKey in services) {
+      const allowedServices = services[serviceKey] || [];
+      if (allowedServices.some(s => normalizeDepartmentKey(s) === normalizedPermission)) {
+        return true;
+      }
+    }
+    
+    // Fallback to basic permission check
+    let hasPermissionResult = user.permissions && user.permissions[permission] === true;
+    
+    // If not found in user.permissions, check rbacInfo from localStorage as fallback
+    if (!hasPermissionResult) {
+      try {
+        const rbacInfo = storage.getJSON('rbacInfo');
+        if (rbacInfo && rbacInfo.permissions) {
+          hasPermissionResult = rbacInfo.permissions[permission] === true;
+        }
+      } catch (error) {
+        console.warn('Error reading rbacInfo from localStorage:', error);
+      }
+    }
     
     // Debug logging (remove in production)
     if (process.env.NODE_ENV === 'development') {
-      console.log('hasPermission - Checking permission:', {
+      console.log('hasPermission - Fallback to basic permission check:', {
         permission,
         userRole: user.role,
         userPermissions: user.permissions,
-        hasPermissionResult
+        hasPermissionResult,
+        rbacInfo: storage.getJSON('rbacInfo')
       });
     }
     
     return hasPermissionResult;
-  }, [user, isAdminUser]);
+  }, [user, isAdminUser, normalizeDepartmentKey]);
 
-  // Check if user can access a department
+  // Check if user can access a department using permission_metadata
   const canAccessDepartment = useCallback((department) => {
     if (!user) return false;
     
     // Admin can access everything
     if (isAdminUser()) return true;
     
-    // Check if user has any permission for this department
+    // Use permission_metadata for RBAC if available
+    const permissionMetadata = user.permission_metadata || {};
+    const departments = permissionMetadata.departments || {};
+    
+    // Check if user has access to this department in any factory
+    const normalizedDept = normalizeDepartmentKey(department);
+    for (const factory in departments) {
+      const factoryDepartments = departments[factory] || [];
+      if (factoryDepartments.some(dept => normalizeDepartmentKey(dept) === normalizedDept)) {
+        return true;
+      }
+    }
+    
+    // Fallback to old logic if permission_metadata is not available
     const departmentPermissions = {
       'store': ['inventory', 'reports'],
       'humanresource': ['single_processing', 'batch_processing', 'reports'],
@@ -64,56 +129,168 @@ export const AuthProvider = ({ children }) => {
       'operations_department': ['inventory', 'reports', 'reactor_reports']
     };
     
-    const normalizedDept = normalizeDepartmentKey(department);
     const deptPermissions = departmentPermissions[normalizedDept] || [];
     return deptPermissions.some(permission => hasPermission(permission));
   }, [user, hasPermission, isAdminUser, normalizeDepartmentKey]);
 
-  // Check if user can access any services in a specific factory
+  // Check if user can access any services in a specific factory using permission_metadata
   const canAccessFactory = useCallback((factory) => {
     if (!user) return false;
     
     // Admin can access everything
     if (isAdminUser()) return true;
     
-    // Check if user has any permissions at all
-    const userPermissions = user.permissions || {};
-    const hasAnyPermissions = Object.keys(userPermissions).length > 0;
+    // Use permission_metadata for RBAC if available
+    const permissionMetadata = user.permission_metadata || {};
+    const factories = permissionMetadata.factories || [];
+    
+    // Check if user has access to this factory
+    const normalizedFactory = normalizeDepartmentKey(factory);
+    const hasFactoryAccess = factories.some(f => normalizeDepartmentKey(f) === normalizedFactory);
     
     // Debug logging (remove in production)
     if (process.env.NODE_ENV === 'development') {
       console.log('canAccessFactory - Checking factory access:', {
         factory,
+        normalizedFactory,
         userRole: user.role,
-        userPermissions,
-        hasAnyPermissions
+        factories,
+        hasFactoryAccess,
+        permissionMetadata
       });
     }
     
-    return hasAnyPermissions;
-  }, [user, isAdminUser]);
+    return hasFactoryAccess;
+  }, [user, isAdminUser, normalizeDepartmentKey]);
 
-  // Check if user can access any services in a specific department within a factory
+  // Check if user can access any services in a specific department within a factory using permission_metadata
   const canAccessFactoryDepartment = useCallback((factory, department) => {
     if (!user) return false;
     
     // Admin can access everything
     if (isAdminUser()) return true;
     
-    // Check if user has any permission for this department
-    return canAccessDepartment(department);
-  }, [user, canAccessDepartment, isAdminUser]);
+    // Use permission_metadata for RBAC if available
+    const permissionMetadata = user.permission_metadata || {};
+    const departments = permissionMetadata.departments || {};
+    
+    const normalizedFactory = normalizeDepartmentKey(factory);
+    const normalizedDept = normalizeDepartmentKey(department);
+    
+    // Check if user has access to this department in this specific factory
+    const factoryDepartments = departments[normalizedFactory] || [];
+    const hasAccess = factoryDepartments.some(dept => normalizeDepartmentKey(dept) === normalizedDept);
+    
+    // Debug logging (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('canAccessFactoryDepartment - Checking factory department access:', {
+        factory,
+        department,
+        normalizedFactory,
+        normalizedDept,
+        factoryDepartments,
+        hasAccess,
+        permissionMetadata
+      });
+    }
+    
+    return hasAccess;
+  }, [user, isAdminUser, normalizeDepartmentKey]);
 
-  // Check if user can access a service
-  const canAccessService = useCallback((service) => {
+  // Check if user can access a service using permission_metadata
+  const canAccessService = useCallback((service, factory = null, department = null) => {
     if (!user) return false;
     
     // Admin can access everything
     if (isAdminUser()) return true;
     
-    // Check if user has the specific service permission
+    // Use permission_metadata for RBAC if available
+    const permissionMetadata = user.permission_metadata || {};
+    const services = permissionMetadata.services || {};
+    
+    // If factory and department are specified, check specific access
+    if (factory && department) {
+      const normalizedFactory = normalizeDepartmentKey(factory);
+      const normalizedDept = normalizeDepartmentKey(department);
+      const serviceKey = `${normalizedFactory}.${normalizedDept}`;
+      const allowedServices = services[serviceKey] || [];
+      const normalizedService = normalizeDepartmentKey(service);
+      
+      const hasAccess = allowedServices.some(s => normalizeDepartmentKey(s) === normalizedService);
+      
+      // Debug logging (remove in production)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('canAccessService - Checking specific service access:', {
+          service,
+          factory,
+          department,
+          serviceKey,
+          allowedServices,
+          hasAccess,
+          permissionMetadata
+        });
+      }
+      
+      return hasAccess;
+    }
+    
+    // Check if user has access to this service in any factory/department
+    const normalizedService = normalizeDepartmentKey(service);
+    for (const serviceKey in services) {
+      const allowedServices = services[serviceKey] || [];
+      if (allowedServices.some(s => normalizeDepartmentKey(s) === normalizedService)) {
+        return true;
+      }
+    }
+    
+    // Fallback to basic permission check
     return hasPermission(service);
-  }, [user, hasPermission, isAdminUser]);
+  }, [user, hasPermission, isAdminUser, normalizeDepartmentKey]);
+
+  // Get all factories user can access
+  const getUserFactories = useCallback(() => {
+    if (!user) return [];
+    
+    // Admin can access everything
+    if (isAdminUser()) return ['gulbarga', 'kerur'];
+    
+    const permissionMetadata = user.permission_metadata || {};
+    return permissionMetadata.factories || [];
+  }, [user, isAdminUser]);
+
+  // Get all departments user can access in a specific factory
+  const getUserDepartments = useCallback((factory) => {
+    if (!user) return [];
+    
+    // Admin can access everything
+    if (isAdminUser()) {
+      return ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'];
+    }
+    
+    const permissionMetadata = user.permission_metadata || {};
+    const departments = permissionMetadata.departments || {};
+    const normalizedFactory = normalizeDepartmentKey(factory);
+    
+    return departments[normalizedFactory] || [];
+  }, [user, isAdminUser, normalizeDepartmentKey]);
+
+  // Get all services user can access in a specific factory.department
+  const getUserServices = useCallback((factory, department) => {
+    if (!user) return [];
+    
+    // Admin can access everything
+    if (isAdminUser()) {
+      return ['single_processing', 'batch_processing', 'inventory', 'reports', 'expense_management', 'marketing_campaigns', 'reactor_reports'];
+    }
+    
+    const permissionMetadata = user.permission_metadata || {};
+    const services = permissionMetadata.services || {};
+    const normalizedFactory = normalizeDepartmentKey(factory);
+    const normalizedDept = normalizeDepartmentKey(department);
+    const serviceKey = `${normalizedFactory}.${normalizedDept}`;
+    
+    return services[serviceKey] || [];
+  }, [user, isAdminUser, normalizeDepartmentKey]);
 
   const login = useCallback(async (userData) => {
     setUser(userData);
@@ -177,8 +354,11 @@ export const AuthProvider = ({ children }) => {
     canAccessDepartment,
     canAccessService,
     canAccessFactory,
-    canAccessFactoryDepartment
-  }), [user, isAuthenticated, login, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment]);
+    canAccessFactoryDepartment,
+    getUserFactories,
+    getUserDepartments,
+    getUserServices
+  }), [user, isAuthenticated, login, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment, getUserFactories, getUserDepartments, getUserServices]);
 
   if (loading) {
     return <div>Loading...</div>;

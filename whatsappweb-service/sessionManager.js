@@ -10,6 +10,8 @@ class WhatsAppSessionManager {
         this.creationCooldown = 10 * 1000; // 10 seconds cooldown between session creations
         this.lastCreationTimes = new Map(); // clientId -> last creation time
         this.logThrottle = new Map(); // clientId -> last log time
+        this.creationLocks = new Map(); // clientId -> creation promise
+        this.globalLock = false; // Global lock for critical operations
         
         // Start cleanup timer
         this.startCleanupTimer();
@@ -17,7 +19,7 @@ class WhatsAppSessionManager {
         console.log('WhatsApp Session Manager initialized');
     }
 
-    getServiceForClient(clientId) {
+    async getServiceForClient(clientId) {
         const sanitizedClientId = this.sanitizeClientId(clientId);
         
         // Check if we have an active session
@@ -33,6 +35,12 @@ class WhatsAppSessionManager {
             }
         }
         
+        // Check if creation is already in progress
+        if (this.creationLocks.has(sanitizedClientId)) {
+            console.log(`Session creation already in progress for ${sanitizedClientId}, waiting...`);
+            return this.creationLocks.get(sanitizedClientId);
+        }
+        
         // Check creation cooldown to prevent rapid session creation
         if (this.isInCreationCooldown(sanitizedClientId)) {
             // Return existing service if available, even if expired
@@ -42,11 +50,27 @@ class WhatsAppSessionManager {
             }
         }
         
-        // Create new session
-        return this.createNewSession(sanitizedClientId);
+        // Create new session with locking
+        return this.createNewSessionWithLock(sanitizedClientId);
     }
 
-    createNewSession(clientId) {
+    async createNewSessionWithLock(clientId) {
+        // Create a promise for the session creation
+        const creationPromise = this._createNewSession(clientId);
+        
+        // Store the promise in the locks map
+        this.creationLocks.set(clientId, creationPromise);
+        
+        try {
+            const service = await creationPromise;
+            return service;
+        } finally {
+            // Always clean up the lock
+            this.creationLocks.delete(clientId);
+        }
+    }
+
+    async _createNewSession(clientId) {
         try {
             // Update creation time for cooldown
             this.lastCreationTimes.set(clientId, Date.now());
@@ -78,6 +102,11 @@ class WhatsAppSessionManager {
             this.cleanupSession(clientId);
             throw error;
         }
+    }
+
+    createNewSession(clientId) {
+        // Legacy method for backward compatibility
+        return this._createNewSession(clientId);
     }
 
     setupSessionListeners(clientId, service) {

@@ -939,9 +939,10 @@ def update_permissions():
         data = request.json
         user_id = data.get('user_id')
         permissions = data.get('permissions')
+        permission_metadata = data.get('permission_metadata')
 
-        if not all([user_id, permissions]):
-            return jsonify({"error": "User ID and permissions are required"}), 400
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
 
         # Get target user
         target_user = get_user_by_id(user_id)
@@ -953,11 +954,23 @@ def update_permissions():
 
         # Admin can update permissions for any user
         if current_user_role == 'admin':
-            # Update user with tree-based permissions only
-            from Utils.firebase_utils import update_user_comprehensive_permissions
-            update_user_comprehensive_permissions(user_id, {
-                'permissions': permissions
-            })
+            # Update user with both permissions and permission_metadata
+            from Utils.firebase_utils import update_user_complete_rbac
+            
+            # Prepare update data
+            update_data = {}
+            if permissions is not None:
+                update_data['permissions'] = permissions
+            if permission_metadata is not None:
+                update_data['permission_metadata'] = permission_metadata
+            
+            # Use the complete RBAC update function
+            update_user_complete_rbac(
+                user_id, 
+                update_data.get('permissions', {}), 
+                update_data.get('permission_metadata', {}),
+                permissions  # Use permissions as tree_permissions for backward compatibility
+            )
             
             return jsonify({"message": "Permissions updated successfully"}), 200
         

@@ -7,7 +7,7 @@ import './Processing.css';
 import Navbar from './Navbar';
 import Settings from './Components/Settings';
 import { Route, Routes } from 'react-router-dom';
-import { getApiUrl, makeApiCall, ENDPOINTS, hasPermission } from './config.js';
+import { getApiUrl, makeApiCall, ENDPOINTS } from './config.js';
 import { useAuth } from './Components/AuthContext';
 import axios from 'axios';
 import AttachmentSequence from './Components/AttachmentSequence';
@@ -148,7 +148,7 @@ const getFinancialYears = () => {
 };
 
 function Processing({ mode = 'single' }) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [sendEmail, setSendEmail] = useState(false);
   const [sendWhatsapp, setSendWhatsapp] = useState(false); // ENABLED WHATSAPP
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -375,13 +375,12 @@ function Processing({ mode = 'single' }) {
     if (!user) return false;
     
     const userRole = user.role || 'user';
-    const userPermissions = user.permissions || {};
     
     if (userRole === 'super-admin') return true;
     
-    // Check for specific processing permissions
+    // Check for specific processing permissions using the enhanced hasPermission function
     const requiredPermission = mode === 'single' ? 'single_processing' : 'batch_processing';
-    return hasPermission(userPermissions, requiredPermission);
+    return hasPermission(requiredPermission);
   };
 
   // If user doesn't have permission, show access denied message

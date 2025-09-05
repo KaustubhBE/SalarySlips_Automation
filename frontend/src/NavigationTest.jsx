@@ -100,6 +100,8 @@ const NavigationTest = () => {
         <p><strong>Role:</strong> {user?.role || 'Not logged in'}</p>
         <p><strong>Email:</strong> {user?.email || 'Not logged in'}</p>
         <p><strong>Permissions:</strong> {user?.permissions ? Object.keys(user.permissions).join(', ') : 'None'}</p>
+        <p><strong>Permission Metadata:</strong> {user?.permission_metadata ? JSON.stringify(user.permission_metadata, null, 2) : 'None'}</p>
+        <p><strong>Tree Permissions:</strong> {user?.tree_permissions ? JSON.stringify(user.tree_permissions, null, 2) : 'None'}</p>
         <p><strong>Departments:</strong> {user?.departments ? user.departments.join(', ') : 'None'}</p>
       </div>
       

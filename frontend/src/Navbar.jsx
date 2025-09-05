@@ -345,6 +345,18 @@ const Navbar = ({ onLogout }) => {
       return;
     }
 
+    // First check if user is already authenticated
+    console.log(`Checking WhatsApp status for user: ${userIdentifier}`);
+    await checkWhatsAppAuthStatus();
+    
+    // If already authenticated, show the status and return
+    if (isAuthenticated) {
+      setShowQR(true);
+      setQRValue('');
+      setIsPolling(false);
+      return;
+    }
+
     setLoadingQR(true);
     setLoginSuccess(false);
     setStatusMsg('Initializing WhatsApp connection...');
@@ -457,29 +469,11 @@ const Navbar = ({ onLogout }) => {
     }
   };
 
-  // Check status when component mounts
-  useEffect(() => {
-    if (getUserIdentifier()) {
-      checkWhatsAppAuthStatus();
-      
-      const refreshInterval = setInterval(() => {
-        if (isAuthenticated && (!userInfo || userInfo.name === 'Loading...' || userInfo.name === 'WhatsApp User')) {
-          checkWhatsAppAuthStatus();
-        }
-      }, 120000); // Check every 2 minutes
-      
-      return () => {
-        clearInterval(refreshInterval);
-      };
-    }
-  }, [isAuthenticated, userInfo]);
+  // Removed automatic status check on component mount
+  // Status check now only happens when WhatsApp icon is clicked
 
-  // Check status when modal is shown
-  useEffect(() => {
-    if (showQR && getUserIdentifier()) {
-      checkWhatsAppAuthStatus();
-    }
-  }, [showQR]);
+  // Removed automatic status check when modal is shown
+  // Status check now only happens when WhatsApp icon is clicked
 
   // Poll for status updates when QR is shown
   useEffect(() => {
@@ -767,7 +761,7 @@ const Navbar = ({ onLogout }) => {
             (userInfo && userInfo.name && userInfo.name !== 'Loading...' && userInfo.name !== 'WhatsApp User' ? 
               `WhatsApp: ${userInfo.name} (${userInfo.phoneNumber})` : 
               "WhatsApp: Connected (Loading user info...)") : 
-            `Show WhatsApp QR for ${getUserIdentifier()}`} 
+            `Check WhatsApp Status for ${getUserIdentifier()}`} 
         />
         <FaSignOutAlt className="logout-icon" onClick={handleLogout} title="Logout" />
         <FaCog className="settings-icon" onClick={() => navigate('/settings')} title="Settings" />

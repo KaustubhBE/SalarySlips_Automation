@@ -12,73 +12,9 @@ import {
   SERVICE_NAMES
 } from './config';
 import { useAuth } from './Components/AuthContext';
+import TreePermissions from './Components/TreePermissions';
 import './Dashboard.css';
 
-// Simple Permissions Component for service-based permissions
-const SimplePermissions = ({ 
-  permissions, 
-  onPermissionChange, 
-  isEditing = false, 
-  targetUserRole = 'user',
-  currentUserRole = 'admin'
-}) => {
-  // Define all available permissions
-  const allPermissions = {
-    'inventory': 'Inventory Management',
-    'reports': 'Reports',
-    'single_processing': 'Single Processing',
-    'batch_processing': 'Batch Processing',
-    'expense_management': 'Expense Management',
-    'marketing_campaigns': 'Marketing Campaigns',
-    'reactor_reports': 'Reactor Reports'
-  };
-
-  // Handle permission change
-  const handlePermissionChange = (permissionKey, checked) => {
-    const updatedPermissions = { ...permissions };
-    if (checked) {
-      updatedPermissions[permissionKey] = true;
-    } else {
-      delete updatedPermissions[permissionKey];
-    }
-    onPermissionChange(updatedPermissions);
-  };
-
-  // Check if a permission is granted
-  const isPermissionGranted = (permissionKey) => {
-    return permissions[permissionKey] === true;
-  };
-
-  // Check if user can edit permissions
-  const canEdit = isEditing && currentUserRole === 'admin';
-    
-  return (
-    <div className="simple-permissions-container">
-      <div className="permissions-header">
-        <h4>Service Permissions</h4>
-        <p className="permissions-description">
-          Select specific services to grant access to the user.
-        </p>
-      </div>
-      
-      <div className="permissions-list">
-        {Object.entries(allPermissions).map(([permissionKey, permissionName]) => (
-          <div key={permissionKey} className="permission-item">
-            <label className="permission-checkbox">
-              <input
-                type="checkbox"
-                checked={isPermissionGranted(permissionKey)}
-                onChange={(e) => handlePermissionChange(permissionKey, e.target.checked)}
-                disabled={!canEdit}
-              />
-              <span className="permission-name">{permissionName}</span>
-            </label>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 
 
@@ -178,7 +114,10 @@ function Dashboard() {
             email: user.email,
             role: user.role,
             permissions: user.permissions,
-            hasPermissions: Object.keys(user.permissions || {}).length > 0
+            permission_metadata: user.permission_metadata,
+            tree_permissions: user.tree_permissions,
+            hasPermissions: Object.keys(user.permissions || {}).length > 0,
+            hasPermissionMetadata: user.permission_metadata && Object.keys(user.permission_metadata).length > 0
           });
         });
         
@@ -268,12 +207,61 @@ function Dashboard() {
     }
   };
 
+  // Convert tree permissions to permission_metadata format
+  const convertTreePermissionsToMetadata = (treePermissions) => {
+    const permissionMetadata = {
+      factories: [],
+      departments: {},
+      services: {}
+    };
+
+    // Process each tree permission key (e.g., "gulbarga.humanresource.single_processing")
+    Object.keys(treePermissions).forEach(key => {
+      if (treePermissions[key] === true) {
+        const parts = key.split('.');
+        if (parts.length >= 3) {
+          const factory = parts[0];
+          const department = parts[1];
+          const service = parts[2];
+
+          // Add factory to factories array
+          if (!permissionMetadata.factories.includes(factory)) {
+            permissionMetadata.factories.push(factory);
+          }
+
+          // Add department to factory
+          if (!permissionMetadata.departments[factory]) {
+            permissionMetadata.departments[factory] = [];
+          }
+          if (!permissionMetadata.departments[factory].includes(department)) {
+            permissionMetadata.departments[factory].push(department);
+          }
+
+          // Add service to department
+          const serviceKey = `${factory}.${department}`;
+          if (!permissionMetadata.services[serviceKey]) {
+            permissionMetadata.services[serviceKey] = [];
+          }
+          if (!permissionMetadata.services[serviceKey].includes(service)) {
+            permissionMetadata.services[serviceKey].push(service);
+          }
+        }
+      }
+    });
+
+    return permissionMetadata;
+  };
+
   const handleUpdatePermissions = async (userId, updatedPermissions) => {
     try {
-      // Prepare permissions data only
+      // Convert tree permissions to permission_metadata format
+      const permissionMetadata = convertTreePermissionsToMetadata(updatedPermissions);
+      
+      // Prepare permissions data with both formats for backward compatibility
       const permissionsData = {
           user_id: userId, 
-          permissions: updatedPermissions
+          permissions: updatedPermissions, // Keep tree permissions for backward compatibility
+          permission_metadata: permissionMetadata // Add the structured metadata
       };
       
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_PERMISSIONS), 
@@ -302,8 +290,33 @@ function Dashboard() {
     }
   };
 
-  const handleEditPermissionChange = (updatedPermissions) => {
-    setEditingPermissions(updatedPermissions);
+  const handleEditPermissionChange = (permissionKey, value) => {
+    setEditingPermissions(prevPermissions => {
+      const updatedPermissions = { ...prevPermissions };
+      if (value) {
+        updatedPermissions[permissionKey] = true;
+      } else {
+        delete updatedPermissions[permissionKey];
+      }
+      return updatedPermissions;
+    });
+  };
+
+  // Batch permission update function
+  const handleBatchPermissionChange = (permissionUpdates) => {
+    setEditingPermissions(prevPermissions => {
+      const updatedPermissions = { ...prevPermissions };
+      
+      permissionUpdates.forEach(({ key, value }) => {
+        if (value) {
+          updatedPermissions[key] = true;
+        } else {
+          delete updatedPermissions[key];
+        }
+      });
+      
+      return updatedPermissions;
+    });
   };
 
   const handleEditAppPassword = (user) => {
@@ -311,11 +324,47 @@ function Dashboard() {
     setEditingAppPassword("");
   };
 
+  // Convert permission_metadata back to tree permissions format for editing
+  const convertMetadataToTreePermissions = (permissionMetadata) => {
+    const treePermissions = {};
+    
+    if (!permissionMetadata || !permissionMetadata.services) {
+      return treePermissions;
+    }
+    
+    // Convert services structure back to tree permissions
+    Object.keys(permissionMetadata.services).forEach(serviceKey => {
+      const services = permissionMetadata.services[serviceKey];
+      services.forEach(service => {
+        const treeKey = `${serviceKey}.${service}`;
+        treePermissions[treeKey] = true;
+      });
+    });
+    
+    return treePermissions;
+  };
+
   const handleEditPermissions = (user) => {
     setEditingUserId(user.id);
     setSelectedUser(user);
-    // Use only permissions
-    const permissions = user.permissions || {};
+    
+    // Try to load from permission_metadata first, then fallback to permissions
+    let permissions = {};
+    
+    if (user.permission_metadata && Object.keys(user.permission_metadata).length > 0) {
+      // Convert permission_metadata to tree permissions format
+      permissions = convertMetadataToTreePermissions(user.permission_metadata);
+      console.log(`Loading permissions from permission_metadata for user ${user.username}:`, {
+        permission_metadata: user.permission_metadata,
+        converted_permissions: permissions
+      });
+    } else {
+      // Fallback to flat permissions
+      permissions = user.permissions || {};
+      console.log(`Loading permissions from flat permissions for user ${user.username}:`, {
+        permissions: permissions
+      });
+    }
     
     // If user has no permissions at all, show a message
     const hasAnyPermissions = Object.keys(permissions).length > 0;
@@ -323,10 +372,6 @@ function Dashboard() {
       console.log(`User ${user.username} has no permissions set`);
     }
     
-    console.log(`Loading permissions for user ${user.username}:`, {
-      permissions: permissions,
-      hasAnyPermissions: hasAnyPermissions
-    });
     setEditingPermissions(permissions);
     setShowPermissionsModal(true);
   };
@@ -558,9 +603,10 @@ function Dashboard() {
                 ×
               </button>
             </div>
-            <SimplePermissions
+            <TreePermissions
               permissions={editingPermissions}
               onPermissionChange={handleEditPermissionChange}
+              onBatchPermissionChange={handleBatchPermissionChange}
               isEditing={true}
               targetUserRole={selectedUser.role}
               currentUserRole={getCurrentUserRole()}

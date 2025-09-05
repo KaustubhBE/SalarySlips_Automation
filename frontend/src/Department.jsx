@@ -10,7 +10,7 @@ import './App.css';
 
 const Department = () => {
   const navigate = useNavigate();
-  const { departmentKey } = useParams();
+  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
@@ -41,7 +41,7 @@ const Department = () => {
                 key: subService.key,
                 name: subService.name,
                 description: subService.description,
-                route: `/${departmentKey}/${subService.key}`
+                route: `/${subService.key}`
               });
             });
           } else if (service.permission) {
@@ -73,7 +73,7 @@ const Department = () => {
                 key: subService.key,
                 name: subService.name,
                 description: subService.description,
-                route: `/${departmentKey}/${subService.key}`
+                route: `/${subService.key}`
               });
             }
           });
@@ -83,13 +83,18 @@ const Department = () => {
             key: service.key,
             name: service.name,
             description: service.description,
-            route: `/${departmentKey}/${service.key}`
+            route: `/${service.key}`
           });
         }
       });
     }
     
-    console.log('Department.jsx - Final accessible services:', services);
+    console.log('Department.jsx - Final accessible services:', services.map(s => ({
+      key: s.key,
+      name: s.name,
+      route: s.route,
+      fullRoute: `/department/${departmentKey}${s.route}`
+    })));
     return services;
   };
 
@@ -113,13 +118,23 @@ const Department = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      navigate(service.route);
+      // Use the correct route format that matches App.jsx routing
+      const fullRoute = `/${factoryKey}/${departmentKey}${service.route}`;
+      console.log(fullRoute);
+      console.log('Department.jsx - Navigating to service:', {
+        service: service.key,
+        serviceRoute: service.route,
+        fullRoute: fullRoute,
+        factoryKey: factoryKey,
+        departmentKey: departmentKey
+      });
+      navigate(fullRoute);
     }
   };
 
-  // Handle back to main menu navigation
-  const handleBackToMain = () => {
-    navigate('/app');
+  // Handle back to factory navigation
+  const handleBackToFactory = () => {
+    navigate(`/${factoryKey}`);
   };
 
   if (!user) {
@@ -143,8 +158,8 @@ const Department = () => {
           ⚠️ <strong>No Permissions Assigned</strong><br/>
           You currently don't have any permissions assigned for this department. Please contact your administrator to get access to services.
         </div>
-        <button onClick={handleBackToMain} className="nav-link" style={{ marginTop: '15px' }}>
-          Back to Main Menu
+        <button onClick={handleBackToFactory} className="nav-link" style={{ marginTop: '15px' }}>
+          Back to Factory
         </button>
       </div>
     );
@@ -152,34 +167,34 @@ const Department = () => {
 
   return (
     <Routes>
-      <Route path="/single-processing/*" element={
+              <Route path="single-processing/*" element={
           isAuthenticated && hasUserPermission('single_processing') ? 
             <Processing mode="single" /> : 
-            <Navigate to="/app" replace />
+            <Navigate to={`/${factoryKey}`} replace />
         } />
 
-        <Route path="/batch-processing/*" element={
+        <Route path="batch-processing/*" element={
           isAuthenticated && hasUserPermission('batch_processing') ? 
             <Processing mode="batch" /> : 
-            <Navigate to="/app" replace />
+            <Navigate to={`/${factoryKey}`} replace />
         } />
 
-        <Route path="/inventory/*" element={
+        <Route path="inventory/*" element={
           isAuthenticated && hasUserPermission('inventory') ? 
             <Inventory /> : 
-            <Navigate to="/app" replace />
+            <Navigate to={`/${factoryKey}`} replace />
         }/>
 
-        <Route path="/reports" element={
+        <Route path="reports" element={
           isAuthenticated && hasUserPermission('reports') ? 
             <Reports /> : 
-            <Navigate to="/app" replace />
+            <Navigate to={`/${factoryKey}`} replace />
         } />
 
-        <Route path="/reactor-reports" element={
+        <Route path="reactor-reports" element={
           isAuthenticated && hasUserPermission('reactor_reports') ? 
             <ReactorReports /> : 
-            <Navigate to="/app" replace />
+            <Navigate to={`/${factoryKey}`} replace />
         } />
       
       {/* Default Department View */}
@@ -189,10 +204,14 @@ const Department = () => {
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
+              Factory: {factoryKey}<br/>
               Department: {departmentKey}<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
-              Has Permissions: {user?.permissions && Object.keys(user.permissions).length > 0 ? 'Yes' : 'No'}
+              User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+              User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
+              Has Permissions: {user?.permissions && Object.keys(user.permissions).length > 0 ? 'Yes' : 'No'}<br/>
+              Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
           <h2>{selectedDepartment?.name || departmentKey}</h2>
@@ -213,10 +232,10 @@ const Department = () => {
             ))}
           </div>
           
-          {/* Back to Main Menu Button - Bottom Left */}
+          {/* Back to Factory Button - Bottom Left */}
           <div className="back-button-container">
-            <button onClick={handleBackToMain} className="nav-link back-button">
-              ← Back to Main Menu
+            <button onClick={handleBackToFactory} className="nav-link back-button">
+              ← Back to Factory
             </button>
           </div>
         </div>

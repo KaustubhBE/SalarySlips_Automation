@@ -12,121 +12,16 @@ class WhatsAppAuth extends EventEmitter {
         this.currentQR = null;
         this.client = null;
         this.sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${this.clientId}`);
+        this._initializing = false;
+        this._initializationPromise = null;
         
         console.log(`WhatsAppAuth initialized for clientId: ${this.clientId}`);
         console.log(`Session path: ${this.sessionPath}`);
     }
 
-    async cleanupCorruptedSession() {
-        try {
-            console.log(`Cleaning up corrupted session for clientId: ${this.clientId}`);
-            
-            // Kill any existing Chrome processes for this session
-            await this.killChromeProcesses();
-            
-            // Clean up SingletonLock and other browser lock files
-            const sessionPath = this.sessionPath;
-            const lockFiles = [
-                'SingletonLock',
-                'SingletonSocket',
-                'DevToolsActivePort',
-                'lockfile',
-                'chrome_shutdown_ms.txt',
-                'chrome_debug.log'
-            ];
-            
-            for (const lockFile of lockFiles) {
-                const lockPath = path.join(sessionPath, lockFile);
-                try {
-                    if (fs.existsSync(lockPath)) {
-                        fs.unlinkSync(lockPath);
-                        console.log(`Removed lock file: ${lockFile}`);
-                    }
-                } catch (error) {
-                    console.warn(`Could not remove lock file ${lockFile}:`, error.message);
-                }
-            }
-            
-            // Also clean up any existing client
-            if (this.client) {
-                try {
-                    await this.client.destroy();
-                } catch (error) {
-                    console.warn(`Error destroying existing client:`, error.message);
-                }
-                this.client = null;
-            }
-            
-            // Wait longer for cleanup to complete and processes to fully terminate
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Additional cleanup - remove entire session directory if it exists
-            try {
-                if (fs.existsSync(sessionPath)) {
-                    console.log(`Removing entire session directory: ${sessionPath}`);
-                    fs.rmSync(sessionPath, { recursive: true, force: true });
-                    console.log(`Session directory removed successfully`);
-                }
-            } catch (error) {
-                console.warn(`Could not remove session directory:`, error.message);
-            }
-            
-            // Wait a bit more after directory removal
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Ensure session directory exists for fresh start
-            try {
-                if (!fs.existsSync(sessionPath)) {
-                    console.log(`Creating fresh session directory: ${sessionPath}`);
-                    fs.mkdirSync(sessionPath, { recursive: true });
-                    console.log(`Session directory created successfully`);
-                }
-            } catch (error) {
-                console.warn(`Could not create session directory:`, error.message);
-            }
-            
-        } catch (error) {
-            console.error(`Error cleaning up session for ${this.clientId}:`, error);
-        }
-    }
+    // Removed cleanupCorruptedSession - cleanup only happens on server startup now
 
-    async killChromeProcesses() {
-        try {
-            const { exec } = require('child_process');
-            const util = require('util');
-            const execAsync = util.promisify(exec);
-            
-            // Kill Chrome processes that might be using this session - more aggressive approach
-            const commands = [
-                `pkill -9 -f "chrome.*${this.clientId}"`,
-                `pkill -9 -f "chromium.*${this.clientId}"`,
-                `pkill -9 -f "whatsapp.*${this.clientId}"`,
-                `pkill -9 -f "chrome.*session-${this.clientId}"`,
-                `pkill -9 -f "chromium.*session-${this.clientId}"`,
-                // Kill any Chrome/Chromium processes that might be using the session directory
-                `pkill -9 -f "${this.sessionPath}"`,
-                // Kill any remaining Chrome processes (be careful with this)
-                `pkill -9 -f "chrome.*headless"`,
-                `pkill -9 -f "chromium.*headless"`
-            ];
-            
-            for (const cmd of commands) {
-                try {
-                    await execAsync(cmd);
-                    console.log(`Executed cleanup command: ${cmd}`);
-                } catch (error) {
-                    // Ignore errors - process might not exist
-                    console.log(`Cleanup command completed: ${cmd}`);
-                }
-            }
-            
-            // Wait for processes to actually terminate
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-        } catch (error) {
-            console.warn(`Error killing Chrome processes:`, error.message);
-        }
-    }
+    // Removed killChromeProcesses - process cleanup only happens on server startup now
 
     async initialize() {
         if (this.isInitialized) {
@@ -134,12 +29,26 @@ class WhatsAppAuth extends EventEmitter {
             return;
         }
 
+        // Prevent concurrent initialization
+        if (this._initializing) {
+            console.log(`Client ${this.clientId} is already initializing, waiting...`);
+            return this._initializationPromise;
+        }
+
+        this._initializing = true;
+        this._initializationPromise = this._performInitialization();
+        
+        try {
+            return await this._initializationPromise;
+        } finally {
+            this._initializing = false;
+            this._initializationPromise = null;
+        }
+    }
+
+    async _performInitialization() {
         try {
             console.log(`Initializing WhatsApp client for clientId: ${this.clientId}`);
-            
-            // Always clean up any existing session before initializing
-            console.log(`Performing pre-initialization cleanup for ${this.clientId}`);
-            await this.cleanupCorruptedSession();
             
             this.client = new Client({
                 authStrategy: new LocalAuth({ clientId: this.clientId }),
@@ -151,47 +60,50 @@ class WhatsAppAuth extends EventEmitter {
                         '--disable-setuid-sandbox',
                         '--disable-dev-shm-usage',
                         '--disable-gpu',
-                        '--single-process',
                         '--disable-web-security',
                         '--memory-pressure-off',
                         '--max_old_space_size=4096',
                         '--hide-scrollbars',
                         '--mute-audio',
-                        '--no-first-run'
+                        '--no-first-run',
+                        '--disable-background-timer-throttling',
+                        '--disable-backgrounding-occluded-windows',
+                        '--disable-renderer-backgrounding',
+                        '--disable-features=TranslateUI',
+                        '--disable-ipc-flooding-protection',
+                        '--no-default-browser-check',
+                        '--disable-default-apps',
+                        '--disable-extensions',
+                        '--disable-plugins',
+                        '--disable-sync',
+                        '--disable-translate',
+                        '--disable-background-networking',
+                        '--disable-component-extensions-with-background-pages',
+                        '--disable-client-side-phishing-detection',
+                        '--disable-hang-monitor',
+                        '--disable-prompt-on-repost',
+                        '--disable-domain-reliability',
+                        '--disable-features=VizDisplayCompositor'
                     ],
                     executablePath: '/usr/bin/chromium-browser',
-                    ignoreDefaultArgs: ['--disable-extensions']
-                    // Removed timeouts to allow unlimited time for auth and sync
+                    ignoreDefaultArgs: ['--disable-extensions'],
+                    timeout: 0, // No timeout
+                    protocolTimeout: 0 // No protocol timeout
                 }
             });
 
             this.setupEventListeners();
             
             console.log(`Starting client initialization for ${this.clientId}...`);
+            
+            // Simple initialization without retry logic
             try {
                 await this.client.initialize();
                 console.log(`WhatsApp client initialized successfully for clientId: ${this.clientId}`);
                 this.isInitialized = true;
             } catch (initError) {
                 console.error(`Error during client initialization: ${initError.message}`);
-                
-                // If initialization fails due to SingletonLock, try one more cleanup
-                if (initError.message.includes('SingletonLock') || initError.message.includes('ProcessSingleton')) {
-                    console.log('SingletonLock error detected, performing additional cleanup...');
-                    await this.cleanupCorruptedSession();
-                    
-                    // Try to reinitialize after cleanup
-                    try {
-                        await this.client.initialize();
-                        console.log(`WhatsApp client reinitialized successfully for clientId: ${this.clientId}`);
-                        this.isInitialized = true;
-                    } catch (retryError) {
-                        console.error(`Retry initialization also failed: ${retryError.message}`);
-                        throw retryError;
-                    }
-                } else {
-                    throw initError;
-                }
+                throw initError;
             }
             
             // Check if we're already ready after initialization
@@ -348,15 +260,6 @@ class WhatsAppAuth extends EventEmitter {
             console.log(`[TIMING] ✅ WhatsApp Client is now ready for clientId: ${this.clientId} - Total authentication time: ${totalAuthTime}ms (${Math.round(totalAuthTime/1000)}s)`);
             this.emit('ready');
         });
-
-        this.client.on('message', (msg) => {
-            console.log(`Message received for ${this.clientId}:`, msg.body);
-        });
-
-        this.client.on('message_create', (msg) => {
-            console.log(`Message created for ${this.clientId}:`, msg.body);
-        });
-
         this.client.on('auth_failure', (msg) => {
             console.error(`Authentication failed for clientId ${this.clientId}:`, msg);
             this.isReady = false;
@@ -802,49 +705,68 @@ class WhatsAppAuth extends EventEmitter {
                     const storeExists = !!(window.Store && window.Store.Contact && window.Store.Chat && window.Store.Msg);
                     
                     if (!storeExists) {
-                        return { allLoaded: false, reason: 'Store objects not found' };
+                        return { 
+                            allLoaded: false, 
+                            reason: 'Store objects not found',
+                            storeExists: false,
+                            contactGetWorks: false,
+                            chatGetWorks: false
+                        };
                     }
 
-                    // Test if Contact.get is callable
+                    // Test if Contact.get is callable (more lenient check)
                     let contactGetWorks = false;
                     try {
-                        if (window.Store.Contact.get) {
-                            const testResult = window.Store.Contact.get('test@c.us');
+                        if (window.Store.Contact && typeof window.Store.Contact.get === 'function') {
+                            // Just check if the function exists, don't call it
                             contactGetWorks = true;
                         }
                     } catch (e) {
-                        contactGetWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getContact');
+                        contactGetWorks = false;
                     }
 
-                    // Test if Chat.get is callable
+                    // Test if Chat.get is callable (more lenient check)
                     let chatGetWorks = false;
                     try {
-                        if (window.Store.Chat.get) {
-                            const testResult = window.Store.Chat.get('test@c.us');
+                        if (window.Store.Chat && typeof window.Store.Chat.get === 'function') {
+                            // Just check if the function exists, don't call it
                             chatGetWorks = true;
                         }
                     } catch (e) {
-                        chatGetWorks = e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties') && !e.message.includes('getChat');
+                        chatGetWorks = false;
                     }
 
-                    const allLoaded = contactGetWorks && chatGetWorks;
+                    // More lenient check - if Store exists and has the main objects, consider it ready
+                    const allLoaded = storeExists && (contactGetWorks || chatGetWorks);
                     
                     return {
                         allLoaded,
                         storeExists,
                         contactGetWorks,
                         chatGetWorks,
-                        reason: allLoaded ? 'All Store objects functional' : 'Store objects not fully functional'
+                        reason: allLoaded ? 'Store objects functional' : 'Store objects not fully functional'
                     };
                 } catch (error) {
-                    return { allLoaded: false, reason: `Evaluation error: ${error.message}` };
+                    return { 
+                        allLoaded: false, 
+                        reason: `Evaluation error: ${error.message}`,
+                        storeExists: false,
+                        contactGetWorks: false,
+                        chatGetWorks: false
+                    };
                 }
             });
 
             return result;
         } catch (error) {
             console.error(`Error verifying Store objects for ${this.clientId}:`, error);
-            return { allLoaded: false, reason: `Verification error: ${error.message}` };
+            return { 
+                allLoaded: false, 
+                reason: `Verification error: ${error.message}`,
+                storeExists: false,
+                contactGetWorks: false,
+                chatGetWorks: false
+            };
         }
     }
 

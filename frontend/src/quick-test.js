@@ -67,7 +67,7 @@ function quickTest() {
     { factory: 'gulbarga', department: 'operations_department', service: 'reports' },
     { factory: 'gulbarga', department: 'operations_department', service: 'reactor-reports' },
     { factory: 'gulbarga', department: 'reports-department', service: 'reactor-reports' },
-    { factory: 'gulbarga', department: 'reports-department', service: 'general-reports' }
+    { factory: 'gulbarga', department: 'reports-department', service: 'reports' }
   ];
   
   testCases.forEach(testCase => {
