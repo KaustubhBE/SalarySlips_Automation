@@ -12,7 +12,7 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None, permissions=None):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None, permission_metadata=None):
     """Add a new user to Firestore"""
     user_data = {
         'username': username,
@@ -26,8 +26,8 @@ def add_user(username, email, role, password_hash, client_id=None, client_secret
         user_data['client_secret'] = client_secret
     if app_password:
         user_data['app_password'] = app_password
-    if permissions:
-        user_data['permissions'] = permissions
+    if permission_metadata:
+        user_data['permission_metadata'] = permission_metadata
     user_ref = db.collection('USERS').document()
     user_ref.set(user_data)
     return user_ref.id
@@ -104,21 +104,15 @@ def get_salary_slips_by_user(user_id):
     results = query.get()
     return [slip.to_dict() for slip in results]
 
-def update_user_permissions(user_id, permissions):
-    """Update a user's permissions"""
+def update_user_permission_metadata(user_id, permission_metadata):
+    """Update a user's permission metadata"""
     user_ref = db.collection('USERS').document(user_id)
-    user_ref.update({'permissions': permissions})
+    user_ref.update({'permission_metadata': permission_metadata})
 
-def update_user_comprehensive_permissions(user_id, permissions_data):
-    """Update user permissions only"""
+def update_user_comprehensive_permissions(user_id, permission_metadata):
+    """Update user permission metadata only"""
     user_ref = db.collection('USERS').document(user_id)
-    
-    update_data = {}
-    if 'permissions' in permissions_data:
-        update_data['permissions'] = permissions_data['permissions']
-    
-    if update_data:
-        user_ref.update(update_data)
+    user_ref.update({'permission_metadata': permission_metadata})
 
 def clean_user_permission_metadata(user_id):
     """Clean a users permisssion befor saving new"""
@@ -136,27 +130,16 @@ def update_user_permission_metadata(user_id, permission_metadata):
     user_ref.update({'permission_metadata': permission_metadata})
     logging.info(f"Successfully updated permission metadata for user {user_id}")
 
-def update_user_complete_rbac(user_id, permissions, permission_metadata, tree_permissions=None):
+def update_user_complete_rbac(user_id, permission_metadata):
     """Update complete RBAC structure for a user"""
     user_ref = db.collection('USERS').document(user_id)
     
     # Log the update operation
     logging.info(f"Updating RBAC for user {user_id}:")
-    logging.info(f"  - Permissions count: {len(permissions) if permissions else 0}")
     logging.info(f"  - Permission metadata: {permission_metadata}")
-    logging.info(f"  - Tree permissions: {tree_permissions is not None}")
     
-    # Prepare update data - this will completely overwrite existing permission_metadata
-    update_data = {
-        'permissions': permissions,
-        'permission_metadata': permission_metadata  # This will overwrite any existing permission_metadata
-    }
-    
-    if tree_permissions is not None:
-        update_data['tree_permissions'] = tree_permissions
-    
-    # Single atomic update that clears old permission_metadata and sets new data
-    user_ref.update(update_data)
+    # Single atomic update that completely overwrites existing permission_metadata
+    user_ref.update({'permission_metadata': permission_metadata})
     logging.info(f"Successfully updated RBAC for user {user_id}")
 
 def update_user_app_password(user_id, app_password):

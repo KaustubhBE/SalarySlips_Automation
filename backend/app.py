@@ -282,21 +282,43 @@ def add_user():
         role = data.get('role')
         password = generate_password_hash(data.get('password'))
         app_password = data.get('appPassword') or data.get('app_password')
-        permissions = data.get('permissions', {})
+        permission_metadata = data.get('permission_metadata', {})
 
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
         # Admin role gets all permissions automatically
         if role == 'admin':
-            permissions = {
-                'inventory': True,
-                'reports': True,
-                'single_processing': True,
-                'batch_processing': True,
-                'expense_management': True,
-                'marketing_campaigns': True,
-                'reactor_reports': True
+            permission_metadata = {
+                'factories': ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'],
+                'departments': {
+                    'gulbarga': ['humanresource', 'store', 'marketing'],
+                    'kerur': ['humanresource', 'store', 'marketing'],
+                    'humnabad': ['humanresource', 'store', 'marketing'],
+                    'omkar': ['humanresource', 'store', 'marketing'],
+                    'padmavati': ['humanresource', 'store', 'marketing'],
+                    'headoffice': ['humanresource', 'store', 'marketing']
+                },
+                'services': {
+                    'gulbarga.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'gulbarga.store': ['inventory', 'reports'],
+                    'gulbarga.marketing': ['reports', 'marketing_campaigns'],
+                    'kerur.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'kerur.store': ['inventory', 'reports'],
+                    'kerur.marketing': ['reports', 'marketing_campaigns'],
+                    'humnabad.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'humnabad.store': ['inventory', 'reports'],
+                    'humnabad.marketing': ['reports', 'marketing_campaigns'],
+                    'omkar.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'omkar.store': ['inventory', 'reports'],
+                    'omkar.marketing': ['reports', 'marketing_campaigns'],
+                    'padmavati.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'padmavati.store': ['inventory', 'reports'],
+                    'padmavati.marketing': ['reports', 'marketing_campaigns'],
+                    'headoffice.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
+                    'headoffice.store': ['inventory', 'reports'],
+                    'headoffice.marketing': ['reports', 'marketing_campaigns']
+                }
             }
 
         user_id = firebase_add_user(
@@ -305,7 +327,7 @@ def add_user():
             role=role, 
             password_hash=password, 
             app_password=app_password,
-            permissions=permissions
+            permission_metadata=permission_metadata
         )
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
 
@@ -938,11 +960,13 @@ def update_permissions():
 
         data = request.json
         user_id = data.get('user_id')
-        permissions = data.get('permissions')
         permission_metadata = data.get('permission_metadata')
 
         if not user_id:
             return jsonify({"error": "User ID is required"}), 400
+
+        if not permission_metadata:
+            return jsonify({"error": "Permission metadata is required"}), 400
 
         # Get target user
         target_user = get_user_by_id(user_id)
@@ -950,27 +974,14 @@ def update_permissions():
             return jsonify({"error": "User not found"}), 404
 
         current_user_role = current_user.get('role')
-        target_user_role = target_user.get('role')
 
         # Admin can update permissions for any user
         if current_user_role == 'admin':
-            # Update user with both permissions and permission_metadata
+            # Update user with permission_metadata only
             from Utils.firebase_utils import update_user_complete_rbac
             
-            # Prepare update data
-            update_data = {}
-            if permissions is not None:
-                update_data['permissions'] = permissions
-            if permission_metadata is not None:
-                update_data['permission_metadata'] = permission_metadata
-            
             # Use the complete RBAC update function
-            update_user_complete_rbac(
-                user_id, 
-                update_data.get('permissions', {}), 
-                update_data.get('permission_metadata', {}),
-                permissions  # Use permissions as tree_permissions for backward compatibility
-            )
+            update_user_complete_rbac(user_id, permission_metadata)
             
             return jsonify({"message": "Permissions updated successfully"}), 200
         

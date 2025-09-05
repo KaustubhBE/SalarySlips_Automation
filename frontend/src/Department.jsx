@@ -207,10 +207,7 @@ const Department = () => {
               Factory: {factoryKey}<br/>
               Department: {departmentKey}<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
-              User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-              User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
-              Has Permissions: {user?.permissions && Object.keys(user.permissions).length > 0 ? 'Yes' : 'No'}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}

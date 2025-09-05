@@ -113,10 +113,7 @@ function Dashboard() {
             username: user.username,
             email: user.email,
             role: user.role,
-            permissions: user.permissions,
             permission_metadata: user.permission_metadata,
-            tree_permissions: user.tree_permissions,
-            hasPermissions: Object.keys(user.permissions || {}).length > 0,
             hasPermissionMetadata: user.permission_metadata && Object.keys(user.permission_metadata).length > 0
           });
         });
@@ -257,11 +254,10 @@ function Dashboard() {
       // Convert tree permissions to permission_metadata format
       const permissionMetadata = convertTreePermissionsToMetadata(updatedPermissions);
       
-      // Prepare permissions data with both formats for backward compatibility
+      // Prepare permissions data with permission_metadata only
       const permissionsData = {
           user_id: userId, 
-          permissions: updatedPermissions, // Keep tree permissions for backward compatibility
-          permission_metadata: permissionMetadata // Add the structured metadata
+          permission_metadata: permissionMetadata
       };
       
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_PERMISSIONS), 
@@ -348,7 +344,7 @@ function Dashboard() {
     setEditingUserId(user.id);
     setSelectedUser(user);
     
-    // Try to load from permission_metadata first, then fallback to permissions
+    // Load from permission_metadata only
     let permissions = {};
     
     if (user.permission_metadata && Object.keys(user.permission_metadata).length > 0) {
@@ -359,11 +355,7 @@ function Dashboard() {
         converted_permissions: permissions
       });
     } else {
-      // Fallback to flat permissions
-      permissions = user.permissions || {};
-      console.log(`Loading permissions from flat permissions for user ${user.username}:`, {
-        permissions: permissions
-      });
+      console.log(`User ${user.username} has no permission_metadata set`);
     }
     
     // If user has no permissions at all, show a message

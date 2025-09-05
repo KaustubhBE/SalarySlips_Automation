@@ -37,9 +37,7 @@ const ReportsDepartment = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
-          User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-          User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
           Has Reports Permission: {canAccessService('reports') ? 'Yes' : 'No'}<br/>
           Can Access Store: {canAccessDepartment('store') ? 'Yes' : 'No'}<br/>
           Can Access Human Resource: {canAccessDepartment('humanresource') ? 'Yes' : 'No'}

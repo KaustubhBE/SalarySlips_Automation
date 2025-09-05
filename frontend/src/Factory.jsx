@@ -85,9 +85,7 @@ const DepartmentNavigation = () => {
           Factory Key: {factoryKey}<br/>
           Department Key: {departmentKey}<br/>
           User Role: {user?.role}<br/>
-          User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-          User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
           Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
         </div>
       )}

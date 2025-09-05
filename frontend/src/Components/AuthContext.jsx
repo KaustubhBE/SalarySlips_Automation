@@ -29,9 +29,8 @@ export const AuthProvider = ({ children }) => {
     
     // Admin or wildcard has access to everything
     if (isAdminUser()) return true;
-    if (user.permissions && user.permissions['*'] === true) return true;
     
-    // Use permission_metadata for RBAC if available
+    // Use permission_metadata for RBAC
     const permissionMetadata = user.permission_metadata || {};
     const services = permissionMetadata.services || {};
     
@@ -70,33 +69,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
     
-    // Fallback to basic permission check
-    let hasPermissionResult = user.permissions && user.permissions[permission] === true;
-    
-    // If not found in user.permissions, check rbacInfo from localStorage as fallback
-    if (!hasPermissionResult) {
-      try {
-        const rbacInfo = storage.getJSON('rbacInfo');
-        if (rbacInfo && rbacInfo.permissions) {
-          hasPermissionResult = rbacInfo.permissions[permission] === true;
-        }
-      } catch (error) {
-        console.warn('Error reading rbacInfo from localStorage:', error);
-      }
-    }
-    
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('hasPermission - Fallback to basic permission check:', {
-        permission,
-        userRole: user.role,
-        userPermissions: user.permissions,
-        hasPermissionResult,
-        rbacInfo: storage.getJSON('rbacInfo')
-      });
-    }
-    
-    return hasPermissionResult;
+    return false;
   }, [user, isAdminUser, normalizeDepartmentKey]);
 
   // Check if user can access a department using permission_metadata
@@ -243,8 +216,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
     
-    // Fallback to basic permission check
-    return hasPermission(service);
+    return false;
   }, [user, hasPermission, isAdminUser, normalizeDepartmentKey]);
 
   // Get all factories user can access

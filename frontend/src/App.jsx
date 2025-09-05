@@ -144,9 +144,7 @@ function App() {
                   <strong>Debug Info:</strong><br/>
                   User Role: {user?.role}<br/>
                   Accessible Factories: {JSON.stringify(getAccessibleFactoriesForUser())}<br/>
-                  User Permissions: {JSON.stringify(user?.permissions || {})}<br/>
                   User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-                  User Tree Permissions: {JSON.stringify(user?.tree_permissions || {})}<br/>
                   Has Reports Permission: {canAccessService('reports') ? 'Yes' : 'No'}<br/>
                   Can Access Store: {canAccessDepartment('store') ? 'Yes' : 'No'}<br/>
                   Can Access Human Resource: {canAccessDepartment('humanresource') ? 'Yes' : 'No'}
