@@ -11,6 +11,71 @@ function Settings({ onLogout }) {
   const [newPassword, setNewPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
 
+  // Get the correct user identifier (email is preferred, fallback to username)
+  const getUserIdentifier = () => {
+    if (!user) return null;
+    
+    // Prefer email over username for WhatsApp authentication
+    if (user.email && user.email.trim()) {
+      return user.email.trim();
+    }
+    
+    // Fallback to username if no email
+    if (user.username && user.username.trim()) {
+      return user.username.trim();
+    }
+    
+    // Last resort fallback
+    if (user.id && user.id.trim()) {
+      return user.id.trim();
+    }
+    
+    return null;
+  };
+
+  // Enhanced logout function that also cleans up WhatsApp session
+  const handleEnhancedLogout = async () => {
+    try {
+      // Always attempt to clean up WhatsApp session if we have a user identifier
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier) {
+        try {
+          console.log('Cleaning up WhatsApp session during settings logout...');
+          const response = await fetch('https://whatsapp.bajajearths.com/logout', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'X-User-Email': userIdentifier
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('WhatsApp session cleanup result:', result);
+            if (result.success) {
+              console.log('WhatsApp session cleaned up successfully');
+            } else {
+              console.warn('WhatsApp session cleanup failed:', result.message);
+            }
+          } else {
+            console.warn('WhatsApp session cleanup failed with status:', response.status);
+          }
+        } catch (whatsappError) {
+          console.warn('Failed to clean up WhatsApp session:', whatsappError);
+          // Continue with general logout even if WhatsApp cleanup fails
+        }
+      } else {
+        console.log('No user identifier available for WhatsApp session cleanup');
+      }
+    } catch (error) {
+      console.warn('Error during WhatsApp session cleanup:', error);
+      // Continue with general logout even if cleanup fails
+    }
+    
+    // Perform general logout
+    await onLogout();
+  };
+
   if (!user) {
     return <div className="settings-container"><p>Loading...</p></div>;
   }
@@ -97,7 +162,7 @@ function Settings({ onLogout }) {
           </button>
         )}
 
-        <button className="button logout-button" onClick={async () => await onLogout()}>
+        <button className="button logout-button" onClick={handleEnhancedLogout}>
           Logout
         </button>
 

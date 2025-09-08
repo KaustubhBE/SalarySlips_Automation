@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { WhatsAppService } = require('./service');
 const { sessionManager } = require('./sessionManager');
+const { logoutHandler } = require('./handleLogout');
 
 class WhatsAppServer {
     constructor(port = 8092, host = '0.0.0.0') {
@@ -45,6 +46,44 @@ class WhatsAppServer {
             const key = this.getServiceKey(req);
             // Use sessionManager for proper session management and concurrency control
             return await sessionManager.getServiceForClient(key);
+        };
+
+        // Perform comprehensive cleanup on service startup
+        this.performStartupCleanup = () => {
+            try {
+                console.log('🧹 Performing startup cleanup...');
+                
+                const authDir = path.join(__dirname, '.wwebjs_auth');
+                const cacheDir = path.join(__dirname, '.wwebjs_cache');
+                
+                // Delete .wwebjs_auth directory
+                if (fs.existsSync(authDir)) {
+                    console.log('🗑️  Deleting .wwebjs_auth directory...');
+                    fs.rmSync(authDir, { recursive: true, force: true });
+                    console.log('✅ .wwebjs_auth directory deleted successfully');
+                } else {
+                    console.log('ℹ️  .wwebjs_auth directory does not exist');
+                }
+                
+                // Delete .wwebjs_cache directory
+                if (fs.existsSync(cacheDir)) {
+                    console.log('🗑️  Deleting .wwebjs_cache directory...');
+                    fs.rmSync(cacheDir, { recursive: true, force: true });
+                    console.log('✅ .wwebjs_cache directory deleted successfully');
+                } else {
+                    console.log('ℹ️  .wwebjs_cache directory does not exist');
+                }
+                
+                // Clear session manager
+                sessionManager.clearAllSessions();
+                console.log('✅ Session manager cleared');
+                
+                console.log('🎉 Startup cleanup completed successfully');
+                
+            } catch (error) {
+                console.error('❌ Error during startup cleanup:', error);
+                // Don't throw error, just log it and continue
+            }
         };
         
         this.setupMiddleware();
@@ -217,12 +256,41 @@ class WhatsAppServer {
 
         this.app.post('/logout', async (req, res) => {
             try {
+                const clientId = this.getServiceKey(req);
+                console.log(`Logout request for client: ${clientId}`);
+                
+                // Get the service and logout from WhatsApp
                 const svc = await this.getServiceForRequest(req);
-                const success = await svc.logout();
-                if (success) {
-                    res.json({ success: true, message: 'Logged out successfully' });
+                const whatsappLogoutSuccess = await svc.logout();
+                
+                // Delete the user's session folder
+                const sessionDeletionResult = await logoutHandler.deleteUserSession(clientId);
+                
+                // Clean up the session from session manager
+                sessionManager.forceCleanupSession(clientId);
+                
+                if (whatsappLogoutSuccess && sessionDeletionResult.success) {
+                    console.log(`Complete logout successful for client: ${clientId}`);
+                    res.json({ 
+                        success: true, 
+                        message: 'Logged out successfully and session cleaned up',
+                        sessionDeleted: sessionDeletionResult.deletedPath
+                    });
+                } else if (whatsappLogoutSuccess) {
+                    console.log(`WhatsApp logout successful but session cleanup failed for client: ${clientId}`);
+                    res.json({ 
+                        success: true, 
+                        message: 'WhatsApp logged out but session cleanup failed',
+                        sessionDeleted: false,
+                        sessionError: sessionDeletionResult.message
+                    });
                 } else {
-                    res.status(500).json({ success: false, message: 'Logout failed' });
+                    console.log(`Logout failed for client: ${clientId}`);
+                    res.status(500).json({ 
+                        success: false, 
+                        message: 'WhatsApp logout failed',
+                        sessionDeleted: sessionDeletionResult.success
+                    });
                 }
             } catch (error) {
                 console.error('Error during logout:', error);
@@ -230,7 +298,121 @@ class WhatsAppServer {
             }
         });
 
+        // Endpoint to get session information
+        this.app.get('/session-info', async (req, res) => {
+            try {
+                const sessionInfo = await logoutHandler.getSessionInfo();
+                res.json(sessionInfo);
+            } catch (error) {
+                console.error('Error getting session info:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
 
+        // Endpoint to clean up orphaned sessions
+        this.app.post('/cleanup-sessions', async (req, res) => {
+            try {
+                const cleanupResult = await logoutHandler.cleanupOrphanedSessions();
+                res.json(cleanupResult);
+            } catch (error) {
+                console.error('Error cleaning up sessions:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        // Endpoint to delete a specific user's session (admin only)
+        this.app.post('/delete-session', async (req, res) => {
+            try {
+                const { clientId } = req.body;
+                if (!clientId) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Client ID is required' 
+                    });
+                }
+
+                const deletionResult = await logoutHandler.deleteUserSession(clientId);
+                
+                if (deletionResult.success) {
+                    // Also clean up from session manager
+                    sessionManager.forceCleanupSession(clientId);
+                }
+                
+                res.json(deletionResult);
+            } catch (error) {
+                console.error('Error deleting session:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        // Endpoint to clean up lock files for a specific user
+        this.app.post('/cleanup-lock-files', async (req, res) => {
+            try {
+                const clientId = this.getServiceKey(req);
+                console.log(`Cleaning up lock files for client: ${clientId}`);
+                
+                const cleanupResult = await logoutHandler.cleanupUserLockFiles(clientId);
+                res.json(cleanupResult);
+            } catch (error) {
+                console.error('Error cleaning up lock files:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        // Endpoint to handle browser close detection
+        this.app.post('/browser-close', async (req, res) => {
+            try {
+                const clientId = this.getServiceKey(req);
+                if (!clientId || clientId === 'default') {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Valid client ID is required' 
+                    });
+                }
+
+                console.log(`Browser close detected for user: ${clientId}`);
+                
+                // Clean up session folder
+                const result = await logoutHandler.handleBrowserClose(clientId);
+                
+                // Also clean up from session manager
+                sessionManager.forceCleanupSession(clientId);
+                
+                res.json(result);
+            } catch (error) {
+                console.error('Error handling browser close:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        // Endpoint to clean up orphaned sessions from browser close
+        this.app.post('/cleanup-orphaned-sessions', async (req, res) => {
+            try {
+                const result = await logoutHandler.cleanupOrphanedSessionsFromBrowserClose();
+                res.json(result);
+            } catch (error) {
+                console.error('Error cleaning up orphaned sessions:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
 
         // Alias for /trigger-login to match frontend expectations
         this.app.post('/api/whatsapp-login', async (req, res) => {
@@ -291,63 +473,6 @@ class WhatsAppServer {
             }
         });
 
-        this.app.post('/trigger-login', async (req, res) => {
-            try {
-                const service = await this.getServiceForRequest(req);
-                
-                // If service is already ready, return immediately
-                if (service.isReady) {
-                    try {
-                        const status = await service.getCurrentStatus();
-                        if (status.isReady && status.authenticated && status.userInfo) {
-                            const result = {
-                                isReady: true,
-                                qr: '',
-                                authenticated: true,
-                                userInfo: status.userInfo
-                            };
-                            return res.json({
-                                success: true,
-                                data: result,
-                                ...result
-                            });
-                        }
-                    } catch (error) {
-                        console.log('Session validation failed, proceeding with fresh login');
-                        service.isReady = false;
-                        service.isInitialized = false;
-                    }
-                }
-                
-                // If QR is already available, return it immediately
-                if (service.currentQR) {
-                    return res.json({
-                        success: true,
-                        data: {
-                            isReady: service.isReady,
-                            qr: service.currentQR,
-                            authenticated: false
-                        },
-                        isReady: service.isReady,
-                        qr: service.currentQR,
-                        authenticated: false
-                    });
-                }
-                
-                // Otherwise, trigger login
-                const result = await service.triggerLogin();
-                
-                res.json({
-                    success: true,
-                    data: result,
-                    ...result
-                });
-                
-            } catch (error) {
-                console.error('Error in /trigger-login:', error);
-                res.status(500).json({ success: false, error: error.message });
-            }
-        });
 
         this.app.post('/send-message', this.upload.array('files'), async (req, res) => {
             try {

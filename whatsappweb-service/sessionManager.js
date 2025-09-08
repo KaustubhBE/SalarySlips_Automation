@@ -26,8 +26,14 @@ class WhatsAppSessionManager {
         if (this.sessions.has(sanitizedClientId)) {
             const session = this.sessions.get(sanitizedClientId);
             
-            // Check if session is still valid
-            if (this.isSessionValid(session)) {
+            // First, verify that the session folder still exists on disk
+            const sessionPath = this.getSessionPath(sanitizedClientId);
+            const sessionExistsOnDisk = await this.checkSessionExistsOnDisk(sessionPath);
+            
+            if (!sessionExistsOnDisk) {
+                console.log(`Session folder deleted from disk for ${sanitizedClientId}, cleaning up from memory`);
+                this.cleanupSession(sanitizedClientId);
+            } else if (this.isSessionValid(session)) {
                 session.lastAccessed = Date.now();
                 return this.serviceInstances.get(sanitizedClientId);
             } else {
@@ -213,6 +219,28 @@ class WhatsAppSessionManager {
         if (expiredSessions.length > 0) {
             console.log(`Cleaned up ${expiredSessions.length} expired sessions`);
         }
+        
+        // Also check for orphaned sessions from browser close
+        this.cleanupOrphanedSessionsFromBrowserClose();
+    }
+
+    // Clean up orphaned sessions from browser close
+    async cleanupOrphanedSessionsFromBrowserClose() {
+        try {
+            const { logoutHandler } = require('./handleLogout');
+            const result = await logoutHandler.cleanupOrphanedSessionsFromBrowserClose();
+            
+            if (result.success && result.cleanedSessions.length > 0) {
+                console.log(`Cleaned up ${result.cleanedSessions.length} orphaned sessions from browser close`);
+                
+                // Also clean up these sessions from memory
+                result.cleanedSessions.forEach(clientId => {
+                    this.cleanupSession(clientId);
+                });
+            }
+        } catch (error) {
+            console.error('Error cleaning up orphaned sessions from browser close:', error);
+        }
     }
 
     sanitizeClientId(clientId) {
@@ -355,6 +383,54 @@ class WhatsAppSessionManager {
         } catch (error) {
             console.error(`Error checking WhatsApp client status for ${sanitizedClientId}:`, error);
             return { exists: true, ready: false, reason: error.message };
+        }
+    }
+
+    // Clear all sessions (for startup cleanup)
+    clearAllSessions() {
+        try {
+            console.log('🧹 Clearing all sessions from session manager...');
+            
+            // Disconnect all services
+            for (const [clientId, service] of this.serviceInstances) {
+                try {
+                    if (service && typeof service.disconnect === 'function') {
+                        service.disconnect();
+                    }
+                } catch (error) {
+                    console.error(`Error disconnecting service for ${clientId}:`, error);
+                }
+            }
+            
+            // Clear all maps
+            this.sessions.clear();
+            this.serviceInstances.clear();
+            this.lastCreationTimes.clear();
+            this.logThrottle.clear();
+            this.creationLocks.clear();
+            
+            console.log('✅ All sessions cleared from session manager');
+            
+        } catch (error) {
+            console.error('❌ Error clearing sessions:', error);
+        }
+    }
+
+    // Helper method to get session path for a client ID
+    getSessionPath(clientId) {
+        const path = require('path');
+        const authBasePath = path.join(process.cwd(), '.wwebjs_auth');
+        return path.join(authBasePath, `session-${clientId}`);
+    }
+
+    // Helper method to check if session folder exists on disk
+    async checkSessionExistsOnDisk(sessionPath) {
+        try {
+            const fs = require('fs').promises;
+            await fs.access(sessionPath, fs.constants.F_OK);
+            return true;
+        } catch (error) {
+            return false;
         }
     }
 }

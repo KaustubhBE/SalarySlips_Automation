@@ -262,6 +262,44 @@ const Navbar = ({ onLogout }) => {
   };
 
   const handleLogout = async () => {
+    try {
+      // Always attempt to clean up WhatsApp session if we have a user identifier
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier) {
+        try {
+          console.log('Cleaning up WhatsApp session during general logout...');
+          const response = await fetch('https://whatsapp.bajajearths.com/logout', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'X-User-Email': userIdentifier
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('WhatsApp session cleanup result:', result);
+            if (result.success) {
+              console.log('WhatsApp session cleaned up successfully');
+            } else {
+              console.warn('WhatsApp session cleanup failed:', result.message);
+            }
+          } else {
+            console.warn('WhatsApp session cleanup failed with status:', response.status);
+          }
+        } catch (whatsappError) {
+          console.warn('Failed to clean up WhatsApp session:', whatsappError);
+          // Continue with general logout even if WhatsApp cleanup fails
+        }
+      } else {
+        console.log('No user identifier available for WhatsApp session cleanup');
+      }
+    } catch (error) {
+      console.warn('Error during WhatsApp session cleanup:', error);
+      // Continue with general logout even if cleanup fails
+    }
+    
+    // Perform general logout
     await logout();
     navigate('/login', { replace: true });
   };
@@ -345,18 +383,6 @@ const Navbar = ({ onLogout }) => {
       return;
     }
 
-    // First check if user is already authenticated
-    console.log(`Checking WhatsApp status for user: ${userIdentifier}`);
-    await checkWhatsAppAuthStatus();
-    
-    // If already authenticated, show the status and return
-    if (isAuthenticated) {
-      setShowQR(true);
-      setQRValue('');
-      setIsPolling(false);
-      return;
-    }
-
     setLoadingQR(true);
     setLoginSuccess(false);
     setStatusMsg('Initializing WhatsApp connection...');
@@ -405,7 +431,6 @@ const Navbar = ({ onLogout }) => {
         } else {
           setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
           setStatusMsg(`Already authenticated`);
-          checkWhatsAppAuthStatus();
         }
         setQRValue('');
         setIsPolling(false);
@@ -477,7 +502,7 @@ const Navbar = ({ onLogout }) => {
 
   // Poll for status updates when QR is shown
   useEffect(() => {
-    if (showQR && isPolling && qrValue) {
+    if (showQR && isPolling && !loadingQR) {
       console.log('Starting status monitoring...');
       
       const initialCheck = setTimeout(async () => {
@@ -495,7 +520,7 @@ const Navbar = ({ onLogout }) => {
         }
       };
     }
-  }, [showQR, isPolling, qrValue]);
+  }, [showQR, isPolling, loadingQR]);
 
   // Single status check function
   const checkStatusOnce = async () => {
@@ -506,6 +531,27 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
+      // First check for existing QR code
+      const qrRes = await fetch('https://whatsapp.bajajearths.com/api/qr', {
+        credentials: 'include',
+        headers: {
+          'X-User-Email': userIdentifier
+        }
+      });
+      
+      if (qrRes.ok) {
+        const qrData = await qrRes.json();
+        console.log('QR check response:', qrData);
+        
+        if (qrData.success && qrData.qr && qrData.qr.trim()) {
+          console.log('QR code received in polling:', qrData.qr.substring(0, 50) + '...');
+          setQRValue(qrData.qr);
+          setStatusMsg('QR Code loaded. Please scan with your phone.');
+          return; // QR found, no need to check status
+        }
+      }
+
+      // If no QR code, check status
       const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-status', {
         credentials: 'include',
         headers: {
@@ -579,6 +625,39 @@ const Navbar = ({ onLogout }) => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
       }
+    };
+  }, []);
+
+  // Handle browser/tab close detection
+  useEffect(() => {
+    const handleBeforeUnload = async (event) => {
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier) {
+        // Use sendBeacon for reliable delivery even when page is closing
+        const data = JSON.stringify({ clientId: userIdentifier });
+        navigator.sendBeacon('https://whatsapp.bajajearths.com/browser-close', data);
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        const userIdentifier = getUserIdentifier();
+        if (userIdentifier) {
+          // Use sendBeacon for reliable delivery when tab becomes hidden
+          const data = JSON.stringify({ clientId: userIdentifier });
+          navigator.sendBeacon('https://whatsapp.bajajearths.com/browser-close', data);
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
