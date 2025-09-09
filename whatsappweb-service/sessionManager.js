@@ -173,7 +173,11 @@ class WhatsAppSessionManager {
         const isWithinAccessTimeout = timeSinceLastAccess < effectiveTimeout;
         const isNotTooRecent = timeSinceCreation > 5000; // 5 seconds minimum age
         
-        return isWithinAccessTimeout && isNotTooRecent;
+        // Additional check: if session has been accessed recently (within last 2 minutes), 
+        // consider it active even if it's close to timeout (heartbeat system)
+        const recentlyActive = timeSinceLastAccess < 2 * 60 * 1000; // 2 minutes
+        
+        return (isWithinAccessTimeout && isNotTooRecent) || recentlyActive;
     }
 
     cleanupSession(clientId) {
@@ -285,6 +289,30 @@ class WhatsAppSessionManager {
             });
         }
         return sessions;
+    }
+
+    // Method to update session activity from heartbeat
+    updateSessionActivity(clientId) {
+        const sanitizedClientId = this.sanitizeClientId(clientId);
+        const session = this.sessions.get(sanitizedClientId);
+        if (session) {
+            session.lastAccessed = Date.now();
+            console.log(`Session activity updated for user: ${sanitizedClientId}`);
+            return true;
+        }
+        return false;
+    }
+
+    // Method to update session activity from heartbeat
+    updateSessionActivity(clientId) {
+        const sanitizedClientId = this.sanitizeClientId(clientId);
+        const session = this.sessions.get(sanitizedClientId);
+        if (session) {
+            session.lastAccessed = Date.now();
+            console.log(`Session activity updated for user: ${sanitizedClientId}`);
+            return true;
+        }
+        return false;
     }
 
     // Method to force cleanup of a specific session

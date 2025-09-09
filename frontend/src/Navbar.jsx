@@ -18,7 +18,8 @@ import {
   hasPermission, 
   DEPARTMENTS_CONFIG, 
   FACTORY_NAMES, 
-  ENDPOINTS 
+  ENDPOINTS,
+  DEFAULT_WHATSAPP_URL
 } from './config';
 
 const Navbar = ({ onLogout }) => {
@@ -268,7 +269,7 @@ const Navbar = ({ onLogout }) => {
       if (userIdentifier) {
         try {
           console.log('Cleaning up WhatsApp session during general logout...');
-          const response = await fetch('https://whatsapp.bajajearths.com/logout', {
+          const response = await fetch(`${DEFAULT_WHATSAPP_URL}/logout`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -336,7 +337,7 @@ const Navbar = ({ onLogout }) => {
 
       console.log(`Checking WhatsApp auth status for user: ${userIdentifier}`);
       
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-status', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier,
@@ -395,7 +396,7 @@ const Navbar = ({ onLogout }) => {
     try {
       console.log(`Starting WhatsApp login for user: ${userIdentifier}`);
       
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-login', { 
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-login`, { 
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -461,7 +462,7 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch('https://whatsapp.bajajearths.com/logout', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -532,7 +533,7 @@ const Navbar = ({ onLogout }) => {
       }
 
       // First check for existing QR code
-      const qrRes = await fetch('https://whatsapp.bajajearths.com/api/qr', {
+      const qrRes = await fetch(`${DEFAULT_WHATSAPP_URL}/api/qr`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier
@@ -552,7 +553,7 @@ const Navbar = ({ onLogout }) => {
       }
 
       // If no QR code, check status
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-status', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier
@@ -628,34 +629,81 @@ const Navbar = ({ onLogout }) => {
     };
   }, []);
 
-  // Handle browser/tab close detection
+  // Heartbeat system to keep sessions alive
   useEffect(() => {
+    let heartbeatInterval = null;
+    let visibilityTimeout = null;
+    let isPageVisible = true;
+
+    const sendHeartbeat = async () => {
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier && isPageVisible) {
+        try {
+          const data = JSON.stringify({ clientId: userIdentifier });
+          await fetch(`${DEFAULT_WHATSAPP_URL}/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: data,
+          });
+        } catch (error) {
+          console.log('Heartbeat failed:', error);
+        }
+      }
+    };
+
     const handleBeforeUnload = async (event) => {
       const userIdentifier = getUserIdentifier();
       if (userIdentifier) {
         // Use sendBeacon for reliable delivery even when page is closing
         const data = JSON.stringify({ clientId: userIdentifier });
-        navigator.sendBeacon('https://whatsapp.bajajearths.com/browser-close', data);
+        navigator.sendBeacon(`${DEFAULT_WHATSAPP_URL}/browser-close`, data);
       }
     };
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'hidden') {
-        const userIdentifier = getUserIdentifier();
-        if (userIdentifier) {
-          // Use sendBeacon for reliable delivery when tab becomes hidden
-          const data = JSON.stringify({ clientId: userIdentifier });
-          navigator.sendBeacon('https://whatsapp.bajajearths.com/browser-close', data);
+        isPageVisible = false;
+        // Set a timeout to cleanup session only if tab remains hidden for extended period
+        visibilityTimeout = setTimeout(async () => {
+          const userIdentifier = getUserIdentifier();
+          if (userIdentifier) {
+            console.log('Tab hidden for extended period, cleaning up session');
+            const data = JSON.stringify({ clientId: userIdentifier });
+            navigator.sendBeacon(`${DEFAULT_WHATSAPP_URL}/browser-close`, data);
+          }
+        }, 60 * 60 * 1000); // 1 hour timeout
+      } else if (document.visibilityState === 'visible') {
+        isPageVisible = true;
+        // Clear the timeout if user returns to tab
+        if (visibilityTimeout) {
+          clearTimeout(visibilityTimeout);
+          visibilityTimeout = null;
         }
+        // Send immediate heartbeat when tab becomes visible
+        sendHeartbeat();
       }
     };
+
+    // Start heartbeat - send every 30 seconds
+    heartbeatInterval = setInterval(sendHeartbeat, 30 * 1000);
 
     // Add event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Send initial heartbeat
+    sendHeartbeat();
+
     // Cleanup
     return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+      if (visibilityTimeout) {
+        clearTimeout(visibilityTimeout);
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

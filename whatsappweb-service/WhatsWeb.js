@@ -8,7 +8,7 @@ const { sessionManager } = require('./sessionManager');
 const { logoutHandler } = require('./handleLogout');
 
 class WhatsAppServer {
-    constructor(port = 8092, host = '0.0.0.0') {
+    constructor(port = 7083, host = '0.0.0.0') {
         this.app = express();
         this.port = port;
         this.host = host;
@@ -30,7 +30,7 @@ class WhatsAppServer {
         
         this.getServiceKey = (req) => {
             try {
-                const bodyEmail = (req.body && (req.body.user_email || req.body.email)) || '';
+                const bodyEmail = (req.body && (req.body.user_email || req.body.email || req.body.clientId)) || '';
                 const headerEmail = req.headers['x-user-email'] || '';
                 const raw = String(bodyEmail || headerEmail || 'default').toLowerCase();
                 const clientId = sanitizeClientId(raw) || 'default';
@@ -95,15 +95,37 @@ class WhatsAppServer {
     setupMiddleware() {
         this.app.use(cors({
             origin: [
-                'https://admin.bajajearths.com',
-                'https://whatsapp.bajajearths.com',
-                'https://adminbackend.bajajearths.com'
+                'https://uatadmin.bajajearths.com',
+                'https://uatwhatsapp.bajajearths.com',
+                'https://uatbackendadmin.bajajearths.com'
                 
             ],
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'x-user-email']
         }));
+        
+        // Custom middleware to handle text/plain content from sendBeacon
+        this.app.use((req, res, next) => {
+            if (req.get('Content-Type') === 'text/plain;charset=UTF-8') {
+                let data = '';
+                req.setEncoding('utf8');
+                req.on('data', chunk => {
+                    data += chunk;
+                });
+                req.on('end', () => {
+                    try {
+                        req.body = JSON.parse(data);
+                    } catch (e) {
+                        req.body = {};
+                    }
+                    next();
+                });
+            } else {
+                next();
+            }
+        });
+        
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
         
@@ -371,11 +393,53 @@ class WhatsAppServer {
             }
         });
 
-        // Endpoint to handle browser close detection
-        this.app.post('/browser-close', async (req, res) => {
+        // Endpoint to handle user heartbeat/ping to track active users
+        this.app.post('/heartbeat', async (req, res) => {
             try {
                 const clientId = this.getServiceKey(req);
                 if (!clientId || clientId === 'default') {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Valid client ID is required' 
+                    });
+                }
+
+                // Update session activity to keep it alive
+                const session = sessionManager.sessions.get(clientId);
+                if (session) {
+                    session.lastAccessed = Date.now();
+                    console.log(`Heartbeat received for user: ${clientId}`);
+                }
+
+                res.json({ 
+                    success: true, 
+                    message: 'Heartbeat received',
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                console.error('Error handling heartbeat:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        // Endpoint to handle browser close detection
+        this.app.post('/browser-close', async (req, res) => {
+            try {
+                console.log('Browser close request received:', {
+                    body: req.body,
+                    headers: req.headers,
+                    userAgent: req.get('User-Agent'),
+                    contentType: req.get('Content-Type')
+                });
+                
+                const clientId = this.getServiceKey(req);
+                console.log(`Extracted client ID: ${clientId}`);
+                
+                if (!clientId || clientId === 'default') {
+                    console.log('Invalid client ID, returning 400 error');
                     return res.status(400).json({ 
                         success: false, 
                         message: 'Valid client ID is required' 
@@ -390,6 +454,7 @@ class WhatsAppServer {
                 // Also clean up from session manager
                 sessionManager.forceCleanupSession(clientId);
                 
+                console.log('Browser close cleanup result:', result);
                 res.json(result);
             } catch (error) {
                 console.error('Error handling browser close:', error);
@@ -602,7 +667,7 @@ class WhatsAppServer {
         this.app.listen(this.port, this.host, () => {
             console.log(`WhatsApp server running on ${this.host}:${this.port}`);
             console.log(`Health check: http://${this.host}:${this.port}/health`);
-            console.log(`Domain access: https://whatsapp.bajajearths.com/health`);
+            console.log(`Domain access: https://uatwhatsapp.bajajearths.com/health`);
             console.log('WhatsApp service is ready to accept requests');
         });
     }

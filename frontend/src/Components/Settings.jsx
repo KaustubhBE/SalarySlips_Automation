@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import ClientOnly from './ClientOnly';
-import { getApiUrl, ENDPOINTS } from '../config';
+import { getApiUrl, ENDPOINTS, DEFAULT_WHATSAPP_URL } from '../config';
 import axios from 'axios';
 import './Settings.css';
 
@@ -41,7 +41,7 @@ function Settings({ onLogout }) {
       if (userIdentifier) {
         try {
           console.log('Cleaning up WhatsApp session during settings logout...');
-          const response = await fetch('https://whatsapp.bajajearths.com/logout', {
+          const response = await fetch(`${DEFAULT_WHATSAPP_URL}/logout`, {
             method: 'POST',
             credentials: 'include',
             headers: {
