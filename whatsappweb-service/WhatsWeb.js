@@ -7,7 +7,7 @@ const { WhatsAppService } = require('./service');
 const { sessionManager } = require('./sessionManager');
 
 class WhatsAppServer {
-    constructor(port = 8092, host = '0.0.0.0') {
+    constructor(port = 7093, host = '0.0.0.0') {
         this.app = express();
         this.port = port;
         this.host = host;

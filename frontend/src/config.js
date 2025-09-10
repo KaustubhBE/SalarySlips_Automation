@@ -8,6 +8,8 @@ const isDevelopment = window.location.hostname === 'localhost' || window.locatio
 // Default backend URL
 const DEFAULT_BACKEND_URL = 'https://adminbackend.bajajearths.com';
 
+export const DEFAULT_WHATSAPP_BACKEND_URL = 'https://whatsapp.bajajearths.com';
+
 // Determine the base API URL
 const getApiBaseUrl = () => {
     if (typeof window !== 'undefined') {

@@ -18,7 +18,8 @@ import {
   hasPermission, 
   DEPARTMENTS_CONFIG, 
   FACTORY_NAMES, 
-  ENDPOINTS 
+  ENDPOINTS,
+  DEFAULT_WHATSAPP_BACKEND_URL
 } from './config';
 
 const Navbar = ({ onLogout }) => {
@@ -298,7 +299,7 @@ const Navbar = ({ onLogout }) => {
 
       console.log(`Checking WhatsApp auth status for user: ${userIdentifier}`);
       
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-status', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier,
@@ -369,7 +370,7 @@ const Navbar = ({ onLogout }) => {
     try {
       console.log(`Starting WhatsApp login for user: ${userIdentifier}`);
       
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-login', { 
+      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-login`, { 
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -436,7 +437,7 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch('https://whatsapp.bajajearths.com/logout', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -506,7 +507,7 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch('https://whatsapp.bajajearths.com/api/whatsapp-status', {
+      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier

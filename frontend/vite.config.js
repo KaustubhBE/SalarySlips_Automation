@@ -59,7 +59,7 @@ export default defineConfig(({ command, mode }) => {
     },                                                                                                                                                        
     server: isDev                                                                                                                                             
       ? {                                                                                                                                                     
-          port: 8089,                                                                                                                                         
+          port: 7091,                                                                                                                                         
           strictPort: true,                                                                                                                                   
           host: '0.0.0.0',                                                                                                                                    
           https: httpsConfig, // Optional: use HTTPS if certs are found                                                                                       
@@ -67,12 +67,12 @@ export default defineConfig(({ command, mode }) => {
           hmr: {                                                                                                                                              
             protocol: httpsConfig ? 'wss' : 'ws',                                                                                                             
             host: 'admin.bajajearths.com',                                                                                                                    
-            port: httpsConfig ? 443 : 8089,                                                                                                                   
+            port: httpsConfig ? 443 : 7091,                                                                                                                   
           }
         }                                                                                                                                                     
       : undefined,                                                                                                                                            
     preview: {                                                                                                                                                
-      port: 8089,                                                                                                                                             
+      port: 7091,                                                                                                                                             
       strictPort: true,                                                                                                                                       
       host: '0.0.0.0'                                                                                                                                         
     },                                                                                                                                                        

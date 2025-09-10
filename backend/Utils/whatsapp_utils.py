@@ -69,7 +69,7 @@ class WhatsAppNodeClient:
                 return False
         except requests.exceptions.ConnectionError as e:
             logging.error(f"Connection error to WhatsApp service: {e}")
-            logging.error("This usually means the service is not running on port 8092")
+            logging.error("This usually means the service is not running on port 7093")
             return False
         except requests.exceptions.Timeout as e:
             logging.error(f"Timeout error connecting to WhatsApp service: {e}")

@@ -83,7 +83,7 @@ async function startServer() {
     await cleanupSessionDirectories();
     
     // Create server instance binding to all interfaces for domain access
-    server = new WhatsAppServer(8092, '0.0.0.0');
+    server = new WhatsAppServer(7093, '0.0.0.0');
     
     server.start().catch(console.error);
 }
