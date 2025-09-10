@@ -95,9 +95,9 @@ class WhatsAppServer {
     setupMiddleware() {
         this.app.use(cors({
             origin: [
-                'https://uatadmin.bajajearths.com',
-                'https://uatwhatsapp.bajajearths.com',
-                'https://uatbackendadmin.bajajearths.com'
+                'https://admin.bajajearths.com',
+                'https://whatsapp.bajajearths.com',
+                'https://adminbackend.bajajearths.com'
                 
             ],
             credentials: true,
@@ -667,7 +667,7 @@ class WhatsAppServer {
         this.app.listen(this.port, this.host, () => {
             console.log(`WhatsApp server running on ${this.host}:${this.port}`);
             console.log(`Health check: http://${this.host}:${this.port}/health`);
-            console.log(`Domain access: https://uatwhatsapp.bajajearths.com/health`);
+            console.log(`Domain access: https://whatsapp.bajajearths.com/health`);
             console.log('WhatsApp service is ready to accept requests');
         });
     }
