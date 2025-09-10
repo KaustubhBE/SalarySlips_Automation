@@ -6,7 +6,7 @@ class WhatsAppSessionManager {
         this.sessions = new Map(); // clientId -> session info
         this.serviceInstances = new Map(); // clientId -> WhatsAppService instance
         this.sessionTimeout = 30 * 60 * 1000; // 30 minutes
-        this.cleanupInterval = 5 * 60 * 1000; // 5 minutes
+        this.cleanupInterval = 60 * 60 * 1000; // 5 minutes
         this.creationCooldown = 10 * 1000; // 10 seconds cooldown between session creations
         this.lastCreationTimes = new Map(); // clientId -> last creation time
         this.logThrottle = new Map(); // clientId -> last log time

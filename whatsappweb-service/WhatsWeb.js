@@ -8,7 +8,7 @@ const { sessionManager } = require('./sessionManager');
 const { logoutHandler } = require('./handleLogout');
 
 class WhatsAppServer {
-    constructor(port = 7083, host = '0.0.0.0') {
+    constructor(port = 7093, host = '0.0.0.0') {
         this.app = express();
         this.port = port;
         this.host = host;
