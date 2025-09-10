@@ -1,43 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './OM_Services/OM_Processing';
+import Processing from './HBD_Services/HBD_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const OMHumanResource = () => {
+const HBDStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for OM Human Resource department (only existing services)
-  const omHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+  // Static services for HBD Store department (only existing services)
+  const hbdStoreServices = [
+    // No services available for Store department
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('OMHumanResource.jsx - getAccessibleServices called:', {
+    console.log('HBDStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return omHRServices;
+      return hbdStoreServices;
     }
     
     // For regular users, check which services they can access
-    return omHRServices.filter(service => 
-      canAccessService(service.key, 'omkar', 'humanresource')
+    return hbdStoreServices.filter(service => 
+      canAccessService(service.key, 'humnabad', 'store')
     );
   };
 
@@ -51,7 +50,7 @@ const OMHumanResource = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'omkar', 'humanresource');
+    return canAccessService(serviceKey, 'humnabad', 'store');
   };
 
   // Check if user is authenticated
@@ -60,9 +59,9 @@ const OMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for OM HR services
-      const fullRoute = `/OM_HR${service.route}`;
-      console.log('OMHumanResource.jsx - Navigating to service:', {
+      // Use hardcoded route for HBD Store services
+      const fullRoute = `/HBD_Store${service.route}`;
+      console.log('HBDStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route,
         fullRoute: fullRoute
@@ -73,7 +72,7 @@ const OMHumanResource = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/omkar');
+    navigate('/humnabad');
   };
 
   if (!user) {
@@ -106,17 +105,6 @@ const OMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
-          <Processing mode="single" /> : 
-          <Navigate to="/omkar" replace />
-      } />
-
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
-          <Processing mode="batch" /> : 
-          <Navigate to="/omkar" replace />
-      } />
       
       {/* Default Department View */}
       <Route path="" element={
@@ -125,14 +113,14 @@ const OMHumanResource = () => {
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
-              Factory: Omkar<br/>
-              Department: Human Resource<br/>
+              Factory: Humnabad<br/>
+              Department: Store<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Omkar</h2>
+          <h2>Store - Humnabad</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -162,4 +150,4 @@ const OMHumanResource = () => {
   );
 };
 
-export default OMHumanResource;
+export default HBDStore;

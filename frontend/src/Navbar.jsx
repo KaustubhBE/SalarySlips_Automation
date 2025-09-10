@@ -19,7 +19,7 @@ import {
   DEPARTMENTS_CONFIG, 
   FACTORY_NAMES, 
   ENDPOINTS,
-  DEFAULT_WHATSAPP_BACKEND_URL
+  DEFAULT_WHATSAPP_URL
 } from './config';
 
 const Navbar = ({ onLogout }) => {
@@ -263,6 +263,44 @@ const Navbar = ({ onLogout }) => {
   };
 
   const handleLogout = async () => {
+    try {
+      // Always attempt to clean up WhatsApp session if we have a user identifier
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier) {
+        try {
+          console.log('Cleaning up WhatsApp session during general logout...');
+          const response = await fetch(`${DEFAULT_WHATSAPP_URL}/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'X-User-Email': userIdentifier
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('WhatsApp session cleanup result:', result);
+            if (result.success) {
+              console.log('WhatsApp session cleaned up successfully');
+            } else {
+              console.warn('WhatsApp session cleanup failed:', result.message);
+            }
+          } else {
+            console.warn('WhatsApp session cleanup failed with status:', response.status);
+          }
+        } catch (whatsappError) {
+          console.warn('Failed to clean up WhatsApp session:', whatsappError);
+          // Continue with general logout even if WhatsApp cleanup fails
+        }
+      } else {
+        console.log('No user identifier available for WhatsApp session cleanup');
+      }
+    } catch (error) {
+      console.warn('Error during WhatsApp session cleanup:', error);
+      // Continue with general logout even if cleanup fails
+    }
+    
+    // Perform general logout
     await logout();
     navigate('/login', { replace: true });
   };
@@ -299,7 +337,7 @@ const Navbar = ({ onLogout }) => {
 
       console.log(`Checking WhatsApp auth status for user: ${userIdentifier}`);
       
-      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-status`, {
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier,
@@ -346,18 +384,6 @@ const Navbar = ({ onLogout }) => {
       return;
     }
 
-    // First check if user is already authenticated
-    console.log(`Checking WhatsApp status for user: ${userIdentifier}`);
-    await checkWhatsAppAuthStatus();
-    
-    // If already authenticated, show the status and return
-    if (isAuthenticated) {
-      setShowQR(true);
-      setQRValue('');
-      setIsPolling(false);
-      return;
-    }
-
     setLoadingQR(true);
     setLoginSuccess(false);
     setStatusMsg('Initializing WhatsApp connection...');
@@ -370,7 +396,7 @@ const Navbar = ({ onLogout }) => {
     try {
       console.log(`Starting WhatsApp login for user: ${userIdentifier}`);
       
-      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-login`, { 
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-login`, { 
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -406,7 +432,6 @@ const Navbar = ({ onLogout }) => {
         } else {
           setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
           setStatusMsg(`Already authenticated`);
-          checkWhatsAppAuthStatus();
         }
         setQRValue('');
         setIsPolling(false);
@@ -437,7 +462,7 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/logout`, {
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -478,7 +503,7 @@ const Navbar = ({ onLogout }) => {
 
   // Poll for status updates when QR is shown
   useEffect(() => {
-    if (showQR && isPolling && qrValue) {
+    if (showQR && isPolling && !loadingQR) {
       console.log('Starting status monitoring...');
       
       const initialCheck = setTimeout(async () => {
@@ -496,7 +521,7 @@ const Navbar = ({ onLogout }) => {
         }
       };
     }
-  }, [showQR, isPolling, qrValue]);
+  }, [showQR, isPolling, loadingQR]);
 
   // Single status check function
   const checkStatusOnce = async () => {
@@ -507,7 +532,28 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch(`${DEFAULT_WHATSAPP_BACKEND_URL}/api/whatsapp-status`, {
+      // First check for existing QR code
+      const qrRes = await fetch(`${DEFAULT_WHATSAPP_URL}/api/qr`, {
+        credentials: 'include',
+        headers: {
+          'X-User-Email': userIdentifier
+        }
+      });
+      
+      if (qrRes.ok) {
+        const qrData = await qrRes.json();
+        console.log('QR check response:', qrData);
+        
+        if (qrData.success && qrData.qr && qrData.qr.trim()) {
+          console.log('QR code received in polling:', qrData.qr.substring(0, 50) + '...');
+          setQRValue(qrData.qr);
+          setStatusMsg('QR Code loaded. Please scan with your phone.');
+          return; // QR found, no need to check status
+        }
+      }
+
+      // If no QR code, check status
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
         credentials: 'include',
         headers: {
           'X-User-Email': userIdentifier
@@ -580,6 +626,86 @@ const Navbar = ({ onLogout }) => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
       }
+    };
+  }, []);
+
+  // Heartbeat system to keep sessions alive
+  useEffect(() => {
+    let heartbeatInterval = null;
+    let visibilityTimeout = null;
+    let isPageVisible = true;
+
+    const sendHeartbeat = async () => {
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier && isPageVisible) {
+        try {
+          const data = JSON.stringify({ clientId: userIdentifier });
+          await fetch(`${DEFAULT_WHATSAPP_URL}/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: data,
+          });
+        } catch (error) {
+          console.log('Heartbeat failed:', error);
+        }
+      }
+    };
+
+    const handleBeforeUnload = async (event) => {
+      const userIdentifier = getUserIdentifier();
+      if (userIdentifier) {
+        // Use sendBeacon for reliable delivery even when page is closing
+        const data = JSON.stringify({ clientId: userIdentifier });
+        navigator.sendBeacon(`${DEFAULT_WHATSAPP_URL}/browser-close`, data);
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        isPageVisible = false;
+        // Set a timeout to cleanup session only if tab remains hidden for extended period
+        visibilityTimeout = setTimeout(async () => {
+          const userIdentifier = getUserIdentifier();
+          if (userIdentifier) {
+            console.log('Tab hidden for extended period, cleaning up session');
+            const data = JSON.stringify({ clientId: userIdentifier });
+            navigator.sendBeacon(`${DEFAULT_WHATSAPP_URL}/browser-close`, data);
+          }
+        }, 60 * 60 * 1000); // 1 hour timeout
+      } else if (document.visibilityState === 'visible') {
+        isPageVisible = true;
+        // Clear the timeout if user returns to tab
+        if (visibilityTimeout) {
+          clearTimeout(visibilityTimeout);
+          visibilityTimeout = null;
+        }
+        // Send immediate heartbeat when tab becomes visible
+        sendHeartbeat();
+      }
+    };
+
+    // Start heartbeat - send every 30 seconds
+    heartbeatInterval = setInterval(sendHeartbeat, 30 * 1000);
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Send initial heartbeat
+    sendHeartbeat();
+
+    // Cleanup
+    return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+      if (visibilityTimeout) {
+        clearTimeout(visibilityTimeout);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

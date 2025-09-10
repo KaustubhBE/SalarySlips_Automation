@@ -59,20 +59,20 @@ export default defineConfig(({ command, mode }) => {
     },                                                                                                                                                        
     server: isDev                                                                                                                                             
       ? {                                                                                                                                                     
-          port: 7091,                                                                                                                                         
+          port: 7081,                                                                                                                                         
           strictPort: true,                                                                                                                                   
           host: '0.0.0.0',                                                                                                                                    
           https: httpsConfig, // Optional: use HTTPS if certs are found                                                                                       
-          allowedHosts: ['admin.bajajearths.com'],                                                                                                            
+          allowedHosts: ['uatadmin.bajajearths.com'],                                                                                                            
           hmr: {                                                                                                                                              
             protocol: httpsConfig ? 'wss' : 'ws',                                                                                                             
-            host: 'admin.bajajearths.com',                                                                                                                    
-            port: httpsConfig ? 443 : 7091,                                                                                                                   
+            host: 'uatadmin.bajajearths.com',                                                                                                                    
+            port: httpsConfig ? 443 : 7081,                                                                                                                   
           }
         }                                                                                                                                                     
       : undefined,                                                                                                                                            
     preview: {                                                                                                                                                
-      port: 7091,                                                                                                                                             
+      port: 7081,                                                                                                                                             
       strictPort: true,                                                                                                                                       
       host: '0.0.0.0'                                                                                                                                         
     },                                                                                                                                                        

@@ -115,7 +115,7 @@ app.config.update(
 logger.info("Flask app initialized")
 
 # Frontend URL
-# FRONTEND_URL = "http://admin.bajajearths.com"
+# FRONTEND_URL = "http://uatadmin.bajajearths.com"
 # _frontend_opened = False
 
 # Load configurations from environment variables
@@ -154,8 +154,8 @@ from flask_cors import CORS
 # CORS Configuration
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
-    "https://admin.bajajearths.com",
-    "https://whatsapp.bajajearths.com",
+    "https://uatadmin.bajajearths.com",
+    "https://uatwhatsapp.bajajearths.com",
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role", "X-User-Email"]
@@ -2003,7 +2003,7 @@ if __name__ == "__main__":
         logger.info("Directories ensured")
         
         # Start Flask app
-        app.run(host="0.0.0.0", port=7092, debug=True, use_reloader=False)
+        app.run(host="0.0.0.0", port=7082, debug=True, use_reloader=False)
     except Exception as e:
         logger.error("Failed to start server: {}".format(str(e)), exc_info=True)
         sys.exit(1)

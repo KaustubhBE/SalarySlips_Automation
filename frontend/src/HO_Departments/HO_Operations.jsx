@@ -1,57 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './OM_Services/OM_Processing';
-import Reports from '../Reports';
-import ReactorReports from '../ReactorReports';
-import Inventory from '../Inventory';
+import Processing from './HO_Services/HO_Processing';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const OMHumanResource = () => {
+const Department = () => {
   const navigate = useNavigate();
+  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for OM Human Resource department (only existing services)
-  const omHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
-  ];
+  // Static services for HO Operations department (only existing services)
+  const hoOperationsServices = [];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('OMHumanResource.jsx - getAccessibleServices called:', {
+    console.log('HO_Operations.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return omHRServices;
+      return hoOperationsServices;
     }
     
     // For regular users, check which services they can access
-    return omHRServices.filter(service => 
-      canAccessService(service.key, 'omkar', 'humanresource')
+    return hoOperationsServices.filter(service => 
+      canAccessService(service.key, 'headoffice', 'operations')
     );
   };
 
   const accessibleServices = getAccessibleServices();
+  const selectedDepartment = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === departmentKey);
 
   // Helper function to check if user has permission for a specific service
   const hasUserPermission = (serviceKey) => {
-    if (!user) return false;
+    if (!user || !departmentKey || !factoryKey) return false;
     
     // Admin has access to everything
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'omkar', 'humanresource');
+    return canAccessService(serviceKey, factoryKey, departmentKey);
   };
 
   // Check if user is authenticated
@@ -60,9 +56,9 @@ const OMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for OM HR services
-      const fullRoute = `/OM_HR${service.route}`;
-      console.log('OMHumanResource.jsx - Navigating to service:', {
+      // Use hardcoded route for HO Operations services
+      const fullRoute = `/HO_Operations${service.route}`;
+      console.log('HO_Operations.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route,
         fullRoute: fullRoute
@@ -73,7 +69,7 @@ const OMHumanResource = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/omkar');
+    navigate('/headoffice');
   };
 
   if (!user) {
@@ -106,18 +102,6 @@ const OMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
-          <Processing mode="single" /> : 
-          <Navigate to="/omkar" replace />
-      } />
-
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
-          <Processing mode="batch" /> : 
-          <Navigate to="/omkar" replace />
-      } />
-      
       {/* Default Department View */}
       <Route path="" element={
         <div className="splash-page">
@@ -125,14 +109,14 @@ const OMHumanResource = () => {
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
-              Factory: Omkar<br/>
-              Department: Human Resource<br/>
+              Factory: Head Office<br/>
+              Department: Operations<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Omkar</h2>
+          <h2>Operations - Head Office</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -162,4 +146,4 @@ const OMHumanResource = () => {
   );
 };
 
-export default OMHumanResource;
+export default Department;

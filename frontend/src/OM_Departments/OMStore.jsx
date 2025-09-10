@@ -8,36 +8,35 @@ import Inventory from '../Inventory';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const OMHumanResource = () => {
+const OMStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for OM Human Resource department (only existing services)
-  const omHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+  // Static services for OM Store department (only existing services)
+  const omStoreServices = [
+    // No services available for Store department
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('OMHumanResource.jsx - getAccessibleServices called:', {
+    console.log('OMStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return omHRServices;
+      return omStoreServices;
     }
     
     // For regular users, check which services they can access
-    return omHRServices.filter(service => 
-      canAccessService(service.key, 'omkar', 'humanresource')
+    return omStoreServices.filter(service => 
+      canAccessService(service.key, 'omkar', 'store')
     );
   };
 
@@ -51,7 +50,7 @@ const OMHumanResource = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'omkar', 'humanresource');
+    return canAccessService(serviceKey, 'omkar', 'store');
   };
 
   // Check if user is authenticated
@@ -60,9 +59,9 @@ const OMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for OM HR services
-      const fullRoute = `/OM_HR${service.route}`;
-      console.log('OMHumanResource.jsx - Navigating to service:', {
+      // Use hardcoded route for OM Store services
+      const fullRoute = `/OM_Store${service.route}`;
+      console.log('OMStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route,
         fullRoute: fullRoute
@@ -106,17 +105,6 @@ const OMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
-          <Processing mode="single" /> : 
-          <Navigate to="/omkar" replace />
-      } />
-
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
-          <Processing mode="batch" /> : 
-          <Navigate to="/omkar" replace />
-      } />
       
       {/* Default Department View */}
       <Route path="" element={
@@ -126,13 +114,13 @@ const OMHumanResource = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Omkar<br/>
-              Department: Human Resource<br/>
+              Department: Store<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Omkar</h2>
+          <h2>Store - Omkar</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -162,4 +150,4 @@ const OMHumanResource = () => {
   );
 };
 
-export default OMHumanResource;
+export default OMStore;

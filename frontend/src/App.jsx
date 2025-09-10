@@ -8,18 +8,76 @@ import Dashboard from './Dashboard';
 import AddUser from './AddUser';
 import Processing from './Processing';
 import Reports from './Reports';
-import ReportsDepartment from './Components/ReportsDepartment';
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import Inventory from './Inventory';
 import ReactorReports from './ReactorReports';
 import Department from './Department';
-import DepartmentNavigation from './Factory';
-import NavigationTest from './NavigationTest';
-import AccessTest from './AccessTest';
-import PermissionTest from './PermissionTest';
+import GulbargaFactory from './Factories/gulbarga';
+import KerurFactory from './Factories/kerur';
+import OmkarFactory from './Factories/omkar';
+import HeadOfficeFactory from './Factories/headoffice';
+import PadmavatiFactory from './Factories/padmavati';
+import HumnabadFactory from './Factories/humnabad';
+
+// Import specific department components
+import GBStore from './GB_Departments/GBStore';
+import GBHumanResource from './GB_Departments/GBHumanResource';
+import KRStore from './KR_Departments/KRStore';
+import KRHumanResource from './KR_Departments/KRHumanResource';
+import OMStore from './OM_Departments/OMStore';
+import OMHumanResource from './OM_Departments/OMHumanResource';
+import HBDStore from './HBD_Departments/HBDStore';
+import HBDHumanResource from './HBD_Departments/HBDHumanResource';
+import PMStore from './PM_Departments/PMStore';
+import PMHumanResource from './PM_Departments/PMHumanResource';
+import HOAccounts from './HO_Departments/HO_Accounts';
+import HOMarketing from './HO_Departments/HO_Marketing';
+import HOOperations from './HO_Departments/HO_Operations';
+import HOHumanResource from './HO_Departments/HO_HumanResourec';
 import { useAuth } from './Components/AuthContext';
 import { DEPARTMENTS_CONFIG, FACTORY_NAMES } from './config';
+
+// Function to get the correct department component based on factory and department keys
+const getDepartmentComponent = (factoryKey, departmentKey) => {
+  const componentMap = {
+    'gulbarga': {
+      'store': GBStore,
+      'humanresource': GBHumanResource
+    },
+    'kerur': {
+      'store': KRStore,
+      'humanresource': KRHumanResource
+    },
+    'omkar': {
+      'store': OMStore,
+      'humanresource': OMHumanResource
+    },
+    'humnabad': {
+      'store': HBDStore,
+      'humanresource': HBDHumanResource
+    },
+    'padmavati': {
+      'store': PMStore,
+      'humanresource': PMHumanResource
+    },
+    'headoffice': {
+      'accounts': HOAccounts,
+      'marketing': HOMarketing,
+      'operations': HOOperations,
+      'humanresource': HOHumanResource
+    }
+  };
+  
+  return componentMap[factoryKey]?.[departmentKey] || Department;
+};
+
+// Department Component Wrapper
+const DepartmentWrapper = () => {
+  const { factoryKey, departmentKey } = useParams();
+  const DepartmentComponent = getDepartmentComponent(factoryKey, departmentKey);
+  return <DepartmentComponent />;
+};
 
 // Department Route Guard Component
 const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
@@ -164,17 +222,6 @@ function App() {
                   </span>
                 ))}
                 
-                {/* Reports Department - Show if user has reports permission */}
-                {canAccessService('reports') && (
-                  <span 
-                    onClick={() => navigate('/reports-department')} 
-                    className="nav-link"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    Reports Department
-                  </span>
-                )}
                 
                 {/* User Management - Show for admins only */}
                 {isAdmin && (
@@ -226,9 +273,39 @@ function App() {
         } />
 
         {/* Factory Routes - Direct factory access */}
-        <Route path="/:factoryKey" element={
-          isAuthenticated && getAccessibleFactoriesForUser().length > 0 ? 
-            <DepartmentNavigation /> : 
+        <Route path="/gulbarga" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('gulbarga') ? 
+            <GulbargaFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/kerur" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('kerur') ? 
+            <KerurFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/omkar" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('omkar') ? 
+            <OmkarFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/headoffice" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('headoffice') ? 
+            <HeadOfficeFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/padmavati" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('padmavati') ? 
+            <PadmavatiFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/humnabad" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('humnabad') ? 
+            <HumnabadFactory /> : 
             <Navigate to="/app" replace />
         } />
 
@@ -237,7 +314,7 @@ function App() {
           isAuthenticated ? 
             <DepartmentRouteGuard 
               requiredRouteType="department_access"
-              component={<Department />}
+              component={<DepartmentWrapper />}
             /> : 
             <Navigate to="/login" replace />
         } />
@@ -246,11 +323,6 @@ function App() {
 
 
 
-        <Route path="/reports-department" element={
-          isAuthenticated && canAccessService('reports') ? 
-            <ReportsDepartment /> : 
-            <Navigate to="/app" replace />
-        } />
 
         <Route path="/reports" element={
           isAuthenticated && canAccessService('reports') ? 
@@ -303,11 +375,6 @@ function App() {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         
-        {/* Access Test Route - Only for development/testing */}
-        <Route path="/access-test" element={<AccessTest />} />
-        
-        {/* Permission Test Route - Only for development/testing */}
-        <Route path="/permission-test" element={<PermissionTest />} />
 
         <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
