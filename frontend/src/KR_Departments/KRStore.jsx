@@ -100,6 +100,8 @@ const KRStore = () => {
 
   return (
     <Routes>
+      {/* KR Place Order Service Route */}
+      <Route path="kr_place-order" element={<KR_PlaceOrder />} />
       
       {/* Default Department View */}
       <Route path="" element={

@@ -748,6 +748,12 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
+        <Route path="/kerur/kr_store/*" element={
+          isAuthenticated ? 
+            <KRStore /> : 
+            <Navigate to="/login" replace />
+        } />
+
         <Route path="/kr_store/*" element={
           isAuthenticated ? 
             <KRStore /> : 
