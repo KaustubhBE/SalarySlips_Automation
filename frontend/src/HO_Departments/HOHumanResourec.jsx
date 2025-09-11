@@ -5,49 +5,55 @@ import Processing from './HO_Services/HO_Processing';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const Department = () => {
+const HOHumanResource = () => {
   const navigate = useNavigate();
-  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HO Operations department (only existing services)
-  const hoOperationsServices = [];
+  // Static services for HO Human Resource department (only existing services)
+  const hoHRServices = [
+    { key: 'ho_single-processing', name: 'Single Processing', route: '/headoffice/humanresource/ho_single-processing' },
+    { key: 'ho_batch-processing', name: 'Batch Processing', route: '/headoffice/humanresource/ho_batch-processing' }
+  ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HO_Operations.jsx - getAccessibleServices called:', {
+    console.log('HO_HumanResourec.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hoOperationsServices;
+      return hoHRServices;
     }
     
     // For regular users, check which services they can access
-    return hoOperationsServices.filter(service => 
-      canAccessService(service.key, 'headoffice', 'operations')
-    );
+    return hoHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('ho_', '');
+      return canAccessService(baseServiceKey, 'headoffice', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
-  const selectedDepartment = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === departmentKey);
 
   // Helper function to check if user has permission for a specific service
   const hasUserPermission = (serviceKey) => {
-    if (!user || !departmentKey || !factoryKey) return false;
+    if (!user) return false;
     
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('ho_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, factoryKey, departmentKey);
+    return canAccessService(baseServiceKey, 'headoffice', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -56,14 +62,12 @@ const Department = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for HO Operations services
-      const fullRoute = `/HO_Operations${service.route}`;
-      console.log('HO_Operations.jsx - Navigating to service:', {
+      // Use new navigation pattern for HO HR services
+      console.log('HO_HumanResourec.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -102,6 +106,18 @@ const Department = () => {
 
   return (
     <Routes>
+      <Route path="ho_single-processing/*" element={
+        isAuthenticated && hasUserPermission('ho_single-processing') ? 
+          <Processing mode="single" /> : 
+          <Navigate to="/headoffice" replace />
+      } />
+
+      <Route path="ho_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('ho_batch-processing') ? 
+          <Processing mode="batch" /> : 
+          <Navigate to="/headoffice" replace />
+      } />
+      
       {/* Default Department View */}
       <Route path="" element={
         <div className="splash-page">
@@ -110,13 +126,13 @@ const Department = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Head Office<br/>
-              Department: Operations<br/>
+              Department: Human Resource<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Operations - Head Office</h2>
+          <h2>Human Resource - Head Office</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -146,4 +162,4 @@ const Department = () => {
   );
 };
 
-export default Department;
+export default HOHumanResource;

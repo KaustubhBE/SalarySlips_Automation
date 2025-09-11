@@ -3,8 +3,6 @@ import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-do
 import { useAuth } from '../Components/AuthContext';
 import Processing from './KR_Services/KR_Processing';
 import Reports from '../Reports';
-import ReactorReports from '../ReactorReports';
-import Inventory from '../Inventory';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
@@ -17,8 +15,8 @@ const KRHumanResource = () => {
   
   // Static services for KR Human Resource department (only existing services)
   const krHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+    { key: 'kr_single-processing', name: 'Single Processing', route: '/kerur/humanresource/kr_single-processing' },
+    { key: 'kr_batch-processing', name: 'Batch Processing', route: '/kerur/humanresource/kr_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,9 +34,11 @@ const KRHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return krHRServices.filter(service => 
-      canAccessService(service.key, 'kerur', 'humanresource')
-    );
+    return krHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('kr_', '');
+      return canAccessService(baseServiceKey, 'kerur', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
@@ -50,8 +50,11 @@ const KRHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('kr_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'kerur', 'humanresource');
+    return canAccessService(baseServiceKey, 'kerur', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -60,14 +63,12 @@ const KRHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for KR HR services
-      const fullRoute = `/KR_HR${service.route}`;
+      // Use new navigation pattern for KR HR services
       console.log('KRHumanResource.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -106,14 +107,14 @@ const KRHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
+      <Route path="kr_single-processing/*" element={
+        isAuthenticated && hasUserPermission('kr_single-processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/kerur" replace />
       } />
 
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
+      <Route path="kr_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('kr_batch-processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/kerur" replace />
       } />

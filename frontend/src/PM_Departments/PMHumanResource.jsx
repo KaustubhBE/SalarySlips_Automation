@@ -17,8 +17,8 @@ const PMHumanResource = () => {
   
   // Static services for PM Human Resource department (only existing services)
   const pmHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+    { key: 'pm_single-processing', name: 'Single Processing', route: '/padmavati/humanresource/pm_single-processing' },
+    { key: 'pm_batch-processing', name: 'Batch Processing', route: '/padmavati/humanresource/pm_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,9 +36,11 @@ const PMHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return pmHRServices.filter(service => 
-      canAccessService(service.key, 'padmavati', 'humanresource')
-    );
+    return pmHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('pm_', '');
+      return canAccessService(baseServiceKey, 'padmavati', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
@@ -50,8 +52,11 @@ const PMHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('pm_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'padmavati', 'humanresource');
+    return canAccessService(baseServiceKey, 'padmavati', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -60,14 +65,12 @@ const PMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for PM HR services
-      const fullRoute = `/PM_HR${service.route}`;
+      // Use new navigation pattern for PM HR services
       console.log('PMHumanResource.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -106,14 +109,14 @@ const PMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
+      <Route path="pm_single-processing/*" element={
+        isAuthenticated && hasUserPermission('pm_single-processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/padmavati" replace />
       } />
 
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
+      <Route path="pm_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('pm_batch-processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/padmavati" replace />
       } />

@@ -17,7 +17,9 @@ const HBDStore = () => {
   
   // Static services for HBD Store department (only existing services)
   const hbdStoreServices = [
-    // No services available for Store department
+    { key: 'inventory', name: 'Inventory Management', route: '/humnabad/store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/humnabad/store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/humnabad/store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -59,14 +61,12 @@ const HBDStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for HBD Store services
-      const fullRoute = `/HBD_Store${service.route}`;
+      // Use new navigation pattern for HBD Store services
       console.log('HBDStore.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 

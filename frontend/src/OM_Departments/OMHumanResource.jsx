@@ -17,8 +17,8 @@ const OMHumanResource = () => {
   
   // Static services for OM Human Resource department (only existing services)
   const omHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+    { key: 'om_single-processing', name: 'Single Processing', route: '/omkar/humanresource/om_single-processing' },
+    { key: 'om_batch-processing', name: 'Batch Processing', route: '/omkar/humanresource/om_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,9 +36,11 @@ const OMHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return omHRServices.filter(service => 
-      canAccessService(service.key, 'omkar', 'humanresource')
-    );
+    return omHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('om_', '');
+      return canAccessService(baseServiceKey, 'omkar', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
@@ -50,8 +52,11 @@ const OMHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('om_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'omkar', 'humanresource');
+    return canAccessService(baseServiceKey, 'omkar', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -60,14 +65,12 @@ const OMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for OM HR services
-      const fullRoute = `/OM_HR${service.route}`;
+      // Use new navigation pattern for OM HR services
       console.log('OMHumanResource.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -106,14 +109,14 @@ const OMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
+      <Route path="om_single-processing/*" element={
+        isAuthenticated && hasUserPermission('om_single-processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/omkar" replace />
       } />
 
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
+      <Route path="om_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('om_batch-processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/omkar" replace />
       } />

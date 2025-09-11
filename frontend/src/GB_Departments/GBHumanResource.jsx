@@ -17,8 +17,8 @@ const GBHumanResource = () => {
   
   // Static services for GB Human Resource department (only existing services)
   const gbHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+    { key: 'gb_single-processing', name: 'Single Processing', route: '/gulbarga/humanresource/gb_single-processing' },
+    { key: 'gb_batch-processing', name: 'Batch Processing', route: '/gulbarga/humanresource/gb_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,9 +36,11 @@ const GBHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return gbHRServices.filter(service => 
-      canAccessService(service.key, 'gulbarga', 'humanresource')
-    );
+    return gbHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('gb_', '');
+      return canAccessService(baseServiceKey, 'gulbarga', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
@@ -50,8 +52,11 @@ const GBHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('gb_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'gulbarga', 'humanresource');
+    return canAccessService(baseServiceKey, 'gulbarga', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -60,14 +65,12 @@ const GBHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for GB HR services
-      const fullRoute = `/GB_HR${service.route}`;
+      // Use new navigation pattern for GB HR services
       console.log('GBHumanResource.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -106,14 +109,14 @@ const GBHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
+      <Route path="gb_single-processing/*" element={
+        isAuthenticated && hasUserPermission('gb_single-processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/gulbarga" replace />
       } />
 
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
+      <Route path="gb_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('gb_batch-processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/gulbarga" replace />
       } />

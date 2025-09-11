@@ -17,7 +17,9 @@ const OMStore = () => {
   
   // Static services for OM Store department (only existing services)
   const omStoreServices = [
-    // No services available for Store department
+    { key: 'inventory', name: 'Inventory Management', route: '/omkar/store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/omkar/store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/omkar/store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -59,14 +61,12 @@ const OMStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for OM Store services
-      const fullRoute = `/OM_Store${service.route}`;
+      // Use new navigation pattern for OM Store services
       console.log('OMStore.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 

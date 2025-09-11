@@ -17,7 +17,9 @@ const PMStore = () => {
   
   // Static services for PM Store department (only existing services)
   const pmStoreServices = [
-    // No services available for Store department
+    { key: 'inventory', name: 'Inventory Management', route: '/padmavati/store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/padmavati/store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/padmavati/store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -59,14 +61,12 @@ const PMStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for PM Store services
-      const fullRoute = `/PM_Store${service.route}`;
+      // Use new navigation pattern for PM Store services
       console.log('PMStore.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 

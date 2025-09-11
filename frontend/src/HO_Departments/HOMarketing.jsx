@@ -5,51 +5,51 @@ import Processing from './HO_Services/HO_Processing';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const Department = () => {
+const HOMarketing = () => {
   const navigate = useNavigate();
-  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HO Human Resource department (only existing services)
-  const hoHRServices = [
-    { key: 'processing', name: 'Processing', route: '/processing' }
+  // Static services for HO Marketing department (only existing services)
+  const hoMarketingServices = [
+    { key: 'campaigns', name: 'Campaign Management', route: '/headoffice/marketing/campaigns' },
+    { key: 'analytics', name: 'Marketing Analytics', route: '/headoffice/marketing/analytics' },
+    { key: 'reports', name: 'Marketing Reports', route: '/headoffice/marketing/reports' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HO_HumanResourec.jsx - getAccessibleServices called:', {
+    console.log('HO_Marketing.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hoHRServices;
+      return hoMarketingServices;
     }
     
     // For regular users, check which services they can access
-    return hoHRServices.filter(service => 
-      canAccessService(service.key, 'headoffice', 'humanresource')
+    return hoMarketingServices.filter(service => 
+      canAccessService(service.key, 'headoffice', 'marketing')
     );
   };
 
   const accessibleServices = getAccessibleServices();
-  const selectedDepartment = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === departmentKey);
 
   // Helper function to check if user has permission for a specific service
   const hasUserPermission = (serviceKey) => {
-    if (!user || !departmentKey || !factoryKey) return false;
+    if (!user) return false;
     
     // Admin has access to everything
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, factoryKey, departmentKey);
+    return canAccessService(serviceKey, 'headoffice', 'marketing');
   };
 
   // Check if user is authenticated
@@ -58,14 +58,12 @@ const Department = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for HO HR services
-      const fullRoute = `/HO_HR${service.route}`;
-      console.log('HO_HumanResourec.jsx - Navigating to service:', {
+      // Use new navigation pattern for HO Marketing services
+      console.log('HO_Marketing.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -104,12 +102,6 @@ const Department = () => {
 
   return (
     <Routes>
-      <Route path="processing/*" element={
-        isAuthenticated && hasUserPermission('processing') ? 
-          <Processing mode="single" /> : 
-          <Navigate to={`/${factoryKey}`} replace />
-      } />
-      
       {/* Default Department View */}
       <Route path="" element={
         <div className="splash-page">
@@ -118,13 +110,13 @@ const Department = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Head Office<br/>
-              Department: Human Resource<br/>
+              Department: Marketing<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Head Office</h2>
+          <h2>Marketing - Head Office</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -154,4 +146,4 @@ const Department = () => {
   );
 };
 
-export default Department;
+export default HOMarketing;

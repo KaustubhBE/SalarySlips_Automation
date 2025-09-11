@@ -6,7 +6,7 @@ import LoadingSpinner from '../../LoadingSpinner';
 import '../../Processing.css';
 import Navbar from '../../Navbar';
 import Settings from '../../Components/Settings';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import { getApiUrl, makeApiCall, ENDPOINTS } from '../../config.js';
 import { useAuth } from '../../Components/AuthContext';
 import axios from 'axios';
@@ -149,6 +149,7 @@ const getFinancialYears = () => {
 
 function Processing({ mode = 'single' }) {
   const { user, hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [sendEmail, setSendEmail] = useState(false);
   const [sendWhatsapp, setSendWhatsapp] = useState(false); // ENABLED WHATSAPP
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -541,18 +542,31 @@ function Processing({ mode = 'single' }) {
               </div>
             </div>
             
-            <button 
-              type="button" 
-              className="btn" 
-              onClick={handleSubmit}
-              disabled={
-                !selectedPlant || 
-                months.some(m => !m.month || !m.financialYear) ||
-                (mode === 'single' && (!employeeDetails || employeeDetails.trim() === ''))
-              }
-            >
-              Process Salary Slip{mode === 'single' ? 's' : ''}
-            </button>
+            <div className="button-group">
+              <button 
+                type="button" 
+                className="btn" 
+                onClick={handleSubmit}
+                disabled={
+                  !selectedPlant || 
+                  months.some(m => !m.month || !m.financialYear) ||
+                  (mode === 'single' && (!employeeDetails || employeeDetails.trim() === ''))
+                }
+              >
+                Process Salary Slip{mode === 'single' ? 's' : ''}
+              </button>
+              
+              {/* Navigation buttons */}
+              <div className="nav-buttons">
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  onClick={() => navigate('/headoffice/humanresource')}
+                >
+                  Back to Department
+                </button>
+              </div>
+            </div>
           </div>
         } />
       </Routes>

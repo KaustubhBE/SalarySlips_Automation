@@ -17,8 +17,8 @@ const HBDHumanResource = () => {
   
   // Static services for HBD Human Resource department (only existing services)
   const hbdHRServices = [
-    { key: 'single-processing', name: 'Single Processing', route: '/single-processing' },
-    { key: 'batch-processing', name: 'Batch Processing', route: '/batch-processing' }
+    { key: 'hbd_single-processing', name: 'Single Processing', route: '/humnabad/humanresource/hbd_single-processing' },
+    { key: 'hbd_batch-processing', name: 'Batch Processing', route: '/humnabad/humanresource/hbd_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,9 +36,11 @@ const HBDHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return hbdHRServices.filter(service => 
-      canAccessService(service.key, 'humnabad', 'humanresource')
-    );
+    return hbdHRServices.filter(service => {
+      // Extract the base service key (remove factory prefix)
+      const baseServiceKey = service.key.replace('hbd_', '');
+      return canAccessService(baseServiceKey, 'humnabad', 'humanresource');
+    });
   };
 
   const accessibleServices = getAccessibleServices();
@@ -50,8 +52,11 @@ const HBDHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
+    // Extract the base service key (remove factory prefix)
+    const baseServiceKey = serviceKey.replace('hbd_', '');
+    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'humnabad', 'humanresource');
+    return canAccessService(baseServiceKey, 'humnabad', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -60,14 +65,12 @@ const HBDHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for HBD HR services
-      const fullRoute = `/HBD_HR${service.route}`;
+      // Use new navigation pattern for HBD HR services
       console.log('HBDHumanResource.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -106,14 +109,14 @@ const HBDHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="single-processing/*" element={
-        isAuthenticated && hasUserPermission('single-processing') ? 
+      <Route path="hbd_single-processing/*" element={
+        isAuthenticated && hasUserPermission('hbd_single-processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/humnabad" replace />
       } />
 
-      <Route path="batch-processing/*" element={
-        isAuthenticated && hasUserPermission('batch-processing') ? 
+      <Route path="hbd_batch-processing/*" element={
+        isAuthenticated && hasUserPermission('hbd_batch-processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/humnabad" replace />
       } />

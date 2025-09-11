@@ -17,7 +17,9 @@ const GBStore = () => {
   
   // Static services for GB Store department (only existing services)
   const gbStoreServices = [
-    // No services available for Store department
+    { key: 'inventory', name: 'Inventory Management', route: '/gulbarga/store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/gulbarga/store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/gulbarga/store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -59,14 +61,12 @@ const GBStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for GB Store services
-      const fullRoute = `/GB_Store${service.route}`;
+      // Use new navigation pattern for GB Store services
       console.log('GBStore.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 

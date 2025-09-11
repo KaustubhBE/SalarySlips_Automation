@@ -17,7 +17,9 @@ const KRStore = () => {
   
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
-    // No services available for Store department
+    { key: 'inventory', name: 'Inventory Management', route: '/kerur/store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/kerur/store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/kerur/store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -59,14 +61,12 @@ const KRStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for KR Store services
-      const fullRoute = `/KR_Store${service.route}`;
+      // Use new navigation pattern for KR Store services
       console.log('KRStore.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 

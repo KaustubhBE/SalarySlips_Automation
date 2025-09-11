@@ -5,49 +5,51 @@ import Processing from './HO_Services/HO_Processing';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
-const Department = () => {
+const HOAccounts = () => {
   const navigate = useNavigate();
-  const { factoryKey, departmentKey } = useParams();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HO Marketing department (only existing services)
-  const hoMarketingServices = [];
+  // Static services for HO Accounts department (only existing services)
+  const hoAccountsServices = [
+    { key: 'reports', name: 'Financial Reports', route: '/headoffice/accounts/reports' },
+    { key: 'budget', name: 'Budget Management', route: '/headoffice/accounts/budget' },
+    { key: 'payroll', name: 'Payroll Management', route: '/headoffice/accounts/payroll' }
+  ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HO_Marketing.jsx - getAccessibleServices called:', {
+    console.log('HO_Accounts.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hoMarketingServices;
+      return hoAccountsServices;
     }
     
     // For regular users, check which services they can access
-    return hoMarketingServices.filter(service => 
-      canAccessService(service.key, 'headoffice', 'marketing')
+    return hoAccountsServices.filter(service => 
+      canAccessService(service.key, 'headoffice', 'accounts')
     );
   };
 
   const accessibleServices = getAccessibleServices();
-  const selectedDepartment = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === departmentKey);
 
   // Helper function to check if user has permission for a specific service
   const hasUserPermission = (serviceKey) => {
-    if (!user || !departmentKey || !factoryKey) return false;
+    if (!user) return false;
     
     // Admin has access to everything
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, factoryKey, departmentKey);
+    return canAccessService(serviceKey, 'headoffice', 'accounts');
   };
 
   // Check if user is authenticated
@@ -56,14 +58,12 @@ const Department = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use hardcoded route for HO Marketing services
-      const fullRoute = `/HO_Marketing${service.route}`;
-      console.log('HO_Marketing.jsx - Navigating to service:', {
+      // Use new navigation pattern for HO Accounts services
+      console.log('HO_Accounts.jsx - Navigating to service:', {
         service: service.key,
-        serviceRoute: service.route,
-        fullRoute: fullRoute
+        serviceRoute: service.route
       });
-      navigate(fullRoute);
+      navigate(service.route);
     }
   };
 
@@ -110,13 +110,13 @@ const Department = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Head Office<br/>
-              Department: Marketing<br/>
+              Department: Accounts<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Marketing - Head Office</h2>
+          <h2>Accounts - Head Office</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -146,4 +146,4 @@ const Department = () => {
   );
 };
 
-export default Department;
+export default HOAccounts;

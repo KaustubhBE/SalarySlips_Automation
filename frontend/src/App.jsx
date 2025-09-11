@@ -8,19 +8,24 @@ import Dashboard from './Dashboard';
 import AddUser from './AddUser';
 import Processing from './Processing';
 import Reports from './Reports';
+// Import specific processing components
+import KRProcessing from './KR_Departments/KR_Services/KR_Processing';
+import GBProcessing from './GB_Departments/GB_Services/GB_Processing';
+import PMProcessing from './PM_Departments/PM_Services/PM_Processing';
+import OMProcessing from './OM_Departments/OM_Services/OM_Processing';
+import HOProcessing from './HO_Departments/HO_Services/HO_Processing';
+import HBDProcessing from './HBD_Departments/HBD_Services/HBD_Processing';
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import Inventory from './Inventory';
 import ReactorReports from './ReactorReports';
-import Department from './Department';
+// Department import removed - using specific department components
 import GulbargaFactory from './Factories/gulbarga';
 import KerurFactory from './Factories/kerur';
 import OmkarFactory from './Factories/omkar';
 import HeadOfficeFactory from './Factories/headoffice';
 import PadmavatiFactory from './Factories/padmavati';
 import HumnabadFactory from './Factories/humnabad';
-
-// Import specific department components
 import GBStore from './GB_Departments/GBStore';
 import GBHumanResource from './GB_Departments/GBHumanResource';
 import KRStore from './KR_Departments/KRStore';
@@ -31,10 +36,10 @@ import HBDStore from './HBD_Departments/HBDStore';
 import HBDHumanResource from './HBD_Departments/HBDHumanResource';
 import PMStore from './PM_Departments/PMStore';
 import PMHumanResource from './PM_Departments/PMHumanResource';
-import HOAccounts from './HO_Departments/HO_Accounts';
-import HOMarketing from './HO_Departments/HO_Marketing';
-import HOOperations from './HO_Departments/HO_Operations';
-import HOHumanResource from './HO_Departments/HO_HumanResourec';
+import HOAccounts from './HO_Departments/HOAccounts';
+import HOMarketing from './HO_Departments/HOMarketing';
+import HOOperations from './HO_Departments/HOOperations';
+import HOHumanResource from './HO_Departments/HOHumanResourec';
 import { useAuth } from './Components/AuthContext';
 import { DEPARTMENTS_CONFIG, FACTORY_NAMES } from './config';
 
@@ -69,14 +74,48 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
     }
   };
   
-  return componentMap[factoryKey]?.[departmentKey] || Department;
+  return componentMap[factoryKey]?.[departmentKey] || null;
+};
+
+// Function to get the correct processing component based on factory
+const getProcessingComponent = (factoryKey, mode) => {
+  const componentMap = {
+    'gulbarga': GBProcessing,
+    'kerur': KRProcessing,
+    'omkar': OMProcessing,
+    'humnabad': HBDProcessing,
+    'padmavati': PMProcessing,
+    'headoffice': HOProcessing
+  };
+  
+  const ProcessingComponent = componentMap[factoryKey] || Processing;
+  return <ProcessingComponent mode={mode} />;
 };
 
 // Department Component Wrapper
 const DepartmentWrapper = () => {
   const { factoryKey, departmentKey } = useParams();
   const DepartmentComponent = getDepartmentComponent(factoryKey, departmentKey);
+  
+  if (!DepartmentComponent) {
+    return (
+      <div className="splash-page">
+        <h1>Department Not Found</h1>
+        <p>The requested department "{departmentKey}" in factory "{factoryKey}" does not exist.</p>
+        <button onClick={() => window.history.back()} className="nav-link" style={{ marginTop: '15px' }}>
+          ← Go Back
+        </button>
+      </div>
+    );
+  }
+  
   return <DepartmentComponent />;
+};
+
+// Processing Component Wrapper
+const ProcessingWrapper = ({ mode }) => {
+  const { factoryKey } = useParams();
+  return getProcessingComponent(factoryKey, mode);
 };
 
 // Department Route Guard Component
@@ -340,14 +379,99 @@ function App() {
         <Route path="/:factoryKey/:departmentKey/single-processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="single_processing"
-            component={<Processing mode="single" />}
+            component={<ProcessingWrapper mode="single" />}
           />
         } />
 
         <Route path="/:factoryKey/:departmentKey/batch-processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="batch_processing"
-            component={<Processing mode="batch" />}
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        {/* Factory-specific processing routes */}
+        <Route path="/:factoryKey/:departmentKey/gb_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/gb_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/kr_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/kr_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/pm_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/pm_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/om_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/om_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/hbd_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/hbd_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/ho_single-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/ho_batch-processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
           />
         } />
 
@@ -370,6 +494,164 @@ function App() {
             requiredRouteType="reactor_reports"
             component={<ReactorReports />}
           />
+        } />
+
+        {/* New Processing Routes - Direct access to processing components */}
+        <Route path="/gb_single-processing/*" element={
+          isAuthenticated ? 
+            <GBHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/gb_batch-processing/*" element={
+          isAuthenticated ? 
+            <GBHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/kr_single-processing/*" element={
+          isAuthenticated ? 
+            <KRHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/kr_batch-processing/*" element={
+          isAuthenticated ? 
+            <KRHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/pm_single-processing/*" element={
+          isAuthenticated ? 
+            <PMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/pm_batch-processing/*" element={
+          isAuthenticated ? 
+            <PMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/om_single-processing/*" element={
+          isAuthenticated ? 
+            <OMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/om_batch-processing/*" element={
+          isAuthenticated ? 
+            <OMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_single-processing/*" element={
+          isAuthenticated ? 
+            <HOHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_batch-processing/*" element={
+          isAuthenticated ? 
+            <HOHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/hbd_single-processing/*" element={
+          isAuthenticated ? 
+            <HBDHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/hbd_batch-processing/*" element={
+          isAuthenticated ? 
+            <HBDHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* New Department Routes - Direct access to department components */}
+        <Route path="/gb_humanresource/*" element={
+          isAuthenticated ? 
+            <GBHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/gb_store/*" element={
+          isAuthenticated ? 
+            <GBStore /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/kr_humanresource/*" element={
+          isAuthenticated ? 
+            <KRHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/kr_store/*" element={
+          isAuthenticated ? 
+            <KRStore /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/pm_humanresource/*" element={
+          isAuthenticated ? 
+            <PMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/pm_store/*" element={
+          isAuthenticated ? 
+            <PMStore /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/om_humanresource/*" element={
+          isAuthenticated ? 
+            <OMHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/om_store/*" element={
+          isAuthenticated ? 
+            <OMStore /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_humanresource/*" element={
+          isAuthenticated ? 
+            <HOHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_accounts/*" element={
+          isAuthenticated ? 
+            <HOAccounts /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_marketing/*" element={
+          isAuthenticated ? 
+            <HOMarketing /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_operations/*" element={
+          isAuthenticated ? 
+            <HOOperations /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/hbd_humanresource/*" element={
+          isAuthenticated ? 
+            <HBDHumanResource /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/hbd_store/*" element={
+          isAuthenticated ? 
+            <HBDStore /> : 
+            <Navigate to="/login" replace />
         } />
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
