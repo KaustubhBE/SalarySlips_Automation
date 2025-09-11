@@ -14,8 +14,8 @@ const HOHumanResource = () => {
   
   // Static services for HO Human Resource department (only existing services)
   const hoHRServices = [
-    { key: 'ho_single-processing', name: 'Single Processing', route: '/headoffice/humanresource/ho_single-processing' },
-    { key: 'ho_batch-processing', name: 'Batch Processing', route: '/headoffice/humanresource/ho_batch-processing' }
+    { key: 'ho_single-processing', name: 'Single Processing', route: '/headoffice/ho_humanresource/ho_single-processing' },
+    { key: 'ho_batch-processing', name: 'Batch Processing', route: '/headoffice/ho_humanresource/ho_batch-processing' }
   ];
 
   // Get accessible services based on user permissions

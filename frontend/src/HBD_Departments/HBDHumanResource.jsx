@@ -17,8 +17,8 @@ const HBDHumanResource = () => {
   
   // Static services for HBD Human Resource department (only existing services)
   const hbdHRServices = [
-    { key: 'hbd_single-processing', name: 'Single Processing', route: '/humnabad/humanresource/hbd_single-processing' },
-    { key: 'hbd_batch-processing', name: 'Batch Processing', route: '/humnabad/humanresource/hbd_batch-processing' }
+    { key: 'hbd_single-processing', name: 'Single Processing', route: '/humnabad/hbd_humanresource/hbd_single-processing' },
+    { key: 'hbd_batch-processing', name: 'Batch Processing', route: '/humnabad/hbd_humanresource/hbd_batch-processing' }
   ];
 
   // Get accessible services based on user permissions

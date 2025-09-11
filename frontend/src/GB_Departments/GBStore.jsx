@@ -17,9 +17,9 @@ const GBStore = () => {
   
   // Static services for GB Store department (only existing services)
   const gbStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/gulbarga/store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/gulbarga/store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/gulbarga/store/reactor-reports' }
+    { key: 'inventory', name: 'Inventory Management', route: '/gulbarga/gb_store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/gulbarga/gb_store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/gulbarga/gb_store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions

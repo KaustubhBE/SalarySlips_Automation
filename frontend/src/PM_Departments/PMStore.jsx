@@ -17,9 +17,9 @@ const PMStore = () => {
   
   // Static services for PM Store department (only existing services)
   const pmStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/padmavati/store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/padmavati/store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/padmavati/store/reactor-reports' }
+    { key: 'inventory', name: 'Inventory Management', route: '/padmavati/pm_store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/padmavati/pm_store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/padmavati/pm_store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions

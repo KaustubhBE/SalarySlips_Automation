@@ -92,16 +92,62 @@ const getProcessingComponent = (factoryKey, mode) => {
   return <ProcessingComponent mode={mode} />;
 };
 
-// Department Component Wrapper
+// Department Component Wrapper for generic routes
 const DepartmentWrapper = () => {
   const { factoryKey, departmentKey } = useParams();
-  const DepartmentComponent = getDepartmentComponent(factoryKey, departmentKey);
+  
+  // Debug logging
+  console.log('DepartmentWrapper - factoryKey:', factoryKey, 'departmentKey:', departmentKey);
+  
+  // Handle factory-prefixed department keys by stripping the prefix
+  let actualDepartmentKey = departmentKey;
+  if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
+      departmentKey.startsWith('pm_') || departmentKey.startsWith('om_') || 
+      departmentKey.startsWith('hbd_') || departmentKey.startsWith('ho_'))) {
+    // Extract the base department key (remove factory prefix)
+    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pm_|om_|hbd_|ho_)/, '');
+    console.log('DepartmentWrapper - stripped prefix, actualDepartmentKey:', actualDepartmentKey);
+  }
+  
+  const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
+  console.log('DepartmentWrapper - DepartmentComponent:', DepartmentComponent);
   
   if (!DepartmentComponent) {
     return (
       <div className="splash-page">
         <h1>Department Not Found</h1>
         <p>The requested department "{departmentKey}" in factory "{factoryKey}" does not exist.</p>
+        <p>Debug: actualDepartmentKey = "{actualDepartmentKey}"</p>
+        <button onClick={() => window.history.back()} className="nav-link" style={{ marginTop: '15px' }}>
+          ← Go Back
+        </button>
+      </div>
+    );
+  }
+  
+  return <DepartmentComponent />;
+};
+
+// Factory-prefixed Department Component Wrapper
+const FactoryPrefixedDepartmentWrapper = ({ departmentType }) => {
+  const { factoryKey } = useParams();
+  
+  // Debug logging
+  console.log('FactoryPrefixedDepartmentWrapper - factoryKey:', factoryKey, 'departmentType:', departmentType);
+  
+  // Extract the base department key (remove factory prefix)
+  const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pm_|om_|hbd_|ho_)/, '');
+  console.log('FactoryPrefixedDepartmentWrapper - actualDepartmentKey:', actualDepartmentKey);
+  
+  const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
+  console.log('FactoryPrefixedDepartmentWrapper - DepartmentComponent:', DepartmentComponent);
+  
+  if (!DepartmentComponent) {
+    return (
+      <div className="splash-page">
+        <h1>Department Not Found</h1>
+        <p>The requested department "{departmentType}" in factory "{factoryKey}" does not exist.</p>
+        <p>Debug: actualDepartmentKey = "{actualDepartmentKey}"</p>
         <button onClick={() => window.history.back()} className="nav-link" style={{ marginTop: '15px' }}>
           ← Go Back
         </button>
@@ -348,7 +394,121 @@ function App() {
             <Navigate to="/app" replace />
         } />
 
-        {/* Department Routes - Factory/Department access */}
+        {/* Factory-prefixed Department Routes - Must come before generic routes */}
+        <Route path="/:factoryKey/gb_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="gb_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/gb_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="gb_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/kr_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="kr_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/kr_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="kr_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/pm_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="pm_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/pm_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="pm_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/om_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="om_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/om_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="om_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/hbd_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="hbd_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/hbd_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="hbd_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ho_accounts" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ho_accounts" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ho_marketing" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ho_marketing" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ho_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ho_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ho_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ho_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Generic Department Routes - Must come after specific factory-prefixed routes */}
         <Route path="/:factoryKey/:departmentKey" element={
           isAuthenticated ? 
             <DepartmentRouteGuard 

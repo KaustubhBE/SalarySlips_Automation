@@ -17,8 +17,8 @@ const PMHumanResource = () => {
   
   // Static services for PM Human Resource department (only existing services)
   const pmHRServices = [
-    { key: 'pm_single-processing', name: 'Single Processing', route: '/padmavati/humanresource/pm_single-processing' },
-    { key: 'pm_batch-processing', name: 'Batch Processing', route: '/padmavati/humanresource/pm_batch-processing' }
+    { key: 'pm_single-processing', name: 'Single Processing', route: '/padmavati/pm_humanresource/pm_single-processing' },
+    { key: 'pm_batch-processing', name: 'Batch Processing', route: '/padmavati/pm_humanresource/pm_batch-processing' }
   ];
 
   // Get accessible services based on user permissions

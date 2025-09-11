@@ -12,8 +12,8 @@ const OmkarFactory = () => {
 
   // Static departments for Omkar factory with hardcoded navigation (only existing departments)
   const omkarDepartments = [
-    { key: 'store', name: 'Store', route: '/omkar/store' },
-    { key: 'humanresource', name: 'Human Resource', route: '/omkar/humanresource' }
+    { key: 'om_store', name: 'Store', route: '/omkar/om_store' },
+    { key: 'om_humanresource', name: 'Human Resource', route: '/omkar/om_humanresource' }
   ];
 
   // Filter departments based on user permissions
@@ -24,9 +24,11 @@ const OmkarFactory = () => {
       return omkarDepartments;
     }
     
-    return omkarDepartments.filter(dept => 
-      canAccessFactoryDepartment('omkar', dept.key)
-    );
+    return omkarDepartments.filter(dept => {
+      // Extract the base department key (remove factory prefix)
+      const baseDepartmentKey = dept.key.replace('om_', '');
+      return canAccessFactoryDepartment('omkar', baseDepartmentKey);
+    });
   };
 
   const accessibleDepartments = getAccessibleDepartments();

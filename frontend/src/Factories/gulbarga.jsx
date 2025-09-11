@@ -12,8 +12,8 @@ const GulbargaFactory = () => {
 
   // Static departments for Gulbarga factory with hardcoded navigation (only existing departments)
   const gulbargaDepartments = [
-    { key: 'store', name: 'Store', route: '/gulbarga/store' },
-    { key: 'humanresource', name: 'Human Resource', route: '/gulbarga/humanresource' }
+    { key: 'gb_store', name: 'Store', route: '/gulbarga/gb_store' },
+    { key: 'gb_humanresource', name: 'Human Resource', route: '/gulbarga/gb_humanresource' }
   ];
 
   // Filter departments based on user permissions
@@ -24,9 +24,11 @@ const GulbargaFactory = () => {
       return gulbargaDepartments;
     }
     
-    return gulbargaDepartments.filter(dept => 
-      canAccessFactoryDepartment('gulbarga', dept.key)
-    );
+    return gulbargaDepartments.filter(dept => {
+      // Extract the base department key (remove factory prefix)
+      const baseDepartmentKey = dept.key.replace('gb_', '');
+      return canAccessFactoryDepartment('gulbarga', baseDepartmentKey);
+    });
   };
 
   const accessibleDepartments = getAccessibleDepartments();

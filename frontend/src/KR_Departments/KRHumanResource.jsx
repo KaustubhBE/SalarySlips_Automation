@@ -15,8 +15,8 @@ const KRHumanResource = () => {
   
   // Static services for KR Human Resource department (only existing services)
   const krHRServices = [
-    { key: 'kr_single-processing', name: 'Single Processing', route: '/kerur/humanresource/kr_single-processing' },
-    { key: 'kr_batch-processing', name: 'Batch Processing', route: '/kerur/humanresource/kr_batch-processing' }
+    { key: 'kr_single-processing', name: 'Single Processing', route: '/kerur/kr_humanresource/kr_single-processing' },
+    { key: 'kr_batch-processing', name: 'Batch Processing', route: '/kerur/kr_humanresource/kr_batch-processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -37,7 +37,7 @@ const KRHumanResource = () => {
     return krHRServices.filter(service => {
       // Extract the base service key (remove factory prefix)
       const baseServiceKey = service.key.replace('kr_', '');
-      return canAccessService(baseServiceKey, 'kerur', 'humanresource');
+      return canAccessService(baseServiceKey, 'kerur', 'kr_humanresource');
     });
   };
 
@@ -54,7 +54,7 @@ const KRHumanResource = () => {
     const baseServiceKey = serviceKey.replace('kr_', '');
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(baseServiceKey, 'kerur', 'humanresource');
+    return canAccessService(baseServiceKey, 'kerur', 'kr_humanresource');
   };
 
   // Check if user is authenticated

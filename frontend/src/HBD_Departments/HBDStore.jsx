@@ -17,9 +17,9 @@ const HBDStore = () => {
   
   // Static services for HBD Store department (only existing services)
   const hbdStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/humnabad/store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/humnabad/store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/humnabad/store/reactor-reports' }
+    { key: 'inventory', name: 'Inventory Management', route: '/humnabad/hbd_store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/humnabad/hbd_store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/humnabad/hbd_store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions

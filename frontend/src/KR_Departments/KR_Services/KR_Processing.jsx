@@ -531,7 +531,7 @@ function Processing({ mode = 'single' }) {
                 <button 
                   type="button" 
                   className="btn btn-outline" 
-                  onClick={() => navigate('/kerur/humanresource')}
+                  onClick={() => navigate('/kerur/kr_humanresource')}
                 >
                   Back to Department
                 </button>

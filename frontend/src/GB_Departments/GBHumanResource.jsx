@@ -17,8 +17,8 @@ const GBHumanResource = () => {
   
   // Static services for GB Human Resource department (only existing services)
   const gbHRServices = [
-    { key: 'gb_single-processing', name: 'Single Processing', route: '/gulbarga/humanresource/gb_single-processing' },
-    { key: 'gb_batch-processing', name: 'Batch Processing', route: '/gulbarga/humanresource/gb_batch-processing' }
+    { key: 'gb_single-processing', name: 'Single Processing', route: '/gulbarga/gb_humanresource/gb_single-processing' },
+    { key: 'gb_batch-processing', name: 'Batch Processing', route: '/gulbarga/gb_humanresource/gb_batch-processing' }
   ];
 
   // Get accessible services based on user permissions

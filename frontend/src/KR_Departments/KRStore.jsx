@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './KR_Services/KR_Processing';
-import Reports from '../Reports';
-import ReactorReports from '../ReactorReports';
-import Inventory from '../Inventory';
+import KR_PlaceOrder from './KR_Services/KR_PlaceOrder';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
@@ -17,9 +14,7 @@ const KRStore = () => {
   
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/kerur/store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/kerur/store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/kerur/store/reactor-reports' }
+    { key: 'place-order', name: 'Order Intent', route: '/kerur/kr_store/kr_place-order' },
   ];
 
   // Get accessible services based on user permissions

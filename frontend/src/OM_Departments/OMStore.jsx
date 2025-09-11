@@ -17,9 +17,9 @@ const OMStore = () => {
   
   // Static services for OM Store department (only existing services)
   const omStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/omkar/store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/omkar/store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/omkar/store/reactor-reports' }
+    { key: 'inventory', name: 'Inventory Management', route: '/omkar/om_store/inventory' },
+    { key: 'reports', name: 'Store Reports', route: '/omkar/om_store/reports' },
+    { key: 'reactor-reports', name: 'Reactor Reports', route: '/omkar/om_store/reactor-reports' }
   ];
 
   // Get accessible services based on user permissions

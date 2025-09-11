@@ -17,8 +17,8 @@ const OMHumanResource = () => {
   
   // Static services for OM Human Resource department (only existing services)
   const omHRServices = [
-    { key: 'om_single-processing', name: 'Single Processing', route: '/omkar/humanresource/om_single-processing' },
-    { key: 'om_batch-processing', name: 'Batch Processing', route: '/omkar/humanresource/om_batch-processing' }
+    { key: 'om_single-processing', name: 'Single Processing', route: '/omkar/om_humanresource/om_single-processing' },
+    { key: 'om_batch-processing', name: 'Batch Processing', route: '/omkar/om_humanresource/om_batch-processing' }
   ];
 
   // Get accessible services based on user permissions

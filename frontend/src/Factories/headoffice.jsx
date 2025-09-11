@@ -12,10 +12,10 @@ const HeadOfficeFactory = () => {
 
   // Static departments for Head Office factory with hardcoded navigation (only existing departments)
   const headOfficeDepartments = [
-    { key: 'accounts', name: 'Accounts', route: '/headoffice/accounts' },
-    { key: 'marketing', name: 'Marketing', route: '/headoffice/marketing' },
-    { key: 'operations', name: 'Operations', route: '/headoffice/operations' },
-    { key: 'humanresource', name: 'Human Resource', route: '/headoffice/humanresource' }
+    { key: 'ho_accounts', name: 'Accounts', route: '/headoffice/ho_accounts' },
+    { key: 'ho_marketing', name: 'Marketing', route: '/headoffice/ho_marketing' },
+    { key: 'ho_operations', name: 'Operations', route: '/headoffice/ho_operations' },
+    { key: 'ho_humanresource', name: 'Human Resource', route: '/headoffice/ho_humanresource' }
   ];
 
   // Filter departments based on user permissions
@@ -26,9 +26,11 @@ const HeadOfficeFactory = () => {
       return headOfficeDepartments;
     }
     
-    return headOfficeDepartments.filter(dept => 
-      canAccessFactoryDepartment('headoffice', dept.key)
-    );
+    return headOfficeDepartments.filter(dept => {
+      // Extract the base department key (remove factory prefix)
+      const baseDepartmentKey = dept.key.replace('ho_', '');
+      return canAccessFactoryDepartment('headoffice', baseDepartmentKey);
+    });
   };
 
   const accessibleDepartments = getAccessibleDepartments();

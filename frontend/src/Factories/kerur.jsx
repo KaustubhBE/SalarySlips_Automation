@@ -12,8 +12,8 @@ const KerurFactory = () => {
 
   // Static departments for Kerur factory with hardcoded navigation (only existing departments)
   const kerurDepartments = [
-    { key: 'store', name: 'Store', route: '/kerur/store' },
-    { key: 'humanresource', name: 'Human Resource', route: '/kerur/humanresource' }
+    { key: 'kr_store', name: 'Store', route: '/kerur/kr_store' },
+    { key: 'kr_humanresource', name: 'Human Resource', route: '/kerur/kr_humanresource' }
   ];
 
   // Filter departments based on user permissions
@@ -24,9 +24,11 @@ const KerurFactory = () => {
       return kerurDepartments;
     }
     
-    return kerurDepartments.filter(dept => 
-      canAccessFactoryDepartment('kerur', dept.key)
-    );
+    return kerurDepartments.filter(dept => {
+      // Extract the base department key (remove factory prefix)
+      const baseDepartmentKey = dept.key.replace('kr_', '');
+      return canAccessFactoryDepartment('kerur', baseDepartmentKey);
+    });
   };
 
   const accessibleDepartments = getAccessibleDepartments();
