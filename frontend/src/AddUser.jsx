@@ -544,6 +544,51 @@ function AddUser() {
     return serviceMap[department] || [];
   };
 
+  // Convert tree permissions to permission_metadata format (same as Dashboard.jsx)
+  const convertTreePermissionsToMetadata = (treePermissions) => {
+    const permissionMetadata = {
+      factories: [],
+      departments: {},
+      services: {}
+    };
+
+    // Process each tree permission key (e.g., "gulbarga.humanresource.single_processing")
+    Object.keys(treePermissions).forEach(key => {
+      if (treePermissions[key] === true) {
+        const parts = key.split('.');
+        if (parts.length >= 3) {
+          const factory = parts[0];
+          const department = parts[1];
+          const service = parts[2];
+
+          // Add factory to factories array
+          if (!permissionMetadata.factories.includes(factory)) {
+            permissionMetadata.factories.push(factory);
+          }
+
+          // Add department to factory
+          if (!permissionMetadata.departments[factory]) {
+            permissionMetadata.departments[factory] = [];
+          }
+          if (!permissionMetadata.departments[factory].includes(department)) {
+            permissionMetadata.departments[factory].push(department);
+          }
+
+          // Add service to department
+          const serviceKey = `${factory}.${department}`;
+          if (!permissionMetadata.services[serviceKey]) {
+            permissionMetadata.services[serviceKey] = [];
+          }
+          if (!permissionMetadata.services[serviceKey].includes(service)) {
+            permissionMetadata.services[serviceKey].push(service);
+          }
+        }
+      }
+    });
+
+    return permissionMetadata;
+  };
+
   const resetForm = () => {
     setUsername('');
     setEmail('');
@@ -562,6 +607,12 @@ function AddUser() {
     console.log('getApiUrl(ENDPOINTS.ADD_USER):', getApiUrl(ENDPOINTS.ADD_USER));
     
     try {
+      // Convert tree permissions to permission_metadata format (same as Dashboard.jsx)
+      const permissionMetadata = convertTreePermissionsToMetadata(permissions);
+      
+      console.log('Original permissions:', permissions);
+      console.log('Converted permission_metadata:', permissionMetadata);
+      
       const response = await axios.post(getApiUrl(ENDPOINTS.ADD_USER), 
         { 
           username, 
@@ -569,7 +620,7 @@ function AddUser() {
           password, 
           appPassword,
           role,
-          permissions: permissions // Simple service-based permissions
+          permission_metadata: permissionMetadata // Use permission_metadata format
         },
         {
           withCredentials: true,
