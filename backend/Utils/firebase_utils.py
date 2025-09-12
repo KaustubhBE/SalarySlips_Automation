@@ -168,3 +168,175 @@ def update_user(user_id, **kwargs):
     update_data = {k: v for k, v in kwargs.items() if v is not None}
     if update_data:
         user_ref.update(update_data)
+
+def get_material_data():
+    """Get all material data from MATERIAL collection"""
+    try:
+        materials_ref = db.collection('MATERIAL')
+        materials = materials_ref.get()
+        
+        material_data = {}
+        
+        for material_doc in materials:
+            factory_name = material_doc.id
+            material_data[factory_name] = {
+                'subCategories': [],
+                'particulars': [],
+                'materialNames': []
+            }
+            
+            # Get materials subcollection for this factory
+            materials_subcollection = material_doc.reference.collection('materials')
+            materials_docs = materials_subcollection.get()
+            
+            categories = set()
+            sub_categories = set()
+            particulars = set()
+            material_names = []
+            
+            for mat_doc in materials_docs:
+                mat_data = mat_doc.to_dict()
+                
+                # Extract category
+                if 'category' in mat_data:
+                    categories.add(mat_data['category'])
+                
+                # Extract sub-category
+                if 'subCategory' in mat_data and mat_data['subCategory']:
+                    sub_categories.add(mat_data['subCategory'])
+                
+                # Extract particulars
+                if 'particulars' in mat_data and mat_data['particulars']:
+                    particulars.add(mat_data['particulars'])
+                
+                # Extract material name
+                if 'materialName' in mat_data:
+                    material_names.append({
+                        'name': mat_data['materialName'],
+                        'category': mat_data.get('category', ''),
+                        'subCategory': mat_data.get('subCategory', ''),
+                        'particulars': mat_data.get('particulars', ''),
+                        'uom': mat_data.get('uom', '')
+                    })
+            
+            # Organize data by category
+            material_data[factory_name] = {}
+            for category in categories:
+                material_data[factory_name][category] = {
+                    'subCategories': [],
+                    'particulars': [],
+                    'materialNames': []
+                }
+                
+                # Get sub-categories for this category
+                category_sub_categories = set()
+                category_particulars = set()
+                category_materials = []
+                
+                for mat in material_names:
+                    if mat['category'] == category:
+                        if mat['subCategory']:
+                            category_sub_categories.add(mat['subCategory'])
+                        if mat['particulars']:
+                            category_particulars.add(mat['particulars'])
+                        category_materials.append(mat)
+                
+                material_data[factory_name][category]['subCategories'] = list(category_sub_categories)
+                material_data[factory_name][category]['particulars'] = list(category_particulars)
+                material_data[factory_name][category]['materialNames'] = category_materials
+        
+        return material_data
+        
+    except Exception as e:
+        logging.error(f"Error fetching material data: {str(e)}")
+        return {}
+
+def get_material_data_by_factory(factory_name):
+    """Get material data for a specific factory in the format expected by KR_PlaceOrder.jsx"""
+    try:
+        factory_ref = db.collection('MATERIAL').document(factory_name)
+        factory_doc = factory_ref.get()
+        
+        if not factory_doc.exists:
+            return {}
+        
+        # Get materials array directly from the factory document
+        factory_data = factory_doc.to_dict()
+        materials = factory_data.get('materials', [])
+        
+        if not materials:
+            return {}
+        
+        material_data = {}
+        categories = set()
+        
+        # First pass: collect all categories
+        for material in materials:
+            category = material.get('category', '')
+            if category:
+                categories.add(category)
+        
+        # Second pass: organize data by category in the format expected by KR_PlaceOrder.jsx
+        for category in categories:
+            material_data[category] = {
+                'subCategories': [],
+                'particulars': [],
+                'materialNames': []  # Will be restructured based on data complexity
+            }
+            
+            # Collect all materials for this category
+            category_materials = []
+            sub_categories = set()
+            particulars = set()
+            
+            for material in materials:
+                if material.get('category') == category:
+                    if material.get('subCategory'):
+                        sub_categories.add(material['subCategory'])
+                    if material.get('particulars'):
+                        particulars.add(material['particulars'])
+                    
+                    category_materials.append({
+                        'name': material.get('materialName', ''),
+                        'subCategory': material.get('subCategory', ''),
+                        'particulars': material.get('particulars', ''),
+                        'uom': material.get('uom', '')
+                    })
+            
+            # Set subCategories and particulars
+            material_data[category]['subCategories'] = list(sub_categories)
+            material_data[category]['particulars'] = list(particulars)
+            
+            # Structure materialNames based on complexity
+            # If we have subCategories and particulars, create nested structure
+            if sub_categories and particulars:
+                # Complex nested structure: subCategory -> particulars -> materials
+                material_data[category]['materialNames'] = {}
+                for sub_cat in sub_categories:
+                    material_data[category]['materialNames'][sub_cat] = {}
+                    for particular in particulars:
+                        materials_for_particular = [
+                            mat['name'] for mat in category_materials 
+                            if mat['subCategory'] == sub_cat and mat['particulars'] == particular
+                        ]
+                        if materials_for_particular:
+                            material_data[category]['materialNames'][sub_cat][particular] = materials_for_particular
+            elif particulars and not sub_categories:
+                # Simple nested structure: particulars -> materials
+                material_data[category]['materialNames'] = {}
+                for particular in particulars:
+                    materials_for_particular = [
+                        mat['name'] for mat in category_materials 
+                        if mat['particulars'] == particular
+                    ]
+                    if materials_for_particular:
+                        material_data[category]['materialNames'][particular] = materials_for_particular
+            else:
+                # Simple array structure: just material names
+                material_data[category]['materialNames'] = [mat['name'] for mat in category_materials]
+        
+        return material_data
+        
+    except Exception as e:
+        logging.error(f"Error fetching material data for factory {factory_name}: {str(e)}")
+        return {}

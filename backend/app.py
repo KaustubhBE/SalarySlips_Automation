@@ -4,7 +4,7 @@ import webbrowser
 import sys
 import threading
 import time
-from flask import Flask, request, jsonify, Response, g, session, redirect, url_for
+from flask import Flask, request, jsonify, Response, g, session, redirect, url_for, make_response
 from flask_cors import CORS
 from logging.handlers import RotatingFileHandler
 from Utils.fetch_data import fetch_google_sheet_data
@@ -156,9 +156,10 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
     "https://uatadmin.bajajearths.com",
     "https://uatwhatsapp.bajajearths.com",
+    "http://uatadmin.bajajearths.com",
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role", "X-User-Email"]
+app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role", "X-User-Email", "Accept", "Origin", "X-Requested-With"]
 app.config['CORS_EXPOSE_HEADERS'] = ["Content-Type", "Authorization", "X-User-Email"]
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_MAX_AGE'] = 120
@@ -193,7 +194,23 @@ def after_request(response):
     # logger.info('Request origin: %s', origin)
     return response
 
-# Flask-CORS automatically handles OPTIONS preflight requests, so we don't need manual handlers
+# Manual OPTIONS handler for better CORS support
+@app.route("/api/<path:endpoint>", methods=["OPTIONS"])
+def handle_options(endpoint):
+    """Handle preflight OPTIONS requests for CORS"""
+    logger.info(f"Handling OPTIONS request for endpoint: {endpoint}")
+    logger.info(f"Request origin: {request.headers.get('Origin')}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    
+    response = make_response()
+    response.headers.add("Access-Control-Allow-Origin", "https://uatadmin.bajajearths.com")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-User-Email, Accept, Origin, X-Requested-With")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    response.headers.add("Access-Control-Max-Age", "120")
+    
+    logger.info(f"Response headers: {dict(response.headers)}")
+    return response
 
 @app.route("/api/preview-file", methods=["POST"])
 def preview_file():
@@ -1995,6 +2012,198 @@ def test_session():
     except Exception as e:
         logger.error(f"Error in test session endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/get_material_data", methods=["GET"])
+def get_material_data():
+    """Get material data from Firebase for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get factory parameter (optional, defaults to KR for now)
+        factory = request.args.get('factory', 'KR')
+        
+        from Utils.firebase_utils import get_material_data_by_factory
+        
+        # Fetch material data for the specified factory
+        material_data = get_material_data_by_factory(factory)
+        
+        if not material_data:
+            return jsonify({
+                "success": True,
+                "data": {},
+                "message": f"No material data found for factory {factory}"
+            }), 200
+        
+        return jsonify({
+            "success": True,
+            "data": material_data,
+            "factory": factory
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching material data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/add_material", methods=["POST"])
+def add_material():
+    """Add a new material to Firebase"""
+    try:
+        logger.info("Add material endpoint called")
+        logger.info(f"Request origin: {request.headers.get('Origin')}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        
+        if 'user' not in session:
+            logger.warning("User not in session for add_material request")
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        logger.info(f"Received data: {data}")
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName', 'uom']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        
+        from Utils.firebase_utils import db
+        from firebase_admin import firestore
+        
+        # Prepare material data (simplified - no extra fields)
+        material_data = {
+            'category': data.get('category'),
+            'subCategory': data.get('subCategory', ''),
+            'particulars': data.get('particulars', ''),
+            'materialName': data.get('materialName'),
+            'uom': data.get('uom')
+        }
+        
+        # Get the factory document
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        
+        if factory_doc.exists:
+            # Get existing materials array
+            existing_data = factory_doc.to_dict()
+            materials = existing_data.get('materials', [])
+        else:
+            # Create new factory document with empty materials array
+            materials = []
+        
+        # Add new material to the array
+        materials.append(material_data)
+        
+        # Update the factory document with the new materials array
+        factory_ref.set({
+            'materials': materials
+        }, merge=True)
+        
+        logger.info(f"Material added successfully: {material_data['materialName']} to factory {factory}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Material added successfully"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error adding material: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error adding material: {str(e)}"
+        }), 500
+
+
+@app.route("/api/submit_order", methods=["POST"])
+def submit_order():
+    """Submit an order to Firebase ORDERS collection"""
+    try:
+        logger.info("Submit order endpoint called")
+        logger.info(f"Request origin: {request.headers.get('Origin')}")
+        
+        if 'user' not in session:
+            logger.warning("User not in session for submit_order request")
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        logger.info(f"Received order data: {data}")
+        
+        # Validate required fields
+        required_fields = ['orderId', 'orderItems', 'givenBy', 'description', 'importance', 'factory']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        # Validate order items
+        if not data.get('orderItems') or len(data.get('orderItems', [])) == 0:
+            return jsonify({
+                "success": False,
+                "message": "Order must contain at least one item"
+            }), 400
+        
+        from Utils.firebase_utils import db
+        from firebase_admin import firestore
+        
+        # Prepare order data
+        factory = data.get('factory', 'KR')
+        order_data = {
+            'orderId': data.get('orderId'),
+            'orderItems': data.get('orderItems'),
+            'givenBy': data.get('givenBy'),
+            'description': data.get('description'),
+            'importance': data.get('importance'),
+            'factory': factory,
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'createdBy': session.get('user', {}).get('username', 'Unknown'),
+            'status': 'Pending',
+            'submittedAt': firestore.SERVER_TIMESTAMP
+        }
+        
+        # Store order in ORDERS collection under factory document
+        orders_ref = db.collection('ORDERS').document(factory)
+        orders_doc = orders_ref.get()
+        
+        if orders_doc.exists:
+            # Get existing orders array
+            existing_data = orders_doc.to_dict()
+            orders = existing_data.get('orders', [])
+        else:
+            # Create new factory document with empty orders array
+            orders = []
+        
+        # Add new order to the array
+        orders.append(order_data)
+        
+        # Update the factory document with the new orders array
+        orders_ref.set({
+            'orders': orders
+        }, merge=True)
+        
+        logger.info(f"Order submitted successfully: {order_data['orderId']} to factory {factory}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Order submitted successfully",
+            "orderId": order_data['orderId']
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error submitting order: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error submitting order: {str(e)}"
+        }), 500
 
 if __name__ == "__main__":
     try:

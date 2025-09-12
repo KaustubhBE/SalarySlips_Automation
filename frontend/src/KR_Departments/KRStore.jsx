@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import KR_PlaceOrder from './KR_Services/KR_PlaceOrder';
+import KR_MaterialList from './KR_Services/KR_MaterialList';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
@@ -15,6 +16,7 @@ const KRStore = () => {
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
     { key: 'place-order', name: 'Order Intent', route: '/kerur/kr_store/kr_place-order' },
+    { key: 'add-material', name: 'Add Material', route: '/kerur/kr_store/kr_add-material' },
   ];
 
   // Get accessible services based on user permissions
@@ -102,6 +104,9 @@ const KRStore = () => {
     <Routes>
       {/* KR Place Order Service Route */}
       <Route path="kr_place-order" element={<KR_PlaceOrder />} />
+      
+      {/* KR Add Material Service Route */}
+      <Route path="kr_add-material" element={<KR_MaterialList />} />
       
       {/* Default Department View */}
       <Route path="" element={

@@ -8,8 +8,8 @@ export default defineConfig(({ command, mode }) => {
   const isDev = mode === 'development'
 
   // Optional SSL for dev (only if cert files exist)
-  const sslKeyPath = '/etc/letsencrypt/live/admin.bajajearths.com/privkey.pem'
-  const sslCertPath = '/etc/letsencrypt/live/admin.bajajearths.com/fullchain.pem'
+  const sslKeyPath = '/etc/letsencrypt/live/uatadmin.bajajearths.com/privkey.pem'
+  const sslCertPath = '/etc/letsencrypt/live/uatadmin.bajajearths.com/fullchain.pem'
   const httpsConfig = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)
     ? {
         key: fs.readFileSync(sslKeyPath),

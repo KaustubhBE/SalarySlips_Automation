@@ -8,6 +8,9 @@ import Dashboard from './Dashboard';
 import AddUser from './AddUser';
 import Processing from './Processing';
 import Reports from './Reports';
+// Import add material components
+import KR_MaterialList from './KR_Departments/KR_Services/KR_MaterialList';
+
 // Import specific processing components
 import KRProcessing from './KR_Departments/KR_Services/KR_Processing';
 import GBProcessing from './GB_Departments/GB_Services/GB_Processing';
@@ -751,6 +754,11 @@ function App() {
         <Route path="/kerur/kr_store/*" element={
           isAuthenticated ? 
             <KRStore /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_add-material" element={
+          isAuthenticated ? 
+            <KR_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
 

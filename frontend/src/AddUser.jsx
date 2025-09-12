@@ -637,8 +637,8 @@ function AddUser() {
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
       
-      {/* Only show Add User form if user has user_management permission */}
-      {hasUserPermission('user_management') ? (
+      {/* Show Add User form if user is admin or has user_management permission */}
+      {(getCurrentUserRole() === 'admin' || hasUserPermission('user_management')) ? (
         <div className="add-user-form">
           <form 
             id="add-user-form"
