@@ -26,15 +26,19 @@ const KR_PlaceOrder = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
+  
+  // Edit functionality
+  const [editingItem, setEditingItem] = useState(null)
+  const [editFormData, setEditFormData] = useState({})
 
   // Utility functions for order counter management
   const getOrderCounter = () => {
     try {
       const stored = localStorage.getItem('kr_order_counter')
-      return stored ? parseInt(stored, 10) : 0
+      return stored ? parseInt(stored, 10) : 1
     } catch (error) {
       console.error('Error reading order counter:', error)
-      return 0
+      return 1
     }
   }
 
@@ -46,7 +50,7 @@ const KR_PlaceOrder = () => {
       return newCounter
     } catch (error) {
       console.error('Error incrementing order counter:', error)
-      return 1
+      return 2
     }
   }
 
@@ -258,6 +262,92 @@ const KR_PlaceOrder = () => {
     setOrderItems(prev => prev.filter(item => item.id !== itemId))
   }
 
+  const handleEditItem = (item) => {
+    setEditingItem(item.id)
+    setEditFormData({
+      category: item.category,
+      subCategory: item.subCategory,
+      particulars: item.particulars,
+      materialName: item.materialName,
+      uom: item.uom,
+      quantity: item.quantity
+    })
+  }
+
+  const handleDoubleClickEdit = (item, field) => {
+    // If already editing this item, do nothing
+    if (editingItem === item.id) {
+      return
+    }
+    
+    // If editing another item, cancel that edit first
+    if (editingItem && editingItem !== item.id) {
+      setEditingItem(null)
+      setEditFormData({})
+    }
+    
+    // Start editing this item
+    setEditingItem(item.id)
+    setEditFormData({
+      category: item.category,
+      subCategory: item.subCategory,
+      particulars: item.particulars,
+      materialName: item.materialName,
+      uom: item.uom,
+      quantity: item.quantity
+    })
+  }
+
+  const handleEditInputChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value,
+      // Reset dependent fields when category changes
+      ...(field === 'category' && {
+        subCategory: '',
+        particulars: '',
+        materialName: '',
+        uom: '',
+        quantity: ''
+      }),
+      // Reset dependent fields when subCategory changes
+      ...(field === 'subCategory' && {
+        particulars: '',
+        materialName: '',
+        uom: '',
+        quantity: ''
+      }),
+      // Reset dependent fields when particulars changes
+      ...(field === 'particulars' && {
+        materialName: '',
+        uom: '',
+        quantity: ''
+      })
+    }))
+  }
+
+  const handleSaveEdit = () => {
+    // Validate required fields
+    if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity) {
+      alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before saving.')
+      return
+    }
+
+    setOrderItems(prev => prev.map(item => 
+      item.id === editingItem 
+        ? { ...item, ...editFormData }
+        : item
+    ))
+    
+    setEditingItem(null)
+    setEditFormData({})
+  }
+
+  const handleCancelEdit = () => {
+    setEditingItem(null)
+    setEditFormData({})
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (orderItems.length === 0) {
@@ -402,31 +492,231 @@ const KR_PlaceOrder = () => {
         </div>
       </div>
       <form onSubmit={handleSubmit} className="material-form">
-        {/* Display added items */}
-        {orderItems.map((item, index) => (
-          <div key={item.id} className="added-item-display">
-            <div className="item-info">
-              <span className="item-number">{index + 1}.</span>
-              <span className="item-details">
-                <strong>{item.materialName}</strong>
-                {item.subCategory && ` - ${item.subCategory}`}
-                {item.particulars && ` - ${item.particulars}`}
-              </span>
-              <span className="item-quantity">
-                {item.quantity} {item.uom}
-              </span>
-              <span className="item-category">{item.category}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveItem(item.id)}
-                className="remove-item-btn"
-                title="Remove item"
-              >
-                ×
-              </button>
-            </div>
+        {/* Display added items in table format */}
+        {orderItems.length > 0 && (
+          <div className="items-table-container">
+            <h3>Added Items</h3>
+            <table className="items-table">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Category</th>
+                  <th>Sub Category</th>
+                  <th>Particulars</th>
+                  <th>Material Name</th>
+                  <th>Quantity</th>
+                  <th>UOM</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderItems.map((item, index) => (
+                  <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
+                    <td data-label="S.No">{index + 1}</td>
+                    <td 
+                      data-label="Category"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <select
+                          value={editFormData.category}
+                          onChange={(e) => handleEditInputChange('category', e.target.value)}
+                          className="edit-select"
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map(category => (
+                            <option key={category} value={category}>{category}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        item.category
+                      )}
+                    </td>
+                    <td 
+                      data-label="Sub Category"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <select
+                          value={editFormData.subCategory}
+                          onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
+                          className="edit-select"
+                          disabled={!editFormData.category}
+                        >
+                          <option value="">Select Sub Category</option>
+                          {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
+                            <option key={subCat} value={subCat}>{subCat}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        item.subCategory || '-'
+                      )}
+                    </td>
+                    <td 
+                      data-label="Particulars"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <select
+                          value={editFormData.particulars}
+                          onChange={(e) => handleEditInputChange('particulars', e.target.value)}
+                          className="edit-select"
+                          disabled={!editFormData.category}
+                        >
+                          <option value="">Select Particulars</option>
+                          {editFormData.category && materialData[editFormData.category]?.particulars?.map(particular => (
+                            <option key={particular} value={particular}>{particular}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        item.particulars || '-'
+                      )}
+                    </td>
+                    <td 
+                      data-label="Material Name"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <select
+                          value={editFormData.materialName}
+                          onChange={(e) => handleEditInputChange('materialName', e.target.value)}
+                          className="edit-select"
+                          disabled={!editFormData.category}
+                        >
+                          <option value="">Select Material Name</option>
+                          {editFormData.category && (() => {
+                            const categoryData = materialData[editFormData.category];
+                            if (!categoryData) return null;
+                            
+                            // Handle direct material names (array)
+                            if (Array.isArray(categoryData.materialNames)) {
+                              return categoryData.materialNames.map(material => (
+                                <option key={material} value={material}>{material}</option>
+                              ));
+                            }
+                            
+                            // Handle nested material names (object with particulars)
+                            if (editFormData.particulars && categoryData.materialNames[editFormData.particulars]) {
+                              return categoryData.materialNames[editFormData.particulars].map(material => (
+                                <option key={material} value={material}>{material}</option>
+                              ));
+                            }
+                            
+                            // Handle nested material names (object with sub-categories)
+                            if (editFormData.subCategory && categoryData.materialNames[editFormData.subCategory]) {
+                              const subCategoryData = categoryData.materialNames[editFormData.subCategory];
+                              if (editFormData.particulars && subCategoryData[editFormData.particulars]) {
+                                return subCategoryData[editFormData.particulars].map(material => (
+                                  <option key={material} value={material}>{material}</option>
+                                ));
+                              }
+                            }
+                            
+                            return null;
+                          })()}
+                        </select>
+                      ) : (
+                        item.materialName
+                      )}
+                    </td>
+                    <td 
+                      data-label="Quantity"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <input
+                          type="text"
+                          value={editFormData.quantity}
+                          onChange={(e) => handleEditInputChange('quantity', e.target.value)}
+                          className="edit-input quantity-input"
+                          placeholder="Enter quantity"
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                        />
+                      ) : (
+                        item.quantity
+                      )}
+                    </td>
+                    <td 
+                      data-label="UOM"
+                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                      onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
+                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                    >
+                      {editingItem === item.id ? (
+                        <select
+                          value={editFormData.uom}
+                          onChange={(e) => handleEditInputChange('uom', e.target.value)}
+                          className="edit-select"
+                        >
+                          <option value="">Select UOM</option>
+                          {uomOptions.map(uom => (
+                            <option key={uom} value={uom}>{uom}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        item.uom
+                      )}
+                    </td>
+                    <td data-label="Action">
+                      {editingItem === item.id ? (
+                        <div className="edit-actions-vertical">
+                          <div className="edit-actions-row">
+                            <button
+                              type="button"
+                              onClick={handleSaveEdit}
+                              className="save-edit-btn"
+                              title="Save changes"
+                            >
+                              ✓ Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              className="cancel-edit-btn"
+                              title="Cancel edit"
+                            >
+                              ✕ Cancel
+                            </button>
+                          </div>
+                          <div className="remove-actions-row">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="remove-item-btn"
+                              title="Remove item"
+                            >
+                              × Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="remove-item-btn"
+                          title="Remove item"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
 
         {/* Form inputs for adding new item */}
         <div className="form-row">
@@ -527,6 +817,22 @@ const KR_PlaceOrder = () => {
             </select>
           </div>
 
+          {/* Quantity - Required */}
+          <div className="form-group">
+            <label htmlFor="quantity" className="required">Quantity *</label>
+            <input
+              type="text"
+              id="quantity"
+              value={formData.quantity}
+              onChange={(e) => handleInputChange('quantity', e.target.value)}
+              required
+              className="form-input quantity-input"
+              placeholder="Enter quantity"
+              pattern="[0-9]*"
+              inputMode="numeric"
+            />
+          </div>
+
           {/* UOM - Required */}
           <div className="form-group">
             <label htmlFor="uom" className="required">UOM</label>
@@ -543,22 +849,6 @@ const KR_PlaceOrder = () => {
                 <option key={uom} value={uom}>{uom}</option>
               ))}
             </select>
-          </div>
-
-          {/* Quantity - Required */}
-          <div className="form-group">
-            <label htmlFor="quantity" className="required">Quantity *</label>
-            <input
-              type="number"
-              id="quantity"
-              value={formData.quantity}
-              onChange={(e) => handleInputChange('quantity', e.target.value)}
-              required
-              className="form-input"
-              placeholder="Enter quantity"
-              min="0"
-              step="0.01"
-            />
           </div>
 
           {/* Add Item Button */}
