@@ -360,7 +360,7 @@ def get_factory_initials(factory_name):
 def get_next_order_id(factory):
     """
     Get the next order ID for a factory using atomic counter
-    Returns the next available order ID
+    Returns the next available order ID in format: KR_MMYY-nnnn
     """
     try:
         factory_initials = get_factory_initials(factory)
@@ -375,8 +375,10 @@ def get_next_order_id(factory):
                 current_data = counter_doc.to_dict()
                 current_count = current_data.get('count', 0)
                 new_count = current_count + 1
+                logging.info(f"Counter exists for {factory}: current={current_count}, new={new_count}")
             else:
                 new_count = 1
+                logging.info(f"Counter does not exist for {factory}, starting with count=1")
             
             # Update the counter
             transaction.set(counter_ref, {
@@ -399,7 +401,7 @@ def get_next_order_id(factory):
         
         order_id = f"{factory_initials}_{month:02d}{year:02d}-{new_count:04d}"
         
-        logging.info(f"Generated new order ID for {factory}: {order_id} (count: {new_count})")
+        logging.info(f"Generated new order ID for {factory}: {order_id} (count: {new_count}, month: {month:02d}, year: {year:02d})")
         return order_id
         
     except Exception as e:
@@ -408,7 +410,32 @@ def get_next_order_id(factory):
         from datetime import datetime
         now = datetime.utcnow()
         timestamp = int(now.timestamp() * 1000)  # milliseconds
-        return f"{factory_initials}_{now.month:02d}{now.year % 100:02d}-{timestamp % 10000:04d}"
+        fallback_id = f"{factory_initials}_{now.month:02d}{now.year % 100:02d}-{timestamp % 10000:04d}"
+        logging.warning(f"Using fallback order ID: {fallback_id}")
+        return fallback_id
+
+
+def reset_order_counter(factory):
+    """
+    Reset the order counter for a factory to 0
+    This should only be used for testing or if counter gets corrupted
+    """
+    try:
+        factory_initials = get_factory_initials(factory)
+        counter_ref = db.collection('ORDER_COUNTERS').document(factory_initials)
+        
+        counter_ref.set({
+            'count': 0,
+            'factory': factory,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        })
+        
+        logging.info(f"Reset order counter for {factory} to 0")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error resetting order counter for {factory}: {str(e)}", exc_info=True)
+        return False
 
 
 def add_order(factory, order_data):

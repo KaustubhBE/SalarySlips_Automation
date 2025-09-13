@@ -11,14 +11,15 @@ const KR_PlaceOrder = () => {
     materialName: '',
     uom: '',
     quantity: '',
-    givenBy: 'kaustubh', // Pre-fill with default value
-    description: 'test', // Pre-fill with default value
+    givenBy: '',
+    description: '',
     importance: 'Normal'
   })
 
   const [orderItems, setOrderItems] = useState([])
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [orderId, setOrderId] = useState('')
+  const [orderIdGenerated, setOrderIdGenerated] = useState(false)
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
   
   // Material data from backend
@@ -36,28 +37,48 @@ const KR_PlaceOrder = () => {
   const LONG_PRESS_DURATION = 500 // 500ms for long press
   const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
-  // Global order ID generation using backend
-  const generateOrderId = async () => {
+  // Generate Order ID button handler
+  const handleGenerateOrderId = async () => {
+    if (orderIdGenerated) {
+      return // Already generated, do nothing
+    }
+    
     try {
+      console.log('Generating order ID from backend...')
       const response = await axios.post(getApiUrl('get_next_order_id'), {
         factory: 'KR'
       })
       
       if (response.data.success) {
-        return response.data.orderId
+        console.log('Backend generated order ID:', response.data.orderId)
+        setOrderId(response.data.orderId)
+        setOrderIdGenerated(true)
+        registerSession()
       } else {
-        console.error('Failed to generate order ID:', response.data.message)
-        // Fallback to timestamp-based ID
+        console.error('Backend failed to generate order ID:', response.data.message)
+        // Fallback to timestamp-based ID (should match backend format)
         const now = new Date()
+        const month = now.getMonth() + 1
+        const year = now.getFullYear() % 100
         const timestamp = now.getTime()
-        return `KR_${now.getMonth() + 1}${now.getFullYear().toString().slice(-2)}-${timestamp % 10000}`
+        const fallbackId = `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
+        console.log('Using fallback order ID:', fallbackId)
+        setOrderId(fallbackId)
+        setOrderIdGenerated(true)
+        registerSession()
       }
     } catch (error) {
-      console.error('Error generating order ID:', error)
-      // Fallback to timestamp-based ID
+      console.error('Error generating order ID from backend:', error)
+      // Fallback to timestamp-based ID (should match backend format)
       const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear() % 100
       const timestamp = now.getTime()
-      return `KR_${now.getMonth() + 1}${now.getFullYear().toString().slice(-2)}-${timestamp % 10000}`
+      const fallbackId = `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
+      console.log('Using fallback order ID due to error:', fallbackId)
+      setOrderId(fallbackId)
+      setOrderIdGenerated(true)
+      registerSession()
     }
   }
 
@@ -123,7 +144,7 @@ const KR_PlaceOrder = () => {
     }
   }
 
-  // Update current date/time and generate order ID on component mount
+  // Update current date/time on component mount
   useEffect(() => {
     // Fetch material data first
     fetchMaterialData()
@@ -133,21 +154,10 @@ const KR_PlaceOrder = () => {
       setCurrentDateTime(new Date())
     }
     
-    // Initialize order ID and session
-    const initializeOrder = async () => {
-      // Clean up old sessions first
-      cleanupOldSessions()
-      
-      // Generate new order ID using global counter
-      const newOrderId = await generateOrderId()
-      setOrderId(newOrderId)
-      
-      // Register this session
-      registerSession()
-    }
+    // Clean up old sessions
+    cleanupOldSessions()
     
     updateDateTime()
-    initializeOrder()
     
     // Update time every second for live clock
     const interval = setInterval(updateDateTime, 1000)
@@ -410,8 +420,15 @@ const KR_PlaceOrder = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    // Check if order ID is generated
+    if (!orderIdGenerated || !orderId) {
+      alert('Please generate an Order ID first by clicking the "Generate Order ID" button.')
+      return
+    }
+    
     // Debug logging
     console.log('Form submission attempt:', {
+      orderId,
       orderItems: orderItems.length,
       givenBy: formData.givenBy,
       description: formData.description,
@@ -428,7 +445,7 @@ const KR_PlaceOrder = () => {
     }
     
     try {
-      // Submit order to backend
+      // Submit order to backend using existing order ID
       const orderData = {
         orderId,
         orderItems,
@@ -472,14 +489,7 @@ const KR_PlaceOrder = () => {
         // Clean up current session
         cleanupSession()
         
-        // Generate new order ID for next order using global counter
-        const newOrderId = await generateOrderId()
-        setOrderId(newOrderId)
-        
-        // Register new session
-        registerSession()
-        
-        // Reset form after successful submission
+        // Reset form after successful submission (keep same order ID)
         setFormData({
           category: '',
           subCategory: '',
@@ -493,7 +503,7 @@ const KR_PlaceOrder = () => {
         })
         setOrderItems([])
         
-        alert(`Order ${orderId} submitted successfully! New order ID: ${newOrderId}`)
+        alert(`Order ${orderId} submitted successfully!`)
       } else {
         alert(`Failed to submit order: ${response.data.message}`)
       }
@@ -529,8 +539,16 @@ const KR_PlaceOrder = () => {
             <h2>Material Order Form</h2>
           </div>
           <div className="header-right">
-            <div className="order-id-box">
-              {orderId}
+            <div className="order-id-section">
+              <button 
+                type="button"
+                className="generate-order-id-btn"
+                onClick={handleGenerateOrderId}
+                title="Click to generate Order ID"
+                disabled={dataLoading}
+              >
+                {dataLoading ? 'Loading...' : 'Generate Order ID'}
+              </button>
             </div>
           </div>
         </div>
@@ -553,8 +571,22 @@ const KR_PlaceOrder = () => {
           <h2>Material Order Form</h2>
         </div>
         <div className="header-right">
-          <div className="order-id-box">
-            {orderId}
+          <div className="order-id-section">
+            {orderIdGenerated ? (
+              <div className="order-id-display">
+                <span className="order-id-label">Order ID:</span>
+                <span className="order-id-value">{orderId}</span>
+              </div>
+            ) : (
+              <button 
+                type="button"
+                className="generate-order-id-btn"
+                onClick={handleGenerateOrderId}
+                title="Click to generate Order ID"
+              >
+                Generate Order ID
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1044,18 +1076,8 @@ const KR_PlaceOrder = () => {
           >
             Place Order {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : ''}
           </button>
-          <button type="button" className="reset-btn" onClick={async () => {
-            // Clean up current session (discard incomplete order)
-            cleanupSession()
-            
-            // Generate new order ID for fresh start using global counter
-            const newOrderId = await generateOrderId()
-            setOrderId(newOrderId)
-            
-            // Register new session
-            registerSession()
-            
-            // Reset form
+          <button type="button" className="reset-btn" onClick={() => {
+            // Reset form but keep the same order ID
             setFormData({
               category: '',
               subCategory: '',
@@ -1069,7 +1091,7 @@ const KR_PlaceOrder = () => {
             })
             setOrderItems([])
             
-            alert(`Order reset! New order ID: ${newOrderId}`)
+            alert(`Form reset! Order ID ${orderId} remains the same.`)
           }}>Reset</button>
         </div>
       </form>

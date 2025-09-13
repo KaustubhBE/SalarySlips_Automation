@@ -2360,6 +2360,36 @@ def get_all_orders_endpoint():
         }), 500
 
 
+@app.route("/api/reset_order_counter", methods=["POST"])
+def reset_order_counter_endpoint():
+    """Reset the order counter for a factory (for testing purposes)"""
+    try:
+        data = request.get_json()
+        factory = data.get('factory', 'KR')
+        
+        # Reset the counter
+        success = reset_order_counter(factory)
+        
+        if success:
+            return jsonify({
+                "success": True, 
+                "message": f"Order counter reset for {factory}",
+                "factory": factory
+            })
+        else:
+            return jsonify({
+                "success": False, 
+                "message": f"Failed to reset order counter for {factory}"
+            }), 500
+        
+    except Exception as e:
+        logging.error(f"Error in reset_order_counter_endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": f"Error resetting order counter: {str(e)}"
+        }), 500
+
+
 @app.route("/api/get_next_order_id", methods=["POST"])
 def get_next_order_id_endpoint():
     """Get the next available order ID for a factory"""
