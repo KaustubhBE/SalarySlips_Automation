@@ -29,6 +29,12 @@ const KR_PlaceOrder = () => {
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
   const [editFormData, setEditFormData] = useState({})
+  
+  // Touch functionality for mobile
+  const [touchStartTime, setTouchStartTime] = useState(null)
+  const [touchStartPosition, setTouchStartPosition] = useState(null)
+  const LONG_PRESS_DURATION = 500 // 500ms for long press
+  const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
   // Global order ID generation using backend
   const generateOrderId = async () => {
@@ -292,6 +298,65 @@ const KR_PlaceOrder = () => {
     })
   }
 
+  // Touch event handlers for mobile
+  const handleTouchStart = (e, item, field) => {
+    const touch = e.touches[0]
+    setTouchStartTime(Date.now())
+    setTouchStartPosition({
+      x: touch.clientX,
+      y: touch.clientY
+    })
+    
+    // Add visual feedback for touch
+    const target = e.currentTarget
+    target.classList.add('touch-active')
+  }
+
+  const handleTouchEnd = (e, item, field) => {
+    if (!touchStartTime || !touchStartPosition) return
+
+    const touch = e.changedTouches[0]
+    const touchDuration = Date.now() - touchStartTime
+    const touchDistance = Math.sqrt(
+      Math.pow(touch.clientX - touchStartPosition.x, 2) +
+      Math.pow(touch.clientY - touchStartPosition.y, 2)
+    )
+
+    // Remove visual feedback
+    const target = e.currentTarget
+    target.classList.remove('touch-active')
+
+    // Reset touch state
+    setTouchStartTime(null)
+    setTouchStartPosition(null)
+
+    // Check if it's a long press with minimal movement
+    if (touchDuration >= LONG_PRESS_DURATION && touchDistance <= TOUCH_MOVE_THRESHOLD) {
+      e.preventDefault() // Prevent zoom
+      handleDoubleClickEdit(item, field)
+    }
+  }
+
+  const handleTouchMove = (e) => {
+    // Reset touch state if user moves too much
+    if (touchStartTime && touchStartPosition) {
+      const touch = e.touches[0]
+      const touchDistance = Math.sqrt(
+        Math.pow(touch.clientX - touchStartPosition.x, 2) +
+        Math.pow(touch.clientY - touchStartPosition.y, 2)
+      )
+      
+      if (touchDistance > TOUCH_MOVE_THRESHOLD) {
+        // Remove visual feedback if user moves too much
+        const target = e.currentTarget
+        target.classList.remove('touch-active')
+        
+        setTouchStartTime(null)
+        setTouchStartPosition(null)
+      }
+    }
+  }
+
   const handleEditInputChange = (field, value) => {
     setEditFormData(prev => ({
       ...prev,
@@ -536,7 +601,10 @@ const KR_PlaceOrder = () => {
                       data-label="Category"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'category')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <select
@@ -557,7 +625,10 @@ const KR_PlaceOrder = () => {
                       data-label="Sub Category"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <select
@@ -579,7 +650,10 @@ const KR_PlaceOrder = () => {
                       data-label="Particulars"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'particulars')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'particulars')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <select
@@ -601,7 +675,10 @@ const KR_PlaceOrder = () => {
                       data-label="Material Name"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <select
@@ -650,7 +727,10 @@ const KR_PlaceOrder = () => {
                       data-label="Quantity"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <input
@@ -670,7 +750,10 @@ const KR_PlaceOrder = () => {
                       data-label="UOM"
                       className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                       onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
-                      title={editingItem === item.id ? "" : "Double-click to edit"}
+                      onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
+                      onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
+                      onTouchMove={handleTouchMove}
+                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                     >
                       {editingItem === item.id ? (
                         <select

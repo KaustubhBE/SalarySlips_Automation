@@ -178,11 +178,13 @@
 
 .form-input.quantity-input {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .form-input.quantity-input::-webkit-outer-spin-button,
 .form-input.quantity-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 
@@ -739,11 +741,13 @@
 
 .quantity-input {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .quantity-input::-webkit-outer-spin-button,
 .quantity-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 
@@ -1117,5 +1121,95 @@
     min-width: 200px;
     font-size: 12px;
     padding: 10px 12px;
+  }
+}
+
+/* Mobile touch interactions */
+.editable-cell {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.editable-cell:hover {
+  background-color: #f8f9fa;
+}
+
+.editable-cell:active {
+  background-color: #e9ecef;
+}
+
+/* Long press visual feedback */
+.editable-cell.touch-active {
+  background-color: #e3f2fd !important;
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Prevent text selection on touch devices */
+.editable-cell * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Mobile-specific touch improvements */
+@media (max-width: 768px) {
+  .items-table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .items-table th,
+  .items-table td {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+  
+  /* Larger touch targets for mobile */
+  .editable-cell {
+    min-height: 44px;
+    padding: 12px 8px;
+    touch-action: manipulation; /* Disable double-tap zoom */
+  }
+  
+  .edit-actions-vertical {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .edit-actions-row {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .remove-actions-row {
+    margin-top: 8px;
+  }
+  
+  .save-edit-btn,
+  .cancel-edit-btn,
+  .remove-item-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+  
+  /* Touch-friendly form controls */
+  .form-select,
+  .form-input,
+  .form-textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .edit-select,
+  .edit-input {
+    min-height: 36px;
+    font-size: 14px;
   }
 }
