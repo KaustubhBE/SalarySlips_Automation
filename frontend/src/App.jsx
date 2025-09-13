@@ -10,6 +10,8 @@ import Processing from './Processing';
 import Reports from './Reports';
 // Import add material components
 import KR_MaterialList from './KR_Departments/KR_Services/KR_MaterialList';
+import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
+import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
 
 // Import specific processing components
 import KRProcessing from './KR_Departments/KR_Services/KR_Processing';
@@ -759,6 +761,16 @@ function App() {
         <Route path="/kerur/kr_store/kr_add-material" element={
           isAuthenticated ? 
             <KR_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_material-inward" element={
+          isAuthenticated ? 
+            <KR_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_material-outward" element={
+          isAuthenticated ? 
+            <KR_MaterialOutward /> : 
             <Navigate to="/login" replace />
         } />
 

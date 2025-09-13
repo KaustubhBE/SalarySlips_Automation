@@ -3,86 +3,99 @@ import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../PlaceOrder.css'
 
-const KR_PlaceOrder = () => {
-  const [formData, setFormData] = useState({
-    category: '',
-    subCategory: '',
-    particulars: '',
-    materialName: '',
-    uom: '',
-    quantity: '',
-    givenBy: '',
-    description: '',
-    importance: 'Normal'
-  })
+// Constants
+const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
+const IMPORTANCE_OPTIONS = ['Normal', 'Urgent', 'Very-Urgent']
+const LONG_PRESS_DURATION = 500 // 500ms for long press
+const TOUCH_MOVE_THRESHOLD = 10 // pixels
+const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
 
-  const [orderItems, setOrderItems] = useState([])
-  const [currentDateTime, setCurrentDateTime] = useState(new Date())
-  const [orderId, setOrderId] = useState('')
-  const [orderIdGenerated, setOrderIdGenerated] = useState(false)
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+// Utility Functions
+const formatDateTime = (date) => {
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  })
+}
+
+const generateFallbackOrderId = () => {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear() % 100
+  const timestamp = now.getTime()
+  return `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
+}
+
+// Material Name Options Helper
+const getMaterialNameOptions = (categoryData, particulars, subCategory) => {
+  if (!categoryData) return null;
   
-  // Material data from backend
+  // Handle direct material names (array)
+  if (Array.isArray(categoryData.materialNames)) {
+    return categoryData.materialNames.map(material => (
+      <option key={material} value={material}>{material}</option>
+    ));
+  }
+  
+  // Handle nested material names (object with particulars)
+  if (particulars && categoryData.materialNames[particulars]) {
+    return categoryData.materialNames[particulars].map(material => (
+      <option key={material} value={material}>{material}</option>
+    ));
+  }
+  
+  // Handle nested material names (object with sub-categories)
+  if (subCategory && categoryData.materialNames[subCategory]) {
+    const subCategoryData = categoryData.materialNames[subCategory];
+    if (particulars && subCategoryData[particulars]) {
+      return subCategoryData[particulars].map(material => (
+        <option key={material} value={material}>{material}</option>
+      ));
+    }
+  }
+  
+  return null;
+}
+
+// Custom Hook for Material Data
+const useMaterialData = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
-  
-  // Edit functionality
-  const [editingItem, setEditingItem] = useState(null)
-  const [editFormData, setEditFormData] = useState({})
-  
-  // Touch functionality for mobile
-  const [touchStartTime, setTouchStartTime] = useState(null)
-  const [touchStartPosition, setTouchStartPosition] = useState(null)
-  const LONG_PRESS_DURATION = 500 // 500ms for long press
-  const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
-  // Generate Order ID button handler
-  const handleGenerateOrderId = async () => {
-    if (orderIdGenerated) {
-      return // Already generated, do nothing
-    }
-    
+  const fetchMaterialData = async () => {
     try {
-      console.log('Generating order ID from backend...')
-      const response = await axios.post(getApiUrl('get_next_order_id'), {
-        factory: 'KR'
+      setDataLoading(true)
+      const response = await axios.get(getApiUrl('get_material_data'), {
+        params: { factory: 'KR' }
       })
       
       if (response.data.success) {
-        console.log('Backend generated order ID:', response.data.orderId)
-        setOrderId(response.data.orderId)
-        setOrderIdGenerated(true)
-        registerSession()
+        setMaterialData(response.data.data)
+        setCategories(Object.keys(response.data.data))
       } else {
-        console.error('Backend failed to generate order ID:', response.data.message)
-        // Fallback to timestamp-based ID (should match backend format)
-        const now = new Date()
-        const month = now.getMonth() + 1
-        const year = now.getFullYear() % 100
-        const timestamp = now.getTime()
-        const fallbackId = `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
-        console.log('Using fallback order ID:', fallbackId)
-        setOrderId(fallbackId)
-        setOrderIdGenerated(true)
-        registerSession()
+        console.error('Failed to load material data:', response.data.message)
       }
     } catch (error) {
-      console.error('Error generating order ID from backend:', error)
-      // Fallback to timestamp-based ID (should match backend format)
-      const now = new Date()
-      const month = now.getMonth() + 1
-      const year = now.getFullYear() % 100
-      const timestamp = now.getTime()
-      const fallbackId = `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
-      console.log('Using fallback order ID due to error:', fallbackId)
-      setOrderId(fallbackId)
-      setOrderIdGenerated(true)
-      registerSession()
+      console.error('Error fetching material data:', error)
+    } finally {
+      setDataLoading(false)
     }
   }
 
-  const registerSession = () => {
+  return { materialData, categories, dataLoading, fetchMaterialData }
+}
+
+// Custom Hook for Session Management
+const useSessionManagement = () => {
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+
+  const registerSession = (orderId) => {
     try {
       const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
       activeSessions[sessionId] = {
@@ -109,7 +122,6 @@ const KR_PlaceOrder = () => {
     try {
       const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
       const now = Date.now()
-      const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
       
       Object.keys(activeSessions).forEach(sessionKey => {
         if (now - activeSessions[sessionKey].timestamp > SESSION_TIMEOUT) {
@@ -123,28 +135,76 @@ const KR_PlaceOrder = () => {
     }
   }
 
-  // Fetch material data from backend
-  const fetchMaterialData = async () => {
+  return { sessionId, registerSession, cleanupSession, cleanupOldSessions }
+}
+
+const KR_PlaceOrder = () => {
+  // State Management
+  const [formData, setFormData] = useState({
+    category: '',
+    subCategory: '',
+    particulars: '',
+    materialName: '',
+    uom: '',
+    quantity: '',
+    givenBy: '',
+    description: '',
+    importance: 'Normal'
+  })
+
+  const [orderItems, setOrderItems] = useState([])
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  const [orderId, setOrderId] = useState('')
+  const [orderIdGenerated, setOrderIdGenerated] = useState(false)
+  
+  // Edit functionality
+  const [editingItem, setEditingItem] = useState(null)
+  const [editFormData, setEditFormData] = useState({})
+  
+  // Touch functionality for mobile
+  const [touchStartTime, setTouchStartTime] = useState(null)
+  const [touchStartPosition, setTouchStartPosition] = useState(null)
+
+  // Custom Hooks
+  const { materialData, categories, dataLoading, fetchMaterialData } = useMaterialData()
+  const { sessionId, registerSession, cleanupSession, cleanupOldSessions } = useSessionManagement()
+
+  // Order ID Management
+  const handleGenerateOrderId = async () => {
+    if (orderIdGenerated) {
+      return // Already generated, do nothing
+    }
+    
     try {
-      setDataLoading(true)
-      const response = await axios.get(getApiUrl('get_material_data'), {
-        params: { factory: 'KR' }
+      console.log('Generating order ID from backend...')
+      const response = await axios.post(getApiUrl('get_next_order_id'), {
+        factory: 'KR'
       })
       
       if (response.data.success) {
-        setMaterialData(response.data.data)
-        setCategories(Object.keys(response.data.data))
+        console.log('Backend generated order ID:', response.data.orderId)
+        setOrderId(response.data.orderId)
+        setOrderIdGenerated(true)
+        registerSession(response.data.orderId)
       } else {
-        console.error('Failed to load material data:', response.data.message)
+        console.error('Backend failed to generate order ID:', response.data.message)
+        const fallbackId = generateFallbackOrderId()
+        console.log('Using fallback order ID:', fallbackId)
+        setOrderId(fallbackId)
+        setOrderIdGenerated(true)
+        registerSession(fallbackId)
       }
     } catch (error) {
-      console.error('Error fetching material data:', error)
-    } finally {
-      setDataLoading(false)
+      console.error('Error generating order ID from backend:', error)
+      const fallbackId = generateFallbackOrderId()
+      console.log('Using fallback order ID due to error:', fallbackId)
+      setOrderId(fallbackId)
+      setOrderIdGenerated(true)
+      registerSession(fallbackId)
     }
   }
 
-  // Update current date/time on component mount
+  // Effects
   useEffect(() => {
     // Fetch material data first
     fetchMaterialData()
@@ -194,12 +254,6 @@ const KR_PlaceOrder = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [])
-
-  // Material data is now fetched from backend - no hardcoded data needed
-
-
-  const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
-  const importanceOptions = ['Normal', 'Urgent', 'Very-Urgent']
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -513,18 +567,6 @@ const KR_PlaceOrder = () => {
     }
   }
 
-  // Format date and time for display
-  const formatDateTime = (date) => {
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    })
-  }
 
   if (dataLoading) {
     return (
@@ -608,8 +650,202 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
-        {/* Display added items in table format */}
+        {/* Main Content Area */}
+        <div className="form-main-content">
+          {/* Left Section - Form Inputs */}
+          <div className="form-left-section">
+            {/* Form inputs for adding new item */}
+            <div className="add-item-section">
+              <h3 className="add-item-header">
+                {orderItems.length === 0 ? 'Add Item to Order' : 'Add Additional Item (Optional)'}
+              </h3>
+              <p className="add-item-description">
+                {orderItems.length === 0 
+                  ? 'Fill in the required fields below to add your first item to the order.' 
+                  : 'You can add more items to your order by filling in the fields below, or proceed to place the order with current items.'
+                }
+              </p>
+            </div>
+            <div className="form-row">
+              {/* Category - Required only if no items exist */}
+              <div className="form-group">
+            <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
+              Category {orderItems.length === 0 ? "*" : ""}
+            </label>
+            <select
+              id="category"
+              value={formData.category}
+              onChange={(e) => handleInputChange('category', e.target.value)}
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              disabled={dataLoading}
+            >
+              <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sub Category - Optional */}
+          <div className="form-group">
+            <label htmlFor="subCategory">Sub Category</label>
+            <select
+              id="subCategory"
+              value={formData.subCategory}
+              onChange={(e) => handleInputChange('subCategory', e.target.value)}
+              className="form-select"
+              disabled={!formData.category || dataLoading}
+            >
+              <option value="">Select Sub Category</option>
+              {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
+                <option key={subCat} value={subCat}>{subCat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Particulars - Optional */}
+          <div className="form-group">
+            <label htmlFor="particulars">Particulars</label>
+            <select
+              id="particulars"
+              value={formData.particulars}
+              onChange={(e) => handleInputChange('particulars', e.target.value)}
+              className="form-select"
+              disabled={!formData.category || dataLoading}
+            >
+              <option value="">Select Particulars</option>
+              {formData.category && materialData[formData.category]?.particulars?.map(particular => (
+                <option key={particular} value={particular}>{particular}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Material Name - Required only if no items exist */}
+          <div className="form-group">
+            <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
+              Material Name {orderItems.length === 0 ? "*" : ""}
+            </label>
+            <select
+              id="materialName"
+              value={formData.materialName}
+              onChange={(e) => handleInputChange('materialName', e.target.value)}
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              disabled={!formData.category || dataLoading}
+            >
+              <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
+              {formData.category && getMaterialNameOptions(
+                materialData[formData.category],
+                formData.particulars,
+                formData.subCategory
+              )}
+            </select>
+          </div>
+
+          {/* Quantity - Required only if no items exist */}
+          <div className="form-group">
+            <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
+              Quantity {orderItems.length === 0 ? "**" : ""}
+            </label>
+            <input
+              type="text"
+              id="quantity"
+              value={formData.quantity}
+              onChange={(e) => handleInputChange('quantity', e.target.value)}
+              required={orderItems.length === 0}
+              className={`form-input quantity-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              placeholder="Enter quantity"
+              pattern="[0-9]*"
+              inputMode="numeric"
+            />
+          </div>
+
+          {/* UOM - Required only if no items exist */}
+          <div className="form-group">
+            <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
+              UOM {orderItems.length === 0 ? "*" : ""}
+            </label>
+            <select
+              id="uom"
+              value={formData.uom}
+              onChange={(e) => handleInputChange('uom', e.target.value)}
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              disabled={dataLoading}
+            >
+              <option value="">Select UOM</option>
+              {UOM_OPTIONS.map(uom => (
+                <option key={uom} value={uom}>{uom}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Add Item Button */}
+          <div className="form-group add-item-group">
+            <label>&nbsp;</label>
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="add-item-btn"
+            >
+              Add Item
+            </button>
+          </div>
+        </div>
+
+        {/* Additional Order Information */}
+        <div className="form-row">
+          {/* Given By - Required */}
+          <div className="form-group">
+            <label htmlFor="givenBy" className="required">Given By</label>
+            <input
+              type="text"
+              id="givenBy"
+              value={formData.givenBy}
+              onChange={(e) => handleInputChange('givenBy', e.target.value)}
+              required
+              className="form-input"
+              placeholder="Enter name of person giving the order"
+            />
+          </div>
+
+          {/* Importance - Required */}
+          <div className="form-group">
+            <label htmlFor="importance" className="required">Importance</label>
+            <select
+              id="importance"
+              value={formData.importance}
+              onChange={(e) => handleInputChange('importance', e.target.value)}
+              required
+              className="form-select"
+            >
+              {IMPORTANCE_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Description - Full Width */}
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label htmlFor="description" className="required">Description</label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              required
+              className="form-textarea"
+              placeholder="Enter detailed description of the order requirements"
+              rows="4"
+            />
+          </div>
+          </div>
+
+          {/* Right Section - Added Items Table */}
         {orderItems.length > 0 && (
+            <div className="form-right-section">
           <div className="items-table-container">
             <h3>Added Items</h3>
             <table className="items-table">
@@ -720,36 +956,11 @@ const KR_PlaceOrder = () => {
                           disabled={!editFormData.category}
                         >
                           <option value="">Select Material Name</option>
-                          {editFormData.category && (() => {
-                            const categoryData = materialData[editFormData.category];
-                            if (!categoryData) return null;
-                            
-                            // Handle direct material names (array)
-                            if (Array.isArray(categoryData.materialNames)) {
-                              return categoryData.materialNames.map(material => (
-                                <option key={material} value={material}>{material}</option>
-                              ));
-                            }
-                            
-                            // Handle nested material names (object with particulars)
-                            if (editFormData.particulars && categoryData.materialNames[editFormData.particulars]) {
-                              return categoryData.materialNames[editFormData.particulars].map(material => (
-                                <option key={material} value={material}>{material}</option>
-                              ));
-                            }
-                            
-                            // Handle nested material names (object with sub-categories)
-                            if (editFormData.subCategory && categoryData.materialNames[editFormData.subCategory]) {
-                              const subCategoryData = categoryData.materialNames[editFormData.subCategory];
-                              if (editFormData.particulars && subCategoryData[editFormData.particulars]) {
-                                return subCategoryData[editFormData.particulars].map(material => (
-                                  <option key={material} value={material}>{material}</option>
-                                ));
-                              }
-                            }
-                            
-                            return null;
-                          })()}
+                              {editFormData.category && getMaterialNameOptions(
+                                materialData[editFormData.category],
+                                editFormData.particulars,
+                                editFormData.subCategory
+                              )}
                         </select>
                       ) : (
                         item.materialName
@@ -794,7 +1005,7 @@ const KR_PlaceOrder = () => {
                           className="edit-select"
                         >
                           <option value="">Select UOM</option>
-                          {uomOptions.map(uom => (
+                              {UOM_OPTIONS.map(uom => (
                             <option key={uom} value={uom}>{uom}</option>
                           ))}
                         </select>
@@ -849,223 +1060,11 @@ const KR_PlaceOrder = () => {
                 ))}
               </tbody>
             </table>
+              </div>
           </div>
         )}
-
-        {/* Form inputs for adding new item */}
-        <div className="add-item-section">
-          <h3 className="add-item-header">
-            {orderItems.length === 0 ? 'Add Item to Order' : 'Add Additional Item (Optional)'}
-          </h3>
-          <p className="add-item-description">
-            {orderItems.length === 0 
-              ? 'Fill in the required fields below to add your first item to the order.' 
-              : 'You can add more items to your order by filling in the fields below, or proceed to place the order with current items.'
-            }
-          </p>
         </div>
-        <div className="form-row">
-          {/* Category - Required only if no items exist */}
-          <div className="form-group">
-            <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
-              Category {orderItems.length === 0 ? "*" : ""}
-            </label>
-            <select
-              id="category"
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-              required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
-              disabled={dataLoading}
-            >
-              <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
           </div>
-
-          {/* Sub Category - Optional */}
-          <div className="form-group">
-            <label htmlFor="subCategory">Sub Category</label>
-            <select
-              id="subCategory"
-              value={formData.subCategory}
-              onChange={(e) => handleInputChange('subCategory', e.target.value)}
-              className="form-select"
-              disabled={!formData.category || dataLoading}
-            >
-              <option value="">Select Sub Category</option>
-              {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
-                <option key={subCat} value={subCat}>{subCat}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Particulars - Optional */}
-          <div className="form-group">
-            <label htmlFor="particulars">Particulars</label>
-            <select
-              id="particulars"
-              value={formData.particulars}
-              onChange={(e) => handleInputChange('particulars', e.target.value)}
-              className="form-select"
-              disabled={!formData.category || dataLoading}
-            >
-              <option value="">Select Particulars</option>
-              {formData.category && materialData[formData.category]?.particulars?.map(particular => (
-                <option key={particular} value={particular}>{particular}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Material Name - Required only if no items exist */}
-          <div className="form-group">
-            <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
-              Material Name {orderItems.length === 0 ? "*" : ""}
-            </label>
-            <select
-              id="materialName"
-              value={formData.materialName}
-              onChange={(e) => handleInputChange('materialName', e.target.value)}
-              required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
-              disabled={!formData.category || dataLoading}
-            >
-              <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
-              {formData.category && (() => {
-                const categoryData = materialData[formData.category];
-                if (!categoryData) return null;
-                
-                // Handle direct material names (array)
-                if (Array.isArray(categoryData.materialNames)) {
-                  return categoryData.materialNames.map(material => (
-                    <option key={material} value={material}>{material}</option>
-                  ));
-                }
-                
-                // Handle nested material names (object with particulars)
-                if (formData.particulars && categoryData.materialNames[formData.particulars]) {
-                  return categoryData.materialNames[formData.particulars].map(material => (
-                    <option key={material} value={material}>{material}</option>
-                  ));
-                }
-                
-                // Handle nested material names (object with sub-categories)
-                if (formData.subCategory && categoryData.materialNames[formData.subCategory]) {
-                  const subCategoryData = categoryData.materialNames[formData.subCategory];
-                  if (formData.particulars && subCategoryData[formData.particulars]) {
-                    return subCategoryData[formData.particulars].map(material => (
-                      <option key={material} value={material}>{material}</option>
-                    ));
-                  }
-                }
-                
-                return null;
-              })()}
-            </select>
-          </div>
-
-          {/* Quantity - Required only if no items exist */}
-          <div className="form-group">
-            <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
-              Quantity {orderItems.length === 0 ? "**" : ""}
-            </label>
-            <input
-              type="text"
-              id="quantity"
-              value={formData.quantity}
-              onChange={(e) => handleInputChange('quantity', e.target.value)}
-              required={orderItems.length === 0}
-              className={`form-input quantity-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
-              placeholder="Enter quantity"
-              pattern="[0-9]*"
-              inputMode="numeric"
-            />
-          </div>
-
-          {/* UOM - Required only if no items exist */}
-          <div className="form-group">
-            <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
-              UOM {orderItems.length === 0 ? "*" : ""}
-            </label>
-            <select
-              id="uom"
-              value={formData.uom}
-              onChange={(e) => handleInputChange('uom', e.target.value)}
-              required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
-              disabled={dataLoading}
-            >
-              <option value="">Select UOM</option>
-              {uomOptions.map(uom => (
-                <option key={uom} value={uom}>{uom}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Add Item Button */}
-          <div className="form-group add-item-group">
-            <label>&nbsp;</label>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="add-item-btn"
-            >
-              Add Item
-            </button>
-          </div>
-        </div>
-
-        {/* Additional Order Information */}
-        <div className="form-row">
-          {/* Given By - Required */}
-          <div className="form-group">
-            <label htmlFor="givenBy" className="required">Given By</label>
-            <input
-              type="text"
-              id="givenBy"
-              value={formData.givenBy}
-              onChange={(e) => handleInputChange('givenBy', e.target.value)}
-              required
-              className="form-input"
-              placeholder="Enter name of person giving the order"
-            />
-          </div>
-
-          {/* Importance - Required */}
-          <div className="form-group">
-            <label htmlFor="importance" className="required">Importance</label>
-            <select
-              id="importance"
-              value={formData.importance}
-              onChange={(e) => handleInputChange('importance', e.target.value)}
-              required
-              className="form-select"
-            >
-              {importanceOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Description - Full Width */}
-        <div className="form-row">
-          <div className="form-group full-width">
-            <label htmlFor="description" className="required">Description</label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              required
-              className="form-textarea"
-              placeholder="Enter detailed description of the order requirements"
-              rows="4"
-            />
-          </div>
-        </div>
-
 
         <div className="form-actions">
           <button 
@@ -1100,3 +1099,4 @@ const KR_PlaceOrder = () => {
 }
 
 export default KR_PlaceOrder
+

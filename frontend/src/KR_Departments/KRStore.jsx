@@ -3,6 +3,8 @@ import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-do
 import { useAuth } from '../Components/AuthContext';
 import KR_PlaceOrder from './KR_Services/KR_PlaceOrder';
 import KR_MaterialList from './KR_Services/KR_MaterialList';
+import KR_MaterialInward from './KR_Services/KR_MaterialInward';
+import KR_MaterialOutward from './KR_Services/KR_MaterialOutward';
 import { DEPARTMENTS_CONFIG } from '../config';
 import '../App.css';
 
@@ -17,6 +19,8 @@ const KRStore = () => {
   const krStoreServices = [
     { key: 'place-order', name: 'Order Intent', route: '/kerur/kr_store/kr_place-order' },
     { key: 'add-material', name: 'Add Material', route: '/kerur/kr_store/kr_add-material' },
+    { key: 'material-inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material-inward' },
+    { key: 'material-outward', name: 'Material Outward', route: '/kerur/kr_store/kr_material-outward' },
   ];
 
   // Get accessible services based on user permissions
@@ -107,6 +111,12 @@ const KRStore = () => {
       
       {/* KR Add Material Service Route */}
       <Route path="kr_add-material" element={<KR_MaterialList />} />
+      
+      {/* KR Material Inward Service Route */}
+      <Route path="kr_material-inward" element={<KR_MaterialInward />} />
+      
+      {/* KR Material Outward Service Route */}
+      <Route path="kr_material-outward" element={<KR_MaterialOutward />} />
       
       {/* Default Department View */}
       <Route path="" element={

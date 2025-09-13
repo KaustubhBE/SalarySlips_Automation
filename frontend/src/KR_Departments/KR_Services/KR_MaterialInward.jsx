@@ -1,25 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { getApiUrl } from '../../config'
-import '../../MaterialList.css'
+import '../../MaterialIn-Out.css'
 
-const KR_MaterialList = () => {
+const KR_MaterialInward = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
     particulars: '',
     materialName: '',
     uom: '',
-    initialQuantity: ''
+    quantity: ''
   })
 
-  const [inputModes, setInputModes] = useState({
-    category: 'dropdown', // 'dropdown' or 'text'
-    subCategory: 'dropdown',
-    particulars: 'dropdown',
-    materialName: 'dropdown',
-    uom: 'dropdown'
-  })
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -30,58 +23,33 @@ const KR_MaterialList = () => {
 
   const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 
-  // Helper function to render hybrid input field
-  const renderHybridInput = (field, label, required = false, options = [], placeholder = '') => {
-    const isDropdown = inputModes[field] === 'dropdown'
+  // Helper function to render dropdown input field
+  const renderDropdownInput = (field, label, required = false, options = []) => {
     const value = formData[field]
     
     return (
       <div className="form-group">
-        <div className="form-group-header">
-          <label htmlFor={field}>
-            {label} {required && '*'}
-          </label>
-          <button
-            type="button"
-            className="toggle-mode-btn"
-            onClick={() => toggleInputMode(field)}
-            title={isDropdown ? 'Switch to text input' : 'Switch to dropdown'}
-          >
-            {isDropdown ? '✏️ Add New' : '📋 Select'}
-          </button>
-        </div>
-        
-        {isDropdown ? (
-          <select
-            id={field}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            required={required}
-            className="form-select"
-            disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
-                     (field === 'particulars' && !formData.category) ||
-                     (field === 'materialName' && !formData.category) ||
-                     (field === 'uom' && !formData.category)}
-          >
-            <option value="">Select {label}</option>
-            {options.map((option, index) => (
-              <option key={index} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            id={field}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            required={required}
-            className="form-input"
-            placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-            disabled={dataLoading}
-          />
-        )}
+        <label htmlFor={field}>
+          {label} {required && '*'}
+        </label>
+        <select
+          id={field}
+          value={value}
+          onChange={(e) => handleInputChange(field, e.target.value)}
+          required={required}
+          className="form-select"
+          disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
+                   (field === 'particulars' && !formData.category) ||
+                   (field === 'materialName' && !formData.category) ||
+                   (field === 'uom' && !formData.category)}
+        >
+          <option value="">Select {label}</option>
+          {options.map((option, index) => (
+            <option key={index} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </div>
     )
   }
@@ -124,43 +92,31 @@ const KR_MaterialList = () => {
         particulars: '',
         materialName: '',
         uom: '',
-        initialQuantity: ''
+        quantity: ''
       }),
       // Reset dependent fields when subCategory changes
       ...(field === 'subCategory' && {
         particulars: '',
         materialName: '',
         uom: '',
-        initialQuantity: ''
+        quantity: ''
       }),
       // Reset dependent fields when particulars changes
       ...(field === 'particulars' && {
         materialName: '',
         uom: '',
-        initialQuantity: ''
+        quantity: ''
       })
     }))
   }
 
-  const toggleInputMode = (field) => {
-    setInputModes(prev => ({
-      ...prev,
-      [field]: prev[field] === 'dropdown' ? 'text' : 'dropdown'
-    }))
-    
-    // Clear the field value when switching modes
-    setFormData(prev => ({
-      ...prev,
-      [field]: ''
-    }))
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     // Validation
-    if (!formData.category || !formData.materialName || !formData.uom || !formData.initialQuantity) {
-      setMessage('Please fill in all required fields (Category, Material Name, UOM, and Initial Quantity)')
+    if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity) {
+      setMessage('Please fill in all required fields (Category, Material Name, UOM, and Quantity)')
       setMessageType('error')
       return
     }
@@ -175,15 +131,16 @@ const KR_MaterialList = () => {
         particulars: formData.particulars || '',
         materialName: formData.materialName,
         uom: formData.uom,
-        initialQuantity: formData.initialQuantity,
+        quantity: formData.quantity,
         timestamp: new Date().toISOString(),
-        department: 'KR'
+        department: 'KR',
+        type: 'inward'
       }
 
-      const response = await axios.post(getApiUrl('add_material'), payload)
+      const response = await axios.post(getApiUrl('material_inward'), payload)
       
       if (response.data.success) {
-        setMessage('Material added successfully!')
+        setMessage('Material inward recorded successfully!')
         setMessageType('success')
         setFormData({
           category: '',
@@ -191,15 +148,15 @@ const KR_MaterialList = () => {
           particulars: '',
           materialName: '',
           uom: '',
-          initialQuantity: ''
+          quantity: ''
         })
       } else {
-        setMessage(response.data.message || 'Failed to add material')
+        setMessage(response.data.message || 'Failed to record material inward')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error adding material:', error)
-      setMessage(error.response?.data?.message || 'Error adding material. Please try again.')
+      console.error('Error recording material inward:', error)
+      setMessage(error.response?.data?.message || 'Error recording material inward. Please try again.')
       setMessageType('error')
     } finally {
       setLoading(false)
@@ -210,7 +167,7 @@ const KR_MaterialList = () => {
     return (
       <div className="material-list-container">
         <div className="material-form-wrapper">
-          <h2>Add New Material</h2>
+          <h2>Material Inward</h2>
           <div className="loading-message">
             <p>Loading material data...</p>
           </div>
@@ -222,7 +179,7 @@ const KR_MaterialList = () => {
   return (
     <div className="material-list-container">
       <div className="material-form-wrapper">
-        <h2>Add New Material</h2>
+        <h2>Material Inward</h2>
         
         {message && (
           <div className={`message ${messageType}`}>
@@ -232,34 +189,31 @@ const KR_MaterialList = () => {
 
         <form onSubmit={handleSubmit} className="material-form">
           {/* Category Field */}
-          {renderHybridInput(
+          {renderDropdownInput(
             'category',
             'Category',
             true,
-            categories,
-            'Enter new category'
+            categories
           )}
 
           {/* Sub Category Field */}
-          {renderHybridInput(
+          {renderDropdownInput(
             'subCategory',
             'Sub Category',
             false,
-            formData.category ? materialData[formData.category]?.subCategories || [] : [],
-            'Enter new sub category'
+            formData.category ? materialData[formData.category]?.subCategories || [] : []
           )}
 
           {/* Particulars Field */}
-          {renderHybridInput(
+          {renderDropdownInput(
             'particulars',
             'Particulars',
             false,
-            formData.category ? materialData[formData.category]?.particulars || [] : [],
-            'Enter new particulars'
+            formData.category ? materialData[formData.category]?.particulars || [] : []
           )}
 
           {/* Material Name Field */}
-          {renderHybridInput(
+          {renderDropdownInput(
             'materialName',
             'Material Name',
             true,
@@ -308,39 +262,30 @@ const KR_MaterialList = () => {
               }
               
               return [];
-            })(),
-            'Enter new material name'
+            })()
           )}
 
           {/* UOM Field */}
-          {renderHybridInput(
+          {renderDropdownInput(
             'uom',
             'Unit of Measurement (UOM)',
             true,
-            (() => {
-              if (!formData.category) return uomOptions;
-              
-              // For UOM, we'll use the general UOM options since the new data structure
-              // doesn't store individual material UOMs in the hierarchical format
-              // The UOM will be selected independently
-              return uomOptions;
-            })(),
-            'Enter new UOM'
+            uomOptions
           )}
 
-          {/* Initial Quantity Field */}
+          {/* Quantity Field */}
           <div className="form-group">
-            <label htmlFor="initialQuantity">
-              Initial Quantity *
+            <label htmlFor="quantity">
+              Quantity *
             </label>
             <input
               type="number"
-              id="initialQuantity"
-              value={formData.initialQuantity}
-              onChange={(e) => handleInputChange('initialQuantity', e.target.value)}
+              id="quantity"
+              value={formData.quantity}
+              onChange={(e) => handleInputChange('quantity', e.target.value)}
               required
               className="form-input no-spinner"
-              placeholder="Enter initial quantity"
+              placeholder="Enter quantity"
               min="0"
               step="0.01"
               disabled={dataLoading}
@@ -353,7 +298,7 @@ const KR_MaterialList = () => {
               disabled={loading}
               className="btn btn-primary"
             >
-              {loading ? 'Adding...' : 'Add Material'}
+              {loading ? 'Recording...' : 'Record Inward'}
             </button>
             <button
               type="button"
@@ -363,7 +308,7 @@ const KR_MaterialList = () => {
                 particulars: '',
                 materialName: '',
                 uom: '',
-                initialQuantity: ''
+                quantity: ''
               })}
               className="btn btn-secondary"
             >
@@ -376,4 +321,4 @@ const KR_MaterialList = () => {
   )
 }
 
-export default KR_MaterialList
+export default KR_MaterialInward
