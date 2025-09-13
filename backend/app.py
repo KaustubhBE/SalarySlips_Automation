@@ -32,10 +32,17 @@ from Utils.firebase_utils import (
     delete_user as firebase_delete_user,
     add_salary_slip,
     get_salary_slips_by_user,
-
     update_user_app_password,
     update_user,
-    db
+    db,
+    add_order,
+    get_orders_by_factory,
+    get_order_by_id,
+    update_order_status,
+    delete_order,
+    get_all_orders,
+    get_factory_initials,
+    get_next_order_id
 )
 import json
 from docx import Document
@@ -2124,7 +2131,7 @@ def add_material():
 
 @app.route("/api/submit_order", methods=["POST"])
 def submit_order():
-    """Submit an order to Firebase ORDERS collection"""
+    """Submit an order to Firebase ORDERS collection using factory initials as document name"""
     try:
         logger.info("Submit order endpoint called")
         logger.info(f"Request origin: {request.headers.get('Origin')}")
@@ -2152,10 +2159,7 @@ def submit_order():
                 "message": "Order must contain at least one item"
             }), 400
         
-        from Utils.firebase_utils import db
-        from firebase_admin import firestore
-        
-        # Prepare order data
+        # Prepare order data (without timestamps - they'll be added in add_order function)
         factory = data.get('factory', 'KR')
         order_data = {
             'orderId': data.get('orderId'),
@@ -2164,39 +2168,27 @@ def submit_order():
             'description': data.get('description'),
             'importance': data.get('importance'),
             'factory': factory,
-            'createdAt': firestore.SERVER_TIMESTAMP,
             'createdBy': session.get('user', {}).get('username', 'Unknown'),
-            'status': 'Pending',
-            'submittedAt': firestore.SERVER_TIMESTAMP
+            'status': 'Pending'
         }
         
-        # Store order in ORDERS collection under factory document
-        orders_ref = db.collection('ORDERS').document(factory)
-        orders_doc = orders_ref.get()
+        # Use the new add_order function with factory initials
+        success = add_order(factory, order_data)
         
-        if orders_doc.exists:
-            # Get existing orders array
-            existing_data = orders_doc.to_dict()
-            orders = existing_data.get('orders', [])
+        if success:
+            logger.info(f"Order submitted successfully: {order_data['orderId']} to factory {factory}")
+            return jsonify({
+                "success": True,
+                "message": "Order submitted successfully",
+                "orderId": order_data['orderId'],
+                "factory": factory,
+                "factoryDocument": get_factory_initials(factory)
+            }), 200
         else:
-            # Create new factory document with empty orders array
-            orders = []
-        
-        # Add new order to the array
-        orders.append(order_data)
-        
-        # Update the factory document with the new orders array
-        orders_ref.set({
-            'orders': orders
-        }, merge=True)
-        
-        logger.info(f"Order submitted successfully: {order_data['orderId']} to factory {factory}")
-        
-        return jsonify({
-            "success": True,
-            "message": "Order submitted successfully",
-            "orderId": order_data['orderId']
-        }), 200
+            return jsonify({
+                "success": False,
+                "message": "Failed to submit order"
+            }), 500
         
     except Exception as e:
         logger.error(f"Error submitting order: {str(e)}")
@@ -2204,6 +2196,189 @@ def submit_order():
             "success": False,
             "message": f"Error submitting order: {str(e)}"
         }), 500
+
+@app.route("/api/get_orders", methods=["GET"])
+def get_orders():
+    """Get all orders for a specific factory"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        factory = request.args.get('factory', 'KR')
+        orders = get_orders_by_factory(factory)
+        
+        return jsonify({
+            "success": True,
+            "data": orders,
+            "factory": factory,
+            "count": len(orders)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching orders: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error fetching orders: {str(e)}"
+        }), 500
+
+@app.route("/api/get_order/<string:factory>/<string:order_id>", methods=["GET"])
+def get_order(factory, order_id):
+    """Get a specific order by ID from a factory"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        order = get_order_by_id(factory, order_id)
+        
+        if order:
+            return jsonify({
+                "success": True,
+                "data": order
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Order not found"
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error fetching order: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error fetching order: {str(e)}"
+        }), 500
+
+@app.route("/api/update_order_status", methods=["POST"])
+def update_order_status_endpoint():
+    """Update the status of a specific order"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        factory = data.get('factory')
+        order_id = data.get('orderId')
+        new_status = data.get('status')
+        
+        if not all([factory, order_id, new_status]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: factory, orderId, status"
+            }), 400
+        
+        # Validate status values
+        valid_statuses = ['Pending', 'In Progress', 'Completed', 'Cancelled', 'On Hold']
+        if new_status not in valid_statuses:
+            return jsonify({
+                "success": False,
+                "message": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            }), 400
+        
+        updated_by = session.get('user', {}).get('username', 'Unknown')
+        success = update_order_status(factory, order_id, new_status, updated_by)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": f"Order status updated to {new_status}"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Order not found or update failed"
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error updating order status: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating order status: {str(e)}"
+        }), 500
+
+@app.route("/api/delete_order", methods=["POST"])
+def delete_order_endpoint():
+    """Delete a specific order"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        factory = data.get('factory')
+        order_id = data.get('orderId')
+        
+        if not all([factory, order_id]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: factory, orderId"
+            }), 400
+        
+        success = delete_order(factory, order_id)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Order deleted successfully"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Order not found or delete failed"
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error deleting order: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error deleting order: {str(e)}"
+        }), 500
+
+@app.route("/api/get_all_orders", methods=["GET"])
+def get_all_orders_endpoint():
+    """Get all orders from all factories (admin only)"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Check if user is admin
+        current_user = session.get('user')
+        if current_user.get('role') != 'admin':
+            return jsonify({"error": "Admin access required"}), 403
+        
+        orders = get_all_orders()
+        
+        return jsonify({
+            "success": True,
+            "data": orders,
+            "count": len(orders)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching all orders: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error fetching all orders: {str(e)}"
+        }), 500
+
+
+@app.route("/api/get_next_order_id", methods=["POST"])
+def get_next_order_id_endpoint():
+    """Get the next available order ID for a factory"""
+    try:
+        data = request.get_json()
+        factory = data.get('factory', 'KR')
+        
+        # Generate next order ID using global counter
+        order_id = get_next_order_id(factory)
+        
+        return jsonify({
+            "success": True, 
+            "orderId": order_id,
+            "factory": factory
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating order ID: {str(e)}")
+        return jsonify({"success": False, "message": f"Error generating order ID: {str(e)}"}), 500
 
 if __name__ == "__main__":
     try:

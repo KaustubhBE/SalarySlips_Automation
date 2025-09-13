@@ -4,6 +4,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 import os
 from Utils.config import get_resource_path
 import logging
+from datetime import datetime
 
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'firebase-admin-sdk.json'))
@@ -340,3 +341,260 @@ def get_material_data_by_factory(factory_name):
     except Exception as e:
         logging.error(f"Error fetching material data for factory {factory_name}: {str(e)}")
         return {}
+
+# Order management functions
+def get_factory_initials(factory_name):
+    """Convert factory name to initials for document naming"""
+    factory_mapping = {
+        'KR': 'KR',
+        'Kerur': 'KR', 
+        'Gulbarga': 'GB',
+        'Humnabad': 'HB',
+        'Omkar': 'OM',
+        'Padmavati': 'PM',
+        'Head Office': 'HO'
+    }
+    return factory_mapping.get(factory_name, factory_name[:2].upper())
+
+
+def get_next_order_id(factory):
+    """
+    Get the next order ID for a factory using atomic counter
+    Returns the next available order ID
+    """
+    try:
+        factory_initials = get_factory_initials(factory)
+        counter_ref = db.collection('ORDER_COUNTERS').document(factory_initials)
+        
+        # Use transaction to ensure atomic increment
+        @firestore.transactional
+        def update_counter(transaction):
+            counter_doc = counter_ref.get(transaction=transaction)
+            
+            if counter_doc.exists:
+                current_data = counter_doc.to_dict()
+                current_count = current_data.get('count', 0)
+                new_count = current_count + 1
+            else:
+                new_count = 1
+            
+            # Update the counter
+            transaction.set(counter_ref, {
+                'count': new_count,
+                'factory': factory,
+                'lastUpdated': firestore.SERVER_TIMESTAMP
+            }, merge=True)
+            
+            return new_count
+        
+        # Execute the transaction
+        transaction = db.transaction()
+        new_count = update_counter(transaction)
+        
+        # Generate order ID with the new count
+        from datetime import datetime
+        now = datetime.utcnow()
+        month = now.month
+        year = now.year % 100  # Last 2 digits of year
+        
+        order_id = f"{factory_initials}_{month:02d}{year:02d}-{new_count:04d}"
+        
+        logging.info(f"Generated new order ID for {factory}: {order_id} (count: {new_count})")
+        return order_id
+        
+    except Exception as e:
+        logging.error(f"Error generating order ID for {factory}: {str(e)}", exc_info=True)
+        # Fallback to timestamp-based ID if counter fails
+        from datetime import datetime
+        now = datetime.utcnow()
+        timestamp = int(now.timestamp() * 1000)  # milliseconds
+        return f"{factory_initials}_{now.month:02d}{now.year % 100:02d}-{timestamp % 10000:04d}"
+
+
+def add_order(factory, order_data):
+    """Add a new order to the ORDERS collection under factory document"""
+    try:
+        factory_initials = get_factory_initials(factory)
+        orders_ref = db.collection('ORDERS').document(factory_initials)
+        orders_doc = orders_ref.get()
+        
+        if orders_doc.exists:
+            # Get existing orders array
+            existing_data = orders_doc.to_dict()
+            orders = existing_data.get('orders', [])
+        else:
+            # Create new factory document with empty orders array
+            orders = []
+        
+        # Create a clean order data with regular timestamps (not SERVER_TIMESTAMP)
+        current_time = datetime.utcnow()
+        
+        # Clean order items by removing frontend-specific IDs
+        order_items = order_data.get('orderItems', [])
+        cleaned_order_items = []
+        for item in order_items:
+            cleaned_item = {
+                'category': item.get('category'),
+                'subCategory': item.get('subCategory'),
+                'particulars': item.get('particulars'),
+                'materialName': item.get('materialName'),
+                'uom': item.get('uom'),
+                'quantity': item.get('quantity')
+            }
+            cleaned_order_items.append(cleaned_item)
+        
+        clean_order_data = {
+            'orderId': order_data.get('orderId'),
+            'orderItems': cleaned_order_items,  # Use cleaned items without frontend IDs
+            'givenBy': order_data.get('givenBy'),
+            'description': order_data.get('description'),
+            'importance': order_data.get('importance'),
+            'factory': order_data.get('factory'),
+            'createdBy': order_data.get('createdBy'),
+            'status': order_data.get('status'),
+            'createdAt': current_time,  # Use regular datetime
+            'submittedAt': current_time  # Use regular datetime
+        }
+        
+        logging.info(f"Adding order to factory {factory} (document: {factory_initials}): {clean_order_data['orderId']}")
+        
+        # Add new order to the array
+        orders.append(clean_order_data)
+        
+        # Update the factory document with the new orders array
+        orders_ref.set({
+            'orders': orders,
+            'factory': factory,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        logging.info(f"Successfully added order {clean_order_data['orderId']} to factory {factory}")
+        return True
+    except Exception as e:
+        logging.error(f"Error adding order: {str(e)}", exc_info=True)
+        return False
+
+def get_orders_by_factory(factory):
+    """Get all orders for a specific factory"""
+    try:
+        factory_initials = get_factory_initials(factory)
+        orders_ref = db.collection('ORDERS').document(factory_initials)
+        orders_doc = orders_ref.get()
+        
+        if not orders_doc.exists:
+            return []
+        
+        factory_data = orders_doc.to_dict()
+        orders = factory_data.get('orders', [])
+        
+        # Add document ID to each order for reference
+        for i, order in enumerate(orders):
+            order['orderIndex'] = i
+            order['factory'] = factory_data.get('factory', factory)
+        
+        return orders
+    except Exception as e:
+        logging.error(f"Error fetching orders for factory {factory}: {str(e)}")
+        return []
+
+def get_order_by_id(factory, order_id):
+    """Get a specific order by ID from a factory"""
+    try:
+        orders = get_orders_by_factory(factory)
+        for order in orders:
+            if order.get('orderId') == order_id:
+                return order
+        return None
+    except Exception as e:
+        logging.error(f"Error fetching order {order_id} for factory {factory}: {str(e)}")
+        return None
+
+def update_order_status(factory, order_id, new_status, updated_by=None):
+    """Update the status of a specific order"""
+    try:
+        factory_initials = get_factory_initials(factory)
+        orders_ref = db.collection('ORDERS').document(factory_initials)
+        orders_doc = orders_ref.get()
+        
+        if not orders_doc.exists:
+            return False
+        
+        factory_data = orders_doc.to_dict()
+        orders = factory_data.get('orders', [])
+        
+        # Find and update the order
+        current_time = datetime.utcnow()
+        
+        for i, order in enumerate(orders):
+            if order.get('orderId') == order_id:
+                orders[i]['status'] = new_status
+                orders[i]['updatedAt'] = current_time  # Use regular datetime
+                if updated_by:
+                    orders[i]['updatedBy'] = updated_by
+                break
+        else:
+            return False
+        
+        # Update the document
+        orders_ref.set({
+            'orders': orders,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        return True
+    except Exception as e:
+        logging.error(f"Error updating order status: {str(e)}")
+        return False
+
+def delete_order(factory, order_id):
+    """Delete a specific order from a factory"""
+    try:
+        factory_initials = get_factory_initials(factory)
+        orders_ref = db.collection('ORDERS').document(factory_initials)
+        orders_doc = orders_ref.get()
+        
+        if not orders_doc.exists:
+            return False
+        
+        factory_data = orders_doc.to_dict()
+        orders = factory_data.get('orders', [])
+        
+        # Find and remove the order
+        original_length = len(orders)
+        orders = [order for order in orders if order.get('orderId') != order_id]
+        
+        if len(orders) == original_length:
+            return False  # Order not found
+        
+        # Update the document
+        orders_ref.set({
+            'orders': orders,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        return True
+    except Exception as e:
+        logging.error(f"Error deleting order: {str(e)}")
+        return False
+
+def get_all_orders():
+    """Get all orders from all factories"""
+    try:
+        all_orders = []
+        orders_ref = db.collection('ORDERS')
+        orders_docs = orders_ref.get()
+        
+        for doc in orders_docs:
+            factory_data = doc.to_dict()
+            orders = factory_data.get('orders', [])
+            factory = factory_data.get('factory', doc.id)
+            
+            for order in orders:
+                order['factory'] = factory
+                order['factoryDocument'] = doc.id
+                all_orders.append(order)
+        
+        return all_orders
+    except Exception as e:
+        logging.error(f"Error fetching all orders: {str(e)}")
+        return []

@@ -11,15 +11,14 @@ const KR_PlaceOrder = () => {
     materialName: '',
     uom: '',
     quantity: '',
-    givenBy: '',
-    description: '',
+    givenBy: 'kaustubh', // Pre-fill with default value
+    description: 'test', // Pre-fill with default value
     importance: 'Normal'
   })
 
   const [orderItems, setOrderItems] = useState([])
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [orderId, setOrderId] = useState('')
-  const [orderCounter, setOrderCounter] = useState(1)
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
   
   // Material data from backend
@@ -31,35 +30,29 @@ const KR_PlaceOrder = () => {
   const [editingItem, setEditingItem] = useState(null)
   const [editFormData, setEditFormData] = useState({})
 
-  // Utility functions for order counter management
-  const getOrderCounter = () => {
+  // Global order ID generation using backend
+  const generateOrderId = async () => {
     try {
-      const stored = localStorage.getItem('kr_order_counter')
-      return stored ? parseInt(stored, 10) : 1
+      const response = await axios.post(getApiUrl('get_next_order_id'), {
+        factory: 'KR'
+      })
+      
+      if (response.data.success) {
+        return response.data.orderId
+      } else {
+        console.error('Failed to generate order ID:', response.data.message)
+        // Fallback to timestamp-based ID
+        const now = new Date()
+        const timestamp = now.getTime()
+        return `KR_${now.getMonth() + 1}${now.getFullYear().toString().slice(-2)}-${timestamp % 10000}`
+      }
     } catch (error) {
-      console.error('Error reading order counter:', error)
-      return 1
+      console.error('Error generating order ID:', error)
+      // Fallback to timestamp-based ID
+      const now = new Date()
+      const timestamp = now.getTime()
+      return `KR_${now.getMonth() + 1}${now.getFullYear().toString().slice(-2)}-${timestamp % 10000}`
     }
-  }
-
-  const incrementOrderCounter = () => {
-    try {
-      const currentCounter = getOrderCounter()
-      const newCounter = currentCounter + 1
-      localStorage.setItem('kr_order_counter', newCounter.toString())
-      return newCounter
-    } catch (error) {
-      console.error('Error incrementing order counter:', error)
-      return 2
-    }
-  }
-
-  const generateOrderId = (counter) => {
-    const now = new Date()
-    const month = (now.getMonth() + 1).toString().padStart(2, '0')
-    const year = now.getFullYear().toString().slice(-2)
-    const count = counter.toString().padStart(4, '0')
-    return `KR_${month}${year}-${count}`
   }
 
   const registerSession = () => {
@@ -135,16 +128,12 @@ const KR_PlaceOrder = () => {
     }
     
     // Initialize order ID and session
-    const initializeOrder = () => {
+    const initializeOrder = async () => {
       // Clean up old sessions first
       cleanupOldSessions()
       
-      // Get current counter without incrementing
-      const currentCounter = getOrderCounter()
-      setOrderCounter(currentCounter)
-      
-      // Generate new order ID
-      const newOrderId = generateOrderId(currentCounter)
+      // Generate new order ID using global counter
+      const newOrderId = await generateOrderId()
       setOrderId(newOrderId)
       
       // Register this session
@@ -225,11 +214,17 @@ const KR_PlaceOrder = () => {
   }
 
   const handleAddItem = () => {
-    // Validate required fields before adding item
-    // Category and Material Name are mandatory, Sub-category and Particulars are optional
-    if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity) {
-      alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before adding an item.')
-      return
+    // If no fields are filled, don't add anything (optional behavior)
+    if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity) {
+      return // Silently return if no fields are filled
+    }
+    
+    // If some fields are filled but not all required ones, show validation
+    if (formData.category || formData.materialName || formData.uom || formData.quantity) {
+      if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity) {
+        alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before adding an item.')
+        return
+      }
     }
 
     const newItem = {
@@ -244,18 +239,17 @@ const KR_PlaceOrder = () => {
 
     setOrderItems(prev => [...prev, newItem])
     
-    // Reset form after adding item
-    setFormData({
+    // Reset only the item-specific fields after adding item, preserve order details
+    setFormData(prev => ({
+      ...prev,
       category: '',
       subCategory: '',
       particulars: '',
       materialName: '',
       uom: '',
-      quantity: '',
-      givenBy: '',
-      description: '',
-      importance: 'Normal'
-    })
+      quantity: ''
+      // Keep givenBy, description, and importance unchanged
+    }))
   }
 
   const handleRemoveItem = (itemId) => {
@@ -350,12 +344,21 @@ const KR_PlaceOrder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Debug logging
+    console.log('Form submission attempt:', {
+      orderItems: orderItems.length,
+      givenBy: formData.givenBy,
+      description: formData.description,
+      formData: formData
+    })
+    
     if (orderItems.length === 0) {
       alert('Please add at least one item to the order.')
       return
     }
     if (!formData.givenBy || !formData.description) {
-      alert('Please fill in all required fields (Given By and Description).')
+      alert(`Please fill in all required fields. Given By: "${formData.givenBy}", Description: "${formData.description}"`)
       return
     }
     
@@ -370,6 +373,7 @@ const KR_PlaceOrder = () => {
         factory: 'KR'
       }
       
+      console.log('Submitting order data:', orderData)
       const response = await axios.post(getApiUrl('submit_order'), orderData)
       
       if (response.data.success) {
@@ -403,10 +407,8 @@ const KR_PlaceOrder = () => {
         // Clean up current session
         cleanupSession()
         
-        // Generate new order ID for next order (increment counter only after successful submission)
-        const newCounter = incrementOrderCounter()
-        setOrderCounter(newCounter)
-        const newOrderId = generateOrderId(newCounter)
+        // Generate new order ID for next order using global counter
+        const newOrderId = await generateOrderId()
         setOrderId(newOrderId)
         
         // Register new session
@@ -492,6 +494,23 @@ const KR_PlaceOrder = () => {
         </div>
       </div>
       <form onSubmit={handleSubmit} className="material-form">
+        {/* Form Status Indicator */}
+        <div className="form-status">
+          <div className={`status-indicator ${orderItems.length > 0 && formData.givenBy && formData.description ? 'ready' : 'incomplete'}`}>
+            <span className="status-icon">
+              {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : '⚠'}
+            </span>
+            <span className="status-text">
+              {orderItems.length === 0 
+                ? 'Add at least one item to place order' 
+                : (!formData.givenBy || !formData.description) 
+                  ? 'Fill in Given By and Description fields' 
+                  : `Ready to place order! (${orderItems.length} item${orderItems.length > 1 ? 's' : ''} added)`
+              }
+            </span>
+          </div>
+        </div>
+
         {/* Display added items in table format */}
         {orderItems.length > 0 && (
           <div className="items-table-container">
@@ -719,16 +738,29 @@ const KR_PlaceOrder = () => {
         )}
 
         {/* Form inputs for adding new item */}
+        <div className="add-item-section">
+          <h3 className="add-item-header">
+            {orderItems.length === 0 ? 'Add Item to Order' : 'Add Additional Item (Optional)'}
+          </h3>
+          <p className="add-item-description">
+            {orderItems.length === 0 
+              ? 'Fill in the required fields below to add your first item to the order.' 
+              : 'You can add more items to your order by filling in the fields below, or proceed to place the order with current items.'
+            }
+          </p>
+        </div>
         <div className="form-row">
-          {/* Category - Required */}
+          {/* Category - Required only if no items exist */}
           <div className="form-group">
-            <label htmlFor="category" className="required">Category</label>
+            <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
+              Category {orderItems.length === 0 ? "*" : ""}
+            </label>
             <select
               id="category"
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
-              required
-              className="form-select"
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
               disabled={dataLoading}
             >
               <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
@@ -772,15 +804,17 @@ const KR_PlaceOrder = () => {
             </select>
           </div>
 
-          {/* Material Name - Required */}
+          {/* Material Name - Required only if no items exist */}
           <div className="form-group">
-            <label htmlFor="materialName" className="required">Material Name</label>
+            <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
+              Material Name {orderItems.length === 0 ? "*" : ""}
+            </label>
             <select
               id="materialName"
               value={formData.materialName}
               onChange={(e) => handleInputChange('materialName', e.target.value)}
-              required
-              className="form-select"
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
               disabled={!formData.category || dataLoading}
             >
               <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -817,31 +851,35 @@ const KR_PlaceOrder = () => {
             </select>
           </div>
 
-          {/* Quantity - Required */}
+          {/* Quantity - Required only if no items exist */}
           <div className="form-group">
-            <label htmlFor="quantity" className="required">Quantity *</label>
+            <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
+              Quantity {orderItems.length === 0 ? "**" : ""}
+            </label>
             <input
               type="text"
               id="quantity"
               value={formData.quantity}
               onChange={(e) => handleInputChange('quantity', e.target.value)}
-              required
-              className="form-input quantity-input"
+              required={orderItems.length === 0}
+              className={`form-input quantity-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
               placeholder="Enter quantity"
               pattern="[0-9]*"
               inputMode="numeric"
             />
           </div>
 
-          {/* UOM - Required */}
+          {/* UOM - Required only if no items exist */}
           <div className="form-group">
-            <label htmlFor="uom" className="required">UOM</label>
+            <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
+              UOM {orderItems.length === 0 ? "*" : ""}
+            </label>
             <select
               id="uom"
               value={formData.uom}
               onChange={(e) => handleInputChange('uom', e.target.value)}
-              required
-              className="form-select"
+              required={orderItems.length === 0}
+              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
               disabled={dataLoading}
             >
               <option value="">Select UOM</option>
@@ -915,15 +953,20 @@ const KR_PlaceOrder = () => {
 
 
         <div className="form-actions">
-          <button type="submit" className="submit-btn">Place Order</button>
-          <button type="button" className="reset-btn" onClick={() => {
+          <button 
+            type="submit" 
+            className={`submit-btn ${orderItems.length > 0 && formData.givenBy && formData.description ? 'ready-to-submit' : 'disabled'}`}
+            disabled={orderItems.length === 0 || !formData.givenBy || !formData.description}
+            title={orderItems.length === 0 ? 'Add at least one item' : (!formData.givenBy || !formData.description) ? 'Fill in Given By and Description' : 'Ready to submit'}
+          >
+            Place Order {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : ''}
+          </button>
+          <button type="button" className="reset-btn" onClick={async () => {
             // Clean up current session (discard incomplete order)
             cleanupSession()
             
-            // Generate new order ID for fresh start (don't increment counter on reset)
-            const currentCounter = getOrderCounter()
-            setOrderCounter(currentCounter)
-            const newOrderId = generateOrderId(currentCounter)
+            // Generate new order ID for fresh start using global counter
+            const newOrderId = await generateOrderId()
             setOrderId(newOrderId)
             
             // Register new session
