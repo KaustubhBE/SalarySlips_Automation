@@ -29,18 +29,27 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   align-items: start;
+  justify-items: center;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  max-width: 350px;
+  align-items: center;
+  text-align: center;
 }
 
 .form-group label {
   font-weight: 600;
   color: #555;
   font-size: 14px;
+  text-align: center;
+  width: 100%;
 }
 
 .form-group label::after {
@@ -55,6 +64,9 @@
   font-size: 14px;
   transition: all 0.3s ease;
   background-color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 .form-input:focus,
@@ -67,6 +79,7 @@
 .form-input::placeholder {
   color: #6c757d;
   font-style: italic;
+  text-align: center;
 }
 
 .form-select {
@@ -87,6 +100,7 @@
   padding-top: 20px;
   border-top: 1px solid #e1e5e9;
   grid-column: 1 / -1; /* Span full width across both columns */
+  flex-wrap: nowrap; /* Prevent wrapping */
 }
 
 .btn {
@@ -98,6 +112,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 120px;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 .btn-primary {
@@ -156,6 +171,10 @@
     max-width: 100%;
     padding: 15px;
   }
+  
+  .material-form {
+    max-width: 700px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -174,17 +193,23 @@
   .material-form {
     grid-template-columns: 1fr; /* Single column on mobile */
     gap: 15px;
+    max-width: 100%;
+  }
+  
+  .form-group {
+    max-width: 100%;
   }
   
   .form-actions {
-    flex-direction: column;
+    flex-direction: row; /* Keep buttons side by side */
     align-items: center;
     grid-column: 1; /* Single column on mobile */
+    justify-content: center;
   }
   
   .btn {
-    width: 100%;
-    max-width: 200px;
+    min-width: 100px; /* Smaller min-width for mobile */
+    padding: 10px 20px; /* Slightly smaller padding for mobile */
   }
 }
 
@@ -197,6 +222,16 @@
   .form-select {
     padding: 10px 12px;
     font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .btn {
+    min-width: 80px; /* Even smaller for very small screens */
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .form-actions {
+    gap: 10px; /* Smaller gap for very small screens */
   }
 }
 

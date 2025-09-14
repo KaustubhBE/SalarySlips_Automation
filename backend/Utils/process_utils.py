@@ -28,6 +28,10 @@ from docx.shared import Pt
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.shared import OxmlElement, qn
+import gspread
+from Utils.config import creds
+from Utils.firebase_utils import db
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1319,3 +1323,254 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         result["message"] = f"Critical error in reactor report processing: {e}"
     
     return result
+
+# Google Sheets Material Data Integration Functions
+
+# Helper functions for plant data (now using data from frontend)
+def get_plant_name_by_id(plant_id, plant_data):
+    """Get plant name by plant ID from plant data"""
+    for plant in plant_data:
+        if plant.get('material_sheet_id') == plant_id:
+            return plant.get('name', 'Unknown Plant')
+    return 'Unknown Plant'
+
+def get_plant_document_name_by_id(plant_id, plant_data):
+    """Get plant document name by plant ID from plant data"""
+    for plant in plant_data:
+        if plant.get('material_sheet_id') == plant_id:
+            return plant.get('document_name', 'UNKNOWN')
+    return 'UNKNOWN'
+
+def get_sheet_name_by_id(plant_id, plant_data):
+    """Get sheet name by plant ID from plant data"""
+    for plant in plant_data:
+        if plant.get('material_sheet_id') == plant_id:
+            return plant.get('sheet_name', 'Material List')
+    return 'Material List'
+
+def get_plant_material_data_from_sheets(plant_id, plant_data):
+    """Fetch material data from Google Sheets for a specific plant"""
+    try:
+        if not plant_id or not plant_data:
+            logging.error("No plant_id or plant_data provided")
+            return {}
+        
+        logging.info(f"Attempting to fetch material data for plant_id: {plant_id}")
+        
+        # Initialize gspread client
+        try:
+            client = gspread.authorize(creds)
+            logging.info("Successfully authorized gspread client")
+        except Exception as e:
+            logging.error(f"Failed to authorize gspread client: {e}")
+            raise
+        
+        # Open the spreadsheet by ID
+        try:
+            spreadsheet = client.open_by_key(plant_id)
+            logging.info(f"Successfully opened spreadsheet: {spreadsheet.title}")
+        except Exception as e:
+            logging.error(f"Failed to open spreadsheet with ID {plant_id}: {e}")
+            raise
+        
+        # Try to find the correct worksheet using plant data from frontend
+        worksheet = None
+        sheet_name = get_sheet_name_by_id(plant_id, plant_data)
+        try:
+            worksheet = spreadsheet.worksheet(sheet_name)
+            logging.info(f"Found '{sheet_name}' worksheet")
+        except gspread.WorksheetNotFound:
+            # If specified sheet not found, use the first worksheet
+            worksheet = spreadsheet.sheet1
+            logging.warning(f"'{sheet_name}' sheet not found, using first worksheet: {worksheet.title}")
+        except Exception as e:
+            logging.error(f"Error accessing worksheet: {e}")
+            raise
+        
+        # Get all data from the sheet
+        try:
+            all_data = worksheet.get_all_values()
+            logging.info(f"Retrieved {len(all_data)} rows from worksheet")
+        except Exception as e:
+            logging.error(f"Error getting data from worksheet: {e}")
+            raise
+        
+        if not all_data or len(all_data) < 3:
+            logging.warning(f"Insufficient data in sheet for plant {plant_id}. Found {len(all_data) if all_data else 0} rows, need at least 3")
+            return {}
+        
+        # Headers are on row 2 (index 1), data starts from row 3 (index 2)
+        headers = [header.strip() for header in all_data[1]]  # Row 2 contains headers
+        logging.info(f"Found headers: {headers}")
+        
+        # Expected headers: Category, Sub Category, Particulars, Material Name, UOM, Initial/nQuantity
+        expected_headers = ['Category', 'Sub Category', 'Particulars', 'Material Name', 'UOM', 'Initial/nQuantity']
+        
+        # Find column indices for expected headers
+        header_indices = {}
+        for expected_header in expected_headers:
+            for i, header in enumerate(headers):
+                if expected_header.lower() in header.lower():
+                    header_indices[expected_header] = i
+                    logging.info(f"Found header '{expected_header}' at index {i} (actual: '{header}')")
+                    break
+        
+        logging.info(f"Header indices found: {header_indices}")
+        
+        # Check for required headers (Category, Material Name, UOM are compulsory)
+        required_headers = ['Category', 'Material Name', 'UOM']
+        missing_required = [h for h in required_headers if h not in header_indices]
+        
+        if missing_required:
+            logging.error(f"Required headers not found in sheet: {missing_required}. Found headers: {headers}")
+            return {}
+        
+        # Process data rows (skip rows 1 and 2, start from row 3 - index 2)
+        material_data = {}
+        
+        for row in all_data[2:]:  # Start from row 3 (index 2)
+            if len(row) < max(header_indices.values()) + 1:
+                continue  # Skip incomplete rows
+            
+            try:
+                category = row[header_indices.get('Category', 0)].strip()
+                sub_category = row[header_indices.get('Sub Category', 1)].strip() if 'Sub Category' in header_indices else ''
+                particulars = row[header_indices.get('Particulars', 2)].strip() if 'Particulars' in header_indices else ''
+                material_name = row[header_indices.get('Material Name', 3)].strip()
+                uom = row[header_indices.get('UOM', 4)].strip()
+                initial_quantity = row[header_indices.get('Initial/nQuantity', 5)].strip() if 'Initial/nQuantity' in header_indices else '0'
+                
+                # Validate compulsory fields
+                if not category or not material_name or not uom:
+                    logging.warning(f"Skipping row due to missing compulsory fields: Category='{category}', Material Name='{material_name}', UOM='{uom}'")
+                    continue  # Skip rows without essential data
+                
+                # Set default quantity to 0 if not provided
+                if not initial_quantity or initial_quantity.strip() == '':
+                    initial_quantity = '0'
+                
+                # Initialize category if not exists
+                if category not in material_data:
+                    material_data[category] = {
+                        'subCategories': set(),
+                        'particulars': set(),
+                        'materialNames': []
+                    }
+                
+                # Add sub category
+                if sub_category:
+                    material_data[category]['subCategories'].add(sub_category)
+                
+                # Add particulars
+                if particulars:
+                    material_data[category]['particulars'].add(particulars)
+                
+                # Add material name with details
+                material_info = {
+                    'name': material_name,
+                    'subCategory': sub_category,
+                    'particulars': particulars,
+                    'uom': uom,
+                    'initialQuantity': initial_quantity
+                }
+                material_data[category]['materialNames'].append(material_info)
+                
+            except Exception as e:
+                logging.warning(f"Error processing row: {e}")
+                continue
+        
+        # Convert sets to lists for JSON serialization
+        for category in material_data:
+            material_data[category]['subCategories'] = list(material_data[category]['subCategories'])
+            material_data[category]['particulars'] = list(material_data[category]['particulars'])
+        
+        logging.info(f"Successfully fetched material data for plant {plant_id}: {len(material_data)} categories")
+        return material_data
+        
+    except Exception as e:
+        logging.error(f"Error fetching material data from Google Sheets: {e}")
+        logging.error(f"Error type: {type(e).__name__}")
+        logging.error(f"Error details: {str(e)}")
+        import traceback
+        logging.error(f"Full traceback: {traceback.format_exc()}")
+        return {}
+
+def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_description, sync_timestamp, synced_by):
+    """Sync material data from Google Sheets to Firebase"""
+    try:
+        # First, get the data from Google Sheets
+        sheet_data = get_plant_material_data_from_sheets(plant_id, plant_data)
+        
+        if not sheet_data:
+            return {
+                'success': False,
+                'message': 'No data found in Google Sheets'
+            }
+        
+        # Get the correct document name for Firebase storage
+        document_name = get_plant_document_name_by_id(plant_id, plant_data)
+        logging.info(f"Using document name '{document_name}' for plant '{plant_name}' (ID: {plant_id})")
+        
+        # Prepare material data for Firebase storage
+        materials = []
+        
+        for category, category_data in sheet_data.items():
+            for material_info in category_data.get('materialNames', []):
+                material_entry = {
+                    'category': category,
+                    'subCategory': material_info.get('subCategory', ''),
+                    'particulars': material_info.get('particulars', ''),
+                    'materialName': material_info.get('name', ''),
+                    'uom': material_info.get('uom', ''),
+                    'initialQuantity': material_info.get('initialQuantity', '0'),
+                    'syncedAt': sync_timestamp,
+                    'syncedBy': synced_by,
+                    'syncDescription': sync_description
+                }
+                materials.append(material_entry)
+        
+        # Store in Firebase under MATERIAL collection using the correct document name
+        plant_ref = db.collection('MATERIAL').document(document_name)
+        
+        # Get existing data
+        plant_doc = plant_ref.get()
+        existing_data = plant_doc.to_dict() if plant_doc.exists else {}
+        
+        # Update with new materials
+        plant_ref.set({
+            'materials': materials,
+            'lastSynced': sync_timestamp,
+            'lastSyncedBy': synced_by,
+            'syncDescription': sync_description,
+            'totalMaterials': len(materials)
+        }, merge=True)
+        
+        # Store sync history
+        sync_history_ref = plant_ref.collection('sync_history').document()
+        sync_history_ref.set({
+            'timestamp': sync_timestamp,
+            'syncedBy': synced_by,
+            'description': sync_description,
+            'materialsCount': len(materials),
+            'plantId': plant_id
+        })
+        
+        logging.info(f"Successfully synced {len(materials)} materials for {plant_name} to document {document_name}")
+        
+        return {
+            'success': True,
+            'message': f'Successfully synced {len(materials)} materials for {plant_name} to {document_name} document',
+            'data': {
+                'materialsCount': len(materials),
+                'categories': len(sheet_data),
+                'plantName': plant_name,
+                'documentName': document_name
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error syncing material data to Firebase: {e}")
+        return {
+            'success': False,
+            'message': f'Error syncing material data: {str(e)}'
+        }

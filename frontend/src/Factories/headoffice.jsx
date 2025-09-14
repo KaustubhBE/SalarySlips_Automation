@@ -15,6 +15,7 @@ const HeadOfficeFactory = () => {
     { key: 'ho_accounts', name: 'Accounts', route: '/headoffice/ho_accounts' },
     { key: 'ho_marketing', name: 'Marketing', route: '/headoffice/ho_marketing' },
     { key: 'ho_operations', name: 'Operations', route: '/headoffice/ho_operations' },
+    { key: 'ho_store', name: 'Store', route: '/ho_store' },
     { key: 'ho_humanresource', name: 'Human Resource', route: '/headoffice/ho_humanresource' }
   ];
 

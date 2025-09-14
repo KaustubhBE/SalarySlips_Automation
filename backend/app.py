@@ -340,7 +340,7 @@ def add_user():
                     'padmavati.store': ['inventory', 'reports'],
                     'padmavati.marketing': ['reports', 'marketing_campaigns'],
                     'headoffice.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'headoffice.store': ['inventory', 'reports'],
+                    'headoffice.store': ['inventory', 'reports', 'sheets-material'],
                     'headoffice.marketing': ['reports', 'marketing_campaigns']
                 }
             }
@@ -2359,6 +2359,102 @@ def get_all_orders_endpoint():
             "message": f"Error fetching all orders: {str(e)}"
         }), 500
 
+@app.route("/api/get_plant_material_data", methods=["POST"])
+def get_plant_material_data():
+    """Get material data for a specific plant from Google Sheets"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        plant_id = data.get('plant_id')
+        plant_data = data.get('plant_data')  # Plant data from frontend
+        
+        if not plant_id or not plant_data:
+            return jsonify({"error": "Plant ID and plant data required"}), 400
+        
+        from Utils.process_utils import get_plant_material_data_from_sheets
+        
+        # Get plant name from the provided plant data
+        plant_name = 'Unknown Plant'
+        for plant in plant_data:
+            if plant.get('material_sheet_id') == plant_id:
+                plant_name = plant.get('name', 'Unknown Plant')
+                break
+        
+        # Get user email from session for logging
+        user_email = session.get('user', {}).get('email', 'Unknown User')
+        logging.info(f"User {user_email} requested material data for plant {plant_name} (ID: {plant_id})")
+        
+        sheet_data = get_plant_material_data_from_sheets(plant_id, plant_data)
+        
+        return jsonify({
+            "success": True,
+            "data": sheet_data,
+            "plant_name": plant_name
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching plant material data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/sync_plant_material_data", methods=["POST"])
+def sync_plant_material_data():
+    """Sync material data from Google Sheets to Firebase"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        plant_id = data.get('plant_id')
+        plant_name = data.get('plant_name')
+        plant_data = data.get('plant_data')  # Plant data from frontend
+        sync_description = data.get('sync_description')
+        sync_timestamp = data.get('sync_timestamp')
+        
+        if not all([plant_id, plant_name, sync_description, plant_data]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: plant_id, plant_name, sync_description, plant_data"
+            }), 400
+        
+        # Get user email from session for security
+        user_email = session.get('user', {}).get('email', 'Unknown User')
+        
+        from Utils.process_utils import sync_plant_material_to_firebase
+        
+        # Sync material data to Firebase
+        result = sync_plant_material_to_firebase(
+            plant_id=plant_id,
+            plant_name=plant_name,
+            plant_data=plant_data,
+            sync_description=sync_description,
+            sync_timestamp=sync_timestamp,
+            synced_by=user_email
+        )
+        
+        if result['success']:
+            return jsonify({
+                "success": True,
+                "message": f"Material data synced successfully for {plant_name}",
+                "data": result.get('data', {})
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": result.get('message', 'Failed to sync material data')
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error syncing plant material data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error syncing material data: {str(e)}"
+        }), 500
+
 
 @app.route("/api/reset_order_counter", methods=["POST"])
 def reset_order_counter_endpoint():
@@ -2409,6 +2505,7 @@ def get_next_order_id_endpoint():
     except Exception as e:
         logger.error(f"Error generating order ID: {str(e)}")
         return jsonify({"success": False, "message": f"Error generating order ID: {str(e)}"}), 500
+
 
 if __name__ == "__main__":
     try:

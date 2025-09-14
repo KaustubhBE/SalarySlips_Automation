@@ -44,6 +44,7 @@ import PMHumanResource from './PM_Departments/PMHumanResource';
 import HOAccounts from './HO_Departments/HOAccounts';
 import HOMarketing from './HO_Departments/HOMarketing';
 import HOOperations from './HO_Departments/HOOperations';
+import HOStore from './HO_Departments/HOStore';
 import HOHumanResource from './HO_Departments/HOHumanResourec';
 import { useAuth } from './Components/AuthContext';
 import { DEPARTMENTS_CONFIG, FACTORY_NAMES } from './config';
@@ -75,6 +76,7 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
       'accounts': HOAccounts,
       'marketing': HOMarketing,
       'operations': HOOperations,
+      'store': HOStore,
       'humanresource': HOHumanResource
     }
   };
@@ -825,6 +827,12 @@ function App() {
         <Route path="/ho_operations/*" element={
           isAuthenticated ? 
             <HOOperations /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        <Route path="/ho_store/*" element={
+          isAuthenticated ? 
+            <HOStore /> : 
             <Navigate to="/login" replace />
         } />
 

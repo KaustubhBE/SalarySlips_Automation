@@ -777,5 +777,77 @@ export default {
     ENDPOINTS
 };
 
+// ============================================================================
+// PLANT DATA CONFIGURATION
+// ============================================================================
+
+// Centralized plant data configuration
+export const PLANT_DATA = [
+  { 
+    name: 'Head Office', 
+    material_sheet_id: '',
+    document_name: 'HO',
+    sheet_name: 'Material List'
+  },
+  { 
+    name: 'Gulbarga', 
+    material_sheet_id: '',
+    document_name: 'GG',
+    sheet_name: 'Material List'
+  },
+  { 
+    name: 'Kerur', 
+    material_sheet_id: '1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc',
+    document_name: 'KR',
+    sheet_name: 'Material List'
+  },
+  { 
+    name: 'Humnabad', 
+    material_sheet_id: '',
+    document_name: 'HB',
+    sheet_name: 'Material List'
+  },
+  { 
+    name: 'Omkar', 
+    material_sheet_id: '',
+    document_name: 'OM',
+    sheet_name: 'Material List'
+  },
+  {
+    name: 'Padmavati',
+    material_sheet_id: '', 
+    document_name: 'PV',
+    sheet_name: 'Material List'
+  }
+];
+
+// Plant helper functions
+export const getPlantBySheetId = (sheetId) => {
+  return PLANT_DATA.find(plant => plant.material_sheet_id === sheetId);
+};
+
+export const getPlantByName = (name) => {
+  return PLANT_DATA.find(plant => plant.name === name);
+};
+
+export const getPlantByDocumentName = (documentName) => {
+  return PLANT_DATA.find(plant => plant.document_name === documentName);
+};
+
+export const getDocumentNameBySheetId = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  return plant ? plant.document_name : 'UNKNOWN';
+};
+
+export const getPlantNameBySheetId = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  return plant ? plant.name : 'Unknown Plant';
+};
+
+export const getSheetNameBySheetId = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  return plant ? plant.sheet_name : 'Material List';
+};
+
 // Named exports
 export { DEFAULT_WHATSAPP_URL, DEFAULT_BACKEND_URL };
