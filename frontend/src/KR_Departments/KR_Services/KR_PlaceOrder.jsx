@@ -650,6 +650,227 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
+        {/* Added Items Table - Moved to top */}
+        {orderItems.length > 0 && (
+          <div className="added-items-top-section">
+            <div className="items-table-container">
+              <h3>Added Items</h3>
+              <table className="items-table">
+                <thead>
+                  <tr>
+                    <th>S.No</th>
+                    <th>Category</th>
+                    <th>Sub Category</th>
+                    <th>Particulars</th>
+                    <th>Material Name</th>
+                    <th>Quantity</th>
+                    <th>UOM</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderItems.map((item, index) => (
+                    <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
+                      <td data-label="S.No">{index + 1}</td>
+                      <td 
+                        data-label="Category"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'category')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <select
+                            value={editFormData.category}
+                            onChange={(e) => handleEditInputChange('category', e.target.value)}
+                            className="edit-select"
+                          >
+                            <option value="">Select Category</option>
+                            {categories.map(category => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          item.category
+                        )}
+                      </td>
+                      <td 
+                        data-label="Sub Category"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <select
+                            value={editFormData.subCategory}
+                            onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
+                            className="edit-select"
+                            disabled={!editFormData.category}
+                          >
+                            <option value="">Select Sub Category</option>
+                            {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
+                              <option key={subCat} value={subCat}>{subCat}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          item.subCategory || '-'
+                        )}
+                      </td>
+                      <td 
+                        data-label="Particulars"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'particulars')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'particulars')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <select
+                            value={editFormData.particulars}
+                            onChange={(e) => handleEditInputChange('particulars', e.target.value)}
+                            className="edit-select"
+                            disabled={!editFormData.category}
+                          >
+                            <option value="">Select Particulars</option>
+                            {editFormData.category && materialData[editFormData.category]?.particulars?.map(particular => (
+                              <option key={particular} value={particular}>{particular}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          item.particulars || '-'
+                        )}
+                      </td>
+                      <td 
+                        data-label="Material Name"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <select
+                            value={editFormData.materialName}
+                            onChange={(e) => handleEditInputChange('materialName', e.target.value)}
+                            className="edit-select"
+                            disabled={!editFormData.category}
+                          >
+                            <option value="">Select Material Name</option>
+                                {editFormData.category && getMaterialNameOptions(
+                                  materialData[editFormData.category],
+                                  editFormData.particulars,
+                                  editFormData.subCategory
+                                )}
+                          </select>
+                        ) : (
+                          item.materialName
+                        )}
+                      </td>
+                      <td 
+                        data-label="Quantity"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <input
+                            type="text"
+                            value={editFormData.quantity}
+                            onChange={(e) => handleEditInputChange('quantity', e.target.value)}
+                            className="edit-input quantity-input"
+                            placeholder="Enter quantity"
+                            pattern="[0-9]*"
+                            inputMode="numeric"
+                          />
+                        ) : (
+                          item.quantity
+                        )}
+                      </td>
+                      <td 
+                        data-label="UOM"
+                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
+                        onTouchMove={handleTouchMove}
+                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                      >
+                        {editingItem === item.id ? (
+                          <select
+                            value={editFormData.uom}
+                            onChange={(e) => handleEditInputChange('uom', e.target.value)}
+                            className="edit-select"
+                          >
+                            <option value="">Select UOM</option>
+                                {UOM_OPTIONS.map(uom => (
+                              <option key={uom} value={uom}>{uom}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          item.uom
+                        )}
+                      </td>
+                      <td data-label="Action">
+                        {editingItem === item.id ? (
+                          <div className="edit-actions-vertical">
+                            <div className="edit-actions-row">
+                              <button
+                                type="button"
+                                onClick={handleSaveEdit}
+                                className="save-edit-btn"
+                                title="Save changes"
+                              >
+                                ✓ Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEdit}
+                                className="cancel-edit-btn"
+                                title="Cancel edit"
+                              >
+                                ✕ Cancel
+                              </button>
+                            </div>
+                            <div className="remove-actions-row">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(item.id)}
+                                className="remove-item-btn"
+                                title="Remove item"
+                              >
+                                × Delete
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="remove-item-btn"
+                            title="Remove item"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Main Content Area */}
         <div className="form-main-content">
           {/* Left Section - Form Inputs */}
@@ -843,226 +1064,6 @@ const KR_PlaceOrder = () => {
           </div>
           </div>
 
-          {/* Right Section - Added Items Table */}
-        {orderItems.length > 0 && (
-            <div className="form-right-section">
-          <div className="items-table-container">
-            <h3>Added Items</h3>
-            <table className="items-table">
-              <thead>
-                <tr>
-                  <th>S.No</th>
-                  <th>Category</th>
-                  <th>Sub Category</th>
-                  <th>Particulars</th>
-                  <th>Material Name</th>
-                  <th>Quantity</th>
-                  <th>UOM</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderItems.map((item, index) => (
-                  <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
-                    <td data-label="S.No">{index + 1}</td>
-                    <td 
-                      data-label="Category"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'category')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <select
-                          value={editFormData.category}
-                          onChange={(e) => handleEditInputChange('category', e.target.value)}
-                          className="edit-select"
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map(category => (
-                            <option key={category} value={category}>{category}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        item.category
-                      )}
-                    </td>
-                    <td 
-                      data-label="Sub Category"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <select
-                          value={editFormData.subCategory}
-                          onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
-                          className="edit-select"
-                          disabled={!editFormData.category}
-                        >
-                          <option value="">Select Sub Category</option>
-                          {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
-                            <option key={subCat} value={subCat}>{subCat}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        item.subCategory || '-'
-                      )}
-                    </td>
-                    <td 
-                      data-label="Particulars"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'particulars')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'particulars')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <select
-                          value={editFormData.particulars}
-                          onChange={(e) => handleEditInputChange('particulars', e.target.value)}
-                          className="edit-select"
-                          disabled={!editFormData.category}
-                        >
-                          <option value="">Select Particulars</option>
-                          {editFormData.category && materialData[editFormData.category]?.particulars?.map(particular => (
-                            <option key={particular} value={particular}>{particular}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        item.particulars || '-'
-                      )}
-                    </td>
-                    <td 
-                      data-label="Material Name"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <select
-                          value={editFormData.materialName}
-                          onChange={(e) => handleEditInputChange('materialName', e.target.value)}
-                          className="edit-select"
-                          disabled={!editFormData.category}
-                        >
-                          <option value="">Select Material Name</option>
-                              {editFormData.category && getMaterialNameOptions(
-                                materialData[editFormData.category],
-                                editFormData.particulars,
-                                editFormData.subCategory
-                              )}
-                        </select>
-                      ) : (
-                        item.materialName
-                      )}
-                    </td>
-                    <td 
-                      data-label="Quantity"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <input
-                          type="text"
-                          value={editFormData.quantity}
-                          onChange={(e) => handleEditInputChange('quantity', e.target.value)}
-                          className="edit-input quantity-input"
-                          placeholder="Enter quantity"
-                          pattern="[0-9]*"
-                          inputMode="numeric"
-                        />
-                      ) : (
-                        item.quantity
-                      )}
-                    </td>
-                    <td 
-                      data-label="UOM"
-                      className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                      onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
-                      onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
-                      onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
-                      onTouchMove={handleTouchMove}
-                      title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                    >
-                      {editingItem === item.id ? (
-                        <select
-                          value={editFormData.uom}
-                          onChange={(e) => handleEditInputChange('uom', e.target.value)}
-                          className="edit-select"
-                        >
-                          <option value="">Select UOM</option>
-                              {UOM_OPTIONS.map(uom => (
-                            <option key={uom} value={uom}>{uom}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        item.uom
-                      )}
-                    </td>
-                    <td data-label="Action">
-                      {editingItem === item.id ? (
-                        <div className="edit-actions-vertical">
-                          <div className="edit-actions-row">
-                            <button
-                              type="button"
-                              onClick={handleSaveEdit}
-                              className="save-edit-btn"
-                              title="Save changes"
-                            >
-                              ✓ Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCancelEdit}
-                              className="cancel-edit-btn"
-                              title="Cancel edit"
-                            >
-                              ✕ Cancel
-                            </button>
-                          </div>
-                          <div className="remove-actions-row">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="remove-item-btn"
-                              title="Remove item"
-                            >
-                              × Delete
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="remove-item-btn"
-                          title="Remove item"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-              </div>
-          </div>
-        )}
         </div>
           </div>
 

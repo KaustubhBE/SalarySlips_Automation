@@ -64,6 +64,10 @@
     margin-top: 20px;
   }
   
+  .added-items-top-section .items-table-container {
+    max-height: 40vh;
+  }
+  
   .items-table-container {
     max-height: 50vh;
   }
@@ -72,6 +76,11 @@
 @media (max-width: 768px) {
   .form-main-content {
     gap: 15px;
+  }
+  
+  .added-items-top-section .items-table-container {
+    max-height: 35vh;
+    padding: 15px;
   }
   
   .items-table-container {
@@ -577,6 +586,25 @@
   font-size: 16px;
   font-weight: bold;
   font-family: 'Courier New', monospace;
+}
+
+/* Added items top section */
+.added-items-top-section {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.added-items-top-section .items-table-container {
+  margin: 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  position: relative;
+  overflow-x: auto;
+  max-width: 100%;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 /* Items table styling */
