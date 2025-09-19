@@ -13,5 +13,43 @@
     <script type="module" src="/src/main.jsx"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      // Google OAuth Configuration - will be set by the React app
+      window.googleOAuthConfig = {
+        client_id: 'your-google-client-id', // Will be updated by React app
+        callback: function(response) {
+          if (window.handleGoogleResponse) {
+            window.handleGoogleResponse(response);
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        use_fedcm_for_prompt: true
+      };
+
+      // Initialize Google OAuth when API is loaded
+      function initializeGoogleAuth() {
+        if (window.google && window.google.accounts && window.googleOAuthConfig.client_id !== 'your-google-client-id') {
+          window.google.accounts.id.initialize(window.googleOAuthConfig);
+        }
+      }
+
+      // Wait for Google API to load
+      window.addEventListener('load', function() {
+        if (window.google && window.google.accounts) {
+          initializeGoogleAuth();
+        } else {
+          const checkGoogle = setInterval(() => {
+            if (window.google && window.google.accounts) {
+              initializeGoogleAuth();
+              clearInterval(checkGoogle);
+            }
+          }, 100);
+          
+          // Cleanup interval after 10 seconds
+          setTimeout(() => clearInterval(checkGoogle), 10000);
+        }
+      });
+    </script>
   </body>
 </html>

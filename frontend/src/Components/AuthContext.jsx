@@ -271,6 +271,41 @@ export const AuthProvider = ({ children }) => {
     storage.set('isAuthenticated', 'true');
   }, []);
 
+  // Google OAuth login function
+  const loginWithGoogle = useCallback(async (credential) => {
+    try {
+      const apiUrl = getApiUrl(ENDPOINTS.GOOGLE_AUTH);
+      const payload = { credential };
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Google authentication failed');
+      }
+
+      const data = await response.json();
+      
+      if (data?.success && data?.user) {
+        const userData = data.user;
+        console.log('Google login successful - User data received:', userData);
+        await login(userData);
+        return { success: true, user: userData };
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  }, [login]);
+
   const logout = useCallback(async () => {
     try {
       // Call backend logout endpoint
@@ -321,6 +356,7 @@ export const AuthProvider = ({ children }) => {
     user,
     isAuthenticated,
     login,
+    loginWithGoogle,
     logout,
     hasPermission,
     canAccessDepartment,
@@ -330,7 +366,7 @@ export const AuthProvider = ({ children }) => {
     getUserFactories,
     getUserDepartments,
     getUserServices
-  }), [user, isAuthenticated, login, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment, getUserFactories, getUserDepartments, getUserServices]);
+  }), [user, isAuthenticated, login, loginWithGoogle, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment, getUserFactories, getUserDepartments, getUserServices]);
 
   if (loading) {
     return <div>Loading...</div>;

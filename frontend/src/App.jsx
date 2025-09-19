@@ -35,6 +35,8 @@ import GBStore from './GB_Departments/GBStore';
 import GBHumanResource from './GB_Departments/GBHumanResource';
 import KRStore from './KR_Departments/KRStore';
 import KRHumanResource from './KR_Departments/KRHumanResource';
+import KROperations from './KR_Departments/KROperations';
+import KR_ReactorReports from './KR_Departments/KR_Services/KR_ReactorReports';
 import OMStore from './OM_Departments/OMStore';
 import OMHumanResource from './OM_Departments/OMHumanResource';
 import HBDStore from './HBD_Departments/HBDStore';
@@ -58,7 +60,8 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
     },
     'kerur': {
       'store': KRStore,
-      'humanresource': KRHumanResource
+      'humanresource': KRHumanResource,
+      'operations': KROperations
     },
     'omkar': {
       'store': OMStore,
@@ -434,6 +437,14 @@ function App() {
             /> : 
             <Navigate to="/login" replace />
         } />
+        <Route path="/:factoryKey/kr_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="kr_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
         <Route path="/:factoryKey/pm_store" element={
           isAuthenticated ? 
             <DepartmentRouteGuard 
@@ -539,6 +550,13 @@ function App() {
         <Route path="/reactor-reports" element={
           isAuthenticated && canAccessService('reports') ? 
             <ReactorReports /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        {/* Kerur Operations Reactor Reports Route */}
+        <Route path="/kerur/kr_operations/kr_reactor-reports" element={
+          isAuthenticated && canAccessService('reactor_reports') ? 
+            <KR_ReactorReports /> : 
             <Navigate to="/app" replace />
         } />
 
