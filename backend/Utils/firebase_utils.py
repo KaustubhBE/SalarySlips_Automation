@@ -317,7 +317,7 @@ def get_material_data_by_factory(factory_name):
                     material_data[category]['materialNames'][sub_cat] = {}
                     for particular in particulars:
                         materials_for_particular = [
-                            mat['name'] for mat in category_materials 
+                            mat for mat in category_materials 
                             if mat['subCategory'] == sub_cat and mat['particulars'] == particular
                         ]
                         if materials_for_particular:
@@ -327,14 +327,14 @@ def get_material_data_by_factory(factory_name):
                 material_data[category]['materialNames'] = {}
                 for particular in particulars:
                     materials_for_particular = [
-                        mat['name'] for mat in category_materials 
+                        mat for mat in category_materials 
                         if mat['particulars'] == particular
                     ]
                     if materials_for_particular:
                         material_data[category]['materialNames'][particular] = materials_for_particular
             else:
-                # Simple array structure: just material names
-                material_data[category]['materialNames'] = [mat['name'] for mat in category_materials]
+                # Simple array structure: just material objects with UOM
+                material_data[category]['materialNames'] = category_materials
         
         return material_data
         

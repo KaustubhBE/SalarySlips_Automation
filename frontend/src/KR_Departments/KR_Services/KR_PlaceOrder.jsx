@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../PlaceOrder.css'
@@ -37,29 +38,86 @@ const getMaterialNameOptions = (categoryData, particulars, subCategory) => {
   
   // Handle direct material names (array)
   if (Array.isArray(categoryData.materialNames)) {
-    return categoryData.materialNames.map(material => (
-      <option key={material} value={material}>{material}</option>
-    ));
+    return categoryData.materialNames.map(material => {
+      const materialName = typeof material === 'string' ? material : material.name;
+      const materialValue = typeof material === 'string' ? material : material.name;
+      return (
+        <option key={materialName} value={materialValue}>{materialName}</option>
+      );
+    });
   }
   
   // Handle nested material names (object with particulars)
   if (particulars && categoryData.materialNames[particulars]) {
-    return categoryData.materialNames[particulars].map(material => (
-      <option key={material} value={material}>{material}</option>
-    ));
+    return categoryData.materialNames[particulars].map(material => {
+      const materialName = typeof material === 'string' ? material : material.name;
+      const materialValue = typeof material === 'string' ? material : material.name;
+      return (
+        <option key={materialName} value={materialValue}>{materialName}</option>
+      );
+    });
   }
   
   // Handle nested material names (object with sub-categories)
   if (subCategory && categoryData.materialNames[subCategory]) {
     const subCategoryData = categoryData.materialNames[subCategory];
     if (particulars && subCategoryData[particulars]) {
-      return subCategoryData[particulars].map(material => (
-        <option key={material} value={material}>{material}</option>
-      ));
+      return subCategoryData[particulars].map(material => {
+        const materialName = typeof material === 'string' ? material : material.name;
+        const materialValue = typeof material === 'string' ? material : material.name;
+        return (
+          <option key={materialName} value={materialValue}>{materialName}</option>
+        );
+      });
     }
   }
   
   return null;
+}
+
+// Helper function to get UOM for a material
+const getUomForMaterial = (materialData, category, materialName, subCategory = '', particulars = '') => {
+  if (!category || !materialName || !materialData[category]) {
+    return ''
+  }
+  
+  const categoryData = materialData[category]
+  let materialNames = categoryData.materialNames || []
+  
+  // If materialNames is an array (simple structure)
+  if (Array.isArray(materialNames)) {
+    // Find the material in the simple array structure
+    const material = materialNames.find(mat => 
+      (typeof mat === 'string' ? mat : mat.name) === materialName
+    )
+    return material && typeof material === 'object' ? material.uom : ''
+  }
+  
+  // If materialNames is an object (nested structure)
+  if (typeof materialNames === 'object') {
+    // Handle nested structure: particulars -> materials
+    if (particulars && materialNames[particulars]) {
+      const materials = materialNames[particulars]
+      const material = materials.find(mat => 
+        (typeof mat === 'string' ? mat : mat.name) === materialName
+      )
+      return material && typeof material === 'object' ? material.uom : ''
+    }
+    
+    // Handle nested structure: subCategory -> particulars -> materials
+    if (subCategory && materialNames[subCategory]) {
+      const subCategoryData = materialNames[subCategory]
+      if (particulars && subCategoryData[particulars]) {
+        const materials = subCategoryData[particulars]
+        const material = materials.find(mat => 
+          (typeof mat === 'string' ? mat : mat.name) === materialName
+        )
+        return material && typeof material === 'object' ? material.uom : ''
+      }
+    }
+  }
+  
+  return ''
 }
 
 // Custom Hook for Material Data
@@ -139,6 +197,8 @@ const useSessionManagement = () => {
 }
 
 const KR_PlaceOrder = () => {
+  const navigate = useNavigate()
+  
   // State Management
   const [formData, setFormData] = useState({
     category: '',
@@ -256,31 +316,49 @@ const KR_PlaceOrder = () => {
   }, [])
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-      // Reset dependent fields when category changes
-      ...(field === 'category' && {
-        subCategory: '',
-        particulars: '',
-        materialName: '',
-        uom: '',
-        quantity: ''
-      }),
-      // Reset dependent fields when subCategory changes
-      ...(field === 'subCategory' && {
-        particulars: '',
-        materialName: '',
-        uom: '',
-        quantity: ''
-      }),
-      // Reset dependent fields when particulars changes
-      ...(field === 'particulars' && {
-        materialName: '',
-        uom: '',
-        quantity: ''
-      })
-    }))
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value,
+        // Reset dependent fields when category changes
+        ...(field === 'category' && {
+          subCategory: '',
+          particulars: '',
+          materialName: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when subCategory changes
+        ...(field === 'subCategory' && {
+          particulars: '',
+          materialName: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when particulars changes
+        ...(field === 'particulars' && {
+          materialName: '',
+          uom: '',
+          quantity: ''
+        })
+      }
+
+      // Auto-assign UOM when material name changes
+      if (field === 'materialName' && value) {
+        const autoUom = getUomForMaterial(
+          materialData,
+          newFormData.category,
+          value,
+          newFormData.subCategory,
+          newFormData.particulars
+        )
+        if (autoUom) {
+          newFormData.uom = autoUom
+        }
+      }
+
+      return newFormData
+    })
   }
 
   const handleAddItem = () => {
@@ -422,31 +500,49 @@ const KR_PlaceOrder = () => {
   }
 
   const handleEditInputChange = (field, value) => {
-    setEditFormData(prev => ({
-      ...prev,
-      [field]: value,
-      // Reset dependent fields when category changes
-      ...(field === 'category' && {
-        subCategory: '',
-        particulars: '',
-        materialName: '',
-        uom: '',
-        quantity: ''
-      }),
-      // Reset dependent fields when subCategory changes
-      ...(field === 'subCategory' && {
-        particulars: '',
-        materialName: '',
-        uom: '',
-        quantity: ''
-      }),
-      // Reset dependent fields when particulars changes
-      ...(field === 'particulars' && {
-        materialName: '',
-        uom: '',
-        quantity: ''
-      })
-    }))
+    setEditFormData(prev => {
+      const newEditFormData = {
+        ...prev,
+        [field]: value,
+        // Reset dependent fields when category changes
+        ...(field === 'category' && {
+          subCategory: '',
+          particulars: '',
+          materialName: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when subCategory changes
+        ...(field === 'subCategory' && {
+          particulars: '',
+          materialName: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when particulars changes
+        ...(field === 'particulars' && {
+          materialName: '',
+          uom: '',
+          quantity: ''
+        })
+      }
+
+      // Auto-assign UOM when material name changes in edit mode
+      if (field === 'materialName' && value) {
+        const autoUom = getUomForMaterial(
+          materialData,
+          newEditFormData.category,
+          value,
+          newEditFormData.subCategory,
+          newEditFormData.particulars
+        )
+        if (autoUom) {
+          newEditFormData.uom = autoUom
+        }
+      }
+
+      return newEditFormData
+    })
   }
 
   const handleSaveEdit = () => {
@@ -603,6 +699,46 @@ const KR_PlaceOrder = () => {
 
   return (
     <div className="place-order-container">
+      {/* Back Button Section - Consistent across all pages */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        alignItems: 'center', 
+        marginBottom: '20px',
+        padding: '10px 0',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <button 
+          onClick={() => navigate('/kerur/kr_store')} 
+          className="back-button"
+          style={{
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = '#5a6268'
+            e.target.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = '#6c757d'
+            e.target.style.transform = 'translateY(0)'
+          }}
+        >
+          ← Back to Store
+        </button>
+      </div>
+      
       <div className="form-header">
         <div className="header-left">
           <div className="datetime-box">

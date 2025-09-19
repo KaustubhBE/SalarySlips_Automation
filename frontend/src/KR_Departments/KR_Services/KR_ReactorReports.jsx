@@ -202,6 +202,46 @@ const KR_ReactorReports = () => {
 
   return (
     <div className="reports-container">
+      {/* Back Button Section - Consistent across all pages */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        alignItems: 'center', 
+        marginBottom: '20px',
+        padding: '10px 0',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <button 
+          onClick={() => navigate('/kerur/kr_operations')} 
+          className="back-button"
+          style={{
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = '#5a6268'
+            e.target.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = '#6c757d'
+            e.target.style.transform = 'translateY(0)'
+          }}
+        >
+          ← Back to Department
+        </button>
+      </div>
+      
       <h1>Reactor Reports</h1>
 
       <div className="sheet-id-section">
@@ -258,16 +298,6 @@ const KR_ReactorReports = () => {
           {isLoading ? 'Generating Reports...' : 'Generate Reports'}
         </button>
         
-        {/* Navigation buttons */}
-        <div className="nav-buttons">
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            onClick={() => navigate('/kerur/kr_operations')}
-          >
-            Back to Department
-          </button>
-        </div>
       </div>
     </div>
   );

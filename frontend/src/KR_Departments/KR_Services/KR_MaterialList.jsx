@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 
 const KR_MaterialList = () => {
+  const navigate = useNavigate()
+  
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
@@ -29,6 +32,51 @@ const KR_MaterialList = () => {
   const [dataLoading, setDataLoading] = useState(true)
 
   const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
+
+  // Helper function to get UOM for a material
+  const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
+    if (!category || !materialName || !materialData[category]) {
+      return ''
+    }
+    
+    const categoryData = materialData[category]
+    let materialNames = categoryData.materialNames || []
+    
+    // If materialNames is an array (simple structure)
+    if (Array.isArray(materialNames)) {
+      // Find the material in the simple array structure
+      const material = materialNames.find(mat => 
+        (typeof mat === 'string' ? mat : mat.name) === materialName
+      )
+      return material && typeof material === 'object' ? material.uom : ''
+    }
+    
+    // If materialNames is an object (nested structure)
+    if (typeof materialNames === 'object') {
+      // Handle nested structure: particulars -> materials
+      if (particulars && materialNames[particulars]) {
+        const materials = materialNames[particulars]
+        const material = materials.find(mat => 
+          (typeof mat === 'string' ? mat : mat.name) === materialName
+        )
+        return material && typeof material === 'object' ? material.uom : ''
+      }
+      
+      // Handle nested structure: subCategory -> particulars -> materials
+      if (subCategory && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory]
+        if (particulars && subCategoryData[particulars]) {
+          const materials = subCategoryData[particulars]
+          const material = materials.find(mat => 
+            (typeof mat === 'string' ? mat : mat.name) === materialName
+          )
+          return material && typeof material === 'object' ? material.uom : ''
+        }
+      }
+    }
+    
+    return ''
+  }
 
   // Helper function to render hybrid input field
   const renderHybridInput = (field, label, required = false, options = [], placeholder = '') => {
@@ -115,31 +163,48 @@ const KR_MaterialList = () => {
   }, [])
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-      // Reset dependent fields when category changes
-      ...(field === 'category' && {
-        subCategory: '',
-        particulars: '',
-        materialName: '',
-        uom: '',
-        initialQuantity: ''
-      }),
-      // Reset dependent fields when subCategory changes
-      ...(field === 'subCategory' && {
-        particulars: '',
-        materialName: '',
-        uom: '',
-        initialQuantity: ''
-      }),
-      // Reset dependent fields when particulars changes
-      ...(field === 'particulars' && {
-        materialName: '',
-        uom: '',
-        initialQuantity: ''
-      })
-    }))
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value,
+        // Reset dependent fields when category changes
+        ...(field === 'category' && {
+          subCategory: '',
+          particulars: '',
+          materialName: '',
+          uom: '',
+          initialQuantity: ''
+        }),
+        // Reset dependent fields when subCategory changes
+        ...(field === 'subCategory' && {
+          particulars: '',
+          materialName: '',
+          uom: '',
+          initialQuantity: ''
+        }),
+        // Reset dependent fields when particulars changes
+        ...(field === 'particulars' && {
+          materialName: '',
+          uom: '',
+          initialQuantity: ''
+        })
+      }
+
+      // Auto-assign UOM when material name changes
+      if (field === 'materialName' && value) {
+        const autoUom = getUomForMaterial(
+          newFormData.category,
+          value,
+          newFormData.subCategory,
+          newFormData.particulars
+        )
+        if (autoUom) {
+          newFormData.uom = autoUom
+        }
+      }
+
+      return newFormData
+    })
   }
 
   const toggleInputMode = (field) => {
@@ -221,6 +286,46 @@ const KR_MaterialList = () => {
 
   return (
     <div className="material-list-container">
+      {/* Back Button Section - Consistent across all pages */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        alignItems: 'center', 
+        marginBottom: '20px',
+        padding: '10px 0',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <button 
+          onClick={() => navigate('/kerur/kr_store')} 
+          className="back-button"
+          style={{
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = '#5a6268'
+            e.target.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = '#6c757d'
+            e.target.style.transform = 'translateY(0)'
+          }}
+        >
+          ← Back to Store
+        </button>
+      </div>
+      
       <div className="material-form-wrapper">
         <h2>Add New Material</h2>
         
@@ -231,144 +336,154 @@ const KR_MaterialList = () => {
         )}
 
         <form onSubmit={handleSubmit} className="material-form">
-          {/* Category Field */}
-          {renderHybridInput(
-            'category',
-            'Category',
-            true,
-            categories,
-            'Enter new category'
-          )}
+          <div className="form-main-content">
+            <div className="form-left-section">
+              <div className="form-row">
+                {/* Category Field */}
+                {renderHybridInput(
+                  'category',
+                  'Category',
+                  true,
+                  categories,
+                  'Enter new category'
+                )}
 
-          {/* Sub Category Field */}
-          {renderHybridInput(
-            'subCategory',
-            'Sub Category',
-            false,
-            formData.category ? materialData[formData.category]?.subCategories || [] : [],
-            'Enter new sub category'
-          )}
+                {/* Sub Category Field */}
+                {renderHybridInput(
+                  'subCategory',
+                  'Sub Category',
+                  false,
+                  formData.category ? materialData[formData.category]?.subCategories || [] : [],
+                  'Enter new sub category'
+                )}
+              </div>
 
-          {/* Particulars Field */}
-          {renderHybridInput(
-            'particulars',
-            'Particulars',
-            false,
-            formData.category ? materialData[formData.category]?.particulars || [] : [],
-            'Enter new particulars'
-          )}
+              <div className="form-row">
+                {/* Particulars Field */}
+                {renderHybridInput(
+                  'particulars',
+                  'Particulars',
+                  false,
+                  formData.category ? materialData[formData.category]?.particulars || [] : [],
+                  'Enter new particulars'
+                )}
 
-          {/* Material Name Field */}
-          {renderHybridInput(
-            'materialName',
-            'Material Name',
-            true,
-            (() => {
-              if (!formData.category) return [];
-              const categoryData = materialData[formData.category];
-              if (!categoryData) return [];
-              
-              // Handle the same data structure as KR_PlaceOrder.jsx
-              let materialNames = categoryData.materialNames || [];
-              
-              // If materialNames is an array (simple structure)
-              if (Array.isArray(materialNames)) {
-                return materialNames;
-              }
-              
-              // If materialNames is an object (nested structure)
-              if (typeof materialNames === 'object') {
-                // Handle nested structure: particulars -> materials
-                if (formData.particulars && materialNames[formData.particulars]) {
-                  return materialNames[formData.particulars];
-                }
-                
-                // Handle nested structure: subCategory -> particulars -> materials
-                if (formData.subCategory && materialNames[formData.subCategory]) {
-                  const subCategoryData = materialNames[formData.subCategory];
-                  if (formData.particulars && subCategoryData[formData.particulars]) {
-                    return subCategoryData[formData.particulars];
-                  }
-                }
-                
-                // If no specific filtering, return all materials from the object
-                const allMaterials = [];
-                Object.values(materialNames).forEach(value => {
-                  if (Array.isArray(value)) {
-                    allMaterials.push(...value);
-                  } else if (typeof value === 'object') {
-                    Object.values(value).forEach(arr => {
-                      if (Array.isArray(arr)) {
-                        allMaterials.push(...arr);
+                {/* Material Name Field */}
+                {renderHybridInput(
+                  'materialName',
+                  'Material Name',
+                  true,
+                  (() => {
+                    if (!formData.category) return [];
+                    const categoryData = materialData[formData.category];
+                    if (!categoryData) return [];
+                    
+                    // Handle the same data structure as KR_PlaceOrder.jsx
+                    let materialNames = categoryData.materialNames || [];
+                    
+                    // If materialNames is an array (simple structure)
+                    if (Array.isArray(materialNames)) {
+                      return materialNames.map(mat => typeof mat === 'string' ? mat : mat.name);
+                    }
+                    
+                    // If materialNames is an object (nested structure)
+                    if (typeof materialNames === 'object') {
+                      // Handle nested structure: particulars -> materials
+                      if (formData.particulars && materialNames[formData.particulars]) {
+                        return materialNames[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
                       }
-                    });
-                  }
-                });
-                return allMaterials;
-              }
-              
-              return [];
-            })(),
-            'Enter new material name'
-          )}
+                      
+                      // Handle nested structure: subCategory -> particulars -> materials
+                      if (formData.subCategory && materialNames[formData.subCategory]) {
+                        const subCategoryData = materialNames[formData.subCategory];
+                        if (formData.particulars && subCategoryData[formData.particulars]) {
+                          return subCategoryData[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
+                        }
+                      }
+                      
+                      // If no specific filtering, return all materials from the object
+                      const allMaterials = [];
+                      Object.values(materialNames).forEach(value => {
+                        if (Array.isArray(value)) {
+                          allMaterials.push(...value);
+                        } else if (typeof value === 'object') {
+                          Object.values(value).forEach(arr => {
+                            if (Array.isArray(arr)) {
+                              allMaterials.push(...arr);
+                            }
+                          });
+                        }
+                      });
+                      return allMaterials.map(mat => typeof mat === 'string' ? mat : mat.name);
+                    }
+                    
+                    return [];
+                  })(),
+                  'Enter new material name'
+                )}
+              </div>
 
-          {/* UOM Field */}
-          {renderHybridInput(
-            'uom',
-            'Unit of Measurement (UOM)',
-            true,
-            (() => {
-              if (!formData.category) return uomOptions;
-              
-              // For UOM, we'll use the general UOM options since the new data structure
-              // doesn't store individual material UOMs in the hierarchical format
-              // The UOM will be selected independently
-              return uomOptions;
-            })(),
-            'Enter new UOM'
-          )}
+              <div className="form-row">
+                {/* UOM Field */}
+                {renderHybridInput(
+                  'uom',
+                  'Unit of Measurement (UOM)',
+                  true,
+                  (() => {
+                    if (!formData.category) return uomOptions;
+                    
+                    // For UOM, we'll use the general UOM options since the new data structure
+                    // doesn't store individual material UOMs in the hierarchical format
+                    // The UOM will be selected independently
+                    return uomOptions;
+                  })(),
+                  'Enter new UOM'
+                )}
 
-          {/* Initial Quantity Field */}
-          <div className="form-group">
-            <label htmlFor="initialQuantity">
-              Initial Quantity *
-            </label>
-            <input
-              type="number"
-              id="initialQuantity"
-              value={formData.initialQuantity}
-              onChange={(e) => handleInputChange('initialQuantity', e.target.value)}
-              required
-              className="form-input no-spinner"
-              placeholder="Enter initial quantity"
-              min="0"
-              step="0.01"
-              disabled={dataLoading}
-            />
-          </div>
+                {/* Initial Quantity Field */}
+                <div className="form-group">
+                  <label htmlFor="initialQuantity" className="required">
+                    Initial Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    id="initialQuantity"
+                    value={formData.initialQuantity}
+                    onChange={(e) => handleInputChange('initialQuantity', e.target.value)}
+                    required
+                    className="form-input no-spinner"
+                    placeholder="Enter initial quantity"
+                    min="0"
+                    step="0.01"
+                    disabled={dataLoading}
+                  />
+                </div>
+              </div>
 
-          <div className="form-actions">
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-            >
-              {loading ? 'Adding...' : 'Add Material'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({
-                category: '',
-                subCategory: '',
-                particulars: '',
-                materialName: '',
-                uom: '',
-                initialQuantity: ''
-              })}
-              className="btn btn-secondary"
-            >
-              Clear Form
-            </button>
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                >
+                  {loading ? 'Adding...' : 'Add Material'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({
+                    category: '',
+                    subCategory: '',
+                    particulars: '',
+                    materialName: '',
+                    uom: '',
+                    initialQuantity: ''
+                  })}
+                  className="btn btn-secondary"
+                >
+                  Clear Form
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>
