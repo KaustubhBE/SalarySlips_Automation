@@ -15,10 +15,8 @@ import subprocess
 import platform
 # import pythoncom
 # from comtypes.client import CreateObject
-from datetime import datetime
 import os
 from docx import Document
-from datetime import datetime
 from docx.shared import Inches
 import requests
 from PIL import Image
@@ -31,7 +29,9 @@ from docx.oxml.shared import OxmlElement, qn
 import gspread
 from Utils.config import creds
 from Utils.firebase_utils import db
-from datetime import datetime
+from datetime import datetime, timedelta
+from Utils.whatsapp_utils import handle_reactor_report_notification
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -100,26 +100,46 @@ def preprocess_headers(headers):
 
 def convert_docx_to_pdf(input_path, output_path):
     try:
+        # Check if input file exists
+        if not os.path.exists(input_path):
+            logging.error(f"Input file does not exist: {input_path}")
+            return False
+            
+        logging.info(f"Converting DOCX to PDF: {input_path} -> {output_path}")
+        
+        # Check if LibreOffice is available
+        try:
+            subprocess.run(['libreoffice', '--version'], check=True, capture_output=True)
+            logging.info("LibreOffice is available")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logging.error(f"LibreOffice is not available: {e}")
+            return False
+        
         process = subprocess.Popen([
             'libreoffice', '--headless', '--convert-to', 'pdf',
             '--outdir', os.path.dirname(output_path),
             input_path
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        process.wait()
-
-        # pythoncom.CoInitialize()
-        # word = CreateObject('Word.Application')
-        # word.Visible = False  # Keep Word hidden
-        # doc = word.Documents.Open(input_path)
-        # doc.SaveAs(output_path, FileFormat=17)  # 17 is PDF format
-        # doc.Close()
-        # word.Quit()
-        # print(f'Converted {input_path} to {output_path}')
-        # return True
-
-        return True
+        
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+        
+        logging.info(f"LibreOffice conversion return code: {return_code}")
+        if stdout:
+            logging.info(f"LibreOffice stdout: {stdout.decode()}")
+        if stderr:
+            logging.warning(f"LibreOffice stderr: {stderr.decode()}")
+        
+        # Check if the output file was actually created
+        if os.path.exists(output_path):
+            logging.info(f"PDF conversion successful: {output_path}")
+            return True
+        else:
+            logging.error(f"PDF conversion failed - output file not created: {output_path}")
+            return False
+            
     except Exception as e:
-        logging.error("Error converting DOCX to PDF: {}".format(e))
+        logging.error(f"Error converting DOCX to PDF: {e}")
         return False
 
 # Format file path
@@ -549,9 +569,9 @@ def process_reports(file_path_template):
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
 
-def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp):
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp, process_name='reactor-report', google_access_token=None, google_refresh_token=None):
     
-    from datetime import datetime, timedelta
+    
     
     # Initialize result tracking
     result = {
@@ -1153,8 +1173,12 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             # Convert to PDF
             pdf_filename = f"reactor_report_{input_date.replace('/', '_')}.pdf"
             pdf_path = os.path.join(output_dir, pdf_filename)
+            logger.info(f"Generated PDF filename: {pdf_filename}")
+            logger.info(f"Generated PDF path: {pdf_path}")
+            logger.info(f"PDF file exists: {os.path.exists(pdf_path)}")
             if convert_docx_to_pdf(output_path, pdf_path):
                 logger.info("Successfully converted DOCX to PDF")
+                logger.info(f"PDF file exists after conversion: {os.path.exists(pdf_path)}")
                 result["output_file"] = pdf_path
             else:
                 logger.warning("PDF conversion failed, using DOCX file")
@@ -1219,15 +1243,50 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     success_count = 0
                     for recipient in recipients_to:
                         try:
-                            success = send_email_smtp(
-                                user_email=user_id,
-                                recipient_email=recipient,
-                                subject=email_subject,
-                                body=email_body,
-                                attachment_paths=[result["output_file"]],
-                                cc=','.join(recipients_cc) if recipients_cc else None,
-                                bcc=','.join(recipients_bcc) if recipients_bcc else None
-                            )
+                            if process_name == "kr_reactor-report":
+                                # Import OAuth email function
+                                from Utils.email_utils import send_email_oauth, send_email_gmail_api
+                                
+                                # If Google tokens are provided, try Gmail API directly
+                                if google_access_token and google_refresh_token:
+                                    logger.info(f"Using provided Google tokens for Gmail API")
+                                    logger.info(f"Email attachment path: {result['output_file']}")
+                                    logger.info(f"Attachment file exists: {os.path.exists(result['output_file'])}")
+                                    success = send_email_gmail_api(
+                                        user_email=user_id,
+                                        recipient_email=recipient,
+                                        subject=email_subject,
+                                        body=email_body,
+                                        attachment_paths=[result["output_file"]],
+                                        cc=','.join(recipients_cc) if recipients_cc else None,
+                                        bcc=','.join(recipients_bcc) if recipients_bcc else None,
+                                        access_token=google_access_token,
+                                        refresh_token=google_refresh_token
+                                    )
+                                else:
+                                    # Use OAuth email function with fallback
+                                    logger.info(f"Using OAuth email function with fallback")
+                                    logger.info(f"Email attachment path: {result['output_file']}")
+                                    logger.info(f"Attachment file exists: {os.path.exists(result['output_file'])}")
+                                    success = send_email_oauth(
+                                        user_email=user_id,
+                                        recipient_email=recipient,
+                                        subject=email_subject,
+                                        body=email_body,
+                                        attachment_paths=[result["output_file"]],
+                                        cc=','.join(recipients_cc) if recipients_cc else None,
+                                        bcc=','.join(recipients_bcc) if recipients_bcc else None
+                                    )
+                            else:
+                                success = send_email_smtp(
+                                    user_email=user_id,
+                                    recipient_email=recipient,
+                                    subject=email_subject,
+                                    body=email_body,
+                                    attachment_paths=[result["output_file"]],
+                                    cc=','.join(recipients_cc) if recipients_cc else None,
+                                    bcc=','.join(recipients_bcc) if recipients_bcc else None
+                                )
                             if success is True:
                                 success_count += 1
                                 logger.info(f"Email sent successfully to {recipient}")
@@ -1272,7 +1331,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         # Send WhatsApp messages if enabled
         if send_whatsapp and result["output_file"]:
             try:
-                from Utils.whatsapp_utils import handle_reactor_report_notification
+                
                 success = handle_reactor_report_notification(
                     recipients_data=sheet_recipients_data,
                     input_date=input_date,
@@ -1491,7 +1550,6 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         logging.error(f"Error fetching material data from Google Sheets: {e}")
         logging.error(f"Error type: {type(e).__name__}")
         logging.error(f"Error details: {str(e)}")
-        import traceback
         logging.error(f"Full traceback: {traceback.format_exc()}")
         return {}
 

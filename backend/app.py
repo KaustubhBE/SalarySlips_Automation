@@ -1653,6 +1653,95 @@ def reactor_report():
     finally:
         pass
 
+@app.route("/api/kr_reactor-reports", methods=["POST"])
+def kr_reactor_report():
+    """New endpoint specifically for KR_ReactorReports.jsx with OAuth email support"""
+    try:
+        user_id = session.get('user', {}).get('email')
+        if not user_id:
+            logger.error("No user_id found in session. User must be logged in to send reports.")
+            return jsonify({"error": "User not authenticated"}), 401
+        
+        # Get form data
+        send_email = request.form.get('send_email') == 'true'
+        send_whatsapp = request.form.get('send_whatsapp') == 'true'
+        date = request.form.get('date')
+        process_name = request.form.get('process_name', 'reactor-report')  # Default to 'reactor-report'
+        
+        # Get Google tokens if provided by frontend
+        google_access_token = request.form.get('google_access_token')
+        google_refresh_token = request.form.get('google_refresh_token')
+        
+        if not date:
+            return jsonify({"error": "Date is required"}), 400
+        
+        # Fetch sheet IDs from Google Sheet (mapping sheet)
+        try:
+            reactor_reports_sheet_id = "1XOLQvy6j7syAlOKpQ3J2o6DcgiSZsSO1xxWlWih_QOY"
+            sheet_id_mapping_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Sheet_ID_Reactor')
+            sheet_recipients_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Recipients')
+            table_range_data = fetch_google_sheet_data(reactor_reports_sheet_id, 'Table Ranges')
+        except Exception as e:
+            logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
+            return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
+        
+        # Create temporary directory for processing
+        temp_dir = os.path.join(OUTPUT_DIR, "temp_kr_reactor_reports")
+        os.makedirs(temp_dir, exist_ok=True)
+        template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
+        
+        if not os.path.exists(template_path):
+            return jsonify({"error": "Reactor report template not found"}), 500
+        
+        gspread_client = gspread.authorize(creds)
+        
+        # Call the new utility function with OAuth email support
+        result = process_reactor_reports(
+            sheet_id_mapping_data=sheet_id_mapping_data,
+            sheet_recipients_data=sheet_recipients_data,
+            table_range_data=table_range_data,
+            input_date=date,
+            user_id=user_id,
+            send_email=send_email,
+            send_whatsapp=send_whatsapp,
+            template_path=template_path,
+            output_dir=temp_dir,
+            gspread_client=gspread_client,
+            logger=logger,
+            send_email_smtp=send_email_smtp,  # This will use OAuth email function
+            process_name=process_name,  # Pass the process name for OAuth email selection
+            google_access_token=google_access_token,  # Pass Google tokens if available
+            google_refresh_token=google_refresh_token
+        )
+        
+        # Clean up temporary files
+        try:
+            if os.path.exists(temp_dir):
+                for file in os.listdir(temp_dir):
+                    file_path = os.path.join(temp_dir, file)
+                    try:
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    except Exception as e:
+                        logger.error(f"Error removing temporary file {file}: {e}")
+                try:
+                    os.rmdir(temp_dir)
+                except Exception as e:
+                    logger.error(f"Failed to remove temporary directory {temp_dir}: {e}")
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+        
+        if 'error' in result:
+            return jsonify({"error": result['error']}), 400
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error generating KR reactor reports: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        pass
+
 @app.route("/api/update_app_password", methods=["POST"])
 def update_app_password():
     try:

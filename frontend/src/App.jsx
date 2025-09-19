@@ -106,9 +106,6 @@ const getProcessingComponent = (factoryKey, mode) => {
 const DepartmentWrapper = () => {
   const { factoryKey, departmentKey } = useParams();
   
-  // Debug logging
-  console.log('DepartmentWrapper - factoryKey:', factoryKey, 'departmentKey:', departmentKey);
-  
   // Handle factory-prefixed department keys by stripping the prefix
   let actualDepartmentKey = departmentKey;
   if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
@@ -116,11 +113,9 @@ const DepartmentWrapper = () => {
       departmentKey.startsWith('hbd_') || departmentKey.startsWith('ho_'))) {
     // Extract the base department key (remove factory prefix)
     actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pm_|om_|hbd_|ho_)/, '');
-    console.log('DepartmentWrapper - stripped prefix, actualDepartmentKey:', actualDepartmentKey);
   }
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
-  console.log('DepartmentWrapper - DepartmentComponent:', DepartmentComponent);
   
   if (!DepartmentComponent) {
     return (
@@ -142,15 +137,10 @@ const DepartmentWrapper = () => {
 const FactoryPrefixedDepartmentWrapper = ({ departmentType }) => {
   const { factoryKey } = useParams();
   
-  // Debug logging
-  console.log('FactoryPrefixedDepartmentWrapper - factoryKey:', factoryKey, 'departmentType:', departmentType);
-  
   // Extract the base department key (remove factory prefix)
   const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pm_|om_|hbd_|ho_)/, '');
-  console.log('FactoryPrefixedDepartmentWrapper - actualDepartmentKey:', actualDepartmentKey);
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
-  console.log('FactoryPrefixedDepartmentWrapper - DepartmentComponent:', DepartmentComponent);
   
   if (!DepartmentComponent) {
     return (
@@ -185,14 +175,6 @@ const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
   
   // Check if user can access this factory/department combination
   const canAccess = canAccessFactoryDepartment(factoryKey, departmentKey);
-  
-  console.log('DepartmentRouteGuard - Checking access for:', {
-    factoryKey,
-    departmentKey,
-    requiredRouteType,
-    userRole: user.role,
-    canAccess
-  });
   
   if (!canAccess) {
     return <Navigate to="/app" replace />;
@@ -555,9 +537,9 @@ function App() {
 
         {/* Kerur Operations Reactor Reports Route */}
         <Route path="/kerur/kr_operations/kr_reactor-reports" element={
-          isAuthenticated && canAccessService('reactor_reports') ? 
+          isAuthenticated ? 
             <KR_ReactorReports /> : 
-            <Navigate to="/app" replace />
+            <Navigate to="/login" replace />
         } />
 
         {/* Service Routes - Factory/Department/Service access */}

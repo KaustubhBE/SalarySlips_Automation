@@ -1062,11 +1062,9 @@ const KR_PlaceOrder = () => {
               rows="4"
             />
           </div>
-          </div>
-
         </div>
-          </div>
 
+        {/* Action Buttons */}
         <div className="form-actions">
           <button 
             type="submit" 
@@ -1093,6 +1091,8 @@ const KR_PlaceOrder = () => {
             
             alert(`Form reset! Order ID ${orderId} remains the same.`)
           }}>Reset</button>
+        </div>
+          </div>
         </div>
       </form>
     </div>

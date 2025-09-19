@@ -6,9 +6,15 @@ from email.mime.base import MIMEBase
 from email import encoders
 from email.header import Header
 import email.utils
-from Utils.firebase_utils import get_smtp_credentials_by_email
+from Utils.firebase_utils import get_smtp_credentials_by_email, get_user_by_email_with_metadata
 import smtplib
 import re
+import base64
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -139,3 +145,166 @@ def get_employee_email(employee_name, email_employees):
         if record.get("Name") == employee_name:
             return record.get("Email ID", "")
     return ""
+
+def send_email_gmail_api(user_email, recipient_email, subject, body, attachment_paths=None, cc=None, bcc=None, access_token=None, refresh_token=None):
+    """
+    Send an email using Gmail API with OAuth credentials.
+    """
+    try:
+        # Get user's Google OAuth credentials from database
+        user = get_user_by_email_with_metadata(user_email)
+        if not user:
+            logger.error(f"User not found: {user_email}")
+            return "USER_NOT_LOGGED_IN"
+        
+        # Debug logging
+        logger.info(f"User {user_email} Gmail access check:")
+        logger.info(f"  has_gmail_access: {user.get('has_gmail_access')}")
+        logger.info(f"  google_access_token present: {bool(user.get('google_access_token'))}")
+        logger.info(f"  google_refresh_token present: {bool(user.get('google_refresh_token'))}")
+        
+        # Use provided tokens first, then fall back to database/session
+        if not access_token or not refresh_token:
+            # Get Google OAuth tokens from database first
+            access_token = user.get('google_access_token')
+            refresh_token = user.get('google_refresh_token')
+            
+            # If not in database, check session (for GSI flow)
+            if not access_token:
+                from flask import session
+                session_user = session.get('user', {})
+                if session_user.get('email') == user_email:
+                    access_token = session_user.get('google_access_token')
+                    refresh_token = session_user.get('google_refresh_token')
+                    logger.info(f"Retrieved Google tokens from session for user: {user_email}")
+        else:
+            logger.info(f"Using provided Google tokens for user: {user_email}")
+        
+        # Check if user has Gmail access (either via flag or presence of tokens)
+        has_gmail_access = user.get('has_gmail_access', False)
+        has_google_tokens = bool(access_token)
+        
+        if not has_gmail_access and not has_google_tokens:
+            logger.error(f"User {user_email} does not have Gmail access or Google tokens")
+            return "NO_GMAIL_ACCESS"
+        
+        if not access_token:
+            logger.error(f"No Google access token found for user: {user_email}")
+            return "NO_GOOGLE_ACCESS_TOKEN"
+        
+        # Create credentials object
+        credentials = Credentials(
+            token=access_token,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET')
+        )
+        
+        # Refresh token if needed
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+            # Update the refreshed token in database
+            try:
+                from Utils.firebase_utils import db
+                user_ref = db.collection('USERS').document(user.get('id'))
+                user_ref.update({
+                    'google_access_token': credentials.token,
+                    'last_token_refresh': credentials.expiry.isoformat() if credentials.expiry else None
+                })
+            except Exception as e:
+                logger.warning(f"Failed to update refreshed token: {e}")
+        
+        # Build Gmail service
+        service = build('gmail', 'v1', credentials=credentials)
+        
+        # Validate recipient email
+        if not recipient_email or not recipient_email.strip():
+            logger.error("Recipient email is empty or invalid")
+            return "INVALID_RECIPIENT"
+        
+        # Create message
+        message = MIMEMultipart()
+        message['to'] = recipient_email.strip()
+        message['from'] = user_email
+        message['subject'] = subject
+        
+        if cc and cc.strip():
+            message['cc'] = cc.strip()
+        if bcc and bcc.strip():
+            message['bcc'] = bcc.strip()
+        
+        # Add body
+        msg = MIMEText(body, 'html', 'utf-8')
+        msg.replace_header('Content-Type', 'text/html; charset="utf-8"')
+        message.attach(msg)
+        
+        # Add attachments if any
+        if attachment_paths:
+            if isinstance(attachment_paths, str):
+                attachment_paths = [attachment_paths]
+            for attachment_path in attachment_paths:
+                try:
+                    if os.path.exists(attachment_path):
+                        with open(attachment_path, 'rb') as f:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(f.read())
+                            encoders.encode_base64(part)
+                            part.add_header(
+                                'Content-Disposition',
+                                f'attachment; filename={os.path.basename(attachment_path)}'
+                            )
+                            message.attach(part)
+                    else:
+                        logger.warning(f"Attachment file not found: {attachment_path}")
+                except Exception as e:
+                    logger.error(f"Error attaching file {attachment_path}: {e}")
+                    continue
+        
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+        
+        # Send email
+        send_message = service.users().messages().send(
+            userId='me',
+            body={'raw': raw_message}
+        ).execute()
+        
+        logger.info(f"Email sent via Gmail API to {recipient_email} for user {user_email}")
+        return True
+        
+    except HttpError as e:
+        logger.error(f"Gmail API error for user {user_email}: {e}")
+        if e.resp.status == 401:
+            return "GMAIL_AUTH_FAILED"
+        elif e.resp.status == 403:
+            return "GMAIL_PERMISSION_DENIED"
+        else:
+            return "GMAIL_API_ERROR"
+    except Exception as e:
+        logger.error(f"Error sending email via Gmail API for user {user_email}: {e}")
+        return "GMAIL_SEND_ERROR"
+
+def send_email_oauth(user_email, recipient_email, subject, body, attachment_paths=None, cc=None, bcc=None):
+    """
+    Send email using OAuth (Gmail API) with fallback to SMTP.
+    """
+    try:
+        # Try Gmail API first
+        result = send_email_gmail_api(user_email, recipient_email, subject, body, attachment_paths, cc, bcc)
+        
+        if result is True:
+            return True
+        elif result in ["NO_GMAIL_ACCESS", "NO_GOOGLE_ACCESS_TOKEN", "GMAIL_AUTH_FAILED", "GMAIL_PERMISSION_DENIED", "GMAIL_API_ERROR", "GMAIL_SEND_ERROR"]:
+            # Gmail API failed, fallback to SMTP
+            logger.info(f"Gmail API failed ({result}), falling back to SMTP for user {user_email}")
+            return send_email_smtp(user_email, recipient_email, subject, body, attachment_paths, cc, bcc)
+        else:
+            # Other errors (like USER_NOT_LOGGED_IN, INVALID_RECIPIENT, etc.)
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in send_email_oauth for user {user_email}: {e}")
+        # Fallback to SMTP
+        logger.info(f"OAuth failed, falling back to SMTP for user {user_email}")
+        return send_email_smtp(user_email, recipient_email, subject, body, attachment_paths, cc, bcc)

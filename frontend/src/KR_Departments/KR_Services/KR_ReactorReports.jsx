@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import './Reports.css';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../Components/AuthContext';
+import '../../Reports.css';
 import { getApiUrl } from '../../config';
 
 const KR_ReactorReports = () => {
+  const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
@@ -10,6 +14,33 @@ const KR_ReactorReports = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+
+  // Check if user has permission to access reactor reports
+  const hasReactorReportsPermission = () => {
+    if (!user) return false;
+    
+    const userRole = user.role || 'user';
+    
+    if (userRole === 'admin') return true;
+    
+    // Check for specific reactor reports permission using the enhanced hasPermission function
+    return hasPermission('reactor_reports', 'kerur', 'operations');
+  };
+
+
+  // If user doesn't have permission, show access denied message
+  if (!hasReactorReportsPermission()) {
+    return (
+      <div className="splash-page">
+        <h1>Access Denied</h1>
+        <p>You don't have permission to access Reactor Reports.</p>
+        <p>Please contact your administrator if you believe this is an error.</p>
+        <button onClick={() => navigate('/kerur')} className="nav-link">
+          ← Back to Kerur Factory
+        </button>
+      </div>
+    );
+  }
 
   const handleDateChange = (e) => {
     setDate(e.target.value);
@@ -36,8 +67,18 @@ const KR_ReactorReports = () => {
       formData.append('send_email', sendEmail);
       formData.append('send_whatsapp', sendWhatsapp);
       formData.append('date', date);
+      formData.append('process_name', 'kr_reactor-report');
+      
+      // Send Google tokens if available in session
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.google_access_token) {
+        formData.append('google_access_token', user.google_access_token);
+      }
+      if (user.google_refresh_token) {
+        formData.append('google_refresh_token', user.google_refresh_token);
+      }
 
-      const response = await fetch(getApiUrl('kr-reactor-reports'), {
+      const response = await fetch(getApiUrl('kr_reactor-reports'), {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -116,6 +157,24 @@ const KR_ReactorReports = () => {
             case 'REACTOR_NOTIFICATION_ERROR':
               errorMessage = 'Error processing reactor report notifications.';
               break;
+            case 'NO_GMAIL_ACCESS':
+              errorMessage = 'You do not have Gmail access. Please contact your administrator.';
+              break;
+            case 'NO_GOOGLE_ACCESS_TOKEN':
+              errorMessage = 'No Google access token found. Please re-authenticate with Google.';
+              break;
+            case 'GMAIL_AUTH_FAILED':
+              errorMessage = 'Gmail authentication failed. Please re-authenticate with Google.';
+              break;
+            case 'GMAIL_PERMISSION_DENIED':
+              errorMessage = 'Gmail permission denied. Please check your Gmail permissions.';
+              break;
+            case 'GMAIL_API_ERROR':
+              errorMessage = 'Gmail API error. Please try again later.';
+              break;
+            case 'GMAIL_SEND_ERROR':
+              errorMessage = 'Gmail send error. Please try again.';
+              break;
             default:
               errorMessage = errorData.message || errorData.error || errorMessage;
           }
@@ -190,13 +249,26 @@ const KR_ReactorReports = () => {
         </div>
       </div>
 
-      <button
-        className="submit-button"
-        onClick={handleSubmit}
-        disabled={isLoading || (!sendWhatsapp && !sendEmail)}
-      >
-        {isLoading ? 'Generating Reports...' : 'Generate Reports'}
-      </button>
+      <div className="button-group">
+        <button
+          className="submit-button"
+          onClick={handleSubmit}
+          disabled={isLoading || (!sendWhatsapp && !sendEmail)}
+        >
+          {isLoading ? 'Generating Reports...' : 'Generate Reports'}
+        </button>
+        
+        {/* Navigation buttons */}
+        <div className="nav-buttons">
+          <button 
+            type="button" 
+            className="btn btn-outline" 
+            onClick={() => navigate('/kerur/kr_operations')}
+          >
+            Back to Department
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
