@@ -434,13 +434,18 @@ def google_oauth_callback():
         
         code = data.get('code') if data else None
         redirect_uri = data.get('redirect_uri') if data else None
+        state = data.get('state') if data else None
         
         logger.info(f"Received code: {code[:10] if code else 'None'}...")
         logger.info(f"Redirect URI: {redirect_uri}")
+        logger.info(f"State parameter: {state[:10] if state else 'None'}...")
         
         if not code:
             logger.error("No authorization code received")
             return jsonify({'success': False, 'error': 'Authorization code is required'}), 400
+        
+        if not state:
+            logger.warning("No state parameter received - CSRF protection may be compromised")
         
         # Get Google OAuth credentials
         google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
@@ -452,6 +457,7 @@ def google_oauth_callback():
         
         # Exchange authorization code for tokens
         token_url = 'https://oauth2.googleapis.com/token'
+        # Handle both root and oauth-callback redirect URIs
         token_data = {
             'code': code,
             'client_id': google_client_id,

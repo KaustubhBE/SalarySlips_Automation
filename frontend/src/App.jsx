@@ -265,7 +265,7 @@ function App() {
         <Route path="/" element={
           isAuthenticated ? 
             <Navigate to="/app" replace /> : 
-            <Navigate to="/login" replace />
+            <Login />
         } />
 
         <Route path="/app" element={
@@ -850,7 +850,6 @@ function App() {
 
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-        
 
         <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
