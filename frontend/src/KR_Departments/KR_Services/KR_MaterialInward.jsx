@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl } from '../../config'
+import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../MaterialIn-Out.css'
 
 const KR_MaterialInward = () => {
@@ -25,10 +25,13 @@ const KR_MaterialInward = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [partyNames, setPartyNames] = useState([])
+  const [places, setPlaces] = useState([])
+  const [partyPlaceMapping, setPartyPlaceMapping] = useState({}) // Store party name to place mapping
+  const [partyLoading, setPartyLoading] = useState(true)
+  const [placesLoading, setPlacesLoading] = useState(true)
 
   const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
-  const partyNameOptions = ['Supplier A', 'Supplier B', 'Vendor C', 'Local Dealer', 'Manufacturer']
-  const placeOptions = ['Warehouse 1', 'Warehouse 2', 'Storage Unit A', 'Storage Unit B', 'Main Store']
 
   // Helper function to get UOM for a material
   const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
@@ -90,12 +93,19 @@ const KR_MaterialInward = () => {
           onChange={(e) => handleInputChange(field, e.target.value)}
           required={required}
           className="form-select"
-          disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
+          disabled={dataLoading || partyLoading || placesLoading || 
+                   (field === 'subCategory' && !formData.category) || 
                    (field === 'particulars' && !formData.category) ||
                    (field === 'materialName' && !formData.category) ||
-                   (field === 'uom' && !formData.category)}
+                   (field === 'uom' && !formData.category) ||
+                   (field === 'partyName' && partyLoading) ||
+                   (field === 'place' && placesLoading)}
         >
-          <option value="">Select {label}</option>
+          <option value="">
+            {field === 'partyName' && partyLoading ? 'Loading party names...' :
+             field === 'place' && placesLoading ? 'Loading places...' :
+             `Select ${label}`}
+          </option>
           {options.map((option, index) => (
             <option key={index} value={option}>
               {option}
@@ -104,6 +114,53 @@ const KR_MaterialInward = () => {
         </select>
       </div>
     )
+  }
+
+  // Fetch party and place data with mapping from Google Sheets
+  const fetchPartyPlaceData = async () => {
+    try {
+      setPartyLoading(true)
+      setPlacesLoading(true)
+      
+      // Find the Kerur plant data to get the sheet ID
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        setMessage('No Google Sheet configuration found for Kerur plant')
+        setMessageType('error')
+        return
+      }
+      
+      const response = await axios.get(getApiUrl('get_party_place_data'), {
+        params: { 
+          factory: 'KR',
+          sheet_name: 'Party List',
+          sheet_id: sheetId
+        }
+      })
+      
+      if (response.data.success) {
+        const { party_names, places, party_place_mapping } = response.data.data
+        
+        // Sort arrays alphabetically for better UX
+        setPartyNames(party_names.sort())
+        setPlaces(places.sort())
+        setPartyPlaceMapping(party_place_mapping)
+      } else {
+        console.error('Failed to load party place data:', response.data.error)
+        setMessage('Failed to load party and place data')
+        setMessageType('error')
+      }
+    } catch (error) {
+      console.error('Error fetching party place data:', error)
+      setMessage('Error loading party and place data. Please try again.')
+      setMessageType('error')
+    } finally {
+      setPartyLoading(false)
+      setPlacesLoading(false)
+    }
   }
 
   // Fetch material data from backend on component mount
@@ -132,6 +189,7 @@ const KR_MaterialInward = () => {
     }
 
     fetchMaterialData()
+    fetchPartyPlaceData()
   }, [])
 
   const handleInputChange = (field, value) => {
@@ -173,6 +231,11 @@ const KR_MaterialInward = () => {
         if (autoUom) {
           newFormData.uom = autoUom
         }
+      }
+
+      // Auto-select place when party name is selected
+      if (field === 'partyName' && value && partyPlaceMapping[value]) {
+        newFormData.place = partyPlaceMapping[value]
       }
 
       return newFormData
@@ -419,7 +482,7 @@ const KR_MaterialInward = () => {
                   'partyName',
                   'Party Name',
                   true,
-                  partyNameOptions
+                  partyNames
                 )}
 
                 {/* Place Field */}
@@ -427,7 +490,7 @@ const KR_MaterialInward = () => {
                   'place',
                   'Place',
                   true,
-                  placeOptions
+                  places
                 )}
               </div>
 

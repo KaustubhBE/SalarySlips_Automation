@@ -2490,6 +2490,283 @@ def get_plant_material_data():
             "error": str(e)
         }), 500
 
+@app.route("/api/get_party_list", methods=["GET"])
+def get_party_list():
+    """Get party list data from Google Sheets for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters from query string
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Party List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Use direct Google Sheets API instead of get_plant_material_data_from_sheets
+        from Utils.fetch_data import fetch_google_sheet_data
+        
+        # Fetch data directly from the specified sheet
+        sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not sheet_data or len(sheet_data) < 3:
+            return jsonify({
+                "success": False,
+                "error": f"No data found in sheet '{sheet_name}' (need at least 3 rows: empty row, headers, and data)"
+            }), 400
+        
+        # Find header row (row 2) and get column indices
+        headers = sheet_data[1]  # Row 2 contains headers
+        party_name_col = None
+        place_col = None
+        
+        # Find column indices based on header names
+        for i, header in enumerate(headers):
+            if header and 'party' in header.lower() and 'name' in header.lower():
+                party_name_col = i
+            elif header and 'place' in header.lower():
+                place_col = i
+        
+        if party_name_col is None:
+            return jsonify({
+                "success": False,
+                "error": f"Party Name column not found in sheet '{sheet_name}'"
+            }), 400
+        
+        # Extract party names based on header position
+        party_names = []
+        for row in sheet_data[2:]:  # Skip row 1 and row 2 (headers), start from row 3
+            if len(row) > party_name_col and row[party_name_col]:
+                party_names.append(row[party_name_col])
+        
+        return jsonify({
+            "success": True,
+            "data": party_names,
+            "factory": factory
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching party list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/get_authority_list", methods=["GET"])
+def get_authority_list():
+    """Get authority list data from Google Sheets for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters from query string
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Authority List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Use direct Google Sheets API instead of get_plant_material_data_from_sheets
+        from Utils.fetch_data import fetch_google_sheet_data
+        
+        # Fetch data directly from the specified sheet
+        sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not sheet_data or len(sheet_data) < 3:
+            return jsonify({
+                "success": False,
+                "error": f"No data found in sheet '{sheet_name}' (need at least 3 rows: empty row, headers, and data)"
+            }), 400
+        
+        # Find header row (row 2) and get column index
+        headers = sheet_data[1]  # Row 2 contains headers
+        authority_name_col = None
+        
+        # Find column index based on header name
+        for i, header in enumerate(headers):
+            if header and 'authority' in header.lower() and 'name' in header.lower():
+                authority_name_col = i
+                break
+        
+        if authority_name_col is None:
+            return jsonify({
+                "success": False,
+                "error": f"Authority Name column not found in sheet '{sheet_name}'"
+            }), 400
+        
+        # Extract authority names based on header position
+        authority_names = []
+        for row in sheet_data[2:]:  # Skip row 1 and row 2 (headers), start from row 3
+            if len(row) > authority_name_col and row[authority_name_col]:
+                authority_names.append(row[authority_name_col])
+        
+        return jsonify({
+            "success": True,
+            "data": authority_names,
+            "factory": factory
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching authority list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/get_places_list", methods=["GET"])
+def get_places_list():
+    """Get places list data from Google Sheets for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters from query string
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Party List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Use direct Google Sheets API
+        from Utils.fetch_data import fetch_google_sheet_data
+        
+        # Fetch data directly from the specified sheet
+        sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not sheet_data or len(sheet_data) < 3:
+            return jsonify({
+                "success": False,
+                "error": f"No data found in sheet '{sheet_name}' (need at least 3 rows: empty row, headers, and data)"
+            }), 400
+        
+        # Find header row (row 2) and get column index
+        headers = sheet_data[1]  # Row 2 contains headers
+        place_col = None
+        
+        # Find column index based on header name
+        for i, header in enumerate(headers):
+            if header and 'place' in header.lower():
+                place_col = i
+                break
+        
+        if place_col is None:
+            return jsonify({
+                "success": False,
+                "error": f"Place column not found in sheet '{sheet_name}'"
+            }), 400
+        
+        # Extract places based on header position
+        places = []
+        for row in sheet_data[2:]:  # Skip row 1 and row 2 (headers), start from row 3
+            if len(row) > place_col and row[place_col]:
+                places.append(row[place_col])
+        
+        return jsonify({
+            "success": True,
+            "data": places,
+            "factory": factory
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching places list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/get_party_place_data", methods=["GET"])
+def get_party_place_data():
+    """Get party and place data with mapping from Google Sheets"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters from query string
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Party List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Use direct Google Sheets API
+        from Utils.fetch_data import fetch_google_sheet_data
+        
+        # Fetch data directly from the specified sheet
+        sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not sheet_data or len(sheet_data) < 3:
+            return jsonify({
+                "success": False,
+                "error": f"No data found in sheet '{sheet_name}' (need at least 3 rows: empty row, headers, and data)"
+            }), 400
+        
+        # Find header row (row 2) and get column indices
+        headers = sheet_data[1]  # Row 2 contains headers
+        party_name_col = None
+        place_col = None
+        
+        # Find column indices based on header names
+        for i, header in enumerate(headers):
+            if header and 'party' in header.lower() and 'name' in header.lower():
+                party_name_col = i
+            elif header and 'place' in header.lower():
+                place_col = i
+        
+        if party_name_col is None or place_col is None:
+            return jsonify({
+                "success": False,
+                "error": f"Required columns not found in sheet '{sheet_name}'"
+            }), 400
+        
+        # Extract data and create mapping
+        party_place_mapping = {}
+        unique_party_names = set()
+        unique_places = set()
+        
+        for row in sheet_data[2:]:  # Skip row 1 and row 2 (headers), start from row 3
+            if len(row) > max(party_name_col, place_col):
+                party_name = row[party_name_col] if party_name_col < len(row) and row[party_name_col] else None
+                place = row[place_col] if place_col < len(row) and row[place_col] else None
+                
+                if party_name and place:
+                    party_place_mapping[party_name] = place
+                    unique_party_names.add(party_name)
+                    unique_places.add(place)
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "party_names": list(unique_party_names),
+                "places": list(unique_places),
+                "party_place_mapping": party_place_mapping
+            },
+            "factory": factory
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching party place data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/sync_plant_material_data", methods=["POST"])
 def sync_plant_material_data():
     """Sync material data from Google Sheets to Firebase"""

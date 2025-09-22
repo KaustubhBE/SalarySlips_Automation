@@ -787,37 +787,61 @@ export const PLANT_DATA = [
     name: 'Head Office', 
     material_sheet_id: '',
     document_name: 'HO',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   },
   { 
     name: 'Gulbarga', 
     material_sheet_id: '',
     document_name: 'GG',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   },
   { 
     name: 'Kerur', 
     material_sheet_id: '1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc',
     document_name: 'KR',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   },
   { 
     name: 'Humnabad', 
     material_sheet_id: '',
     document_name: 'HB',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   },
   { 
     name: 'Omkar', 
     material_sheet_id: '',
     document_name: 'OM',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   },
   {
     name: 'Padmavati',
     material_sheet_id: '', 
     document_name: 'PV',
-    sheet_name: 'Material List'
+    sheet_name: {
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'Authority List'
+    }
   }
 ];
 
@@ -846,7 +870,55 @@ export const getPlantNameBySheetId = (sheetId) => {
 
 export const getSheetNameBySheetId = (sheetId) => {
   const plant = getPlantBySheetId(sheetId);
-  return plant ? plant.sheet_name : 'Material List';
+  if (!plant) return 'Material List';
+  
+  // Handle both old string format and new object format for backward compatibility
+  if (typeof plant.sheet_name === 'string') {
+    return plant.sheet_name;
+  } else if (typeof plant.sheet_name === 'object') {
+    return plant.sheet_name.MaterialList || 'Material List';
+  }
+  
+  return 'Material List';
+};
+
+export const getMaterialSheetName = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  if (!plant || !plant.sheet_name) return 'Material List';
+  
+  if (typeof plant.sheet_name === 'string') {
+    return plant.sheet_name;
+  } else if (typeof plant.sheet_name === 'object') {
+    return plant.sheet_name.MaterialList || 'Material List';
+  }
+  
+  return 'Material List';
+};
+
+export const getPartySheetName = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  if (!plant || !plant.sheet_name) return 'Party List';
+  
+  if (typeof plant.sheet_name === 'string') {
+    return 'Party List'; // Default for old format
+  } else if (typeof plant.sheet_name === 'object') {
+    return plant.sheet_name.PartyList || 'Party List';
+  }
+  
+  return 'Party List';
+};
+
+export const getAuthoritySheetName = (sheetId) => {
+  const plant = getPlantBySheetId(sheetId);
+  if (!plant || !plant.sheet_name) return 'Authority List';
+  
+  if (typeof plant.sheet_name === 'string') {
+    return 'Authority List'; // Default for old format
+  } else if (typeof plant.sheet_name === 'object') {
+    return plant.sheet_name.AuthorityList || 'Authority List';
+  }
+  
+  return 'Authority List';
 };
 
 // Named exports

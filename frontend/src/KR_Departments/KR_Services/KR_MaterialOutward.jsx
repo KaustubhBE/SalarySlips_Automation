@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl } from '../../config'
+import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../MaterialIn-Out.css'
 
 const KR_MaterialOutward = () => {
@@ -25,9 +25,10 @@ const KR_MaterialOutward = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [authorityNames, setAuthorityNames] = useState([])
+  const [authorityLoading, setAuthorityLoading] = useState(true)
 
   const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
-  const givenToOptions = ['Department A', 'Department B', 'Production Line 1', 'Production Line 2', 'Maintenance Team', 'Quality Control', 'Storage Unit', 'External Party']
 
   // Helper function to get UOM for a material
   const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
@@ -89,12 +90,16 @@ const KR_MaterialOutward = () => {
           onChange={(e) => handleInputChange(field, e.target.value)}
           required={required}
           className="form-select"
-          disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
+          disabled={dataLoading || authorityLoading || 
+                   (field === 'subCategory' && !formData.category) || 
                    (field === 'particulars' && !formData.category) ||
                    (field === 'materialName' && !formData.category) ||
-                   (field === 'uom' && !formData.category)}
+                   (field === 'uom' && !formData.category) ||
+                   (field === 'givenTo' && authorityLoading)}
         >
-          <option value="">Select {label}</option>
+          <option value="">
+            {field === 'givenTo' && authorityLoading ? 'Loading authority names...' : `Select ${label}`}
+          </option>
           {options.map((option, index) => (
             <option key={index} value={option}>
               {option}
@@ -103,6 +108,45 @@ const KR_MaterialOutward = () => {
         </select>
       </div>
     )
+  }
+
+  // Fetch authority list data from Google Sheets
+  const fetchAuthorityList = async () => {
+    try {
+      setAuthorityLoading(true)
+      // Find the Kerur plant data to get the sheet ID
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        setMessage('No Google Sheet configuration found for Kerur plant')
+        setMessageType('error')
+        return
+      }
+      
+      const response = await axios.get(getApiUrl('get_authority_list'), {
+        params: { 
+          factory: 'KR',
+          sheet_name: 'Authority List',
+          sheet_id: sheetId
+        }
+      })
+      
+      if (response.data.success) {
+        setAuthorityNames(response.data.data)
+      } else {
+        console.error('Failed to load authority list:', response.data.error)
+        setMessage('Failed to load authority list data')
+        setMessageType('error')
+      }
+    } catch (error) {
+      console.error('Error fetching authority list:', error)
+      setMessage('Error loading authority list data. Please try again.')
+      setMessageType('error')
+    } finally {
+      setAuthorityLoading(false)
+    }
   }
 
   // Fetch material data from backend on component mount
@@ -131,6 +175,7 @@ const KR_MaterialOutward = () => {
     }
 
     fetchMaterialData()
+    fetchAuthorityList()
   }, [])
 
   const handleInputChange = (field, value) => {
@@ -418,7 +463,7 @@ const KR_MaterialOutward = () => {
                   'givenTo',
                   'Given To',
                   true,
-                  givenToOptions
+                  authorityNames
                 )}
 
                 {/* Description Field */}
