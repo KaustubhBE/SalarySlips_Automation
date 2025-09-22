@@ -20,7 +20,11 @@ const KR_MaterialInward = () => {
     particulars: '',
     materialName: '',
     uom: '',
-    quantity: '',
+    quantity: ''
+  })
+
+  // General form data for party name and place (applies to all items)
+  const [generalFormData, setGeneralFormData] = useState({
     partyName: '',
     place: ''
   })
@@ -97,14 +101,14 @@ const KR_MaterialInward = () => {
   // Multi-item management functions
   const handleAddItem = () => {
     // If no fields are filled, don't add anything
-    if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity && !formData.partyName && !formData.place) {
+    if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity) {
       return
     }
     
     // If some fields are filled but not all required ones, show validation
-    if (formData.category || formData.materialName || formData.uom || formData.quantity || formData.partyName || formData.place) {
-      if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity || !formData.partyName || !formData.place) {
-        alert('Please fill in all required fields (Category, Material Name, UOM, Quantity, Party Name, and Place) before adding an item.')
+    if (formData.category || formData.materialName || formData.uom || formData.quantity) {
+      if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity) {
+        alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before adding an item.')
         return
       }
     }
@@ -116,9 +120,7 @@ const KR_MaterialInward = () => {
       particulars: formData.particulars,
       materialName: formData.materialName,
       uom: formData.uom,
-      quantity: formData.quantity,
-      partyName: formData.partyName,
-      place: formData.place
+      quantity: formData.quantity
     }
 
     setInwardItems(prev => [...prev, newItem])
@@ -131,9 +133,7 @@ const KR_MaterialInward = () => {
       particulars: '',
       materialName: '',
       uom: '',
-      quantity: '',
-      partyName: '',
-      place: ''
+      quantity: ''
     }))
   }
 
@@ -149,9 +149,7 @@ const KR_MaterialInward = () => {
       particulars: item.particulars,
       materialName: item.materialName,
       uom: item.uom,
-      quantity: item.quantity,
-      partyName: item.partyName,
-      place: item.place
+      quantity: item.quantity
     })
   }
 
@@ -172,9 +170,7 @@ const KR_MaterialInward = () => {
       particulars: item.particulars,
       materialName: item.materialName,
       uom: item.uom,
-      quantity: item.quantity,
-      partyName: item.partyName,
-      place: item.place
+      quantity: item.quantity
     })
   }
 
@@ -272,18 +268,13 @@ const KR_MaterialInward = () => {
         }
       }
 
-      // Auto-select place when party name is selected in edit mode
-      if (field === 'partyName' && value && partyPlaceMapping[value]) {
-        newEditFormData.place = partyPlaceMapping[value]
-      }
-
       return newEditFormData
     })
   }
 
   const handleSaveEdit = () => {
-    if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity || !editFormData.partyName || !editFormData.place) {
-      alert('Please fill in all required fields (Category, Material Name, UOM, Quantity, Party Name, and Place) before saving.')
+    if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity) {
+      alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before saving.')
       return
     }
 
@@ -457,12 +448,23 @@ const KR_MaterialInward = () => {
         }
       }
 
-      // Auto-select place when party name is selected
-      if (field === 'partyName' && value && partyPlaceMapping[value]) {
-        newFormData.place = partyPlaceMapping[value]
+      return newFormData
+    })
+  }
+
+  const handleGeneralInputChange = (field, value) => {
+    setGeneralFormData(prev => {
+      const newGeneralFormData = {
+        ...prev,
+        [field]: value
       }
 
-      return newFormData
+      // Auto-select place when party name is selected
+      if (field === 'partyName' && value && partyPlaceMapping[value]) {
+        newGeneralFormData.place = partyPlaceMapping[value]
+      }
+
+      return newGeneralFormData
     })
   }
 
@@ -472,6 +474,11 @@ const KR_MaterialInward = () => {
     
     if (inwardItems.length === 0) {
       alert('Please add at least one item to record material inward.')
+      return
+    }
+
+    if (!generalFormData.partyName || !generalFormData.place) {
+      alert('Please fill in Party Name and Place for the inward record.')
       return
     }
 
@@ -492,8 +499,8 @@ const KR_MaterialInward = () => {
             materialName: item.materialName,
             uom: item.uom,
             quantity: item.quantity,
-            partyName: item.partyName,
-            place: item.place,
+            partyName: generalFormData.partyName,
+            place: generalFormData.place,
             timestamp: new Date().toISOString(),
             department: 'KR',
             type: 'inward'
@@ -523,7 +530,9 @@ const KR_MaterialInward = () => {
           particulars: '',
           materialName: '',
           uom: '',
-          quantity: '',
+          quantity: ''
+        })
+        setGeneralFormData({
           partyName: '',
           place: ''
         })
@@ -641,8 +650,6 @@ const KR_MaterialInward = () => {
                       <th>Material Name</th>
                       <th>Quantity</th>
                       <th>UOM</th>
-                      <th>Party Name</th>
-                      <th>Place</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -828,54 +835,6 @@ const KR_MaterialInward = () => {
                             </select>
                           ) : (
                             item.uom
-                          )}
-                        </td>
-                        <td 
-                          data-label="Party Name"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'partyName')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'partyName')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'partyName')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.partyName}
-                              onChange={(e) => handleEditInputChange('partyName', e.target.value)}
-                              className="edit-select"
-                            >
-                              <option value="">Select Party Name</option>
-                              {partyNames.map(party => (
-                                <option key={party} value={party}>{party}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.partyName
-                          )}
-                        </td>
-                        <td 
-                          data-label="Place"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'place')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'place')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'place')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.place}
-                              onChange={(e) => handleEditInputChange('place', e.target.value)}
-                              className="edit-select"
-                            >
-                              <option value="">Select Place</option>
-                              {places.map(place => (
-                                <option key={place} value={place}>{place}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.place
                           )}
                         </td>
                         <td data-label="Action">
@@ -1091,45 +1050,6 @@ const KR_MaterialInward = () => {
                   </select>
                 </div>
 
-                {/* Party Name - Required only if no items exist */}
-                <div className="form-group">
-                  <label htmlFor="partyName" className={inwardItems.length === 0 ? "required" : ""}>
-                    Party Name {inwardItems.length === 0 ? "*" : ""}
-                  </label>
-                  <select
-                    id="partyName"
-                    value={formData.partyName}
-                    onChange={(e) => handleInputChange('partyName', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
-                    disabled={partyLoading}
-                  >
-                    <option value="">{partyLoading ? 'Loading party names...' : 'Select Party Name'}</option>
-                    {partyNames.map(party => (
-                      <option key={party} value={party}>{party}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Place - Required only if no items exist */}
-                <div className="form-group">
-                  <label htmlFor="place" className={inwardItems.length === 0 ? "required" : ""}>
-                    Place {inwardItems.length === 0 ? "*" : ""}
-                  </label>
-                  <select
-                    id="place"
-                    value={formData.place}
-                    onChange={(e) => handleInputChange('place', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
-                    disabled={placesLoading}
-                  >
-                    <option value="">{placesLoading ? 'Loading places...' : 'Select Place'}</option>
-                    {places.map(place => (
-                      <option key={place} value={place}>{place}</option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Add Item Button */}
                 <div className="form-group add-item-group">
@@ -1143,6 +1063,49 @@ const KR_MaterialInward = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* General Form Fields - Party Name and Place */}
+          <div className="form-row">
+            {/* Party Name - Required */}
+            <div className="form-group">
+              <label htmlFor="generalPartyName" className="required">
+                Party Name *
+              </label>
+              <select
+                id="generalPartyName"
+                value={generalFormData.partyName}
+                onChange={(e) => handleGeneralInputChange('partyName', e.target.value)}
+                required
+                className="form-select"
+                disabled={partyLoading}
+              >
+                <option value="">{partyLoading ? 'Loading party names...' : 'Select Party Name'}</option>
+                {partyNames.map(party => (
+                  <option key={party} value={party}>{party}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Place - Required */}
+            <div className="form-group">
+              <label htmlFor="generalPlace" className="required">
+                Place *
+              </label>
+              <select
+                id="generalPlace"
+                value={generalFormData.place}
+                onChange={(e) => handleGeneralInputChange('place', e.target.value)}
+                required
+                className="form-select"
+                disabled={placesLoading}
+              >
+                <option value="">{placesLoading ? 'Loading places...' : 'Select Place'}</option>
+                {places.map(place => (
+                  <option key={place} value={place}>{place}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -1164,7 +1127,9 @@ const KR_MaterialInward = () => {
                 particulars: '',
                 materialName: '',
                 uom: '',
-                quantity: '',
+                quantity: ''
+              })
+              setGeneralFormData({
                 partyName: '',
                 place: ''
               })
