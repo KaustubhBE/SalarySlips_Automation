@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl } from '../../config'
+import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../PlaceOrder.css'
 
 // Constants
@@ -216,6 +216,8 @@ const KR_PlaceOrder = () => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [orderId, setOrderId] = useState('')
   const [orderIdGenerated, setOrderIdGenerated] = useState(false)
+  const [authorityNames, setAuthorityNames] = useState([])
+  const [authorityLoading, setAuthorityLoading] = useState(true)
   
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
@@ -228,6 +230,39 @@ const KR_PlaceOrder = () => {
   // Custom Hooks
   const { materialData, categories, dataLoading, fetchMaterialData } = useMaterialData()
   const { sessionId, registerSession, cleanupSession, cleanupOldSessions } = useSessionManagement()
+
+  // Fetch authority list data from Google Sheets
+  const fetchAuthorityList = async () => {
+    try {
+      setAuthorityLoading(true)
+      // Find the Kerur plant data to get the sheet ID
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        return
+      }
+      
+      const response = await axios.get(getApiUrl('get_authority_list'), {
+        params: { 
+          factory: 'KR',
+          sheet_name: 'Authority List',
+          sheet_id: sheetId
+        }
+      })
+      
+      if (response.data.success) {
+        setAuthorityNames(response.data.data)
+      } else {
+        console.error('Failed to load authority list:', response.data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching authority list:', error)
+    } finally {
+      setAuthorityLoading(false)
+    }
+  }
 
   // Order ID Management
   const handleGenerateOrderId = async () => {
@@ -268,6 +303,7 @@ const KR_PlaceOrder = () => {
   useEffect(() => {
     // Fetch material data first
     fetchMaterialData()
+    fetchAuthorityList()
     
     // Update current date/time
     const updateDateTime = () => {
@@ -1011,18 +1047,17 @@ const KR_PlaceOrder = () => {
         <div className="form-main-content">
           {/* Left Section - Form Inputs */}
           <div className="form-left-section">
-            {/* Form inputs for adding new item */}
-            <div className="add-item-section">
-              <h3 className="add-item-header">
-                {orderItems.length === 0 ? 'Add Item to Order' : 'Add Additional Item (Optional)'}
-              </h3>
-              <p className="add-item-description">
-                {orderItems.length === 0 
-                  ? 'Fill in the required fields below to add your first item to the order.' 
-                  : 'You can add more items to your order by filling in the fields below, or proceed to place the order with current items.'
-                }
-              </p>
-            </div>
+            {/* Form inputs for adding new item - Only show when no items exist */}
+            {orderItems.length === 0 && (
+              <div className="add-item-section">
+                <h3 className="add-item-header">
+                  Add Item to Order
+                </h3>
+                <p className="add-item-description">
+                  Fill in the required fields below to add your first item to the order.
+                </p>
+              </div>
+            )}
             <div className="form-row">
               {/* Category - Required only if no items exist */}
               <div className="form-group">
@@ -1156,15 +1191,23 @@ const KR_PlaceOrder = () => {
           {/* Given By - Required */}
           <div className="form-group">
             <label htmlFor="givenBy" className="required">Given By</label>
-            <input
-              type="text"
+            <select
               id="givenBy"
               value={formData.givenBy}
               onChange={(e) => handleInputChange('givenBy', e.target.value)}
               required
-              className="form-input"
-              placeholder="Enter name of person giving the order"
-            />
+              className="form-select"
+              disabled={authorityLoading}
+            >
+              <option value="">
+                {authorityLoading ? 'Loading authority names...' : 'Select Authority Name'}
+              </option>
+              {authorityNames.map((authority, index) => (
+                <option key={index} value={authority}>
+                  {authority}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Importance - Required */}
