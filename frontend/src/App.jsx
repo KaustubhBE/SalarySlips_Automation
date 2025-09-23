@@ -37,6 +37,7 @@ import KRStore from './KR_Departments/KRStore';
 import KRHumanResource from './KR_Departments/KRHumanResource';
 import KROperations from './KR_Departments/KROperations';
 import KR_ReactorReports from './KR_Departments/KR_Services/KR_ReactorReports';
+import KR_GeneralReports from './KR_Departments/KR_Services/KR_GeneralReports';
 import OMStore from './OM_Departments/OMStore';
 import OMHumanResource from './OM_Departments/OMHumanResource';
 import HBDStore from './HBD_Departments/HBDStore';
@@ -539,6 +540,13 @@ function App() {
         <Route path="/kerur/kr_operations/kr_reactor-reports" element={
           isAuthenticated ? 
             <KR_ReactorReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Kerur Operations General Reports Route */}
+        <Route path="/kerur/kr_operations/kr_general-reports" element={
+          isAuthenticated ? 
+            <KR_GeneralReports /> : 
             <Navigate to="/login" replace />
         } />
 

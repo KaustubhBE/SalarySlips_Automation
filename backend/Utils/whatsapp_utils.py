@@ -179,7 +179,9 @@ class WhatsAppNodeClient:
                     contact_name: str, 
                     whatsapp_number: str,
                     process_name: str = "salary_slip",
+                    message: str = "",
                     file_paths: List[str] = None,
+                    file_sequence: List[Dict] = None,
                     variables: Dict = None,
                     options: Dict = None) -> Union[bool, str]:
         try:
@@ -199,6 +201,10 @@ class WhatsAppNodeClient:
             elif isinstance(file_paths, str):
                 file_paths = [file_paths]
             
+            # Prepare file sequence
+            if file_sequence is None:
+                file_sequence = []
+            
             # Prepare variables
             if variables is None:
                 variables = {}
@@ -212,6 +218,8 @@ class WhatsAppNodeClient:
                 'contact_name': contact_name,
                 'whatsapp_number': whatsapp_number,
                 'process_name': process_name,
+                'message': message,
+                'file_sequence': json.dumps(file_sequence),
                 'variables': json.dumps(variables),
                 'options': json.dumps(options)
             }
@@ -281,6 +289,7 @@ class WhatsAppNodeClient:
     def send_bulk_messages(self, 
                           contacts: List[Dict], 
                           process_name: str = "salary_slip",
+                          message: str = "",
                           file_paths: List[str] = None,
                           variables: Dict = None,
                           options: Dict = None) -> List[Dict]:
@@ -312,6 +321,7 @@ class WhatsAppNodeClient:
             data = {
                 'contacts': json.dumps(contacts),
                 'process_name': process_name,
+                'message': message,
                 'variables': json.dumps(variables),
                 'options': json.dumps(options)
             }
@@ -401,7 +411,9 @@ def send_whatsapp_message(contact_name: str, message: Union[str, List[str]],
         contact_name=contact_name,
         whatsapp_number=whatsapp_number,
         process_name=process_name,
+        message=message_text,
         file_paths=file_paths,
+        file_sequence=file_sequence,
         variables=variables,
         options=options
     )
@@ -425,6 +437,7 @@ def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[s
     return client.send_bulk_messages(
         contacts=contacts,
         process_name=process_name,
+        message=message_text,
         file_paths=file_paths,
         variables={},
         options={}

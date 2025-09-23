@@ -357,12 +357,14 @@ class WhatsAppServer {
                     process_name = 'salary_slip',
                     message = '',
                     variables = '{}',
-                    options = '{}'
+                    options = '{}',
+                    file_sequence = '[]'
                 } = req.body;
 
                 // Parse JSON strings if needed
                 let parsedVariables = {};
                 let parsedOptions = {};
+                let parsedFileSequence = [];
                 
                 try {
                     parsedVariables = typeof variables === 'string' ? JSON.parse(variables) : variables;
@@ -376,14 +378,26 @@ class WhatsAppServer {
                     console.warn('Invalid options JSON, using empty object:', e.message);
                 }
 
+                try {
+                    parsedFileSequence = typeof file_sequence === 'string' ? JSON.parse(file_sequence) : file_sequence;
+                } catch (e) {
+                    console.warn('Invalid file_sequence JSON, using empty array:', e.message);
+                }
+
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
+
+                // Debug logging
+                console.log(`Received request for ${contact_name}:`);
+                console.log(`  - Message: "${message}"`);
+                console.log(`  - File sequence:`, parsedFileSequence);
+                console.log(`  - File paths:`, filePaths);
 
                 const service = await this.getServiceForRequest(req);
                 const result = await service.sendWhatsAppMessage(
                     contact_name,
-                    '', // Empty message - will use template from message.json
+                    message, // Use provided message or empty string for template fallback
                     filePaths,
-                    [], // file_sequence not needed in unified approach
+                    parsedFileSequence, // Pass file_sequence for sequencing
                     whatsapp_number,
                     process_name,
                     {
@@ -414,13 +428,15 @@ class WhatsAppServer {
                     process_name = 'salary_slip',
                     message = '',
                     variables = '{}',
-                    options = '{}'
+                    options = '{}',
+                    file_sequence = '[]'
                 } = req.body;
 
                 // Parse JSON strings if needed
                 let parsedContacts = [];
                 let parsedVariables = {};
                 let parsedOptions = {};
+                let parsedFileSequence = [];
                 
                 try {
                     parsedContacts = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
@@ -441,6 +457,12 @@ class WhatsAppServer {
                     console.warn('Invalid options JSON, using empty object:', e.message);
                 }
 
+                try {
+                    parsedFileSequence = typeof file_sequence === 'string' ? JSON.parse(file_sequence) : file_sequence;
+                } catch (e) {
+                    console.warn('Invalid file_sequence JSON, using empty array:', e.message);
+                }
+
                 // Get uploaded file paths
                 const filePaths = req.files ? req.files.map(file => file.path) : [];
 
@@ -450,8 +472,9 @@ class WhatsAppServer {
                         name: c.name,
                         phoneNumber: c.whatsapp_number || c.phoneNumber || c.phone
                     })),
-                    '', // Empty message - will use template from message.json
+                    message, // Use provided message or empty string for template fallback
                     filePaths,
+                    parsedFileSequence, // Pass file_sequence for sequencing
                     process_name,
                     {
                         ...parsedOptions,

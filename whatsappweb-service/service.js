@@ -119,11 +119,11 @@ class WhatsAppService {
 
     // Delegate messaging methods to messaging client
     async sendWhatsAppMessage(contactName, message, filePaths = [], fileSequence = [], whatsappNumber, processName, options = {}) {
-        return this.messagingClient.sendWhatsAppMessage(contactName, message, filePaths, whatsappNumber, processName, options);
+        return this.messagingClient.sendWhatsAppMessage(contactName, message, filePaths, fileSequence, whatsappNumber, processName, options);
     }
 
-    async sendBulkMessages(contacts, message, filePaths = [], processName = 'salary_slip', options = {}) {
-        return this.messagingClient.sendBulkMessages(contacts, message, filePaths, processName, options);
+    async sendBulkMessages(contacts, message, filePaths = [], fileSequence = [], processName = 'salary_slip', options = {}) {
+        return this.messagingClient.sendBulkMessages(contacts, message, filePaths, fileSequence, processName, options);
     }
 
     async prepareFilePaths(filePaths, tempDir = null, isUpload = false) {

@@ -89,10 +89,6 @@ DEPARTMENTS_CONFIG = {
     'REPORTS_DEPARTMENT': 'reports_department'
 }
 
-
-
-
-
 # Configure logging first
 logging.basicConfig(
     level=logging.INFO,
@@ -1149,7 +1145,7 @@ def generate_report():
                             # Send WhatsApp message with attachments
                             success = send_whatsapp_message(
                                 contact_name=recipient_name,
-                                message="",  # Empty message - will use template
+                                message=message_content,  # Use processed template content
                                 file_paths=attachment_paths,
                                 file_sequence = file_sequence,
                                 whatsapp_number=recipient_phone,
@@ -1465,7 +1461,7 @@ def retry_reports():
                                 # Send WhatsApp message with attachments
                                 success = send_whatsapp_message(
                                     contact_name=recipient_name,
-                                    message="",  # Empty message - will use template
+                                    message=message_content,  # Use processed template content
                                     file_paths=attachment_paths,
                                     file_sequence=file_sequence,
                                     whatsapp_number=recipient_phone,

@@ -65,8 +65,115 @@ class WhatsAppMessaging {
         }
     }
 
-    async sendWhatsAppMessage(contactName, message, filePaths = [], whatsappNumber, processName, options = {}) {
+    async sendMessageWithRetry(formattedNumber, message, maxRetries = 3) {
+        let messageSent = false;
+        let retryCount = 0;
+        
+        while (!messageSent && retryCount < maxRetries) {
+            try {
+                // Test WhatsApp Web Store objects before sending message
+                const page = this.authClient.client.pupPage;
+                let sendTestResult = null;
+                
+                if (page) {
+                    sendTestResult = await page.evaluate(() => {
+                        try {
+                            const result = {
+                                storeExists: !!window.Store,
+                                chatStoreExists: !!(window.Store && window.Store.Chat),
+                                getChatExists: !!(window.Store && window.Store.Chat && window.Store.Chat.get),
+                                getChatType: window.Store && window.Store.Chat && window.Store.Chat.get ? typeof window.Store.Chat.get : 'undefined',
+                                storeKeys: window.Store ? Object.keys(window.Store) : [],
+                                chatKeys: window.Store && window.Store.Chat ? Object.keys(window.Store.Chat) : []
+                            };
+                            
+                            // Try to actually call the function and check if it's properly initialized
+                            if (window.Store && window.Store.Chat && window.Store.Chat.get) {
+                                try {
+                                    const testCall = window.Store.Chat.get('test@c.us');
+                                    result.testCallSuccess = true;
+                                    result.testCallResult = 'success';
+                                } catch (e) {
+                                    result.testCallError = e.message;
+                                    result.testCallSuccess = false;
+                                    
+                                    // Check if it's a proper WhatsApp error (function is working) or an undefined error (function not ready)
+                                    if (e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties')) {
+                                        result.testCallResult = 'whatsapp_error'; // Function is working but WhatsApp returned an error
+                                    } else {
+                                        result.testCallResult = 'function_not_ready'; // Function is not properly initialized
+                                    }
+                                }
+                            } else {
+                                result.testCallResult = 'function_not_available';
+                            }
+                            
+                            return result;
+                        } catch (e) {
+                            return { error: e.message };
+                        }
+                    });
+                }
+                
+                // Only proceed with sending if Store objects are properly initialized
+                if (!sendTestResult || sendTestResult.testCallResult === 'success' || sendTestResult.testCallResult === 'whatsapp_error') {
+                    if (Array.isArray(message)) {
+                        await this.authClient.client.sendMessage(formattedNumber, message.join('\n'));
+                    } else {
+                        await this.authClient.client.sendMessage(formattedNumber, message);
+                    }
+                } else {
+                    // If Store objects aren't ready, try a different approach
+                    console.log(`Store objects not ready (${sendTestResult.testCallResult}), attempting direct messaging...`);
+                    
+                    // Wait a bit more and try again
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    
+                    // Try to send message directly without Store validation
+                    if (Array.isArray(message)) {
+                        await this.authClient.client.sendMessage(formattedNumber, message.join('\n'));
+                    } else {
+                        await this.authClient.client.sendMessage(formattedNumber, message);
+                    }
+                }
+                console.log(`Message sent successfully`);
+                messageSent = true;
+            } catch (messageError) {
+                retryCount++;
+                console.error(`Error sending message (attempt ${retryCount}/${maxRetries}):`, messageError);
+                
+                if (retryCount < maxRetries) {
+                    // Wait before retrying - longer wait for WhatsApp Web to stabilize
+                    const waitTime = retryCount * 3000; // Progressive backoff: 3s, 6s, 9s
+                    console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    
+                    // Try to refresh client state if possible
+                    try {
+                        const state = await this.authClient.client.getState();
+                        console.log(`Client state after error: ${state}`);
+                    } catch (stateError) {
+                        console.warn(`Could not get client state:`, stateError.message);
+                    }
+                    
+                    // Wait for Store objects before retry
+                    console.log(`Waiting for Store objects before retry ${retryCount + 1}/${maxRetries}`);
+                    await this.waitForWhatsAppStore(30000); // Wait up to 30 seconds for retry
+                }
+            }
+        }
+        
+        return messageSent;
+    }
+
+    async sendWhatsAppMessage(contactName, message, filePaths = [], fileSequence = [], whatsappNumber, processName, options = {}) {
         try {
+            // Debug logging
+            console.log(`sendWhatsAppMessage called for ${contactName}:`);
+            console.log(`  - Message: "${message}"`);
+            console.log(`  - File sequence:`, fileSequence);
+            console.log(`  - Process name: ${processName}`);
+            
             await this.authClient.waitForReady();
 
             if (!whatsappNumber) {
@@ -170,7 +277,11 @@ class WhatsAppMessaging {
             }
 
             let finalMessage = message;
-            if (processName && (!message || (typeof message === 'string' && message.trim() === ''))) {
+            console.log(`Initial message: "${message}"`);
+            
+            // Only use template fallback if no message is provided or message is empty
+            // Skip template fallback for 'report' process as it should always use user-provided content
+            if (processName && processName !== 'report' && (!message || (typeof message === 'string' && message.trim() === ''))) {
                 const templateVariables = {
                     contact_name: contactName,
                     ...options.variables || {}
@@ -191,126 +302,89 @@ class WhatsAppMessaging {
                     finalMessage = templateMessage;
                     console.log(`Using template message for process: ${processName}, type: ${messageType}`);
                 }
+            } else if (message && typeof message === 'string' && message.trim() !== '') {
+                // Use the provided message content (from user's template file)
+                finalMessage = message;
+                console.log(`Using user-provided message content for ${contactName}`);
+            } else if (processName === 'report') {
+                // For report process, if no message is provided, log a warning
+                console.warn(`No message content provided for report process for ${contactName}. This should not happen.`);
+                finalMessage = message || ''; // Use empty string as fallback
             }
+            
+            console.log(`Final message after processing: "${finalMessage}"`);
 
             const validFilePaths = await this.prepareFilePaths(filePaths);
             const perFileDelayMs = Number(options.perFileDelayMs || 1000);
 
-            if (finalMessage) {
-                let messageSent = false;
-                let retryCount = 0;
-                const maxRetries = 3;
-
-                while (!messageSent && retryCount < maxRetries) {
-                    try {
-                        // Test WhatsApp Web Store objects before sending message
-                        const page = this.authClient.client.pupPage;
-                        let sendTestResult = null;
-                        
-                        if (page) {
-                            sendTestResult = await page.evaluate(() => {
-                                try {
-                                    const result = {
-                                        storeExists: !!window.Store,
-                                        chatStoreExists: !!(window.Store && window.Store.Chat),
-                                        getChatExists: !!(window.Store && window.Store.Chat && window.Store.Chat.get),
-                                        getChatType: window.Store && window.Store.Chat && window.Store.Chat.get ? typeof window.Store.Chat.get : 'undefined',
-                                        storeKeys: window.Store ? Object.keys(window.Store) : [],
-                                        chatKeys: window.Store && window.Store.Chat ? Object.keys(window.Store.Chat) : []
-                                    };
-                                    
-                                    // Try to actually call the function and check if it's properly initialized
-                                    if (window.Store && window.Store.Chat && window.Store.Chat.get) {
-                                        try {
-                                            const testCall = window.Store.Chat.get('test@c.us');
-                                            result.testCallSuccess = true;
-                                            result.testCallResult = 'success';
-                                        } catch (e) {
-                                            result.testCallError = e.message;
-                                            result.testCallSuccess = false;
-                                            
-                                            // Check if it's a proper WhatsApp error (function is working) or an undefined error (function not ready)
-                                            if (e.message && !e.message.includes('undefined') && !e.message.includes('Cannot read properties')) {
-                                                result.testCallResult = 'whatsapp_error'; // Function is working but WhatsApp returned an error
-                                            } else {
-                                                result.testCallResult = 'function_not_ready'; // Function is not properly initialized
-                                            }
-                                        }
-                                    } else {
-                                        result.testCallResult = 'function_not_available';
-                                    }
-                                    
-                                    return result;
-                                } catch (e) {
-                                    return { error: e.message };
-                                }
-                            });
-                        }
-                        
-                        // Only proceed with sending if Store objects are properly initialized
-                        if (!sendTestResult || sendTestResult.testCallResult === 'success' || sendTestResult.testCallResult === 'whatsapp_error') {
-                            if (Array.isArray(finalMessage)) {
-                                await this.authClient.client.sendMessage(formattedNumber, finalMessage.join('\n'));
-                            } else {
-                                await this.authClient.client.sendMessage(formattedNumber, finalMessage);
-                            }
-                        } else {
-                            // If Store objects aren't ready, try a different approach
-                            console.log(`Store objects not ready (${sendTestResult.testCallResult}), attempting direct messaging...`);
-                            
-                            // Wait a bit more and try again
-                            await new Promise(resolve => setTimeout(resolve, 5000));
-                            
-                            // Try to send message directly without Store validation
-                            if (Array.isArray(finalMessage)) {
-                                await this.authClient.client.sendMessage(formattedNumber, finalMessage.join('\n'));
-                            } else {
-                                await this.authClient.client.sendMessage(formattedNumber, finalMessage);
-                            }
-                        }
-                        console.log(`Message sent to ${contactName}`);
-                        messageSent = true;
-                    } catch (messageError) {
-                        retryCount++;
-                        console.error(`Error sending message to ${contactName} (attempt ${retryCount}/${maxRetries}):`, messageError);
-                        
-                        if (retryCount < maxRetries) {
-                            // Wait before retrying - longer wait for WhatsApp Web to stabilize
-                            const waitTime = retryCount * 3000; // Progressive backoff: 3s, 6s, 9s
-                            console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
-                            await new Promise(resolve => setTimeout(resolve, waitTime));
-                            
-                            // Try to refresh client state if possible
-                            try {
-                                const state = await this.authClient.client.getState();
-                                console.log(`Client state after error: ${state}`);
-                            } catch (stateError) {
-                                console.warn(`Could not get client state:`, stateError.message);
-                            }
-                            
-                            // Wait for Store objects before retry
-                            console.log(`Waiting for Store objects before retry ${retryCount + 1}/${maxRetries}`);
-                            await this.waitForWhatsAppStore(30000); // Wait up to 30 seconds for retry
-                        }
-                    }
-                }
-
+            // Only send message immediately if there's no sequencing, otherwise handle in sequencing section
+            if (finalMessage && (!fileSequence || fileSequence.length === 0)) {
+                const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
                 if (!messageSent) {
-                    console.error(`Failed to send message to ${contactName} after ${maxRetries} attempts`);
+                    console.error(`Failed to send message to ${contactName}`);
                     return false;
                 }
+                console.log(`Message sent to ${contactName}`);
             }
 
-            if (validFilePaths.length > 0) {
-                for (const filePath of validFilePaths) {
+            // Handle sequencing: send items in the order specified by fileSequence
+            if (fileSequence && fileSequence.length > 0) {
+                console.log(`Sending items in sequence order for ${contactName}`);
+                console.log(`File sequence items:`, fileSequence);
+                
+                // Sort all items (both message and files) by sequence number
+                const sortedItems = fileSequence
+                    .sort((a, b) => a.sequence_no - b.sequence_no);
+                
+                console.log(`Sorted items:`, sortedItems);
+                
+                for (const seqItem of sortedItems) {
                     try {
-                        const media = MessageMedia.fromFilePath(filePath);
-                        await this.authClient.client.sendMessage(formattedNumber, media);
-                        console.log(`File sent: ${path.basename(filePath)}`);
+                        if (seqItem.file_type === 'message') {
+                            // Send the message text
+                            console.log(`Sending message (sequence ${seqItem.sequence_no}): "${finalMessage}"`);
+                            const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
+                            if (!messageSent) {
+                                console.error(`Failed to send message in sequence ${seqItem.sequence_no}`);
+                            } else {
+                                console.log(`Message sent successfully in sequence ${seqItem.sequence_no}`);
+                            }
+                        } else if (seqItem.file_type === 'file') {
+                            // Find and send the corresponding file
+                            const filePath = validFilePaths.find(fp => 
+                                path.basename(fp) === seqItem.file_name
+                            );
+                            
+                            if (filePath) {
+                                console.log(`Sending file (sequence ${seqItem.sequence_no}): ${seqItem.file_name}`);
+                                const media = MessageMedia.fromFilePath(filePath);
+                                await this.authClient.client.sendMessage(formattedNumber, media);
+                            } else {
+                                console.warn(`File not found for sequence ${seqItem.sequence_no}: ${seqItem.file_name}`);
+                            }
+                        }
                         
+                        // Add delay between items
                         await new Promise(resolve => setTimeout(resolve, perFileDelayMs));
                     } catch (error) {
-                        console.error(`Error sending file ${filePath}:`, error);
+                        console.error(`Error sending item (sequence ${seqItem.sequence_no}):`, error);
+                    }
+                }
+            } else {
+                // Fallback: send message first, then all files (original behavior)
+                console.log(`Sending message first, then ${validFilePaths.length} files for ${contactName}`);
+                
+                if (validFilePaths.length > 0) {
+                    for (const filePath of validFilePaths) {
+                        try {
+                            const media = MessageMedia.fromFilePath(filePath);
+                            await this.authClient.client.sendMessage(formattedNumber, media);
+                            console.log(`File sent: ${path.basename(filePath)}`);
+                            
+                            await new Promise(resolve => setTimeout(resolve, perFileDelayMs));
+                        } catch (error) {
+                            console.error(`Error sending file ${filePath}:`, error);
+                        }
                     }
                 }
             }
@@ -324,7 +398,7 @@ class WhatsAppMessaging {
         }
     }
 
-    async sendBulkMessages(contacts, message, filePaths = [], processName = 'salary_slip', options = {}) {
+    async sendBulkMessages(contacts, message, filePaths = [], fileSequence = [], processName = 'salary_slip', options = {}) {
         const results = [];
         const perContactDelayMs = Number(options.perContactDelayMs || 3000);
         
@@ -341,6 +415,7 @@ class WhatsAppMessaging {
                 contact.name,
                 message,
                 filePaths,
+                fileSequence,
                 contact.phoneNumber,
                 processName,
                 contactOptions

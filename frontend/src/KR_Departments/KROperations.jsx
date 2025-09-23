@@ -9,6 +9,10 @@ const KROperations = () => {
     navigate('/kerur/kr_operations/kr_reactor-reports');
   };
 
+  const handleGeneralReports = () => {
+    navigate('/kerur/kr_operations/kr_general-reports');
+  };
+
   return (
     <div className="splash-page">
       <h1>Kerur Operations Department</h1>
@@ -22,6 +26,14 @@ const KROperations = () => {
           tabIndex={0}
         >
           Reactor Reports
+        </span>
+        <span 
+          onClick={handleGeneralReports}
+          className="nav-link"
+          role="button"
+          tabIndex={0}
+        >
+          General Reports
         </span>
       </div>
       

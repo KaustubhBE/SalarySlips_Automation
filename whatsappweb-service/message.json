@@ -86,24 +86,6 @@
         "subject": "Reactor Report - Daily Operations Summary",
         "body": "<html><body><h2>Reactor Report</h2><p>Please find attached the reactor report for the period from {input_date} to {input_date}.</p><p>This report contains snapshots of all reactor operations data for the specified period.</p><br><p>Best regards,<br>Reactor Automation System</p></body></html>"
       }
-    },
-    "report": {
-      "whatsapp": {
-        "default": [
-          "Dear {contact_name},",
-          "",
-          "Please find attached the requested report.",
-          "",
-          "If you have any questions or need additional information, please don't hesitate to contact us.",
-          "",
-          "Best regards,",
-          "Report System"
-        ]
-      },
-      "email": {
-        "subject": "{mail_subject}",
-        "body": "<html><body>{email_content}</body></html>"
-      }
     }
   },
   "legacy": {
