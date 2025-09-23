@@ -36,6 +36,308 @@ import traceback
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
+# ============================================================================
+# SHARED TABLE FORMATTING FUNCTIONS
+# ============================================================================
+
+def set_cell_background_color(cell, color):
+    """
+    Set cell background color using XML styling
+    """
+    try:
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
+    except Exception as e:
+        logging.warning(f"Could not set cell background color: {e}")
+
+def set_table_borders_professional(table, logger=None):
+    """
+    Set professional table borders with custom styling
+    """
+    try:
+        from docx.oxml.shared import OxmlElement, qn
+        
+        # Get the table element
+        tbl = table._tbl
+        
+        # Create table properties if they don't exist
+        tblPr = tbl.xpath('w:tblPr')
+        if not tblPr:
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+        else:
+            tblPr = tblPr[0]
+        
+        # Remove any existing borders
+        for border in tblPr.xpath('w:tblBorders'):
+            tblPr.remove(border)
+        
+        # Create new borders element
+        borders = OxmlElement('w:tblBorders')
+        
+        # Outer borders: thick orange (level 2 thickness, color e69138)
+        outer_border_props = {
+            'w:val': 'single',
+            'w:sz': '16',  # Level 2 thickness (2pt)
+            'w:color': 'e69138'
+        }
+        
+        # Internal borders: thin black
+        inner_border_props = {
+            'w:val': 'single',
+            'w:sz': '4',   # Thin internal borders (0.5pt)
+            'w:color': '000000'  # Black color
+        }
+        
+        # Add outer borders (thick orange)
+        outer_border_types = ['w:top', 'w:bottom', 'w:left', 'w:right']
+        for border_type in outer_border_types:
+            border = OxmlElement(border_type)
+            for prop, value in outer_border_props.items():
+                border.set(qn(prop), value)
+            borders.append(border)
+        
+        # Add internal borders (thin black)
+        inner_border_types = ['w:insideH', 'w:insideV']
+        for border_type in inner_border_types:
+            border = OxmlElement(border_type)
+            for prop, value in inner_border_props.items():
+                border.set(qn(prop), value)
+            borders.append(border)
+        
+        # Add borders to table properties
+        tblPr.append(borders)
+        
+    except Exception as e:
+        if logger:
+            logger.warning(f"Could not set table borders: {e}")
+        else:
+            logging.warning(f"Could not set table borders: {e}")
+
+def set_table_borders_simple(table, logger=None):
+    """
+    Set simple table borders with black lines
+    """
+    try:
+        from docx.oxml.shared import OxmlElement, qn
+        
+        tbl = table._tbl
+        tblBorders = OxmlElement('w:tblBorders')
+        
+        # Define border styles - simple black borders
+        border_elements = [
+            ('top', 'single', '000000', '4'),
+            ('left', 'single', '000000', '4'),
+            ('bottom', 'single', '000000', '4'),
+            ('right', 'single', '000000', '4'),
+            ('insideH', 'single', '000000', '4'),
+            ('insideV', 'single', '000000', '4')
+        ]
+        
+        for border_name, border_style, border_color, border_size in border_elements:
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), border_style)
+            border.set(qn('w:sz'), border_size)
+            border.set(qn('w:space'), '0')
+            border.set(qn('w:color'), border_color)
+            tblBorders.append(border)
+        
+        tbl.tblPr.append(tblBorders)
+        
+    except Exception as e:
+        if logger:
+            logger.warning(f"Could not set simple table borders: {e}")
+        else:
+            logging.warning(f"Could not set simple table borders: {e}")
+
+def set_table_no_page_break(table, logger=None):
+    """
+    Set table properties to prevent page breaks
+    """
+    try:
+        from docx.oxml.shared import OxmlElement, qn
+        
+        tbl = table._tbl
+        tblPr = tbl.get_or_add_tblPr()
+        
+        # Remove any existing table layout
+        for layout in tblPr.xpath('w:tblLayout'):
+            tblPr.remove(layout)
+        
+        # Add table layout to prevent page breaks
+        layout = OxmlElement('w:tblLayout')
+        layout.set(qn('w:type'), 'fixed')
+        tblPr.append(layout)
+        
+        # Add table properties to prevent page breaks
+        tblLook = OxmlElement('w:tblLook')
+        tblLook.set(qn('w:firstRow'), '1')
+        tblLook.set(qn('w:lastRow'), '0')
+        tblLook.set(qn('w:firstCol'), '0')
+        tblLook.set(qn('w:lastCol'), '0')
+        tblLook.set(qn('w:noHBand'), '0')
+        tblLook.set(qn('w:noVBand'), '1')
+        tblPr.append(tblLook)
+        
+        # Set table to not break across pages
+        tblCellSpacing = OxmlElement('w:tblCellSpacing')
+        tblCellSpacing.set(qn('w:w'), '0')
+        tblCellSpacing.set(qn('w:type'), 'dxa')
+        tblPr.append(tblCellSpacing)
+        
+        # Add table properties to prevent page breaks (critical for table integrity)
+        tblPr.set(qn('w:tblStyle'), 'TableGrid')
+        
+        # Set table to not break across pages using tblPr properties
+        tblPr.set(qn('w:tblW'), '0')
+        tblPr.set(qn('w:tblInd'), '0')
+        
+        # Remove any existing table break properties that might force page breaks
+        for tblBreak in tblPr.xpath('w:tblBreak'):
+            tblPr.remove(tblBreak)
+        
+        # Add cantSplit property to prevent table from breaking across pages
+        cantSplit = OxmlElement('w:cantSplit')
+        cantSplit.set(qn('w:val'), '1')  # 1 = true, prevents splitting
+        tblPr.append(cantSplit)
+        
+        if logger:
+            logger.info("Successfully set table properties to prevent page breaks")
+        
+    except Exception as e:
+        if logger:
+            logger.warning(f"Could not set table page break properties: {e}")
+        else:
+            logging.warning(f"Could not set table page break properties: {e}")
+
+def format_table_professional(table, is_header=False, logger=None):
+    """
+    Apply professional styling to a table with reactor report style formatting
+    """
+    try:
+        from docx.shared import Pt
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        
+        # Set table alignment to center
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.allow_autofit = True
+        
+        # Set table to not break across pages - CRITICAL FOR TABLE INTEGRITY
+        set_table_no_page_break(table, logger)
+        
+        # Apply professional borders
+        set_table_borders_professional(table, logger)
+        
+        # Format each cell
+        for i, row in enumerate(table.rows):
+            for j, cell in enumerate(row.cells):
+                # Set vertical alignment to center
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                
+                # Set paragraph alignment
+                for paragraph in cell.paragraphs:
+                    if i == 0:  # Header row
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    else:  # Data rows
+                        if j == 0:  # First column
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        else:
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Format text
+                    for run in paragraph.runs:
+                        if i == 0:  # Header row
+                            run.bold = True
+                            run.font.size = Pt(11)
+                        else:
+                            run.font.size = Pt(10)
+                
+                # Set background colors
+                if i == 0:  # Header row
+                    set_cell_background_color(cell, "f9cb9c")
+                else:
+                    # Alternate row colors
+                    if i % 2 == 0:
+                        set_cell_background_color(cell, "FFFFFF")
+                    else:
+                        set_cell_background_color(cell, "e8f0fe")
+        
+    except Exception as e:
+        if logger:
+            logger.warning(f"Error in format_table_professional: {e}")
+        else:
+            logging.warning(f"Error in format_table_professional: {e}")
+
+def format_table_simple(table, is_header=False, logger=None):
+    """
+    Apply simple styling to a table with basic formatting
+    """
+    try:
+        from docx.shared import Pt
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        
+        # Set table alignment
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Apply simple borders
+        set_table_borders_simple(table, logger)
+        
+        # Format each cell
+        for row_idx, row in enumerate(table.rows):
+            for col_idx, cell in enumerate(row.cells):
+                # Set cell margins
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                
+                # Format paragraphs in cell
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Format runs in paragraph
+                    for run in paragraph.runs:
+                        if row_idx == 0:  # Header row
+                            run.bold = True
+                            run.font.size = Pt(10)
+                        else:
+                            run.font.size = Pt(9)
+        
+    except Exception as e:
+        if logger:
+            logger.warning(f"Error in format_table_simple: {e}")
+        else:
+            logging.warning(f"Error in format_table_simple: {e}")
+
+def should_start_table_on_new_page(doc, table_rows, table_name_length=0, logger=None):
+    """
+    Rough estimation to determine if table should start on new page.
+    """
+    try:
+        # Estimate space needed for table
+        # Each row approximately 0.3 inches (including padding)
+        # Table name approximately 0.2 inches
+        # Header spacing approximately 0.1 inches
+        estimated_table_height = (table_rows * 0.3) + 0.2 + 0.1
+        
+        # Standard page height is approximately 11 inches
+        # Leave 1 inch margin at bottom
+        available_page_height = 10.0
+        
+        # If table height exceeds available space, suggest new page
+        if estimated_table_height > available_page_height:
+            return True
+            
+        return False
+    except Exception as e:
+        if logger:
+            logger.warning(f"Error estimating table space: {e}")
+        else:
+            logging.warning(f"Error estimating table space: {e}")
+        return False  # Default to current page if estimation fails
+
 def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
     
     try:
@@ -720,193 +1022,6 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 for i, row in enumerate(data[1:4]):  # Show first 3 data rows (Row 3, 4, 5)
                     logger.info(f"  Row {i+3}: {row[:5]}...")  # Show first 5 columns, adjust row number
 
-        # Helper to set cell background color
-        def set_cell_background_color(cell, color):
-            tc = cell._tc
-            tcPr = tc.get_or_add_tcPr()
-            shd = OxmlElement('w:shd')
-            shd.set(qn('w:fill'), color)
-            tcPr.append(shd)
-
-        # Helper to set table borders with custom styling (manual approach)
-        def set_table_borders(table):
-            try:
-                # Get the table element
-                tbl = table._tbl
-                
-                # Create table properties if they don't exist
-                tblPr = tbl.xpath('w:tblPr')
-                if not tblPr:
-                    tblPr = OxmlElement('w:tblPr')
-                    tbl.insert(0, tblPr)
-                else:
-                    tblPr = tblPr[0]
-                
-                # Remove any existing borders
-                for border in tblPr.xpath('w:tblBorders'):
-                    tblPr.remove(border)
-                
-                # Create new borders element
-                borders = OxmlElement('w:tblBorders')
-                
-                # Outer borders: thick orange (level 2 thickness, color e69138)
-                outer_border_props = {
-                    'w:val': 'single',
-                    'w:sz': '16',  # Level 2 thickness (2pt)
-                    'w:color': 'e69138'
-                }
-                
-                # Internal borders: thin black
-                inner_border_props = {
-                    'w:val': 'single',
-                    'w:sz': '4',   # Thin internal borders (0.5pt)
-                    'w:color': '000000'  # Black color
-                }
-                
-                # Add outer borders (thick orange)
-                outer_border_types = ['w:top', 'w:bottom', 'w:left', 'w:right']
-                for border_type in outer_border_types:
-                    border = OxmlElement(border_type)
-                    for prop, value in outer_border_props.items():
-                        border.set(qn(prop), value)
-                    borders.append(border)
-                
-                # Add internal borders (thin black)
-                inner_border_types = ['w:insideH', 'w:insideV']
-                for border_type in inner_border_types:
-                    border = OxmlElement(border_type)
-                    for prop, value in inner_border_props.items():
-                        border.set(qn(prop), value)
-                    borders.append(border)
-                
-                # Add borders to table properties
-                tblPr.append(borders)
-                
-            except Exception as e:
-                logger.warning(f"Could not set table borders: {e}")
-
-        # Helper to check if table should start on new page (rough estimation)
-        def should_start_table_on_new_page(doc, table_rows, table_name_length=0):
-            """
-            Rough estimation to determine if table should start on new page.
-            This is a simplified approach - in a production environment, you might want
-            to use more sophisticated page layout calculations.
-            """
-            try:
-                # Estimate space needed for table
-                # Each row approximately 0.3 inches (including padding)
-                # Table name approximately 0.2 inches
-                # Header spacing approximately 0.1 inches
-                estimated_table_height = (table_rows * 0.3) + 0.2 + 0.1
-                
-                # Standard page height is approximately 11 inches
-                # Leave 1 inch margin at bottom
-                available_page_height = 10.0
-                
-                # If table height exceeds available space, suggest new page
-                if estimated_table_height > available_page_height:
-                    return True
-                    
-                return False
-            except Exception as e:
-                logger.warning(f"Error estimating table space: {e}")
-                return False  # Default to current page if estimation fails
-
-        # Helper to format table with professional styling
-        # This function also sets critical properties to prevent tables from breaking across pages
-        def format_table(table, is_header=False):
-            # Set table alignment to center
-            table.alignment = WD_TABLE_ALIGNMENT.CENTER
-            table.allow_autofit = True
-            
-            # Set table to not break across pages - CRITICAL FOR TABLE INTEGRITY
-            try:
-                tbl = table._tbl
-                tblPr = tbl.get_or_add_tblPr()
-                
-                # Remove any existing table layout
-                for layout in tblPr.xpath('w:tblLayout'):
-                    tblPr.remove(layout)
-                
-                # Add table layout to prevent page breaks
-                layout = OxmlElement('w:tblLayout')
-                layout.set(qn('w:type'), 'fixed')
-                tblPr.append(layout)
-                
-                # Add table properties to prevent page breaks
-                tblLook = OxmlElement('w:tblLook')
-                tblLook.set(qn('w:firstRow'), '1')
-                tblLook.set(qn('w:lastRow'), '0')
-                tblLook.set(qn('w:firstCol'), '0')
-                tblLook.set(qn('w:lastCol'), '0')
-                tblLook.set(qn('w:noHBand'), '0')
-                tblLook.set(qn('w:noVBand'), '1')
-                tblPr.append(tblLook)
-                
-                # Set table to not break across pages
-                tblCellSpacing = OxmlElement('w:tblCellSpacing')
-                tblCellSpacing.set(qn('w:w'), '0')
-                tblCellSpacing.set(qn('w:type'), 'dxa')
-                tblPr.append(tblCellSpacing)
-                
-                # Add table properties to prevent page breaks (critical for table integrity)
-                tblPr.set(qn('w:tblStyle'), 'TableGrid')
-                
-                # Set table to not break across pages using tblPr properties
-                # This is the most important setting for preventing table breaks
-                tblPr.set(qn('w:tblW'), '0')
-                tblPr.set(qn('w:tblInd'), '0')
-                
-                # Remove any existing table break properties that might force page breaks
-                for tblBreak in tblPr.xpath('w:tblBreak'):
-                    tblPr.remove(tblBreak)
-                
-                # Add cantSplit property to prevent table from breaking across pages
-                cantSplit = OxmlElement('w:cantSplit')
-                cantSplit.set(qn('w:val'), '1')  # 1 = true, prevents splitting
-                tblPr.append(cantSplit)
-                
-                logger.info("Successfully set table properties to prevent page breaks")
-                
-            except Exception as e:
-                logger.warning(f"Could not set table page break properties: {e}")
-            
-            # Apply custom borders
-            set_table_borders(table)
-            
-            # Format each cell
-            for i, row in enumerate(table.rows):
-                for j, cell in enumerate(row.cells):
-                    # Set vertical alignment to center
-                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                    
-                    # Set paragraph alignment
-                    for paragraph in cell.paragraphs:
-                        if i == 0:  # Header row
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        else:  # Data rows
-                            if j == 0:  # First column
-                                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                            else:
-                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Format text
-                        for run in paragraph.runs:
-                            if i == 0:  # Header row
-                                run.bold = True
-                                run.font.size = Pt(11)
-                            else:
-                                run.font.size = Pt(10)
-                    
-                    # Set background colors
-                    if i == 0:  # Header row
-                        set_cell_background_color(cell, "f9cb9c")
-                    else:
-                        # Alternate row colors
-                        if i % 2 == 0:
-                            set_cell_background_color(cell, "FFFFFF")
-                        else:
-                            set_cell_background_color(cell, "e8f0fe")
 
         # Parse input date
         date_formats = ["%d/%m/%y", "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d"]
@@ -1100,7 +1215,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                 result["warnings"].append(f"Table {table_def['name']} has insufficient data")
                                 continue
                            
-                            if should_start_table_on_new_page(doc, len(data), len(table_def['name'])):
+                            if should_start_table_on_new_page(doc, len(data), len(table_def['name']), logger):
                                 # Add page break before table to ensure it starts on new page
                                 doc.add_page_break()
                                 logger.info(f"Added page break before table '{table_def['name']}' to prevent breaking")
@@ -1125,7 +1240,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                         cell.text = str(cell_value)
                             
                             # Apply professional formatting to the table (includes page break prevention)
-                            format_table(table, is_header=True)
+                            format_table_professional(table, is_header=True, logger=logger)
                             
                             # Add 2 lines gap between tables (but not after the last table)
                             if i < len(table_defs) - 1:
@@ -1632,3 +1747,626 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
             'success': False,
             'message': f'Error syncing material data: {str(e)}'
         }
+
+def process_general_reports(template_files, attachment_files, file_sequence, sheet_id, sheet_name, send_whatsapp, send_email, mail_subject, user_id, output_dir, logger, send_email_smtp, send_whatsapp_message, validate_sheet_id_func, prepare_file_paths_func, fetch_google_sheet_data_func, process_template_func, send_log_report_to_user_func):
+    """
+    Process general reports using reactor report template logic with table and column processing
+    This function moves the heavy functionality from app.py to process_utils.py
+    """
+    try:
+        # Initialize result tracking
+        result = {
+            "success": False,
+            "message": "",
+            "generated_files": 0,
+            "notifications_sent": {
+                "email": False,
+                "whatsapp": False
+            },
+            "delivery_stats": {
+                "total_recipients": 0,
+                "successful_deliveries": 0,
+                "failed_deliveries": 0,
+                "failed_contacts": []
+            },
+            "errors": [],
+            "warnings": []
+        }
+
+        if not template_files:
+            result["errors"].append("No template files provided")
+            return result
+
+        if not sheet_id:
+            result["errors"].append("Google Sheet ID is required")
+            return result
+
+        if not sheet_name:
+            result["errors"].append("Sheet name is required")
+            return result
+
+        # Validate sheet ID format
+        if not validate_sheet_id_func(sheet_id):
+            result["errors"].append("Invalid Google Sheet ID format")
+            return result
+
+        # Create temporary directory for attachments
+        temp_dir = os.path.join(output_dir, "temp_attachments")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Save attachment files temporarily and store their paths
+        attachment_paths = prepare_file_paths_func(attachment_files, temp_dir=temp_dir, is_upload=True)
+
+        try:
+            # Fetch data from Google Sheet
+            sheet_data = fetch_google_sheet_data_func(sheet_id, sheet_name)
+            if not sheet_data or len(sheet_data) < 2:  # Check if we have headers and at least one row
+                result["errors"].append("No data found in the Google Sheet")
+                return result
+        except Exception as e:
+            logger.error("Error fetching Google Sheet data: {}".format(e))
+            result["errors"].append("Failed to fetch data from Google Sheet")
+            return result
+
+        # Process headers and data
+        headers = sheet_data[0]
+        data_rows = sheet_data[1:]
+
+        # Create output directory if it doesn't exist
+        reports_output_dir = os.path.join(output_dir, "reports")
+        os.makedirs(reports_output_dir, exist_ok=True)
+
+        # Initialize delivery statistics tracking
+        delivery_stats = {
+            "total_recipients": len(data_rows),
+            "successful_deliveries": 0,
+            "failed_deliveries": 0,
+            "failed_contacts": []
+        }
+
+        # Process each template file
+        generated_files = []
+        for template_file in template_files:
+            if not template_file.filename.endswith('.docx'):
+                continue
+
+            # Save template temporarily
+            temp_template_path = os.path.join(reports_output_dir, "temp_{}".format(template_file.filename))
+            template_file.save(temp_template_path)
+
+            # Read template content for messages
+            try:
+                from docx import Document
+                doc = Document(temp_template_path)
+                template_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            except Exception as e:
+                logger.error("Error reading template content: {}".format(e))
+                result["errors"].append("Failed to read template content")
+                continue
+            
+            # Process each row of data
+            for row in data_rows:
+                try:
+                    # Create data dictionary from headers and row
+                    data_dict = dict(zip(headers, row))
+
+                    recipient_name = data_dict.get('Name', 'unknown')
+                    
+                    # Generate report for this row using reactor report template logic
+                    output_filename = "report_{}.docx".format(recipient_name)
+                    output_path = os.path.join(reports_output_dir, output_filename)
+                    
+                    # Process the template with data using reactor report table logic
+                    success = process_template_with_reactor_logic(temp_template_path, output_path, data_dict, logger)
+                    if success:
+                        generated_files.append(output_path)
+                    else:
+                        logger.warning(f"Failed to process template for {recipient_name}")
+                        continue
+
+                    # Process template content for messages
+                    message_content = template_content
+                    email_content = template_content
+
+                    # Replace placeholders in message content
+                    for key, value in data_dict.items():
+                        placeholder = "{{{}}}".format(key)
+                        message_content = message_content.replace(placeholder, str(value))
+                        email_content = email_content.replace(placeholder, str(value))
+                        mail_subject = mail_subject.replace(placeholder, str(value))
+
+                    # Get contact details from Google Sheet data
+                    recipient_email = data_dict.get('Email ID - To')
+                    cc_email = data_dict.get('Email ID - CC', '')
+                    bcc_email = data_dict.get('Email ID - BCC', '')
+                    
+                    # Helper to split emails by comma or newline and join as comma-separated string
+                    def clean_emails(email_str):
+                        if not email_str:
+                            return None
+                        import re
+                        emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
+                        return ','.join(emails) if emails else None
+                    
+                    recipient_email = clean_emails(recipient_email)
+                    cc_email = clean_emails(cc_email)
+                    bcc_email = clean_emails(bcc_email)
+                    
+                    country_code = data_dict.get('Country Code', '').strip()
+                    phone_no = data_dict.get('Contact No.', '').strip()
+                    # Format phone number properly: remove spaces and combine country code + number
+                    recipient_phone = f"{country_code}{phone_no}".replace(' ', '')
+
+                    # Handle WhatsApp notifications with validation
+                    if send_whatsapp:
+                        success, failure_reason = handle_whatsapp_validation_and_sending(
+                            recipient_name, country_code, phone_no, recipient_phone,
+                            message_content, attachment_paths, file_sequence,
+                            send_whatsapp_message, logger
+                        )
+                        
+                        if not success:
+                            delivery_stats["failed_deliveries"] += 1
+                            delivery_stats["failed_contacts"].append({
+                                "name": recipient_name,
+                                "contact": recipient_phone if recipient_phone else (phone_no if phone_no else country_code),
+                                "reason": failure_reason
+                            })
+                        else:
+                            delivery_stats["successful_deliveries"] += 1
+
+                    # Handle email notifications
+                    if send_email:
+                        success, failure_reason = handle_email_sending(
+                            recipient_name, recipient_email, cc_email, bcc_email,
+                            mail_subject, email_content, attachment_paths,
+                            user_id, send_email_smtp, logger
+                        )
+                        
+                        if not success:
+                            logger.warning(f"Email sending failed for {recipient_name}: {failure_reason}")
+
+                except Exception as e:
+                    logger.error("Error processing row: {}".format(e))
+                    continue
+
+            # Clean up temporary template
+            try:
+                os.remove(temp_template_path)
+            except Exception as e:
+                logger.error("Error removing temporary template: {}".format(e))
+
+        # Clean up temporary attachment files
+        for attachment_path in attachment_paths:
+            try:
+                if os.path.exists(attachment_path):
+                    os.remove(attachment_path)
+            except Exception as e:
+                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
+
+        # Remove temporary directory and any remaining files
+        try:
+            if os.path.exists(temp_dir):
+                remaining_files = os.listdir(temp_dir)
+                if remaining_files:
+                    for file in remaining_files:
+                        try:
+                            file_path = os.path.join(temp_dir, file)
+                            if os.path.isfile(file_path):
+                                os.remove(file_path)
+                        except Exception as e:
+                            logger.error("Error removing remaining file {}: {}".format(file, e))
+                
+                try:
+                    os.rmdir(temp_dir)
+                except Exception as e:
+                    logger.error("Failed to remove temporary directory {}: {}".format(temp_dir, e))
+        except Exception as e:
+            logger.error("Error during final cleanup: {}".format(e))
+
+        # Update result with delivery stats
+        result["delivery_stats"] = delivery_stats
+        result["generated_files"] = len(generated_files)
+        result["success"] = True
+        result["message"] = "Reports generated successfully"
+        result["notifications_sent"]["email"] = send_email
+        result["notifications_sent"]["whatsapp"] = send_whatsapp
+
+        # Send log report to the user who generated the report
+        try:
+            send_log_report_to_user_func(user_id, delivery_stats, send_email, send_whatsapp, logger)
+        except Exception as e:
+            logger.error("Error sending log report to user: {}".format(e))
+
+        return result
+
+    except Exception as e:
+        logger.error("Error in process_general_reports: {}".format(e))
+        return {
+            "success": False,
+            "message": str(e),
+            "errors": [str(e)]
+        }
+
+def process_template_with_reactor_logic(template_path, output_path, data_dict, logger):
+    """
+    Process template using reactor report table and column logic
+    Uses reactorreportformat.docx template with same table and column processing as reactor reports
+    """
+    try:
+        from docx import Document
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml.shared import OxmlElement, qn
+        import os
+        
+        # Use reactorreportformat.docx as the base template
+        reactor_template_path = os.path.join(os.path.dirname(__file__), "..", "reactorreportformat.docx")
+        
+        # Check if reactor template exists, otherwise use the provided template
+        if os.path.exists(reactor_template_path):
+            logger.info(f"Using reactor template: {reactor_template_path}")
+            doc = Document(reactor_template_path)
+        else:
+            logger.info(f"Reactor template not found, using provided template: {template_path}")
+            doc = Document(template_path)
+        
+        # Replace placeholders in the document using reactor report logic
+        for paragraph in doc.paragraphs:
+            for key, value in data_dict.items():
+                placeholder = "{{{}}}".format(key)
+                if placeholder in paragraph.text:
+                    paragraph.text = paragraph.text.replace(placeholder, str(value))
+        
+        # Process tables with reactor report formatting logic
+        for table in doc.tables:
+            # Apply professional table formatting using shared function
+            format_table_professional(table, is_header=True, logger=logger)
+            
+            # Replace placeholders in table cells
+            for row in table.rows:
+                for cell in row.cells:
+                    for key, value in data_dict.items():
+                        placeholder = "{{{}}}".format(key)
+                        if placeholder in cell.text:
+                            cell.text = cell.text.replace(placeholder, str(value))
+        
+        # Add data as tables using reactor report logic
+        add_data_as_reactor_tables(doc, data_dict, logger)
+        
+        # Save the processed document
+        doc.save(output_path)
+        return True
+        
+    except Exception as e:
+        logger.error("Error processing template with reactor logic: {}".format(e))
+        return False
+
+def add_data_as_reactor_tables(doc, data_dict, logger):
+    """
+    Add data as tables using reactor report table logic
+    """
+    try:
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+        from docx.oxml.shared import OxmlElement, qn
+        
+        # Add a page break before adding data tables
+        doc.add_page_break()
+        
+        # Add header for the data section
+        header_para = doc.add_paragraph("Report Data")
+        header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in header_para.runs:
+            run.bold = True
+            run.font.size = Pt(14)
+        
+        # Create a table for the data with reactor report styling
+        # Convert data_dict to a list of key-value pairs
+        data_items = [(key, value) for key, value in data_dict.items() if value]
+        
+        if data_items:
+            # Create table with headers
+            table = doc.add_table(rows=len(data_items) + 1, cols=2)
+            table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Set table width
+            table.allow_autofit = False
+            table.autofit = False
+            
+            # Add header row
+            header_row = table.rows[0]
+            header_cells = header_row.cells
+            header_cells[0].text = "Field"
+            header_cells[1].text = "Value"
+            
+            # Format header cells
+            for cell in header_cells:
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.bold = True
+                        run.font.size = Pt(10)
+            
+            # Add data rows
+            for i, (key, value) in enumerate(data_items, 1):
+                row = table.rows[i]
+                cells = row.cells
+                cells[0].text = str(key)
+                cells[1].text = str(value)
+                
+                # Format data cells
+                for cell in cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.font.size = Pt(9)
+            
+            # Apply professional table formatting using shared function
+            format_table_professional(table, is_header=True, logger=logger)
+            
+            logger.info(f"Added data table with {len(data_items)} fields to document")
+        
+    except Exception as e:
+        logger.error(f"Error adding data as reactor tables: {e}")
+
+
+def handle_whatsapp_validation_and_sending(recipient_name, country_code, phone_no, recipient_phone, message_content, attachment_paths, file_sequence, send_whatsapp_message, logger):
+    """
+    Handle WhatsApp validation and sending with proper error tracking
+    """
+    try:
+        # Validate phone number components
+        if not country_code or not country_code.strip():
+            return False, "Missing Country Code"
+        
+        if not phone_no or not phone_no.strip():
+            return False, "Missing Contact No."
+        
+        if not recipient_phone or len(recipient_phone.replace(' ', '')) < 4:
+            return False, f"Invalid phone number format (Country Code: {country_code}, Contact No.: {phone_no})"
+        
+        logger.info("Valid phone number for {}: Country Code '{}', Contact No. '{}' -> Formatted: '{}'".format(
+            recipient_name, country_code, phone_no, recipient_phone))
+
+        # Send WhatsApp message with attachments
+        success = send_whatsapp_message(
+            contact_name=recipient_name,
+            message=message_content,
+            file_paths=attachment_paths,
+            file_sequence=file_sequence,
+            whatsapp_number=recipient_phone,
+            process_name="report"
+        )
+        
+        # Handle different success/failure scenarios
+        if success == "USER_NOT_LOGGED_IN":
+            return False, "User session expired"
+        elif success == "WHATSAPP_SERVICE_NOT_READY":
+            return False, "WhatsApp service is not ready"
+        elif success == "INVALID_FILE_PATH":
+            return False, "Invalid file path for WhatsApp message"
+        elif success == "INVALID_FILE_PATH_TYPE":
+            return False, "Invalid file path type for WhatsApp message"
+        elif success == "NO_VALID_FILES":
+            return False, "No valid files found for WhatsApp message"
+        elif success == "NO_FILES_FOR_UPLOAD":
+            return False, "No files available for WhatsApp upload"
+        elif success == "WHATSAPP_API_ERROR":
+            return False, "WhatsApp API error"
+        elif success == "WHATSAPP_CONNECTION_ERROR":
+            return False, "WhatsApp connection error"
+        elif success == "WHATSAPP_TIMEOUT_ERROR":
+            return False, "WhatsApp timeout error"
+        elif success == "WHATSAPP_SEND_ERROR":
+            return False, "Failed to send WhatsApp message"
+        elif not success:
+            return False, "Failed to send WhatsApp message"
+        else:
+            logger.info("WhatsApp message sent successfully to {}".format(recipient_name))
+            return True, None
+
+    except Exception as e:
+        logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
+        return False, f"Exception: {str(e)}"
+
+def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, mail_subject, email_content, attachment_paths, user_id, send_email_smtp, logger):
+    """
+    Handle email sending with proper error tracking
+    """
+    try:
+        if not recipient_email:
+            return False, "No email found for recipient"
+        
+        email_subject_formatted = mail_subject
+        email_body = f"""
+        <html>
+        <body>
+        {email_content.replace('\n', '<br>')} 
+        </body>
+        </html>
+        """
+        
+        success = send_email_smtp(
+            recipient_email=recipient_email,
+            subject=email_subject_formatted,
+            body=email_body,
+            attachment_paths=attachment_paths,
+            user_email=user_id,
+            cc=cc_email,
+            bcc=bcc_email
+        )
+        
+        if success == "TOKEN_EXPIRED":
+            return False, "Email token expired"
+        elif success == "USER_NOT_LOGGED_IN":
+            return False, "User session expired"
+        elif success == "NO_SMTP_CREDENTIALS":
+            return False, "Email credentials not found"
+        elif success == "INVALID_RECIPIENT":
+            return False, "Invalid recipient email address"
+        elif success == "NO_VALID_RECIPIENTS":
+            return False, "No valid recipient emails found"
+        elif success == "SMTP_AUTH_FAILED":
+            return False, "Email authentication failed"
+        elif success == "SMTP_ERROR":
+            return False, "Email service error"
+        elif success == "EMAIL_SEND_ERROR":
+            return False, "Failed to send email"
+        elif not success:
+            return False, "Failed to send email"
+        else:
+            logger.info("Email sent successfully to {}".format(recipient_email))
+            return True, None
+
+    except Exception as e:
+        logger.error("Error sending email to {}: {}".format(recipient_email, e))
+        return False, f"Exception: {str(e)}"
+
+def generate_log_report_pdf(delivery_stats, output_dir, logger):
+    """
+    Generate a PDF log report from delivery statistics
+    """
+    try:
+        from docx import Document
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml.shared import OxmlElement, qn
+        import os
+        
+        # Create a new document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading('📊 Delivery Log Report', 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Add timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp_para = doc.add_paragraph(f"Generated on: {timestamp}")
+        timestamp_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Add spacing
+        doc.add_paragraph()
+        
+        # Extract statistics
+        total_recipients = delivery_stats.get("total_recipients", 0)
+        successful_deliveries = delivery_stats.get("successful_deliveries", 0)
+        failed_deliveries = delivery_stats.get("failed_deliveries", 0)
+        failed_contacts = delivery_stats.get("failed_contacts", [])
+        
+        # Add summary section
+        summary_heading = doc.add_heading('📋 Summary', level=1)
+        
+        # Create summary table
+        summary_table = doc.add_table(rows=4, cols=2)
+        summary_table.style = 'Table Grid'
+        summary_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Set column widths
+        for row in summary_table.rows:
+            for i, cell in enumerate(row.cells):
+                if i == 0:
+                    cell.width = Inches(3)
+                else:
+                    cell.width = Inches(1.5)
+        
+        # Add summary data
+        summary_data = [
+            ("📋 Total messages to be delivered:", str(total_recipients)),
+            ("✅ Messages delivered successfully:", str(successful_deliveries)),
+            ("❌ Failed messages:", str(failed_deliveries)),
+            ("📊 Success Rate:", f"{(successful_deliveries/total_recipients*100):.1f}%" if total_recipients > 0 else "0%")
+        ]
+        
+        for i, (label, value) in enumerate(summary_data):
+            row = summary_table.rows[i]
+            row.cells[0].text = label
+            row.cells[1].text = value
+            
+            # Format the cells
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    for run in paragraph.runs:
+                        run.font.size = Pt(11)
+        
+        # Add spacing
+        doc.add_paragraph()
+        
+        # Add failed contacts section if there are any
+        if failed_contacts:
+            failed_heading = doc.add_heading('📋 Failed Contacts', level=1)
+            
+            # Create failed contacts table
+            failed_table = doc.add_table(rows=1, cols=3)
+            failed_table.style = 'Table Grid'
+            failed_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Set column widths
+            for row in failed_table.rows:
+                for i, cell in enumerate(row.cells):
+                    if i == 0:
+                        cell.width = Inches(2)
+                    elif i == 1:
+                        cell.width = Inches(2)
+                    else:
+                        cell.width = Inches(3)
+            
+            # Add header row
+            header_row = failed_table.rows[0]
+            header_row.cells[0].text = "Name"
+            header_row.cells[1].text = "Contact Number"
+            header_row.cells[2].text = "Reason"
+            
+            # Add data rows
+            for contact in failed_contacts:
+                row = failed_table.add_row()
+                row.cells[0].text = contact.get("name", "Unknown")
+                row.cells[1].text = contact.get("contact", "N/A")
+                row.cells[2].text = contact.get("reason", "Unknown error")
+            
+            # Apply simple table formatting for log report
+            format_table_simple(failed_table, is_header=True, logger=logger)
+        
+        # Add footer
+        doc.add_paragraph()
+        footer = doc.add_paragraph("Generated by Bajaj Earths Automation System")
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in footer.runs:
+            run.font.size = Pt(9)
+            run.font.italic = True
+        
+        # Save the document
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        docx_filename = f"log_report_{timestamp_str}.docx"
+        docx_path = os.path.join(output_dir, docx_filename)
+        doc.save(docx_path)
+        
+        # Convert to PDF
+        pdf_filename = f"log_report_{timestamp_str}.pdf"
+        pdf_path = os.path.join(output_dir, pdf_filename)
+        
+        if convert_docx_to_pdf(docx_path, pdf_path):
+            logger.info(f"Successfully generated PDF log report: {pdf_path}")
+            # Clean up DOCX file
+            try:
+                os.remove(docx_path)
+                logger.info(f"Cleaned up temporary DOCX file: {docx_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up DOCX file {docx_path}: {e}")
+            
+            return pdf_path
+        else:
+            logger.error(f"Failed to convert DOCX to PDF for log report")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error generating log report PDF: {e}")
+        return None

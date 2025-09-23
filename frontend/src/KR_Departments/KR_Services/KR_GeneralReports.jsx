@@ -205,8 +205,8 @@ const Reports = () => {
 
       const result = await response.json();
       
-      // Show success message
-      alert(result.message || 'Reports generated and sent successfully!');
+      // Show detailed log report
+      showDetailedLogReport(result);
       
       // Reset form
       setTemplateFiles([]);
@@ -719,8 +719,8 @@ const Reports = () => {
 
       const result = await response.json();
       
-      // Show success message
-      alert(result.message || 'Reports generated and sent successfully!');
+      // Show detailed log report
+      showDetailedLogReport(result);
       
       // Reset form
       setTemplateFiles([]);
@@ -743,6 +743,25 @@ const Reports = () => {
     }
   };
 
+  const showDetailedLogReport = (result) => {
+    const stats = result.delivery_stats || {};
+    
+    // Create simple alert message with basic stats
+    const totalRecipients = stats.total_recipients || 0;
+    const successfulDeliveries = stats.successful_deliveries || 0;
+    const failedDeliveries = stats.failed_deliveries || 0;
+    
+    const alertMessage = `📊 Delivery Summary:
+    
+📋 Total contacts: ${totalRecipients}
+✅ Successful messages: ${successfulDeliveries}
+❌ Failed messages: ${failedDeliveries}
+📊 Success rate: ${totalRecipients > 0 ? ((successfulDeliveries / totalRecipients) * 100).toFixed(1) : 0}%`;
+    
+    alert(alertMessage);
+  };
+
+
   return (
     <div className="reports-container">
       {/* Token Expired Modal */}
@@ -762,6 +781,8 @@ const Reports = () => {
           </div>
         </div>
       )}
+
+
       <h1>Generate Reports</h1>
       
       {/* Email Subject at the top, full width */}
@@ -1075,3 +1096,4 @@ const Reports = () => {
 };
 
 export default Reports;
+

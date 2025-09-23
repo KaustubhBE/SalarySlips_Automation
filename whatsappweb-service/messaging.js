@@ -182,6 +182,13 @@ class WhatsAppMessaging {
             }
 
             const formattedNumber = this.formatPhoneNumber(whatsappNumber);
+            
+            // Check if phone number is valid
+            if (!formattedNumber) {
+                console.error(`❌ Invalid phone number for ${contactName}: ${whatsappNumber}. Skipping message.`);
+                return false;
+            }
+            
             console.log(`Sending message to ${contactName} (${formattedNumber})`);
 
             // Ensure client is ready before trying to get contact
@@ -389,7 +396,7 @@ class WhatsAppMessaging {
                 }
             }
 
-            console.log(`Successfully sent message to ${contactName} with ${validFilePaths.length} attachments`);
+            console.log(`Successfully sent message to ${contactName} on phone number ${formattedNumber} with ${validFilePaths.length} attachments`);
             return true;
 
         } catch (error) {
@@ -678,12 +685,18 @@ class WhatsAppMessaging {
     }
 
     formatPhoneNumber(phoneNumber) {
-        let cleaned = phoneNumber.replace(/\D/g, '');
+        // Simple phone number formatting - WhatsApp Web handles validation
+        let cleaned = phoneNumber.toString().replace(/\D/g, '');
         
-        if (!cleaned.startsWith('91') && cleaned.length === 10) {
-            cleaned = '91' + cleaned;
+        console.log(`Original phone number: "${phoneNumber}" -> Cleaned: "${cleaned}"`);
+        
+        // Basic validation - ITU standard: 4-15 digits (including country code)
+        if (!cleaned || cleaned.length < 4 || cleaned.length > 15) {
+            console.warn(`Invalid phone number length: ${cleaned} (${cleaned.length} digits)`);
+            return null;
         }
         
+        console.log(`Final formatted number: ${cleaned}`);
         return cleaned + '@c.us';
     }
 }

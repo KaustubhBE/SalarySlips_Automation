@@ -507,6 +507,20 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
                     logging.info(f"Processing recipient: {recipient_name}, Contact: {contact_number}")
                     
                     if recipient_name and contact_number:
+                        # Validate phone number format for reactor reports
+                        # Extract country code and phone number from the contact
+                        contact_cleaned = contact_number.replace(' ', '').replace('-', '').replace('+', '')
+                        
+                        # Check if the contact number has proper format (minimum 4 digits as per ITU standard)
+                        if len(contact_cleaned) < 4:
+                            logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too short ({len(contact_cleaned)} digits)")
+                            continue
+                        
+                        if len(contact_cleaned) > 15:
+                            logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too long ({len(contact_cleaned)} digits)")
+                            continue
+                        
+                        logging.info(f"Valid phone number for {recipient_name}: {contact_number} -> Cleaned: {contact_cleaned}")
                         total_recipients += 1
                         
                         # Send WhatsApp message using unified function

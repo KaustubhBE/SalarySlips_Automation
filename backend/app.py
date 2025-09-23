@@ -1031,280 +1031,44 @@ def generate_report():
         send_email = request.form.get('send_email') == 'true'
         mail_subject = request.form.get('mail_subject')
 
-        if not template_files:
-            return jsonify({"error": "No template files provided"}), 400
+        # Import the new function from process_utils
+        from Utils.process_utils import process_general_reports
 
-        if not sheet_id:
-            return jsonify({"error": "Google Sheet ID is required"}), 400
+        # Call the new function that handles all the heavy processing
+        result = process_general_reports(
+            template_files=template_files,
+            attachment_files=attachment_files,
+            file_sequence=file_sequence,
+            sheet_id=sheet_id,
+            sheet_name=sheet_name,
+            send_whatsapp=send_whatsapp,
+            send_email=send_email,
+            mail_subject=mail_subject,
+            user_id=user_id,
+            output_dir=OUTPUT_DIR,
+            logger=logger,
+            send_email_smtp=send_email_smtp,
+            send_whatsapp_message=send_whatsapp_message,
+            validate_sheet_id_func=validate_sheet_id,
+            prepare_file_paths_func=prepare_file_paths,
+            fetch_google_sheet_data_func=fetch_google_sheet_data,
+            process_template_func=process_template,
+            send_log_report_to_user_func=send_log_report_to_user
+        )
 
-        if not sheet_name:
-            return jsonify({"error": "Sheet name is required"}), 400
+        # Check if there were any errors
+        if not result["success"]:
+            if result["errors"]:
+                return jsonify({"error": result["errors"][0]}), 400
+            else:
+                return jsonify({"error": "Unknown error occurred"}), 500
 
-        # Validate sheet ID format
-        if not validate_sheet_id(sheet_id):
-            return jsonify({"error": "Invalid Google Sheet ID format"}), 400
-
-        # Create temporary directory for attachments
-        temp_dir = os.path.join(OUTPUT_DIR, "temp_attachments")
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # Save attachment files temporarily and store their paths
-        attachment_paths = prepare_file_paths(attachment_files, temp_dir=temp_dir, is_upload=True)
-
-        try:
-            # Fetch data from Google Sheet
-            sheet_data = fetch_google_sheet_data(sheet_id, sheet_name)
-            if not sheet_data or len(sheet_data) < 2:  # Check if we have headers and at least one row
-                return jsonify({"error": "No data found in the Google Sheet"}), 400
-        except Exception as e:
-            logger.error("Error fetching Google Sheet data: {}".format(e))
-            return jsonify({"error": "Failed to fetch data from Google Sheet"}), 500
-
-        # Process headers and data
-        headers = sheet_data[0]
-        data_rows = sheet_data[1:]
-
-        # Create output directory if it doesn't exist
-        output_dir = os.path.join(OUTPUT_DIR, "reports")
-        os.makedirs(output_dir, exist_ok=True)
-
-        # Process each template file
-        generated_files = []
-        for template_file in template_files:
-            if not template_file.filename.endswith('.docx'):
-                continue
-
-            # Save template temporarily
-            temp_template_path = os.path.join(output_dir, "temp_{}".format(template_file.filename))
-            template_file.save(temp_template_path)
-
-            # Read template content for messages
-            try:
-                doc = Document(temp_template_path)
-                template_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            except Exception as e:
-                logger.error("Error reading template content: {}".format(e))
-                return jsonify({"error": "Failed to read template content"}), 500
-            
-            if send_whatsapp:
-                pass
-
-            # Process each row of data
-            for row in data_rows:
-                try:
-                    # Create data dictionary from headers and row
-                    data_dict = dict(zip(headers, row))
-
-                    recipient_name = data_dict.get('Name', 'unknown')
-                    
-                    # Generate report for this row
-                    output_filename = "report_{}.docx".format(recipient_name)
-                    output_path = os.path.join(output_dir, output_filename)
-                    
-                    # Process the template with data
-                    process_template(temp_template_path, output_path, data_dict)
-                    generated_files.append(output_path)
-
-                    # Process template content for messages
-                    message_content = template_content
-                    email_content = template_content
-
-                    # Replace placeholders in message content
-                    for key, value in data_dict.items():
-                        placeholder = "{{{}}}".format(key)
-                        message_content = message_content.replace(placeholder, str(value))
-                        email_content = email_content.replace(placeholder, str(value))
-                        mail_subject = mail_subject.replace(placeholder, str(value))
-
-                    # Get contact details from Google Sheet data
-                    recipient_email = data_dict.get('Email ID - To')
-                    cc_email = data_dict.get('Email ID - CC', '')
-                    bcc_email = data_dict.get('Email ID - BCC', '')
-                    
-                    # Helper to split emails by comma or newline and join as comma-separated string
-                    def clean_emails(email_str):
-                        if not email_str:
-                            return None
-                        emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
-                        return ','.join(emails) if emails else None
-                    
-                    recipient_email = clean_emails(recipient_email)
-                    cc_email = clean_emails(cc_email)
-                    bcc_email = clean_emails(bcc_email)
-                    
-                    country_code = data_dict.get('Country Code', '').strip()
-                    phone_no = data_dict.get('Contact No.', '').strip()
-                    recipient_phone = "{} {}".format(country_code, phone_no)
-
-                    if send_whatsapp:
-                        if not recipient_phone or not country_code or not phone_no:
-                            logger.warning("Skipping WhatsApp message for {}: Missing Country Code or Contact No.".format(recipient_name))
-                            continue
-
-                        try:
-                            # Send WhatsApp message with attachments
-                            success = send_whatsapp_message(
-                                contact_name=recipient_name,
-                                message=message_content,  # Use processed template content
-                                file_paths=attachment_paths,
-                                file_sequence = file_sequence,
-                                whatsapp_number=recipient_phone,
-                                process_name="report"
-                            )
-                            
-                            if success == "USER_NOT_LOGGED_IN":
-                                return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
-                            elif success == "WHATSAPP_SERVICE_NOT_READY":
-                                return jsonify({"error": "WHATSAPP_SERVICE_NOT_READY", "message": "WhatsApp service is not ready. Please try again later."}), 503
-                            elif success == "INVALID_FILE_PATH":
-                                return jsonify({"error": "INVALID_FILE_PATH", "message": "Invalid file path for WhatsApp message."}), 400
-                            elif success == "INVALID_FILE_PATH_TYPE":
-                                return jsonify({"error": "INVALID_FILE_PATH_TYPE", "message": "Invalid file path type for WhatsApp message."}), 400
-                            elif success == "NO_VALID_FILES":
-                                return jsonify({"error": "NO_VALID_FILES", "message": "No valid files found for WhatsApp message."}), 400
-                            elif success == "NO_FILES_FOR_UPLOAD":
-                                return jsonify({"error": "NO_FILES_FOR_UPLOAD", "message": "No files available for WhatsApp upload."}), 400
-                            elif success == "WHATSAPP_API_ERROR":
-                                return jsonify({"error": "WHATSAPP_API_ERROR", "message": "WhatsApp API error. Please try again later."}), 500
-                            elif success == "WHATSAPP_CONNECTION_ERROR":
-                                return jsonify({"error": "WHATSAPP_CONNECTION_ERROR", "message": "WhatsApp connection error. Please try again later."}), 500
-                            elif success == "WHATSAPP_TIMEOUT_ERROR":
-                                return jsonify({"error": "WHATSAPP_TIMEOUT_ERROR", "message": "WhatsApp timeout error. Please try again later."}), 500
-                            elif success == "WHATSAPP_SEND_ERROR":
-                                return jsonify({"error": "WHATSAPP_SEND_ERROR", "message": "Failed to send WhatsApp message. Please try again."}), 500
-                            elif not success:
-                                logger.error("Failed to send WhatsApp message to {}".format(recipient_phone))
-                                return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
-
-                        except Exception as e:
-                            logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
-
-                    # Handle notifications if enabled
-                    if send_email:
-                        if not recipient_email:
-                            logger.warning("No email found for recipient: {}".format(recipient_name))
-                            continue
-                        try:
-                            email_subject = mail_subject
-                            email_body = """
-                            <html>
-                            <body>
-                            {} 
-                            </body>
-                            </html>
-                            """.format(email_content.replace('\n', '<br>'))
-                            user_email = session.get('user', {}).get('email')
-                            success = send_email_smtp(
-                                recipient_email=recipient_email,
-                                subject=email_subject,
-                                body=email_body,
-                                attachment_paths=attachment_paths,
-                                user_email=user_email,
-                                cc=cc_email,
-                                bcc=bcc_email
-                            )
-                            if success == "TOKEN_EXPIRED":
-                                # Store the request data for retry
-                                request_data = {
-                                    'template_files_data': [],
-                                    'attachment_files_data': [],
-                                    'file_sequence': file_sequence,
-                                    'sheet_id': sheet_id,
-                                    'sheet_name': sheet_name,
-                                    'send_whatsapp': send_whatsapp,
-                                    'send_email': send_email,
-                                    'mail_subject': mail_subject
-                                }
-                                
-                                # Convert template files to base64 for storage
-                                for template_file in template_files:
-                                    if template_file.filename.endswith('.docx'):
-                                        template_file.seek(0)  # Reset file pointer
-                                        file_content = template_file.read()
-                                        request_data['template_files_data'].append({
-                                            'name': template_file.filename,
-                                            'content': base64.b64encode(file_content).decode('utf-8')
-                                        })
-                                
-                                # Convert attachment files to base64 for storage
-                                for attachment_path in attachment_paths:
-                                    if os.path.exists(attachment_path):
-                                        with open(attachment_path, 'rb') as f:
-                                            file_content = f.read()
-                                            request_data['attachment_files_data'].append({
-                                                'name': os.path.basename(attachment_path),
-                                                'content': base64.b64encode(file_content).decode('utf-8')
-                                            })
-                                
-                                return jsonify({
-                                    "error": "TOKEN_EXPIRED",
-                                    "request_data": request_data
-                                }), 401
-                            elif success == "USER_NOT_LOGGED_IN":
-                                return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
-                            elif success == "NO_SMTP_CREDENTIALS":
-                                return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
-                            elif success == "INVALID_RECIPIENT":
-                                return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
-                            elif success == "NO_VALID_RECIPIENTS":
-                                return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
-                            elif success == "SMTP_AUTH_FAILED":
-                                return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
-                            elif success == "SMTP_ERROR":
-                                return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
-                            elif success == "EMAIL_SEND_ERROR":
-                                return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
-                            elif not success:
-                                logger.error("Failed to send email to {}".format(recipient_email))
-                                return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
-                        except Exception as e:
-                            logger.error("Error sending email: {}".format(str(e)))
-
-                except Exception as e:
-                    logger.error("Error processing row: {}".format(e))
-                    continue
-
-            # Clean up temporary template
-            os.remove(temp_template_path)
-
-        # Clean up temporary attachment files
-        for attachment_path in attachment_paths:
-            try:
-                if os.path.exists(attachment_path):
-                    os.remove(attachment_path)
-            except Exception as e:
-                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
-
-        # Remove temporary directory and any remaining files
-        try:
-            if os.path.exists(temp_dir):
-                # List any remaining files in the directory
-                remaining_files = os.listdir(temp_dir)
-                if remaining_files:
-                    # Try to remove each remaining file
-                    for file in remaining_files:
-                        try:
-                            file_path = os.path.join(temp_dir, file)
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                        except Exception as e:
-                            logger.error("Error removing remaining file {}: {}".format(file, e))
-                
-                # Try to remove the directory again
-                try:
-                    os.rmdir(temp_dir)
-                except Exception as e:
-                    logger.error("Failed to remove temporary directory {}: {}".format(temp_dir, e))
-        except Exception as e:
-            logger.error("Error during final cleanup: {}".format(e))
-
+        # Return success response
         return jsonify({
-            "message": "Reports generated successfully",
-            "generated_files": len(generated_files),
-            "notifications_sent": {
-                "email": send_email,
-                "whatsapp": send_whatsapp
-            }
+            "message": result["message"],
+            "generated_files": result["generated_files"],
+            "notifications_sent": result["notifications_sent"],
+            "delivery_stats": result["delivery_stats"]
         }), 200
 
     except Exception as e:
@@ -1450,12 +1214,26 @@ def retry_reports():
                         
                         country_code = data_dict.get('Country Code', '').strip()
                         phone_no = data_dict.get('Contact No.', '').strip()
-                        recipient_phone = "{} {}".format(country_code, phone_no)
+                        # Format phone number properly: remove spaces and combine country code + number
+                        recipient_phone = f"{country_code}{phone_no}".replace(' ', '')
                         
                         if send_whatsapp:
-                            if not recipient_phone or not country_code or not phone_no:
-                                logger.warning("Skipping WhatsApp message for {}: Missing Country Code or Contact No.".format(recipient_name))
+                            # Validate phone number components
+                            if not country_code or not country_code.strip():
+                                logger.warning("Skipping WhatsApp message for {}: Missing Country Code".format(recipient_name))
                                 continue
+                            
+                            if not phone_no or not phone_no.strip():
+                                logger.warning("Skipping WhatsApp message for {}: Missing Contact No.".format(recipient_name))
+                                continue
+                            
+                            if not recipient_phone or len(recipient_phone.replace(' ', '')) < 4:
+                                logger.warning("Skipping WhatsApp message for {}: Invalid phone number format (Country Code: {}, Contact No.: {})".format(
+                                    recipient_name, country_code, phone_no))
+                                continue
+                            
+                            logger.info("Valid phone number for {}: Country Code '{}', Contact No. '{}' -> Formatted: '{}'".format(
+                                recipient_name, country_code, phone_no, recipient_phone))
                             
                             try:
                                 # Send WhatsApp message with attachments
@@ -2812,6 +2590,232 @@ def get_next_order_id_endpoint():
     except Exception as e:
         logger.error(f"Error generating order ID: {str(e)}")
         return jsonify({"success": False, "message": f"Error generating order ID: {str(e)}"}), 500
+
+
+def send_log_report_to_user(user_email, delivery_stats, send_email_enabled, send_whatsapp_enabled, logger):
+    """
+    Send log report to the user who generated the reports
+    """
+    try:
+        # Import the PDF generation function
+        from Utils.process_utils import generate_log_report_pdf
+        
+        # Generate PDF log report
+        pdf_path = generate_log_report_pdf(delivery_stats, OUTPUT_DIR, logger)
+        
+        if not pdf_path:
+            logger.error("Failed to generate PDF log report, falling back to text format")
+            # Fallback to text format if PDF generation fails
+            send_log_report_text_fallback(user_email, delivery_stats, send_email_enabled, send_whatsapp_enabled, logger)
+            return
+        
+        # Format the log report text for WhatsApp (simplified version)
+        total_recipients = delivery_stats.get("total_recipients", 0)
+        successful_deliveries = delivery_stats.get("successful_deliveries", 0)
+        failed_deliveries = delivery_stats.get("failed_deliveries", 0)
+        
+        log_report_text = "📊 DELIVERY LOG REPORT\n\n"
+        log_report_text += f"📋 Total messages to be delivered: {total_recipients}\n"
+        log_report_text += f"✅ Messages delivered successfully: {successful_deliveries}\n"
+        log_report_text += f"❌ Failed messages: {failed_deliveries}\n\n"
+        log_report_text += "📄 Detailed PDF report has been attached to your email.\n"
+        log_report_text += "📱 This WhatsApp message contains the summary only."
+
+        # Send email log report if email notifications were enabled
+        if send_email_enabled:
+            try:
+                email_subject = "📊 Report Generation Log - Delivery Summary"
+                email_body = f"""
+                <html>
+                <body>
+                <h2>Report Generation Log</h2>
+                <p>Here is the delivery summary for the reports you generated:</p>
+                <p><strong>📋 Total messages to be delivered:</strong> {total_recipients}</p>
+                <p><strong>✅ Messages delivered successfully:</strong> {successful_deliveries}</p>
+                <p><strong>❌ Failed messages:</strong> {failed_deliveries}</p>
+                <p><strong>📊 Success Rate:</strong> {(successful_deliveries/total_recipients*100):.1f}%</p>
+                
+                <p>A detailed PDF report with complete delivery statistics and failed contacts table is attached to this email.</p>
+                <p><strong>Note:</strong> If you have WhatsApp authenticated in your account, you will also receive a summary via WhatsApp automatically.</p>
+                <br>
+                <p>Best regards,<br>Bajaj Earths Automation System</p>
+                </body>
+                </html>
+                """
+                
+                # Send email with PDF attachment
+                send_email_smtp(
+                    recipient_email=user_email,
+                    subject=email_subject,
+                    body=email_body,
+                    attachment_paths=[pdf_path],
+                    user_email=user_email
+                )
+                logger.info(f"Log report email with PDF attachment sent successfully to {user_email}")
+                
+            except Exception as e:
+                logger.error(f"Failed to send log report email to {user_email}: {e}")
+
+        # Send WhatsApp log report if WhatsApp notifications were enabled
+        if send_whatsapp_enabled:
+            try:
+                # Get user phone number from WhatsApp service
+                user_phone = get_user_phone_from_whatsapp_service(user_email)
+                if user_phone:
+                    # Send WhatsApp message with PDF attachment
+                    success = send_whatsapp_message(
+                        contact_name="Report Generator",
+                        message=log_report_text,
+                        file_paths=[pdf_path],
+                        whatsapp_number=user_phone,
+                        process_name="log_report"
+                    )
+                    if success:
+                        logger.info(f"Log report WhatsApp with PDF attachment sent successfully to {user_email}")
+                    else:
+                        logger.warning(f"Failed to send log report WhatsApp to {user_email}")
+                else:
+                    logger.info(f"No phone number found for user {user_email} - skipping WhatsApp log report")
+                
+            except Exception as e:
+                logger.error(f"Failed to send log report WhatsApp to user: {e}")
+        
+        # Clean up the PDF file after sending
+        try:
+            import os
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
+                logger.info(f"Cleaned up temporary PDF log report: {pdf_path}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up PDF log report {pdf_path}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in send_log_report_to_user: {e}")
+        # Fallback to text format if there's an error
+        try:
+            send_log_report_text_fallback(user_email, delivery_stats, send_email_enabled, send_whatsapp_enabled, logger)
+        except Exception as fallback_error:
+            logger.error(f"Fallback text log report also failed: {fallback_error}")
+
+def send_log_report_text_fallback(user_email, delivery_stats, send_email_enabled, send_whatsapp_enabled, logger):
+    """
+    Fallback function to send text-based log report if PDF generation fails
+    """
+    try:
+        # Format the log report as text
+        total_recipients = delivery_stats.get("total_recipients", 0)
+        successful_deliveries = delivery_stats.get("successful_deliveries", 0)
+        failed_deliveries = delivery_stats.get("failed_deliveries", 0)
+        failed_contacts = delivery_stats.get("failed_contacts", [])
+
+        # Create the log report text
+        log_report_text = "📊 DELIVERY LOG REPORT\n\n"
+        log_report_text += f"📋 Total messages to be delivered: {total_recipients}\n"
+        log_report_text += f"✅ Messages delivered successfully: {successful_deliveries}\n"
+        log_report_text += f"❌ Failed messages: {failed_deliveries}\n\n"
+
+        if failed_contacts:
+            log_report_text += "📋 FAILED CONTACTS TABLE:\n"
+            log_report_text += "┌─────────────────┬──────────────────┬─────────────────────────────────────┐\n"
+            log_report_text += "│ Name            │ Contact Number   │ Reason                              │\n"
+            log_report_text += "├─────────────────┼──────────────────┼─────────────────────────────────────┤\n"
+            
+            for contact in failed_contacts:
+                name = contact.get("name", "Unknown")
+                contact_num = contact.get("contact", "N/A")
+                reason = contact.get("reason", "Unknown error")
+                
+                # Truncate long strings to fit in table
+                truncated_name = name[:15] if len(name) <= 15 else name[:12] + "..."
+                truncated_contact = contact_num[:16] if len(contact_num) <= 16 else contact_num[:13] + "..."
+                truncated_reason = reason[:35] if len(reason) <= 35 else reason[:32] + "..."
+                
+                log_report_text += f"│ {truncated_name:<15} │ {truncated_contact:<16} │ {truncated_reason:<35} │\n"
+            
+            log_report_text += "└─────────────────┴──────────────────┴─────────────────────────────────────┘\n"
+
+        # Send email log report if email notifications were enabled
+        if send_email_enabled:
+            try:
+                email_subject = "📊 Report Generation Log - Delivery Summary"
+                email_body = f"""
+                <html>
+                <body>
+                <h2>Report Generation Log</h2>
+                <p>Here is the delivery summary for the reports you generated:</p>
+                <pre style="font-family: monospace; background-color: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {log_report_text.replace('\n', '<br>')}
+                </pre>
+                <p>This log report shows the delivery status of all recipients in your Google Sheet.</p>
+                <p><strong>Note:</strong> If you have WhatsApp authenticated in your account, you will also receive this log report via WhatsApp automatically.</p>
+                <br>
+                <p>Best regards,<br>Bajaj Earths Automation System</p>
+                </body>
+                </html>
+                """
+                
+                send_email_smtp(
+                    recipient_email=user_email,
+                    subject=email_subject,
+                    body=email_body,
+                    user_email=user_email
+                )
+                logger.info(f"Log report email sent successfully to {user_email}")
+                
+            except Exception as e:
+                logger.error(f"Failed to send log report email to {user_email}: {e}")
+
+        # Send WhatsApp log report if WhatsApp notifications were enabled
+        if send_whatsapp_enabled:
+            try:
+                # Get user phone number from WhatsApp service
+                user_phone = get_user_phone_from_whatsapp_service(user_email)
+                if user_phone:
+                    # Send WhatsApp message with log report
+                    success = send_whatsapp_message(
+                        contact_name="Report Generator",
+                        message=log_report_text,
+                        whatsapp_number=user_phone,
+                        process_name="log_report"
+                    )
+                    if success:
+                        logger.info(f"Log report WhatsApp sent successfully to {user_email}")
+                    else:
+                        logger.warning(f"Failed to send log report WhatsApp to {user_email}")
+                else:
+                    logger.info(f"No phone number found for user {user_email} - skipping WhatsApp log report")
+                
+            except Exception as e:
+                logger.error(f"Failed to send log report WhatsApp to user: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in send_log_report_text_fallback: {e}")
+
+def get_user_phone_from_whatsapp_service(user_email):
+    """
+    Get user phone number from WhatsApp service
+    """
+    try:
+        # Create WhatsApp client to get user info
+        client = WhatsAppNodeClient(WHATSAPP_NODE_SERVICE_URL, user_email)
+        
+        # Get WhatsApp status which includes user info
+        status_data = client.get_status()
+        
+        if status_data and status_data.get('authenticated') and status_data.get('userInfo'):
+            user_info = status_data.get('userInfo')
+            phone_number = user_info.get('phoneNumber')
+            
+            if phone_number:
+                logger.info(f"Found WhatsApp phone number for user {user_email}: {phone_number}")
+                return phone_number
+        
+        logger.info(f"No WhatsApp phone number found for user {user_email}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error getting WhatsApp phone number for user {user_email}: {e}")
+        return None
 
 
 if __name__ == "__main__":
