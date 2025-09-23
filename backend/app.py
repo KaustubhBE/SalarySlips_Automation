@@ -2140,6 +2140,228 @@ def get_material_data():
             "error": str(e)
         }), 500
 
+@app.route("/api/get_authority_list", methods=["GET"])
+def get_authority_list():
+    """Get authority list from Google Sheets for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Authority List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Fetch authority list from Google Sheets
+        authority_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not authority_data or len(authority_data) < 2:
+            return jsonify({
+                "success": True,
+                "data": [],
+                "message": f"No authority data found in sheet {sheet_name}"
+            }), 200
+        
+        # Extract authority names from the data (assuming first column contains names)
+        # Skip header row
+        authority_names = []
+        for row in authority_data[1:]:
+            if row and row[0].strip():  # Check if first column has data
+                authority_names.append(row[0].strip())
+        
+        return jsonify({
+            "success": True,
+            "data": authority_names,
+            "factory": factory,
+            "sheet_name": sheet_name
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching authority list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/get_party_place_data", methods=["GET"])
+def get_party_place_data():
+    """Get party and place data from Google Sheets for dropdown population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Party List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Fetch party and place data from Google Sheets
+        party_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not party_data or len(party_data) < 2:
+            return jsonify({
+                "success": True,
+                "data": {
+                    "party_names": [],
+                    "places": [],
+                    "party_place_mapping": {}
+                },
+                "message": f"No party data found in sheet {sheet_name}"
+            }), 200
+        
+        # Extract party names and places from the data
+        # Assuming structure: Party Name | Place
+        party_names = []
+        places = []
+        party_place_mapping = {}
+        
+        for row in party_data[1:]:  # Skip header row
+            if len(row) >= 2 and row[0].strip() and row[1].strip():
+                party_name = row[0].strip()
+                place = row[1].strip()
+                
+                party_names.append(party_name)
+                places.append(place)
+                party_place_mapping[party_name] = place
+        
+        # Remove duplicates
+        party_names = list(set(party_names))
+        places = list(set(places))
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "party_names": party_names,
+                "places": places,
+                "party_place_mapping": party_place_mapping
+            },
+            "factory": factory,
+            "sheet_name": sheet_name
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching party place data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/material_inward", methods=["POST"])
+def material_inward():
+    """Record material inward transaction"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName', 'uom', 'quantity', 'partyName', 'place']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({
+                    "success": False,
+                    "error": f"Missing required field: {field}"
+                }), 400
+        
+        # Create material inward record
+        inward_record = {
+            'category': data['category'],
+            'subCategory': data.get('subCategory', ''),
+            'particulars': data.get('particulars', ''),
+            'materialName': data['materialName'],
+            'uom': data['uom'],
+            'quantity': data['quantity'],
+            'partyName': data['partyName'],
+            'place': data['place'],
+            'timestamp': data.get('timestamp', datetime.now().isoformat()),
+            'department': data.get('department', 'KR'),
+            'type': 'inward',
+            'recordedBy': session.get('user', {}).get('email', 'unknown'),
+            'recordedAt': datetime.now().isoformat()
+        }
+        
+        # Here you would typically save to database
+        # For now, we'll just log it and return success
+        logger.info(f"Material inward recorded: {inward_record}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Material inward recorded successfully",
+            "data": inward_record
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error recording material inward: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/material_outward", methods=["POST"])
+def material_outward():
+    """Record material outward transaction"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName', 'uom', 'quantity', 'givenTo', 'description']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({
+                    "success": False,
+                    "error": f"Missing required field: {field}"
+                }), 400
+        
+        # Create material outward record
+        outward_record = {
+            'category': data['category'],
+            'subCategory': data.get('subCategory', ''),
+            'particulars': data.get('particulars', ''),
+            'materialName': data['materialName'],
+            'uom': data['uom'],
+            'quantity': data['quantity'],
+            'givenTo': data['givenTo'],
+            'description': data['description'],
+            'timestamp': data.get('timestamp', datetime.now().isoformat()),
+            'department': data.get('department', 'KR'),
+            'type': 'outward',
+            'recordedBy': session.get('user', {}).get('email', 'unknown'),
+            'recordedAt': datetime.now().isoformat()
+        }
+        
+        # Here you would typically save to database
+        # For now, we'll just log it and return success
+        logger.info(f"Material outward recorded: {outward_record}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Material outward recorded successfully",
+            "data": outward_record
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error recording material outward: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/add_material", methods=["POST"])
 def add_material():
     """Add a new material to Firebase"""
