@@ -8,8 +8,8 @@ export default defineConfig(({ command, mode }) => {
   const isDev = mode === 'development'
 
   // Optional SSL for dev (only if cert files exist)
-  const sslKeyPath = '/etc/letsencrypt/live/uatadmin.bajajearths.com/privkey.pem'
-  const sslCertPath = '/etc/letsencrypt/live/uatadmin.bajajearths.com/fullchain.pem'
+  const sslKeyPath = '/etc/letsencrypt/live/admin.bajajearths.com/privkey.pem'
+  const sslCertPath = '/etc/letsencrypt/live/admin.bajajearths.com/fullchain.pem'
   const httpsConfig = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)
     ? {
         key: fs.readFileSync(sslKeyPath),
@@ -59,20 +59,20 @@ export default defineConfig(({ command, mode }) => {
     },                                                                                                                                                        
     server: isDev                                                                                                                                             
       ? {                                                                                                                                                     
-          port: 7081,                                                                                                                                         
+          port: 7091,                                                                                                                                         
           strictPort: true,                                                                                                                                   
           host: '0.0.0.0',                                                                                                                                    
           https: httpsConfig, // Optional: use HTTPS if certs are found                                                                                       
-          allowedHosts: ['uatadmin.bajajearths.com'],                                                                                                            
+          allowedHosts: ['admin.bajajearths.com'],                                                                                                            
           hmr: {                                                                                                                                              
             protocol: httpsConfig ? 'wss' : 'ws',                                                                                                             
-            host: 'uatadmin.bajajearths.com',                                                                                                                    
-            port: httpsConfig ? 443 : 7081,                                                                                                                   
+            host: 'admin.bajajearths.com',                                                                                                                    
+            port: httpsConfig ? 443 : 7091,                                                                                                                   
           }
         }                                                                                                                                                     
       : undefined,                                                                                                                                            
     preview: {                                                                                                                                                
-      port: 7081,                                                                                                                                             
+      port: 7091,                                                                                                                                             
       strictPort: true,                                                                                                                                       
       host: '0.0.0.0'                                                                                                                                         
     },                                                                                                                                                        
