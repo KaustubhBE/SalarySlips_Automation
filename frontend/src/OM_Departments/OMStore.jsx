@@ -5,7 +5,7 @@ import Processing from './OM_Services/OM_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const OMStore = () => {
@@ -17,9 +17,7 @@ const OMStore = () => {
   
   // Static services for OM Store department (only existing services)
   const omStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/omkar/om_store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/omkar/om_store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/omkar/om_store/reactor-reports' }
+    { key: 'om_placeorder', name: 'Place Order', route: '/omkar/om_store/om_place_order' }
   ];
 
   // Get accessible services based on user permissions

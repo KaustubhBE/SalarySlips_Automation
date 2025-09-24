@@ -551,7 +551,7 @@ const KR_MaterialInward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place-order-container">
+      <div className="place_order-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Inward Form</h2>
@@ -565,7 +565,7 @@ const KR_MaterialInward = () => {
   }
 
   return (
-    <div className="place-order-container">
+    <div className="place_order-container">
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 

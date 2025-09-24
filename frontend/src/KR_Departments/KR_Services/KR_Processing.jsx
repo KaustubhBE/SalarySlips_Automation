@@ -350,8 +350,8 @@ function Processing({ mode = 'single' }) {
     if (userRole === 'admin') return true;
     
     // Check for specific processing permissions using the enhanced hasPermission function
-    const requiredPermission = mode === 'single' ? 'single_processing' : 'batch_processing';
-    return hasPermission(requiredPermission);
+    const requiredPermission = mode === 'single' ? 'kr_single_processing' : 'kr_batch_processing';
+    return hasPermission(requiredPermission, 'kerur', 'humanresource');
   };
 
   // If user doesn't have permission, show access denied message

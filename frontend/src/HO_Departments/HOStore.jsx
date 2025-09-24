@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import SheetsMaterialList from './HO_Services/Sheets-MaterialList';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const HOStore = () => {
@@ -14,7 +14,7 @@ const HOStore = () => {
   
   // Static services for HO Store department (only existing services)
   const hoStoreServices = [
-    { key: 'ho_sheets-material', name: 'Sheets Material List', route: '/ho_store/ho_sheets-material' },
+    { key: 'ho_material_list', name: 'Material List', route: '/headoffice/ho_store/ho_material_list' },
   ];
 
   // Get accessible services based on user permissions

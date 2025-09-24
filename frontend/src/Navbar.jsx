@@ -13,10 +13,6 @@ import { useAuth } from './Components/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   getApiUrl, 
-  getAccessibleDepartments, 
-  getAccessibleFactories, 
-  hasPermission, 
-  DEPARTMENTS_CONFIG, 
   FACTORY_NAMES, 
   ENDPOINTS,
   DEFAULT_WHATSAPP_URL
@@ -94,152 +90,53 @@ const Navbar = ({ onLogout }) => {
     return null;
   };
 
-  // Get accessible factories for current user - SIMPLIFIED RBAC (matching App.jsx approach)
+  // Get accessible factories for current user using new RBAC system
   const getAccessibleFactoriesForUser = () => {
-    if (!user) return [];
-    
-    // Admin has access to all factories
-    if (user.role === 'admin') {
-      return ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'];
-    }
-    
-    // For regular users, check if they have tree-based permissions
-    const hasTreePermissions = user.tree_permissions && Object.keys(user.tree_permissions).length > 0;
-    
-    if (hasTreePermissions) {
-      return ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'];
-    }
-    
-    // Default: no factory access for users without permissions
-    return [];
+    return getUserFactories();
   };
 
-  // Get accessible departments for a specific factory - SIMPLIFIED RBAC
+  // Get accessible departments for a specific factory using new RBAC system
   const getAccessibleDepartmentsForFactory = (factoryKey) => {
-    if (!user || !factoryKey) return [];
+    if (!factoryKey) return [];
     
-    // Admin has access to all departments
-    if (user.role === 'admin') {
-      return Object.values(DEPARTMENTS_CONFIG)
-        .filter(dept => dept.key !== 'all' && dept.key !== 'management')
-        .map(dept => ({
-          key: dept.key,
-          name: dept.name,
-          description: dept.description,
-          services: dept.services || {}
-        }));
-    }
+    // Get departments for this factory from the new RBAC system
+    const userDepartments = getUserDepartments(factoryKey);
     
-    // For regular users, check if they have tree-based permissions
-    const hasTreePermissions = user.tree_permissions && Object.keys(user.tree_permissions).length > 0;
-    
-    if (hasTreePermissions) {
-      return Object.values(DEPARTMENTS_CONFIG)
-        .filter(dept => dept.key !== 'all' && dept.key !== 'management')
-        .map(dept => ({
-          key: dept.key,
-          name: dept.name,
-          description: dept.description,
-          services: dept.services || {}
-        }));
-    }
-    
-    return [];
-  };
-
-  // Get accessible services for a specific department - SIMPLIFIED RBAC
-  const getAccessibleServicesForDepartment = (factoryKey, departmentKey) => {
-    if (!user || !factoryKey || !departmentKey) return [];
-    
-    const department = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === departmentKey);
-    if (!department) return [];
-    
-    // Admin has access to all services
-    if (user.role === 'admin') {
-      const services = [];
-      if (department.services) {
-        Object.values(department.services).forEach(service => {
-          if (service.subServices) {
-            // Handle sub-services (like single_processing, batch_processing)
-            Object.values(service.subServices).forEach(subService => {
-              services.push({
-                key: subService.key,
-                name: subService.name,
-                description: subService.description,
-                route: `/department/${departmentKey}/${subService.key}`
-              });
-            });
-          } else if (service.permission) {
-            // Handle direct services
-            services.push({
-              key: service.key,
-              name: service.name,
-              description: service.description,
-              route: `/department/${departmentKey}/${service.key}`
-            });
-          }
-        });
-      }
-      return services;
-    }
-    
-    // For regular users, check if they have tree-based permissions
-    const hasTreePermissions = user.tree_permissions && Object.keys(user.tree_permissions).length > 0;
-    
-    if (hasTreePermissions) {
-      const services = [];
-      if (department.services) {
-        Object.values(department.services).forEach(service => {
-          if (service.subServices) {
-            // Handle sub-services (like single_processing, batch_processing)
-            Object.values(service.subServices).forEach(subService => {
-              services.push({
-                key: subService.key,
-                name: subService.name,
-                description: subService.description,
-                route: `/department/${departmentKey}/${subService.key}`
-              });
-            });
-          } else if (service.permission) {
-            // Handle direct services
-            services.push({
-              key: service.key,
-              name: service.name,
-              description: service.description,
-              route: `/department/${departmentKey}/${service.key}`
-            });
-          }
-        });
-      }
-      return services;
-    }
-    
-    return [];
-  };
-
-  // Check if user has specific permission - Enhanced to handle both flat and nested formats
-  const hasUserPermission = (permission) => {
-    if (user?.role === 'admin') {
-      return true;
-    }
-    
-    // Check tree-based permissions (enhanced flat format)
-    const treePermissions = user?.tree_permissions || {};
-    
-    // Handle flat format: "gulbarga.humanresource.reports: true"
-    const flatPermission = Object.keys(treePermissions).find(key => {
-      if (treePermissions[key] === true) {
-        const parts = key.split('.');
-        return parts.length >= 3 && parts[parts.length - 1] === permission;
-      }
-      return false;
+    // Convert to the format expected by the navbar
+    return userDepartments.map(deptKey => {
+      // Remove factory prefix to get base department key
+      const baseDeptKey = deptKey.replace(/^(gb|kr|hb|om|pv|ho)_/, '');
+      
+      return {
+        key: baseDeptKey,
+        name: baseDeptKey.charAt(0).toUpperCase() + baseDeptKey.slice(1).replace(/([A-Z])/g, ' $1'),
+        description: `${baseDeptKey.charAt(0).toUpperCase() + baseDeptKey.slice(1)} Department`,
+        services: {}
+      };
     });
+  };
+
+  // Get accessible services for a specific department using new RBAC system
+  const getAccessibleServicesForDepartment = (factoryKey, departmentKey) => {
+    if (!factoryKey || !departmentKey) return [];
     
-    if (flatPermission) {
-      return true;
-    }
+    // Get services for this factory-department combination from the new RBAC system
+    const userServices = getUserServices(factoryKey, departmentKey);
     
-    return false;
+    // Convert to the format expected by the navbar
+    return userServices.map(serviceKey => {
+      return {
+        key: serviceKey,
+        name: serviceKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: `${serviceKey.replace(/_/g, ' ')} service`,
+        route: `/${factoryKey}/${departmentKey}/${serviceKey}`
+      };
+    });
+  };
+
+  // Check if user has specific permission using new RBAC system
+  const hasUserPermission = (permission) => {
+    return hasPermission(permission);
   };
 
   const toggleMenu = () => {

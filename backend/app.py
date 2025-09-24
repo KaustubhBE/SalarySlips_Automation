@@ -53,6 +53,197 @@ from datetime import datetime, timedelta
 import gspread
 from dotenv import load_dotenv
 
+# ============================================================================
+# CENTRALIZED RBAC CONFIGURATION
+# ============================================================================
+
+# Centralized factory RBAC configuration (mirrors frontend config)
+FACTORY_RBAC_CONFIG = {
+    'gulbarga': {
+        'name': 'Gulbarga',
+        'document_name': 'GB',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'gb_place_order': {'name': 'Place Order', 'permission': 'gb_place_order'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'gb_single_processing': {'name': 'Single Processing', 'permission': 'gb_single_processing'},
+                    'gb_batch_processing': {'name': 'Batch Processing', 'permission': 'gb_batch_processing'}
+                }
+            }
+        }
+    },
+    'kerur': {
+        'name': 'Kerur',
+        'document_name': 'KR',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'kr_place_order': {'name': 'Place Order', 'permission': 'kr_place_order'},
+                    'kr_material_list': {'name': 'Material List', 'permission': 'kr_material_list'},
+                    'kr_material_inward': {'name': 'Material Inward', 'permission': 'kr_material_inward'},
+                    'kr_material_outward': {'name': 'Material Outward', 'permission': 'kr_material_outward'},
+                    'kr_order_status': {'name': 'Order Status', 'permission': 'kr_order_status'},
+                    'kr_general_reports': {'name': 'General Reports', 'permission': 'kr_general_reports'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'kr_single_processing': {'name': 'Single Processing', 'permission': 'kr_single_processing'},
+                    'kr_batch_processing': {'name': 'Batch Processing', 'permission': 'kr_batch_processing'}
+                }
+            },
+            'operations': {
+                'name': 'Operations',
+                'services': {
+                    'kr_general_reports': {'name': 'General Reports', 'permission': 'kr_general_reports'},
+                    'kr_reactor_reports': {'name': 'Reactor Reports', 'permission': 'kr_reactor_reports'}
+                }
+            }
+        }
+    },
+    'humnabad': {
+        'name': 'Humnabad',
+        'document_name': 'HB',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'hb_place_order': {'name': 'Place Order', 'permission': 'hb_place_order'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'hb_single_processing': {'name': 'Single Processing', 'permission': 'hb_single_processing'},
+                    'hb_batch_processing': {'name': 'Batch Processing', 'permission': 'hb_batch_processing'}
+                }
+            }
+        }
+    },
+    'omkar': {
+        'name': 'Omkar',
+        'document_name': 'OM',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'om_placeorder': {'name': 'Place Order', 'permission': 'om_place_order'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'om_single_processing': {'name': 'Single Processing', 'permission': 'om_single_processing'},
+                    'om_batch_processing': {'name': 'Batch Processing', 'permission': 'om_batch_processing'}
+                }
+            }
+        }
+    },
+    'padmavati': {
+        'name': 'Padmavati',
+        'document_name': 'PV',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'pv_place_order': {'name': 'Place Order', 'permission': 'pv_place_order'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'pv_single_processing': {'name': 'Single Processing', 'permission': 'pv_single_processing'},
+                    'pv_batch_processing': {'name': 'Batch Processing', 'permission': 'pv_batch_processing'}
+                }
+            }
+        }
+    },
+    'headoffice': {
+        'name': 'Head Office',
+        'document_name': 'HO',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'ho_material_list': {'name': 'Material List', 'permission': 'ho_material_list'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'ho_single_processing': {'name': 'Single Processing', 'permission': 'ho_single_processing'},
+                    'ho_batch_processing': {'name': 'Batch Processing', 'permission': 'ho_batch_processing'}
+                }
+            },
+            'accounts': {
+                'name': 'Accounts',
+                'services': {
+                    # No specific services found in HO_Services folder
+                }
+            },
+            'marketing': {
+                'name': 'Marketing',
+                'services': {
+                    # No specific services found in HO_Services folder
+                }
+            },
+            'operations': {
+                'name': 'Operations',
+                'services': {
+                    # No specific services found in HO_Services folder
+                }
+            }
+        }
+    }
+}
+
+def generate_permission_metadata(role, user_permission_metadata=None):
+    """
+    Generate permission metadata based on role and user-specific permissions.
+    Admin gets all permissions, regular users get specific permissions.
+    """
+    if role == 'admin':
+        # Admin gets access to all factories, departments, and services
+        all_factories = list(FACTORY_RBAC_CONFIG.keys())
+        all_departments = {}
+        all_services = {}
+        
+        for factory in all_factories:
+            factory_config = FACTORY_RBAC_CONFIG[factory]
+            factory_short_form = factory_config['document_name'].lower()  # e.g., 'gb', 'kr', 'hb'
+            
+            factory_departments = list(factory_config['departments'].keys())
+            # Store departments with factory short form prefix (e.g., gb_store, kr_humanresource)
+            prefixed_departments = [f"{factory_short_form}_{dept}" for dept in factory_departments]
+            all_departments[factory] = prefixed_departments
+            
+            for department in factory_departments:
+                service_key = f"{factory}.{department}"
+                department_services = list(FACTORY_RBAC_CONFIG[factory]['departments'][department]['services'].keys())
+                all_services[service_key] = department_services
+        
+        return {
+            'factories': all_factories,
+            'departments': all_departments,
+            'services': all_services
+        }
+    
+    # For regular users, use the provided permission metadata or return empty
+    return user_permission_metadata or {
+        'factories': [],
+        'departments': {},
+        'services': {}
+    }
+
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -66,28 +257,7 @@ except Exception as e:
     logger.error(f"Error initializing gspread client: {e}")
     client = None
 
-# Define departments and permissions (aligned with Dashboard.jsx)
-DEPARTMENTS = {
-    'STORE': 'store',
-    'MARKETING': 'marketing',
-    'HUMANRESOURCE': 'humanresource',
-    'ACCOUNTS': 'accounts',
-    'REPORTS_DEPARTMENT': 'reports_department',
-    'OPERATIONS_DEPARTMENT': 'operations_department'
-}
-
-# Note: Admin role doesn't need specific permissions - they have access to everything by design
-# Regular users get permissions assigned through the Dashboard interface
-
-# Define departments (aligned with frontend config)
-DEPARTMENTS_CONFIG = {
-    'STORE': 'store',
-    'MARKETING': 'marketing', 
-    'HUMANRESOURCE': 'humanresource',
-    'ACCOUNTS': 'accounts',
-    'OPERATIONS_DEPARTMENT': 'operations_department',
-    'REPORTS_DEPARTMENT': 'reports_department'
-}
+# Old RBAC configuration removed - using centralized FACTORY_RBAC_CONFIG instead
 
 # Configure logging first
 logging.basicConfig(
@@ -307,39 +477,8 @@ def add_user():
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Admin role gets all permissions automatically
-        if role == 'admin':
-            permission_metadata = {
-                'factories': ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'],
-                'departments': {
-                    'gulbarga': ['humanresource', 'store', 'marketing'],
-                    'kerur': ['humanresource', 'store', 'marketing'],
-                    'humnabad': ['humanresource', 'store', 'marketing'],
-                    'omkar': ['humanresource', 'store', 'marketing'],
-                    'padmavati': ['humanresource', 'store', 'marketing'],
-                    'headoffice': ['humanresource', 'store', 'marketing']
-                },
-                'services': {
-                    'gulbarga.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'gulbarga.store': ['inventory', 'reports'],
-                    'gulbarga.marketing': ['reports', 'marketing_campaigns'],
-                    'kerur.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'kerur.store': ['inventory', 'reports'],
-                    'kerur.marketing': ['reports', 'marketing_campaigns'],
-                    'humnabad.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'humnabad.store': ['inventory', 'reports'],
-                    'humnabad.marketing': ['reports', 'marketing_campaigns'],
-                    'omkar.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'omkar.store': ['inventory', 'reports'],
-                    'omkar.marketing': ['reports', 'marketing_campaigns'],
-                    'padmavati.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'padmavati.store': ['inventory', 'reports'],
-                    'padmavati.marketing': ['reports', 'marketing_campaigns'],
-                    'headoffice.humanresource': ['inventory', 'reports', 'single_processing', 'batch_processing', 'reactor_reports'],
-                    'headoffice.store': ['inventory', 'reports', 'sheets-material'],
-                    'headoffice.marketing': ['reports', 'marketing_campaigns']
-                }
-            }
+        # Generate permission metadata using centralized configuration
+        permission_metadata = generate_permission_metadata(role, permission_metadata)
 
         user_id = firebase_add_user(
             username=username, 
@@ -1358,7 +1497,7 @@ def retry_reports():
         logger.error("Error retrying reports: {}".format(e))
         return jsonify({"error": str(e)}), 500
     
-@app.route("/api/reactor-reports", methods=["POST"])
+@app.route("/api/reactor_reports", methods=["POST"])
 def reactor_report():
     try:
         user_id = session.get('user', {}).get('email')
@@ -1427,7 +1566,7 @@ def reactor_report():
     finally:
         pass
 
-@app.route("/api/kr_reactor-reports", methods=["POST"])
+@app.route("/api/kr_reactor_reports", methods=["POST"])
 def kr_reactor_report():
     """New endpoint specifically for KR_ReactorReports.jsx with OAuth email support"""
     try:

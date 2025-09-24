@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import Processing from './HO_Services/HO_Processing';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const HOHumanResource = () => {
@@ -14,8 +14,8 @@ const HOHumanResource = () => {
   
   // Static services for HO Human Resource department (only existing services)
   const hoHRServices = [
-    { key: 'ho_single-processing', name: 'Single Processing', route: '/headoffice/ho_humanresource/ho_single-processing' },
-    { key: 'ho_batch-processing', name: 'Batch Processing', route: '/headoffice/ho_humanresource/ho_batch-processing' }
+    { key: 'ho_single_processing', name: 'Single Processing', route: '/headoffice/ho_humanresource/ho_single_processing' },
+    { key: 'ho_batch_processing', name: 'Batch Processing', route: '/headoffice/ho_humanresource/ho_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -106,14 +106,14 @@ const HOHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="ho_single-processing/*" element={
-        isAuthenticated && hasUserPermission('ho_single-processing') ? 
+      <Route path="ho_single_processing/*" element={
+        isAuthenticated && hasUserPermission('ho_single_processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/headoffice" replace />
       } />
 
-      <Route path="ho_batch-processing/*" element={
-        isAuthenticated && hasUserPermission('ho_batch-processing') ? 
+      <Route path="ho_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('ho_batch_processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/headoffice" replace />
       } />

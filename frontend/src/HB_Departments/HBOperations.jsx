@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import '../App.css';
 
-const KROperations = () => {
+const HBOperations = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for KR Operations department (only existing services)
+  // Static services for HB Operations department (only existing services)
   const krOperationsServices = [
     { key: 'kr_general_reports', name: 'General Reports', route: '/kerur/kr_operations/kr_general_reports' },
     { key: 'kr_reactor_reports', name: 'Reactor Reports', route: '/kerur/kr_operations/kr_reactor_reports' }
@@ -114,4 +114,4 @@ const KROperations = () => {
   );
 };
 
-export default KROperations;
+export default HBOperations;

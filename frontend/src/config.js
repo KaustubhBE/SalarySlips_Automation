@@ -72,168 +72,9 @@ export const getCurrentBackendUrl = () => {
     return getApiBaseUrl();
 };
 
-// Department and Services Configuration
-export const DEPARTMENTS_CONFIG = {
-  STORE: {
-    key: 'store',
-    name: 'Store',
-    description: 'Store Department - Inventory Management',
-    route: '/store',
-    services: {
-      INVENTORY: {
-        key: 'inventory',
-        name: 'Inventory',
-        description: 'Manage inventory operations',
-        permission: 'inventory'
-      },
-      REPORTS: {
-        key: 'reports',
-        name: 'Reports',
-        description: 'Generate and manage reports',
-        permission: 'reports'
-      }
-    }
-  },
-  MARKETING: {
-    key: 'marketing',
-    name: 'Marketing',
-    description: 'Marketing Department - Marketing Campaigns and Analysis',
-    route: '/marketing',
-    services: {
-      MARKETING_CAMPAIGNS: {
-        key: 'marketing_campaigns',
-        name: 'Marketing Campaigns',
-        description: 'Manage marketing campaigns',
-        permission: 'marketing_campaigns'
-      }
-    }
-  },
-  HUMANRESOURCE: {
-    key: 'humanresource',
-    name: 'Human Resource',
-    description: 'Human Resource Department - Salary Processing and Employee Management',
-    route: '/humanresource',
-    services: {
-      SALARY_PROCESSING: {
-        key: 'salary_processing',
-        name: 'Salary Processing',
-        description: 'Process salary slips',
-        subServices: {
-          SINGLE_PROCESSING: {
-            key: 'single-processing',
-            name: 'Single Processing',
-            description: 'Process individual salary slips',
-            permission: 'single_processing'
-          },
-          BATCH_PROCESSING: {
-            key: 'batch-processing',
-            name: 'Batch Processing',
-            description: 'Process multiple salary slips at once',
-            permission: 'batch_processing'
-          }
-        }
-      },
-      REPORTS: {
-        key: 'reports',
-        name: 'Reports',
-        description: 'Generate and manage reports',
-        permission: 'reports'
-      }
-    }
-  },
-  ACCOUNTS: {
-    key: 'accounts',
-    name: 'Accounts',
-    description: 'Accounts Department - Financial Management',
-    route: '/accounts',
-    services: {
-      REPORTS: {
-        key: 'reports',
-        name: 'Reports',
-        description: 'Generate and manage reports',
-        permission: 'reports'
-      },
-      EXPENSE_MANAGEMENT: {
-        key: 'expense-management',
-        name: 'Expense Management',
-        description: 'Manage expenses',
-        permission: 'expense_management'
-      }
-    }
-  },
-  REPORTS_DEPARTMENT: {
-    key: 'reports-department',
-    name: 'Reports Department',
-    description: 'Reports Department - Generate and manage reports',
-    route: '/reports-department',
-    services: {
-      REACTOR_REPORTS: {
-        key: 'reactor-reports',
-        name: 'Reactor Reports',
-        description: 'Generate reactor reports',
-        permission: 'reactor_reports'
-      },
-      GENERAL_REPORTS: {
-        key: 'reports',
-        name: 'General Reports',
-        description: 'Generate general reports',
-        permission: 'reports'
-      }
-    }
-  },
-  OPERATIONS: {
-    key: 'operations_department',
-    name: 'Operations Department',
-    description: 'Operations Department - Manage Operations',
-    route: '/operations_department',
-    services: {
-      INVENTORY: {
-        key: 'inventory',
-        name: 'Inventory',
-        description: 'Manage inventory operations',
-        permission: 'inventory'
-      },
-      REPORTS: {
-        key: 'reports',
-        name: 'Reports',
-        description: 'Generate and manage reports',
-        permission: 'reports'
-      },
-      REACTOR_REPORTS: {
-        key: 'reactor-reports',
-        name: 'Reactor Reports',
-        description: 'Generate reactor reports',
-        permission: 'reactor_reports'
-      }
-    }
-  }
-};
+// Old DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 
-// ============================================================================
-// SIMPLIFIED 2-LAYER RBAC STRUCTURE: admin and user
-// ============================================================================
-
-// Department keys
-export const DEPARTMENTS = {
-    ACCOUNTS: 'accounts',
-    HUMANRESOURCE: 'humanresource',
-    STORE: 'store',
-    MARKETING: 'marketing',
-    REPORTS_DEPARTMENT: 'reports_department',
-    OPERATIONS: 'operations_department',
-    ALL: 'all'
-};
-
-// Department display names
-export const DEPARTMENT_NAMES = {
-    [DEPARTMENTS.ACCOUNTS]: 'Accounts',
-    [DEPARTMENTS.HUMANRESOURCE]: 'Human Resource',
-    [DEPARTMENTS.STORE]: 'Store',
-    [DEPARTMENTS.MARKETING]: 'Marketing',
-    [DEPARTMENTS.REPORTS_DEPARTMENT]: 'Reports Department',
-    [DEPARTMENTS.OPERATIONS]: 'Operations Department',
-    [DEPARTMENTS.ALL]: 'All Departments'
-};
+// Old RBAC structure removed - using centralized FACTORY_RBAC_CONFIG instead
 
 // Factory names for navigation
 export const FACTORY_NAMES = {
@@ -245,436 +86,13 @@ export const FACTORY_NAMES = {
     'headoffice': 'Head Office'
 };
 
-// Service keys
-export const SERVICES = {
-    SALARY_PROCESSING: 'salary_processing',
-    INVENTORY: 'inventory',
-    REPORTS: 'reports',
-    EXPENSE_MANAGEMENT: 'expense_management',
-    MARKETING_CAMPAIGNS: 'marketing_campaigns',
-    SINGLE_PROCESSING: 'single_processing',
-    BATCH_PROCESSING: 'batch_processing',
-    REACTOR_REPORTS: 'reactor_reports'
-};
+// Old service keys removed - using centralized FACTORY_RBAC_CONFIG instead
 
-// Service display names
-export const SERVICE_NAMES = {
-    [SERVICES.SALARY_PROCESSING]: 'Salary Processing',
-    [SERVICES.INVENTORY]: 'Inventory',
-    [SERVICES.REPORTS]: 'Reports',
-    [SERVICES.EXPENSE_MANAGEMENT]: 'Expense Management',
-    [SERVICES.MARKETING_CAMPAIGNS]: 'Marketing Campaigns',
-    [SERVICES.SINGLE_PROCESSING]: 'Single Processing',
-    [SERVICES.BATCH_PROCESSING]: 'Batch Processing',
-    [SERVICES.REACTOR_REPORTS]: 'Reactor Reports'
-};
+// Old permissions structure removed - using centralized FACTORY_RBAC_CONFIG instead
 
-// ============================================================================
-// ALL AVAILABLE PERMISSIONS
-// ============================================================================
+// Old permission descriptions and default permissions removed - using centralized FACTORY_RBAC_CONFIG instead
 
-// Generate all possible permissions for the system
-export const ALL_PERMISSIONS = {
-    // General permissions
-    GENERAL: {
-        USER_MANAGEMENT: 'user_management',
-        CAN_CREATE_ADMIN: 'can_create_admin',
-        SETTINGS_ACCESS: 'settings_access',
-        REPORTS: 'reports'
-    },
-    
-    // Admin permission (wildcard)
-    ADMIN: {
-        ALL_ACCESS: '*'
-    },
-    
-    // Department-specific permissions
-    DEPARTMENTS: {
-        ACCOUNTS: {
-            EXPENSE_MANAGEMENT: 'expense_management',
-            REPORTS: 'reports'
-        },
-        HUMANRESOURCE: {
-            SINGLE_PROCESSING: 'single_processing',
-            BATCH_PROCESSING: 'batch_processing',
-            REPORTS: 'reports'
-        },
-        STORE: {
-            INVENTORY: 'inventory',
-            REPORTS: 'reports'
-        },
-        MARKETING: {
-            MARKETING_CAMPAIGNS: 'marketing_campaigns',
-            REPORTS: 'reports'
-        },
-        REPORTS_DEPARTMENT: {
-            REPORTS: 'reports',
-            REACTOR_REPORTS: 'reactor_reports'
-        },
-        OPERATIONS: {
-            INVENTORY: 'inventory',
-            REPORTS: 'reports',
-            REACTOR_REPORTS: 'reactor_reports'
-        }
-    }
-};
-
-// ============================================================================
-// PERMISSION DESCRIPTIONS
-// ============================================================================
-
-export const PERMISSION_DESCRIPTIONS = {
-    // General permissions
-    [ALL_PERMISSIONS.GENERAL.USER_MANAGEMENT]: 'Manage users and their permissions',
-    [ALL_PERMISSIONS.GENERAL.CAN_CREATE_ADMIN]: 'Create new admin users',
-    [ALL_PERMISSIONS.GENERAL.SETTINGS_ACCESS]: 'Access system settings and configuration',
-    [ALL_PERMISSIONS.GENERAL.REPORTS]: 'Access to general reports',
-    
-    // Admin permission
-    [ALL_PERMISSIONS.ADMIN.ALL_ACCESS]: 'Full access to all system features and data',
-    
-    // Department-specific permissions
-    [ALL_PERMISSIONS.DEPARTMENTS.ACCOUNTS.EXPENSE_MANAGEMENT]: 'Access to expense management in Accounts department',
-    [ALL_PERMISSIONS.DEPARTMENTS.ACCOUNTS.REPORTS]: 'Access to reports in Accounts department',
-    [ALL_PERMISSIONS.DEPARTMENTS.HUMANRESOURCE.SINGLE_PROCESSING]: 'Access to single salary processing in HR department',
-    [ALL_PERMISSIONS.DEPARTMENTS.HUMANRESOURCE.BATCH_PROCESSING]: 'Access to batch salary processing in HR department',
-    [ALL_PERMISSIONS.DEPARTMENTS.HUMANRESOURCE.REPORTS]: 'Access to reports in HR department',
-    [ALL_PERMISSIONS.DEPARTMENTS.STORE.INVENTORY]: 'Access to inventory management in Store department',
-    [ALL_PERMISSIONS.DEPARTMENTS.STORE.REPORTS]: 'Access to reports in Store department',
-    [ALL_PERMISSIONS.DEPARTMENTS.MARKETING.MARKETING_CAMPAIGNS]: 'Access to marketing campaigns in Marketing department',
-    [ALL_PERMISSIONS.DEPARTMENTS.MARKETING.REPORTS]: 'Access to reports in Marketing department',
-    [ALL_PERMISSIONS.DEPARTMENTS.REPORTS_DEPARTMENT.REPORTS]: 'Access to general reports in Reports department',
-    [ALL_PERMISSIONS.DEPARTMENTS.REPORTS_DEPARTMENT.REACTOR_REPORTS]: 'Access to reactor reports in Reports department',
-    [ALL_PERMISSIONS.DEPARTMENTS.OPERATIONS.INVENTORY]: 'Access to inventory management in Operations department',
-    [ALL_PERMISSIONS.DEPARTMENTS.OPERATIONS.REPORTS]: 'Access to reports in Operations department',
-    [ALL_PERMISSIONS.DEPARTMENTS.OPERATIONS.REACTOR_REPORTS]: 'Access to reactor reports in Operations department'
-};
-
-// ============================================================================
-// DEFAULT PERMISSIONS BY ROLE
-// ============================================================================
-
-// Admin default permissions (full access)
-export const ADMIN_DEFAULT_PERMISSIONS = {
-    [ALL_PERMISSIONS.ADMIN.ALL_ACCESS]: true,
-    [ALL_PERMISSIONS.GENERAL.USER_MANAGEMENT]: true,
-    [ALL_PERMISSIONS.GENERAL.CAN_CREATE_ADMIN]: true,
-    [ALL_PERMISSIONS.GENERAL.SETTINGS_ACCESS]: true,
-    [ALL_PERMISSIONS.GENERAL.REPORTS]: true
-};
-
-// User default permissions (department-specific)
-export const getUserDefaultPermissions = (departments) => {
-    const permissions = {
-        [ALL_PERMISSIONS.GENERAL.USER_MANAGEMENT]: false,
-        [ALL_PERMISSIONS.GENERAL.CAN_CREATE_ADMIN]: false,
-        [ALL_PERMISSIONS.GENERAL.SETTINGS_ACCESS]: false,
-        [ALL_PERMISSIONS.GENERAL.REPORTS]: false
-    };
-    
-    if (!departments || !Array.isArray(departments)) return permissions;
-    
-    // Add department-specific permissions
-    departments.forEach(department => {
-        if (department === DEPARTMENTS.ALL) return;
-
-        const deptConfig = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === department);
-        if (deptConfig && deptConfig.services) {
-            Object.values(deptConfig.services).forEach(service => {
-                if (service.permission) {
-                    permissions[service.permission] = true;
-                }
-                
-                // Handle subServices
-                if (service.subServices) {
-                    Object.values(service.subServices).forEach(subService => {
-                        if (subService.permission) {
-                            permissions[subService.permission] = true;
-                        }
-                    });
-                }
-            });
-        }
-    });
-    
-    return permissions;
-};
-
-// ============================================================================
-// RBAC HELPER FUNCTIONS
-// ============================================================================
-
-// Basic permission checking
-export const hasPermission = (userPermissions, permission) => {
-    if (!userPermissions || !permission) return false;
-    
-    // Check for wildcard access
-    if (userPermissions[ALL_PERMISSIONS.ADMIN.ALL_ACCESS]) return true;
-    
-    return userPermissions[permission] === true;
-};
-
-export const hasAnyPermission = (userPermissions, permissions) => {
-    if (!userPermissions || !permissions) return false;
-    return permissions.some(permission => hasPermission(userPermissions, permission));
-};
-
-export const hasAllPermissions = (userPermissions, permissions) => {
-    if (!userPermissions || !permissions) return false;
-    return permissions.every(permission => hasPermission(userPermissions, permission));
-};
-
-// Department access checking
-export const canAccessDepartment = (userRole, userPermissions, department) => {
-    // Admin can access everything
-    if (userRole === 'admin') return true;
-    
-    // Regular users need specific permissions
-    if (userRole === 'user') {
-        if (department === DEPARTMENTS.ALL) return false;
-        
-        // Check if user has any permission for this department
-        const deptConfig = Object.values(DEPARTMENTS_CONFIG).find(dept => dept.key === department);
-        if (deptConfig && deptConfig.services) {
-            return Object.values(deptConfig.services).some(service => {
-                if (service.permission) {
-                    return hasPermission(userPermissions, service.permission);
-                }
-                
-                // Check subServices
-                if (service.subServices) {
-                    return Object.values(service.subServices).some(subService => 
-                        subService.permission && hasPermission(userPermissions, subService.permission)
-                    );
-                }
-                
-                return false;
-            });
-        }
-    }
-    
-    return false;
-};
-
-// Service access checking
-export const canAccessService = (userRole, userPermissions, department, service) => {
-    // Admin can access everything
-    if (userRole === 'admin') return true;
-    
-    // Regular users need specific permissions
-    if (userRole === 'user') {
-        const permission = service;
-        return hasPermission(userPermissions, permission);
-    }
-    
-    return false;
-};
-
-// User management permissions
-export const canEditUser = (currentUserRole, currentUserPermissions, targetUserRole) => {
-    // Admin can edit all users
-    if (currentUserRole === 'admin') return true;
-    
-    // Regular users cannot edit other users
-    return false;
-};
-
-export const canCreateUser = (currentUserRole, currentUserPermissions) => {
-    // Admin can create all users
-    if (currentUserRole === 'admin') return true;
-    
-    return false;
-};
-
-// Get accessible departments for user
-export const getAccessibleDepartments = (userRole, userPermissions, userDepartments = []) => {
-    if (userRole === 'admin') {
-        return getAllDepartments();
-    }
-    
-    if (userRole === 'user') {
-        return userDepartments.filter(dept => 
-            dept !== DEPARTMENTS.ALL && canAccessDepartment(userRole, userPermissions, dept)
-        );
-    }
-    
-    return [];
-};
-
-// Legacy compatibility functions (simplified for 2-layer RBAC)
-export const canAccessFactoryDepartment = (userRole, userPermissions, factory, department) => {
-    return canAccessDepartment(userRole, userPermissions, department);
-};
-
-export const canAccessFactoryService = (userRole, userPermissions, factory, service) => {
-    // This is a simplified version for legacy compatibility
-    if (userRole === 'admin') return true;
-    
-    // For users, check if they have the service permission
-    if (userRole === 'user') {
-        return hasPermission(userPermissions, service);
-    }
-    
-    return false;
-};
-
-export const getAccessibleFactoryDepartments = (userRole, userPermissions, userDepartments = []) => {
-    const combinations = [];
-    const accessibleDepartments = getAccessibleDepartments(userRole, userPermissions, userDepartments);
-    
-    accessibleDepartments.forEach(department => {
-        combinations.push({
-            factory: 'all', // Simplified - no factory concept
-            department,
-            permissions: getUserDefaultPermissions([department])
-        });
-    });
-    
-    return combinations;
-};
-
-// Additional helper functions for legacy compatibility
-export const getFactoryDepartmentPermissions = (factoryKey, departmentKey) => {
-    // Simplified - return department permissions
-    const department = ALL_PERMISSIONS.DEPARTMENTS[departmentKey.toUpperCase()];
-    return department || {};
-};
-
-export const getAllFactoryDepartmentCombinations = () => {
-    const combinations = [];
-    Object.keys(ALL_PERMISSIONS.DEPARTMENTS).forEach(departmentKey => {
-        combinations.push({
-            factory: 'all', // Simplified - no factory concept
-            department: departmentKey.toLowerCase(),
-            permissions: ALL_PERMISSIONS.DEPARTMENTS[departmentKey]
-        });
-    });
-    return combinations;
-};
-
-export const getDefaultPermissionsForFactoryDepartment = (factoryKey, departmentKey) => {
-    const department = ALL_PERMISSIONS.DEPARTMENTS[departmentKey.toUpperCase()];
-    return department || {};
-};
-
-export const getDefaultPermissionsForFactory = (factoryKey) => {
-    // Simplified - return all department permissions
-    const allPermissions = {};
-    Object.values(ALL_PERMISSIONS.DEPARTMENTS).forEach(departmentPermissions => {
-        Object.assign(allPermissions, departmentPermissions);
-    });
-    
-    return allPermissions;
-};
-
-// Legacy admin permissions
-export const ADMIN_PERMISSIONS = ADMIN_DEFAULT_PERMISSIONS;
-
-// Legacy helper functions for departments
-export const getDepartmentByKey = (key) => {
-    return DEPARTMENT_NAMES[key] || key;
-};
-
-// Factory helper functions
-export const getAccessibleFactories = (userRole, userPermissions) => {
-    // Admin has access to all factories
-    if (userRole === 'admin') {
-        return ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati'];
-    }
-    
-    // For regular users, return all factories (simplified for 2-layer RBAC)
-    return ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati'];
-};
-
-export const getAllDepartments = () => {
-    return Object.values(DEPARTMENTS);
-};
-
-export const getDepartmentKeys = () => {
-    return Object.keys(DEPARTMENTS);
-};
-
-export const getDepartmentNames = () => {
-    return Object.values(DEPARTMENT_NAMES);
-};
-
-// Legacy service helper functions
-export const getServiceByKey = (deptKey, serviceKey) => {
-  const department = DEPARTMENTS_CONFIG[deptKey.toUpperCase()];
-  if (!department || !department.services) return null;
-  
-  return Object.values(department.services).find(service => service.key === serviceKey);
-};
-
-export const getAllServicesForDepartment = (deptKey) => {
-  const department = DEPARTMENTS_CONFIG[deptKey.toUpperCase()];
-  return department ? Object.values(department.services) : [];
-};
-
-export const getAllPermissions = () => {
-  const permissions = {};
-  
-  Object.values(DEPARTMENTS_CONFIG).forEach(dept => {
-    if (dept.services) {
-      Object.values(dept.services).forEach(service => {
-        if (service.permission) {
-          permissions[service.permission] = true;
-        }
-        if (service.subServices) {
-          Object.values(service.subServices).forEach(subService => {
-            if (subService.permission) {
-              permissions[subService.permission] = true;
-            }
-          });
-        }
-      });
-    }
-  });
-  
-  return permissions;
-};
-
-// Legacy factory service permission mapping (simplified)
-export const getFactoryServicePermission = (factoryKey, serviceType) => {
-    // Simplified - return service permission directly
-    const servicePermissionMap = {
-        'single_processing': 'single_processing',
-        'batch_processing': 'batch_processing',
-        'inventory': 'inventory',
-        'reports': 'reports',
-        'reactor_reports': 'reactor_reports',
-        'marketing_campaigns': 'marketing_campaigns',
-        'expense_management': 'expense_management'
-    };
-    
-    return servicePermissionMap[serviceType];
-};
-
-// Build permission key for a specific department based on route type
-export const getFactoryServicePermissionForDepartment = (factoryKey, departmentKey, routeType) => {
-    const routeTypeToServicePermission = {
-        'single_processing': 'single_processing',
-        'batch_processing': 'batch_processing',
-        'inventory': 'inventory',
-        'reports': 'reports',
-        'reactor_reports': 'reactor_reports',
-        'marketing_campaigns': 'marketing_campaigns',
-        'expense_management': 'expense_management'
-    };
-    return routeTypeToServicePermission[routeType] || null;
-};
-
-export const canAccessFactoryRoute = (userRole, userPermissions, factoryKey, departmentKey, routeType) => {
-    // Admin can access everything
-    if (userRole === 'admin') return true;
-    
-    if (!departmentKey || !routeType) return false;
-    
-    const permissionKey = getFactoryServicePermissionForDepartment(factoryKey, departmentKey, routeType);
-    if (!permissionKey) return false;
-    
-    return hasPermission(userPermissions, permissionKey);
-};
+// Old RBAC helper functions removed - using centralized RBAC_HELPERS instead
 
 // Common API endpoints
 export const ENDPOINTS = {
@@ -778,6 +196,307 @@ export default {
 };
 
 // ============================================================================
+// CENTRALIZED FACTORY RBAC CONFIGURATION
+// ============================================================================
+
+// Centralized factory RBAC configuration following the URL structure:
+// /factory/department/service
+// This configuration matches the actual file structure in the codebase
+export const FACTORY_RBAC_CONFIG = {
+  gulbarga: {
+    name: 'Gulbarga',
+    document_name: 'GB',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          gb_place_order: { name: 'Place Order', permission: 'gb_place_order' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          gb_single_processing: { name: 'Single Processing', permission: 'gb_single_processing' },
+          gb_batch_processing: { name: 'Batch Processing', permission: 'gb_batch_processing' }
+        }
+      }
+    }
+  },
+  kerur: {
+    name: 'Kerur',
+    document_name: 'KR',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          kr_place_order: { name: 'Place Order', permission: 'kr_place_order' },
+          kr_material_list: { name: 'Material List', permission: 'kr_material_list' },
+          kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
+          kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
+          kr_order_status: { name: 'Order Status', permission: 'kr_order_status' },
+          kr_general_reports: { name: 'General Reports', permission: 'kr_general_reports' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          kr_single_processing: { name: 'Single Processing', permission: 'kr_single_processing' },
+          kr_batch_processing: { name: 'Batch Processing', permission: 'kr_batch_processing' }
+        }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          kr_general_reports: { name: 'General Reports', permission: 'kr_general_reports' },
+          kr_reactor_reports: { name: 'Reactor Reports', permission: 'kr_reactor_reports' }
+        }
+      }
+    }
+  },
+  humnabad: {
+    name: 'Humnabad',
+    document_name: 'HB',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          hb_place_order: { name: 'Place Order', permission: 'hb_place_order' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          hb_single_processing: { name: 'Single Processing', permission: 'hb_single_processing' },
+          hb_batch_processing: { name: 'Batch Processing', permission: 'hb_batch_processing' }
+        }
+      }
+    }
+  },
+  omkar: {
+    name: 'Omkar',
+    document_name: 'OM',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          om_placeorder: { name: 'Place Order', permission: 'om_place_order' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          om_single_processing: { name: 'Single Processing', permission: 'om_single_processing' },
+          om_batch_processing: { name: 'Batch Processing', permission: 'om_batch_processing' }
+        }
+      }
+    }
+  },
+  padmavati: {
+    name: 'Padmavati',
+    document_name: 'PV',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          pv_place_order: { name: 'Place Order', permission: 'pv_place_order' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          pv_single_processing: { name: 'Single Processing', permission: 'pv_single_processing' },
+          pv_batch_processing: { name: 'Batch Processing', permission: 'pv_batch_processing' }
+        }
+      }
+    }
+  },
+  headoffice: {
+    name: 'Head Office',
+    document_name: 'HO',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          ho_material_list: { name: 'Material List', permission: 'ho_material_list' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          ho_single_processing: { name: 'Single Processing', permission: 'ho_single_processing' },
+          ho_batch_processing: { name: 'Batch Processing', permission: 'ho_batch_processing' }
+        }
+      },
+      accounts: {
+        name: 'Accounts',
+        services: {
+          // No specific services found in HO_Services folder
+        }
+      },
+      marketing: {
+        name: 'Marketing',
+        services: {
+          // No specific services found in HO_Services folder
+        }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          // No specific services found in HO_Services folder
+        }
+      }
+    }
+  }
+};
+
+// RBAC Helper Functions
+export const RBAC_HELPERS = {
+  // Get all factories
+  getAllFactories: () => Object.keys(FACTORY_RBAC_CONFIG),
+  
+  // Get departments for a factory
+  getFactoryDepartments: (factory) => {
+    const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+    return factoryConfig ? Object.keys(factoryConfig.departments) : [];
+  },
+  
+  // Get services for a factory-department combination
+  getFactoryDepartmentServices: (factory, department) => {
+    const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+    if (!factoryConfig || !factoryConfig.departments[department]) return [];
+    return Object.keys(factoryConfig.departments[department].services);
+  },
+  
+  // Get service permission for a factory-department-service combination
+  getServicePermission: (factory, department, service) => {
+    const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+    if (!factoryConfig || !factoryConfig.departments[department] || !factoryConfig.departments[department].services[service]) {
+      return null;
+    }
+    return factoryConfig.departments[department].services[service].permission;
+  },
+  
+  // Check if user can access a factory-department combination
+  canAccessFactoryDepartment: (user, factory, department) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+
+    const permissionMetadata = user.permission_metadata || {};
+    const departments = permissionMetadata.departments || {};
+    const userDepartments = departments[factory] || [];
+
+    // Get factory short form
+    const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+    const factoryShortForm = factoryConfig?.document_name?.toLowerCase() || factory;
+
+    // Debug logging
+    console.log(`RBAC_HELPERS.canAccessFactoryDepartment:`, {
+      factory,
+      department,
+      factoryShortForm,
+      userDepartments,
+      permissionMetadata
+    });
+
+    // Check for both formats: prefixed with short form (gb_store) and non-prefixed (store)
+    const prefixedDepartment = `${factoryShortForm}_${department}`;
+    const nonPrefixedDepartment = department ? department.replace(`${factoryShortForm}_`, '') : '';
+    const result = userDepartments.includes(department) || userDepartments.includes(prefixedDepartment) || userDepartments.includes(nonPrefixedDepartment);
+
+    console.log(`RBAC_HELPERS.canAccessFactoryDepartment result:`, {
+      includesDepartment: userDepartments.includes(department),
+      includesPrefixed: userDepartments.includes(prefixedDepartment),
+      includesNonPrefixed: userDepartments.includes(nonPrefixedDepartment),
+      result
+    });
+
+    return result;
+  },
+  
+  // Check if user can access factory-department-service
+  canAccessFactoryDepartmentService: (user, factory, department, service) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    
+    const permissionMetadata = user.permission_metadata || {};
+    const services = permissionMetadata.services || {};
+    const serviceKey = `${factory}.${department}`;
+    const allowedServices = services[serviceKey] || [];
+    
+    // Get factory short form for permission checking
+    const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+    const factoryShortForm = factoryConfig?.document_name?.toLowerCase() || factory;
+    
+    // Check for both formats: prefixed (kr_place_order) and non-prefixed (place_order)
+    const prefixedService = `${factoryShortForm}_${service}`;
+    const nonPrefixedService = service ? service.replace(`${factoryShortForm}_`, '') : '';
+    const result = allowedServices.includes(service) || allowedServices.includes(prefixedService) || allowedServices.includes(nonPrefixedService);
+    
+    // Debug logging
+    console.log(`RBAC_HELPERS.canAccessFactoryDepartmentService:`, {
+      factory,
+      department,
+      service,
+      factoryShortForm,
+      prefixedService,
+      nonPrefixedService,
+      serviceKey,
+      allowedServices,
+      result
+    });
+    
+    return result;
+  },
+  
+  // Generate permission metadata for a user
+  generatePermissionMetadata: (factories, departments, services) => {
+    const permissionMetadata = {
+      factories: factories || [],
+      departments: {},
+      services: {}
+    };
+
+    factories.forEach(factory => {
+      const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+      if (!factoryConfig) return;
+      
+      const factoryShortForm = factoryConfig.document_name; // e.g., 'GB', 'KR', 'HB'
+      
+      departments.forEach(dept => {
+        if (factoryConfig.departments[dept]) {
+          if (!permissionMetadata.departments[factory]) {
+            permissionMetadata.departments[factory] = [];
+          }
+          // Store departments with factory short form prefix (e.g., gb_store, kr_humanresource)
+          const prefixedDept = `${factoryShortForm.toLowerCase()}_${dept}`;
+          permissionMetadata.departments[factory].push(prefixedDept);
+
+          const serviceKey = `${factory}.${dept}`;
+          permissionMetadata.services[serviceKey] = services || [];
+        }
+      });
+    });
+
+    return permissionMetadata;
+  },
+  
+  // Get all available permissions across all factories
+  getAllPermissions: () => {
+    const permissions = new Set();
+    
+    Object.values(FACTORY_RBAC_CONFIG).forEach(factory => {
+      Object.values(factory.departments).forEach(department => {
+        Object.values(department.services).forEach(service => {
+          permissions.add(service.permission);
+        });
+      });
+    });
+    
+    return Array.from(permissions);
+  }
+};
+
+// ============================================================================
 // PLANT DATA CONFIGURATION
 // ============================================================================
 
@@ -795,8 +514,8 @@ export const PLANT_DATA = [
   },
   { 
     name: 'Gulbarga', 
-    material_sheet_id: '',
-    document_name: 'GG',
+    material_sheet_id: '1EkjLEEMeZTJoMVDpmtxBVQ_LY_5u99J76PPMwodvD5Y',
+    document_name: 'GB',
     sheet_name: {
       MaterialList: 'Material List',
       PartyList: 'Party List',
@@ -815,7 +534,7 @@ export const PLANT_DATA = [
   },
   { 
     name: 'Humnabad', 
-    material_sheet_id: '',
+    material_sheet_id: '1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw',
     document_name: 'HB',
     sheet_name: {
       MaterialList: 'Material List',
@@ -825,7 +544,7 @@ export const PLANT_DATA = [
   },
   { 
     name: 'Omkar', 
-    material_sheet_id: '',
+    material_sheet_id: '15MSsB7qXCyKWHvdJtUJuivlgy6khA2dCXxNXuY-sowg',
     document_name: 'OM',
     sheet_name: {
       MaterialList: 'Material List',

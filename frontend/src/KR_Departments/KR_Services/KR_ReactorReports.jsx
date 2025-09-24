@@ -78,7 +78,7 @@ const KR_ReactorReports = () => {
         formData.append('google_refresh_token', user.google_refresh_token);
       }
 
-      const response = await fetch(getApiUrl('kr_reactor-reports'), {
+      const response = await fetch(getApiUrl('kr_reactor_reports'), {
         method: 'POST',
         body: formData,
         credentials: 'include',

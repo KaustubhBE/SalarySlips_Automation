@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FACTORY_NAMES, DEPARTMENTS_CONFIG } from '../config';
+import { FACTORY_RBAC_CONFIG } from '../config';
 
 // Tree-based Permissions Component for dynamic factory.department.service combinations
 const TreePermissions = ({ 
@@ -12,49 +12,8 @@ const TreePermissions = ({
 }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
 
-  // Generate permission tree structure from config
-  const generatePermissionTree = () => {
-    const factories = Object.keys(FACTORY_NAMES);
-    const permissionTree = {};
-    
-    factories.forEach(factoryKey => {
-      permissionTree[factoryKey] = {
-        name: FACTORY_NAMES[factoryKey],
-        departments: {}
-      };
-      
-      // Add all departments to each factory
-      Object.values(DEPARTMENTS_CONFIG).forEach(deptConfig => {
-        if (deptConfig.key === 'all' || deptConfig.key === 'management') return;
-        
-        const services = {};
-        
-        // Process services and sub-services
-        if (deptConfig.services) {
-          Object.values(deptConfig.services).forEach(service => {
-            if (service.subServices) {
-              // Handle sub-services (like single_processing, batch_processing)
-              Object.values(service.subServices).forEach(subService => {
-                services[subService.key] = subService.name;
-              });
-            } else if (service.permission) {
-              // Handle direct services
-              services[service.key] = service.name;
-            }
-          });
-        }
-        
-        permissionTree[factoryKey].departments[deptConfig.key] = {
-          name: deptConfig.name,
-          services: services
-        };
-      });
-    });
-    
-    return permissionTree;
-  };
-
-  const permissionTree = generatePermissionTree();
+  // Use centralized RBAC configuration
+  const permissionTree = FACTORY_RBAC_CONFIG;
 
   // Generate permission key for factory.department.service combination
   const generatePermissionKey = (factory, department, service) => {
@@ -200,7 +159,7 @@ const TreePermissions = ({
                     </div>
                     
                     <div className="services-container">
-                      {Object.entries(deptData.services).map(([serviceKey, serviceName]) => (
+                      {Object.entries(deptData.services).map(([serviceKey, serviceData]) => (
                         <div key={serviceKey} className="service-node">
                           <label className="service-checkbox">
                             <input
@@ -209,7 +168,7 @@ const TreePermissions = ({
                               onChange={(e) => handleServiceChange(factoryKey, deptKey, serviceKey, e.target.checked)}
                               disabled={!canEdit}
                             />
-                            <span className="service-name">{serviceName}</span>
+                            <span className="service-name">{serviceData.name}</span>
                           </label>
                         </div>
                       ))}

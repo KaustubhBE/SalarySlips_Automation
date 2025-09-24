@@ -1,46 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './HBD_Services/HBD_Processing';
+import Processing from './PV_Services/PV_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const HBDHumanResource = () => {
+const PVHumanResource = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HBD Human Resource department (only existing services)
-  const hbdHRServices = [
-    { key: 'hbd_single-processing', name: 'Single Processing', route: '/humnabad/hbd_humanresource/hbd_single-processing' },
-    { key: 'hbd_batch-processing', name: 'Batch Processing', route: '/humnabad/hbd_humanresource/hbd_batch-processing' }
+  // Static services for PV Human Resource department (only existing services)
+  const pmHRServices = [
+    { key: 'pm_single_processing', name: 'Single Processing', route: '/padmavati/pv_humanresource/pm_single_processing' },
+    { key: 'pm_batch_processing', name: 'Batch Processing', route: '/padmavati/pv_humanresource/pm_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBDHumanResource.jsx - getAccessibleServices called:', {
+    console.log('PVHumanResource.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hbdHRServices;
+      return pmHRServices;
     }
     
     // For regular users, check which services they can access
-    return hbdHRServices.filter(service => {
-      // Extract the base service key (remove factory prefix)
-      const baseServiceKey = service.key.replace('hbd_', '');
-      return canAccessService(baseServiceKey, 'humnabad', 'humanresource');
-    });
+    return pmHRServices.filter(service => 
+      canAccessService(service.key, 'padmavati', 'humanresource')
+    );
   };
 
   const accessibleServices = getAccessibleServices();
@@ -52,11 +50,8 @@ const HBDHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
-    // Extract the base service key (remove factory prefix)
-    const baseServiceKey = serviceKey.replace('hbd_', '');
-    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(baseServiceKey, 'humnabad', 'humanresource');
+    return canAccessService(serviceKey, 'padmavati', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -65,8 +60,8 @@ const HBDHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for HBD HR services
-      console.log('HBDHumanResource.jsx - Navigating to service:', {
+      // Use new navigation pattern for PV HR services
+      console.log('PVHumanResource.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -76,7 +71,7 @@ const HBDHumanResource = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/humnabad');
+    navigate('/padmavati');
   };
 
   if (!user) {
@@ -109,16 +104,16 @@ const HBDHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="hbd_single-processing/*" element={
-        isAuthenticated && hasUserPermission('hbd_single-processing') ? 
+      <Route path="pm_single_processing/*" element={
+        isAuthenticated && hasUserPermission('pm_single_processing') ? 
           <Processing mode="single" /> : 
-          <Navigate to="/humnabad" replace />
+          <Navigate to="/padmavati" replace />
       } />
 
-      <Route path="hbd_batch-processing/*" element={
-        isAuthenticated && hasUserPermission('hbd_batch-processing') ? 
+      <Route path="pm_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('pm_batch_processing') ? 
           <Processing mode="batch" /> : 
-          <Navigate to="/humnabad" replace />
+          <Navigate to="/padmavati" replace />
       } />
       
       {/* Default Department View */}
@@ -128,14 +123,14 @@ const HBDHumanResource = () => {
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
-              Factory: Humnabad<br/>
+              Factory: Padmavati<br/>
               Department: Human Resource<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Humnabad</h2>
+          <h2>Human Resource - Padmavati</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -165,4 +160,4 @@ const HBDHumanResource = () => {
   );
 };
 
-export default HBDHumanResource;
+export default PVHumanResource;

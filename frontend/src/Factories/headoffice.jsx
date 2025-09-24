@@ -28,9 +28,8 @@ const HeadOfficeFactory = () => {
     }
     
     return headOfficeDepartments.filter(dept => {
-      // Extract the base department key (remove factory prefix)
-      const baseDepartmentKey = dept.key.replace('ho_', '');
-      return canAccessFactoryDepartment('headoffice', baseDepartmentKey);
+      // Use the full prefixed department key (ho_store, ho_humanresource, etc.)
+      return canAccessFactoryDepartment('headoffice', dept.key);
     });
   };
 

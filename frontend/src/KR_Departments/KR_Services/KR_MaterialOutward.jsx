@@ -530,7 +530,7 @@ const KR_MaterialOutward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place-order-container">
+      <div className="place_order-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Outward Form</h2>
@@ -544,7 +544,7 @@ const KR_MaterialOutward = () => {
   }
 
   return (
-    <div className="place-order-container">
+    <div className="place_order-container">
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 

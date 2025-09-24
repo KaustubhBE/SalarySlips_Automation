@@ -49,7 +49,7 @@ const ReportsDepartment = () => {
       
       <div className="navigation-links">
         <span 
-          onClick={() => navigate('/reactor-reports')} 
+          onClick={() => navigate('/reactor_reports')} 
           className="nav-link"
           role="button"
           tabIndex={0}

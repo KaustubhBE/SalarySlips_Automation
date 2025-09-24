@@ -379,6 +379,7 @@ function Processing({ mode = 'single' }) {
     if (userRole === 'super-admin') return true;
     
     // Check for specific processing permissions using the enhanced hasPermission function
+    // This is a generic component, so we need to determine the factory from the URL or context
     const requiredPermission = mode === 'single' ? 'single_processing' : 'batch_processing';
     return hasPermission(requiredPermission);
   };

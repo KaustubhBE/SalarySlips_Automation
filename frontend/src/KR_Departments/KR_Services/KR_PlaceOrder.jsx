@@ -702,7 +702,7 @@ const KR_PlaceOrder = () => {
 
   if (dataLoading) {
     return (
-      <div className="place-order-container">
+      <div className="place_order-container">
         <div className="form-header">
           <div className="header-left">
             <div className="datetime-box">
@@ -734,7 +734,7 @@ const KR_PlaceOrder = () => {
   }
 
   return (
-    <div className="place-order-container">
+    <div className="place_order-container">
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 

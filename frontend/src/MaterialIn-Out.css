@@ -1,5 +1,5 @@
 /* Material In-Out Styles */
-.material-list-container {
+.material_list-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
@@ -262,7 +262,7 @@
 }
 
 @media (max-width: 480px) {
-  .material-list-container {
+  .material_list-container {
     padding: 10px;
   }
   

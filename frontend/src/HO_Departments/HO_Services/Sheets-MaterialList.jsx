@@ -115,7 +115,7 @@ const SheetsMaterialList = () => {
 
 
   return (
-    <div className="material-list-container">
+    <div className="material_list-container">
       <div className="material-form-wrapper">
         <h2>Sheets Material List</h2>
         

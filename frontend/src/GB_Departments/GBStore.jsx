@@ -5,7 +5,7 @@ import Processing from './GB_Services/GB_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const GBStore = () => {
@@ -17,9 +17,7 @@ const GBStore = () => {
   
   // Static services for GB Store department (only existing services)
   const gbStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/gulbarga/gb_store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/gulbarga/gb_store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/gulbarga/gb_store/reactor-reports' }
+    { key: 'gb_place_order', name: 'Place Order', route: '/gulbarga/gb_store/gb_place_order' }
   ];
 
   // Get accessible services based on user permissions

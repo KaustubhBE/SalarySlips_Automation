@@ -5,7 +5,7 @@ import Processing from './GB_Services/GB_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const GBHumanResource = () => {
@@ -17,8 +17,8 @@ const GBHumanResource = () => {
   
   // Static services for GB Human Resource department (only existing services)
   const gbHRServices = [
-    { key: 'gb_single-processing', name: 'Single Processing', route: '/gulbarga/gb_humanresource/gb_single-processing' },
-    { key: 'gb_batch-processing', name: 'Batch Processing', route: '/gulbarga/gb_humanresource/gb_batch-processing' }
+    { key: 'gb_single_processing', name: 'Single Processing', route: '/gulbarga/gb_humanresource/gb_single_processing' },
+    { key: 'gb_batch_processing', name: 'Batch Processing', route: '/gulbarga/gb_humanresource/gb_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,11 +36,9 @@ const GBHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return gbHRServices.filter(service => {
-      // Extract the base service key (remove factory prefix)
-      const baseServiceKey = service.key.replace('gb_', '');
-      return canAccessService(baseServiceKey, 'gulbarga', 'humanresource');
-    });
+    return gbHRServices.filter(service => 
+      canAccessService(service.key, 'gulbarga', 'humanresource')
+    );
   };
 
   const accessibleServices = getAccessibleServices();
@@ -52,11 +50,8 @@ const GBHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
-    // Extract the base service key (remove factory prefix)
-    const baseServiceKey = serviceKey.replace('gb_', '');
-    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(baseServiceKey, 'gulbarga', 'humanresource');
+    return canAccessService(serviceKey, 'gulbarga', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -109,14 +104,14 @@ const GBHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="gb_single-processing/*" element={
-        isAuthenticated && hasUserPermission('gb_single-processing') ? 
+      <Route path="gb_single_processing/*" element={
+        isAuthenticated && hasUserPermission('gb_single_processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/gulbarga" replace />
       } />
 
-      <Route path="gb_batch-processing/*" element={
-        isAuthenticated && hasUserPermission('gb_batch-processing') ? 
+      <Route path="gb_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('gb_batch_processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/gulbarga" replace />
       } />

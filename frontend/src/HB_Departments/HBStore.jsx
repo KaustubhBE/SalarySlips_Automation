@@ -1,44 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './PM_Services/PM_Processing';
+import Processing from './HB_Services/HB_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const PMStore = () => {
+const HBDStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for PM Store department (only existing services)
-  const pmStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/padmavati/pm_store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/padmavati/pm_store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/padmavati/pm_store/reactor-reports' }
+  // Static services for HB Store department (only existing services)
+  const hbStoreServices = [
+    { key: 'hb_place_order', name: 'Place Order', route: '/humnabad/hb_store/hb_place_order' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('PMStore.jsx - getAccessibleServices called:', {
+    console.log('HBDStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return pmStoreServices;
+      return hbStoreServices;
     }
     
     // For regular users, check which services they can access
-    return pmStoreServices.filter(service => 
-      canAccessService(service.key, 'padmavati', 'store')
+    return hbStoreServices.filter(service => 
+      canAccessService(service.key, 'humnabad', 'store')
     );
   };
 
@@ -52,7 +50,7 @@ const PMStore = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'padmavati', 'store');
+    return canAccessService(serviceKey, 'humnabad', 'store');
   };
 
   // Check if user is authenticated
@@ -61,8 +59,8 @@ const PMStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for PM Store services
-      console.log('PMStore.jsx - Navigating to service:', {
+      // Use new navigation pattern for HB Store services
+      console.log('HBDStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -72,7 +70,7 @@ const PMStore = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/padmavati');
+    navigate('/humnabad');
   };
 
   if (!user) {
@@ -113,14 +111,14 @@ const PMStore = () => {
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
-              Factory: Padmavati<br/>
+              Factory: Humnabad<br/>
               Department: Store<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Store - Padmavati</h2>
+          <h2>Store - Humnabad</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -150,4 +148,4 @@ const PMStore = () => {
   );
 };
 
-export default PMStore;
+export default HBDStore;

@@ -3,11 +3,9 @@ import axios from 'axios';
 import { 
   getApiUrl, 
   ENDPOINTS, 
-  ALL_PERMISSIONS, 
-  PERMISSION_DESCRIPTIONS, 
-  hasPermission,
-  canCreateUser,
-  FACTORY_NAMES
+  FACTORY_NAMES,
+  FACTORY_RBAC_CONFIG,
+  RBAC_HELPERS
 } from './config';
 import { useAuth } from './Components/AuthContext';
 import './Dashboard.css'; // Import the CSS file
@@ -25,303 +23,8 @@ const TreeBasedPermissions = ({
   const [selectAllDepartments, setSelectAllDepartments] = useState(false);
   const [selectAllServices, setSelectAllServices] = useState(false);
 
-  // Define the permission tree structure
-  const permissionTree = {
-    gulbarga: {
-      name: 'Gulbarga',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    },
-    kerur: {
-      name: 'Kerur',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    },
-    humnabad: {
-      name: 'Humnabad',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    },
-    omkar: {
-      name: 'Omkar',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    },
-    padmavati: {
-      name: 'Padmavati',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    },
-    headoffice: {
-      name: 'Head Office',
-      departments: {
-        humanresource: {
-          name: 'Human Resource',
-          services: {
-            single_processing: 'Single Processing',
-            batch_processing: 'Batch Processing',
-            reports: 'Reports'
-          }
-        },
-        store: {
-          name: 'Store',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports'
-          }
-        },
-        marketing: {
-          name: 'Marketing',
-          services: {
-            marketing_campaigns: 'Marketing Campaigns',
-            reports: 'Reports'
-          }
-        },
-        accounts: {
-          name: 'Accounts',
-          services: {
-            expense_management: 'Expense Management',
-            reports: 'Reports'
-          }
-        },
-        reports_department: {
-          name: 'Reports Department',
-          services: {
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        },
-        operations_department: {
-          name: 'Operations Department',
-          services: {
-            inventory: 'Inventory',
-            reports: 'Reports',
-            reactor_reports: 'Reactor Reports'
-          }
-        }
-      }
-    }
-  };
+  // Use centralized RBAC configuration
+  const permissionTree = FACTORY_RBAC_CONFIG;
 
   // Generate permission key for factory.department.service combination
   const generatePermissionKey = (factory, department, service) => {
@@ -452,7 +155,7 @@ const TreeBasedPermissions = ({
                     </div>
                     
                     <div className="services-container">
-                      {Object.entries(deptData.services).map(([serviceKey, serviceName]) => (
+                      {Object.entries(deptData.services).map(([serviceKey, serviceData]) => (
                         <div key={serviceKey} className="service-node">
                           <label className="service-checkbox">
                       <input
@@ -461,7 +164,7 @@ const TreeBasedPermissions = ({
                               onChange={(e) => handlePermissionChange(factoryKey, deptKey, serviceKey, e.target.checked)}
                               disabled={!canEdit}
                             />
-                            <span className="service-name">{serviceName}</span>
+                            <span className="service-name">{serviceData.name}</span>
                     </label>
                         </div>
                       ))}
@@ -509,14 +212,14 @@ function AddUser() {
   // Set default permissions when role or departments change
   useEffect(() => {
     if (role === 'admin') {
-      // For admin users, grant access to all factories, departments, and services
+      // For admin users, grant access to all factories, departments, and services using centralized RBAC
       const adminPermissions = {};
       
       // Grant access to all factories and their departments/services
-      Object.keys(FACTORY_NAMES).forEach(factory => {
-        const departments = ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'];
+      RBAC_HELPERS.getAllFactories().forEach(factory => {
+        const departments = RBAC_HELPERS.getFactoryDepartments(factory);
         departments.forEach(dept => {
-          const services = getServicesForDepartment(dept);
+          const services = RBAC_HELPERS.getFactoryDepartmentServices(factory, dept);
           services.forEach(service => {
             const key = `${factory}.${dept}.${service}`;
             adminPermissions[key] = true;
@@ -566,12 +269,18 @@ function AddUser() {
             permissionMetadata.factories.push(factory);
           }
 
-          // Add department to factory
+          // Add department to factory with factory short form prefix
           if (!permissionMetadata.departments[factory]) {
             permissionMetadata.departments[factory] = [];
           }
-          if (!permissionMetadata.departments[factory].includes(department)) {
-            permissionMetadata.departments[factory].push(department);
+          
+          // Get factory short form from FACTORY_RBAC_CONFIG
+          const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+          const factoryShortForm = factoryConfig?.document_name?.toLowerCase() || factory;
+          
+          const prefixedDepartment = `${factoryShortForm}_${department}`;
+          if (!permissionMetadata.departments[factory].includes(prefixedDepartment)) {
+            permissionMetadata.departments[factory].push(prefixedDepartment);
           }
 
           // Add service to department
@@ -664,13 +373,15 @@ function AddUser() {
   };
 
   const hasUserPermission = (permission) => {
-    return hasPermission(getCurrentUserPermissions(), permission);
+    // Use the new RBAC system - admin has all permissions
+    return getCurrentUserRole() === 'admin';
   };
 
 
 
   const canCreateRole = (targetRole) => {
-    return canCreateUser(getCurrentUserRole(), getCurrentUserPermissions());
+    // Use the new RBAC system - only admin can create admin users
+    return getCurrentUserRole() === 'admin';
   };
 
   return (

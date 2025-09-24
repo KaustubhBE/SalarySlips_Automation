@@ -13,7 +13,8 @@ const GulbargaFactory = () => {
   // Static departments for Gulbarga factory with hardcoded navigation (only existing departments)
   const gulbargaDepartments = [
     { key: 'gb_store', name: 'Store', route: '/gulbarga/gb_store' },
-    { key: 'gb_humanresource', name: 'Human Resource', route: '/gulbarga/gb_humanresource' }
+    { key: 'gb_humanresource', name: 'Human Resource', route: '/gulbarga/gb_humanresource' },
+    { key: 'gb_operations', name: 'Operations', route: '/gulbarga/gb_operations' }
   ];
 
   // Filter departments based on user permissions
@@ -25,9 +26,23 @@ const GulbargaFactory = () => {
     }
     
     return gulbargaDepartments.filter(dept => {
-      // Extract the base department key (remove factory prefix)
-      const baseDepartmentKey = dept.key.replace('gb_', '');
-      return canAccessFactoryDepartment('gulbarga', baseDepartmentKey);
+      // Use the full prefixed department key (gb_store, gb_humanresource, etc.)
+      console.log(`Gulbarga factory checking department:`, {
+        dept: dept,
+        deptKey: dept.key,
+        factory: 'gulbarga',
+        user: user
+      });
+      
+      // Check if dept.key is undefined
+      if (!dept || !dept.key) {
+        console.error('Gulbarga factory: dept or dept.key is undefined:', dept);
+        return false;
+      }
+      
+      const hasAccess = canAccessFactoryDepartment('gulbarga', dept.key);
+      console.log(`Gulbarga factory department access result:`, hasAccess);
+      return hasAccess;
     });
   };
 

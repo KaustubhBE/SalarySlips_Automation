@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import ToggleButton from '../../Components/Toggle-Button';
-import LoadingSpinner from '../../LoadingSpinner';
+import ToggleButton from '../../Components/Toggle-Button.jsx';
+import LoadingSpinner from '../../LoadingSpinner.jsx';
 import '../../Processing.css';
-import Navbar from '../../Navbar';
-import Settings from '../../Components/Settings';
+import Navbar from '../../Navbar.jsx';
+import Settings from '../../Components/Settings.jsx';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import { getApiUrl, makeApiCall, ENDPOINTS } from '../../config.js';
-import { useAuth } from '../../Components/AuthContext';
+import { useAuth } from '../../Components/AuthContext.jsx';
 import axios from 'axios';
-import AttachmentSequence from '../../Components/AttachmentSequence';
+import AttachmentSequence from '../../Components/AttachmentSequence.jsx';
 
 const plantData = [
-  { 
-    name: 'Humnabad', 
-    employee_drive_id: '1gAHUISFRUvxoskWia9WLoJw-UGzyH_TFO8yDZ9ifqMc', 
-    employee_salary_sheet_id_2024_25: '15ouV8H0JGCHD1CTeVaQgOgIODMsI6dXolRyEJOju53U', 
+  {
+    name: 'Padmavati',
+    employee_drive_id: '', 
+    employee_salary_sheet_id_2024_25: '', 
     employee_salary_sheet_id_2025_26: ''
   }
 ];
@@ -350,8 +350,8 @@ function Processing({ mode = 'single' }) {
     if (userRole === 'admin') return true;
     
     // Check for specific processing permissions using the enhanced hasPermission function
-    const requiredPermission = mode === 'single' ? 'single_processing' : 'batch_processing';
-    return hasPermission(requiredPermission);
+    const requiredPermission = mode === 'single' ? 'pv_single_processing' : 'pv_batch_processing';
+    return hasPermission(requiredPermission, 'padmavati', 'humanresource');
   };
 
   // If user doesn't have permission, show access denied message
@@ -388,7 +388,7 @@ function Processing({ mode = 'single' }) {
               borderBottom: '1px solid #e0e0e0'
             }}>
               <button 
-                onClick={() => navigate('/humnabad/humanresource')} 
+                onClick={() => navigate('/padmavati/humanresource')} 
                 className="back-button"
                 style={{
                   background: '#6c757d',

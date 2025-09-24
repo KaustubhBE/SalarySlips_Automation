@@ -1,46 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './PM_Services/PM_Processing';
+import Processing from './PV_Services/PV_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const PMHumanResource = () => {
+const PVStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for PM Human Resource department (only existing services)
-  const pmHRServices = [
-    { key: 'pm_single-processing', name: 'Single Processing', route: '/padmavati/pm_humanresource/pm_single-processing' },
-    { key: 'pm_batch-processing', name: 'Batch Processing', route: '/padmavati/pm_humanresource/pm_batch-processing' }
+  // Static services for PV Store department (only existing services)
+  const pmStoreServices = [
+    { key: 'pv_place_order', name: 'Place Order', route: '/padmavati/pv_store/pv_place_order' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('PMHumanResource.jsx - getAccessibleServices called:', {
+    console.log('PVStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return pmHRServices;
+      return pmStoreServices;
     }
     
     // For regular users, check which services they can access
-    return pmHRServices.filter(service => {
-      // Extract the base service key (remove factory prefix)
-      const baseServiceKey = service.key.replace('pm_', '');
-      return canAccessService(baseServiceKey, 'padmavati', 'humanresource');
-    });
+    return pmStoreServices.filter(service => 
+      canAccessService(service.key, 'padmavati', 'store')
+    );
   };
 
   const accessibleServices = getAccessibleServices();
@@ -52,11 +49,8 @@ const PMHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
-    // Extract the base service key (remove factory prefix)
-    const baseServiceKey = serviceKey.replace('pm_', '');
-    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(baseServiceKey, 'padmavati', 'humanresource');
+    return canAccessService(serviceKey, 'padmavati', 'store');
   };
 
   // Check if user is authenticated
@@ -65,8 +59,8 @@ const PMHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for PM HR services
-      console.log('PMHumanResource.jsx - Navigating to service:', {
+      // Use new navigation pattern for PV Store services
+      console.log('PVStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -109,17 +103,6 @@ const PMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="pm_single-processing/*" element={
-        isAuthenticated && hasUserPermission('pm_single-processing') ? 
-          <Processing mode="single" /> : 
-          <Navigate to="/padmavati" replace />
-      } />
-
-      <Route path="pm_batch-processing/*" element={
-        isAuthenticated && hasUserPermission('pm_batch-processing') ? 
-          <Processing mode="batch" /> : 
-          <Navigate to="/padmavati" replace />
-      } />
       
       {/* Default Department View */}
       <Route path="" element={
@@ -129,13 +112,13 @@ const PMHumanResource = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Padmavati<br/>
-              Department: Human Resource<br/>
+              Department: Store<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Human Resource - Padmavati</h2>
+          <h2>Store - Padmavati</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -165,4 +148,4 @@ const PMHumanResource = () => {
   );
 };
 
-export default PMHumanResource;
+export default PVStore;

@@ -110,39 +110,17 @@ def login():
         tree_permissions = user.get('tree_permissions', {})
         permission_metadata = user.get('permission_metadata', {})
         
-        # For admins, give them all permissions and complete metadata
+        # For admins, use centralized RBAC configuration
         if role == 'admin':
-            permissions = {
-                'inventory': True,
-                'reports': True,
-                'single_processing': True,
-                'batch_processing': True,
-                'expense_management': True,
-                'marketing_campaigns': True,
-                'reactor_reports': True
-            }
-            # Set admin permission metadata to allow access to all factories and departments
-            permission_metadata = {
-                'factories': ['gulbarga', 'kerur'],
-                'departments': {
-                    'gulbarga': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'],
-                    'kerur': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department']
-                },
-                'services': {
-                    'gulbarga.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'gulbarga.store': ['inventory', 'reports'],
-                    'gulbarga.marketing': ['marketing_campaigns', 'reports'],
-                    'gulbarga.accounts': ['expense_management', 'reports'],
-                    'gulbarga.reports_department': ['reports', 'reactor_reports'],
-                    'gulbarga.operations_department': ['inventory', 'reports', 'reactor_reports'],
-                    'kerur.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'kerur.store': ['inventory', 'reports'],
-                    'kerur.marketing': ['marketing_campaigns', 'reports'],
-                    'kerur.accounts': ['expense_management', 'reports'],
-                    'kerur.reports_department': ['reports', 'reactor_reports'],
-                    'kerur.operations_department': ['inventory', 'reports', 'reactor_reports']
-                }
-            }
+            # Import the centralized RBAC configuration
+            from app import generate_permission_metadata
+            permission_metadata = generate_permission_metadata('admin')
+            
+            # Generate permissions from the centralized configuration
+            permissions = {}
+            for factory, factory_data in permission_metadata.get('services', {}).items():
+                for service in factory_data:
+                    permissions[service] = True
         # For regular users, use the existing permission_metadata or convert tree_permissions
         elif not permission_metadata and tree_permissions:
             # Convert tree_permissions to permission_metadata structure
@@ -165,11 +143,18 @@ def login():
                         if factory not in permission_metadata['factories']:
                             permission_metadata['factories'].append(factory)
                         
-                        # Add department to factory
+                        # Add department to factory with factory short form prefix
                         if factory not in permission_metadata['departments']:
                             permission_metadata['departments'][factory] = []
-                        if department not in permission_metadata['departments'][factory]:
-                            permission_metadata['departments'][factory].append(department)
+                        
+                        # Get factory short form from FACTORY_RBAC_CONFIG
+                        from app import FACTORY_RBAC_CONFIG
+                        factory_config = FACTORY_RBAC_CONFIG.get(factory, {})
+                        factory_short_form = factory_config.get('document_name', factory).lower()
+                        
+                        prefixed_department = f"{factory_short_form}_{department}"
+                        if prefixed_department not in permission_metadata['departments'][factory]:
+                            permission_metadata['departments'][factory].append(prefixed_department)
                         
                         # Add service to department
                         service_key = f"{factory}.{department}"
@@ -359,38 +344,17 @@ def google_auth():
         tree_permissions = user.get('tree_permissions', {})
         permission_metadata = user.get('permission_metadata', {})
         
-        # For admins, give them all permissions and complete metadata
+        # For admins, use centralized RBAC configuration
         if role == 'admin':
-            permissions = {
-                'inventory': True,
-                'reports': True,
-                'single_processing': True,
-                'batch_processing': True,
-                'expense_management': True,
-                'marketing_campaigns': True,
-                'reactor_reports': True
-            }
-            permission_metadata = {
-                'factories': ['gulbarga', 'kerur'],
-                'departments': {
-                    'gulbarga': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'],
-                    'kerur': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department']
-                },
-                'services': {
-                    'gulbarga.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'gulbarga.store': ['inventory', 'reports'],
-                    'gulbarga.marketing': ['marketing_campaigns', 'reports'],
-                    'gulbarga.accounts': ['expense_management', 'reports'],
-                    'gulbarga.reports_department': ['reports', 'reactor_reports'],
-                    'gulbarga.operations_department': ['inventory', 'reports', 'reactor_reports'],
-                    'kerur.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'kerur.store': ['inventory', 'reports'],
-                    'kerur.marketing': ['marketing_campaigns', 'reports'],
-                    'kerur.accounts': ['expense_management', 'reports'],
-                    'kerur.reports_department': ['reports', 'reactor_reports'],
-                    'kerur.operations_department': ['inventory', 'reports', 'reactor_reports']
-                }
-            }
+            # Import the centralized RBAC configuration
+            from app import generate_permission_metadata
+            permission_metadata = generate_permission_metadata('admin')
+            
+            # Generate permissions from the centralized configuration
+            permissions = {}
+            for factory, factory_data in permission_metadata.get('services', {}).items():
+                for service in factory_data:
+                    permissions[service] = True
         
         # Prepare user data for response
         user_response = {
@@ -585,38 +549,17 @@ def google_oauth_callback():
         tree_permissions = user.get('tree_permissions', {})
         permission_metadata = user.get('permission_metadata', {})
         
-        # For admins, give them all permissions
+        # For admins, use centralized RBAC configuration
         if role == 'admin':
-            permissions = {
-                'inventory': True,
-                'reports': True,
-                'single_processing': True,
-                'batch_processing': True,
-                'expense_management': True,
-                'marketing_campaigns': True,
-                'reactor_reports': True
-            }
-            permission_metadata = {
-                'factories': ['gulbarga', 'kerur'],
-                'departments': {
-                    'gulbarga': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department'],
-                    'kerur': ['humanresource', 'store', 'marketing', 'accounts', 'reports_department', 'operations_department']
-                },
-                'services': {
-                    'gulbarga.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'gulbarga.store': ['inventory', 'reports'],
-                    'gulbarga.marketing': ['marketing_campaigns', 'reports'],
-                    'gulbarga.accounts': ['expense_management', 'reports'],
-                    'gulbarga.reports_department': ['reports', 'reactor_reports'],
-                    'gulbarga.operations_department': ['inventory', 'reports', 'reactor_reports'],
-                    'kerur.humanresource': ['single_processing', 'batch_processing', 'reports'],
-                    'kerur.store': ['inventory', 'reports'],
-                    'kerur.marketing': ['marketing_campaigns', 'reports'],
-                    'kerur.accounts': ['expense_management', 'reports'],
-                    'kerur.reports_department': ['reports', 'reactor_reports'],
-                    'kerur.operations_department': ['inventory', 'reports', 'reactor_reports']
-                }
-            }
+            # Import the centralized RBAC configuration
+            from app import generate_permission_metadata
+            permission_metadata = generate_permission_metadata('admin')
+            
+            # Generate permissions from the centralized configuration
+            permissions = {}
+            for factory, factory_data in permission_metadata.get('services', {}).items():
+                for service in factory_data:
+                    permissions[service] = True
         
         # Prepare user data for response
         user_response = {

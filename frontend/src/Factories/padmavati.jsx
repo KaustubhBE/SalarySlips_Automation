@@ -12,8 +12,9 @@ const PadmavatiFactory = () => {
 
   // Static departments for Padmavati factory with hardcoded navigation (only existing departments)
   const padmavatiDepartments = [
-    { key: 'pm_store', name: 'Store', route: '/padmavati/pm_store' },
-    { key: 'pm_humanresource', name: 'Human Resource', route: '/padmavati/pm_humanresource' }
+    { key: 'pv_store', name: 'Store', route: '/padmavati/pv_store' },
+    { key: 'pv_humanresource', name: 'Human Resource', route: '/padmavati/pv_humanresource' },
+    { key: 'pv_operations', name: 'Operations', route: '/padmavati/pv_operations' }
   ];
 
   // Filter departments based on user permissions
@@ -25,9 +26,8 @@ const PadmavatiFactory = () => {
     }
     
     return padmavatiDepartments.filter(dept => {
-      // Extract the base department key (remove factory prefix)
-      const baseDepartmentKey = dept.key.replace('pm_', '');
-      return canAccessFactoryDepartment('padmavati', baseDepartmentKey);
+      // Use the full prefixed department key (pv_store, pv_humanresource, etc.)
+      return canAccessFactoryDepartment('padmavati', dept.key);
     });
   };
 

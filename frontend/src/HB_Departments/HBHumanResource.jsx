@@ -1,44 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './HBD_Services/HBD_Processing';
+import Processing from './HB_Services/HB_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const HBDStore = () => {
+const HBDHumanResource = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HBD Store department (only existing services)
-  const hbdStoreServices = [
-    { key: 'inventory', name: 'Inventory Management', route: '/humnabad/hbd_store/inventory' },
-    { key: 'reports', name: 'Store Reports', route: '/humnabad/hbd_store/reports' },
-    { key: 'reactor-reports', name: 'Reactor Reports', route: '/humnabad/hbd_store/reactor-reports' }
+  // Static services for HB Human Resource department (only existing services)
+  const hbHRServices = [
+    { key: 'hb_single_processing', name: 'Single Processing', route: '/humnabad/hb_humanresource/hb_single_processing' },
+    { key: 'hb_batch_processing', name: 'Batch Processing', route: '/humnabad/hb_humanresource/hb_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBDStore.jsx - getAccessibleServices called:', {
+    console.log('HBDHumanResource.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hbdStoreServices;
+      return hbHRServices;
     }
     
     // For regular users, check which services they can access
-    return hbdStoreServices.filter(service => 
-      canAccessService(service.key, 'humnabad', 'store')
+    return hbHRServices.filter(service => 
+      canAccessService(service.key, 'humnabad', 'humanresource')
     );
   };
 
@@ -52,7 +51,7 @@ const HBDStore = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'humnabad', 'store');
+    return canAccessService(serviceKey, 'humnabad', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -61,8 +60,8 @@ const HBDStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for HBD Store services
-      console.log('HBDStore.jsx - Navigating to service:', {
+      // Use new navigation pattern for HB HR services
+      console.log('HBDHumanResource.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -105,6 +104,17 @@ const HBDStore = () => {
 
   return (
     <Routes>
+      <Route path="hb_single_processing/*" element={
+        isAuthenticated && hasUserPermission('hb_single_processing') ? 
+          <Processing mode="single" /> : 
+          <Navigate to="/humnabad" replace />
+      } />
+
+      <Route path="hb_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('hb_batch_processing') ? 
+          <Processing mode="batch" /> : 
+          <Navigate to="/humnabad" replace />
+      } />
       
       {/* Default Department View */}
       <Route path="" element={
@@ -114,13 +124,13 @@ const HBDStore = () => {
               <strong>Debug Info:</strong><br/>
               User Role: {user?.role}<br/>
               Factory: Humnabad<br/>
-              Department: Store<br/>
+              Department: Human Resource<br/>
               Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
               User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
               Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
             </div>
           )}
-          <h2>Store - Humnabad</h2>
+          <h2>Human Resource - Humnabad</h2>
           <h3>Available Services ({accessibleServices.length}):</h3>
           
           {/* Service Navigation Buttons */}
@@ -150,4 +160,4 @@ const HBDStore = () => {
   );
 };
 
-export default HBDStore;
+export default HBDHumanResource;

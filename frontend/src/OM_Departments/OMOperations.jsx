@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import '../App.css';
 
-const KROperations = () => {
+const OMOperations = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for KR Operations department (only existing services)
-  const krOperationsServices = [
-    { key: 'kr_general_reports', name: 'General Reports', route: '/kerur/kr_operations/kr_general_reports' },
-    { key: 'kr_reactor_reports', name: 'Reactor Reports', route: '/kerur/kr_operations/kr_reactor_reports' }
+  // Static services for OM Operations department (only existing services)
+  const omOperationsServices = [
+    { key: 'om_general_reports', name: 'General Reports', route: '/omkar/om_operations/om_general_reports' },
+    { key: 'om_reactor_reports', name: 'Reactor Reports', route: '/omkar/om_operations/om_reactor_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -22,12 +22,12 @@ const KROperations = () => {
     
     // Admin has access to everything
     if (isAdmin) {
-      return krOperationsServices;
+      return omOperationsServices;
     }
     
     // For regular users, check which services they can access
-    return krOperationsServices.filter(service => 
-      canAccessService(service.key, 'kerur', 'operations')
+    return omOperationsServices.filter(service => 
+      canAccessService(service.key, 'omkar', 'operations')
     );
   };
 
@@ -42,7 +42,7 @@ const KROperations = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/kerur');
+    navigate('/omkar');
   };
 
   if (!user) {
@@ -114,4 +114,4 @@ const KROperations = () => {
   );
 };
 
-export default KROperations;
+export default OMOperations;

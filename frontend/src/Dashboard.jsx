@@ -3,13 +3,8 @@ import axios from 'axios';
 import { 
   getApiUrl, 
   ENDPOINTS, 
-  ALL_PERMISSIONS, 
-  PERMISSION_DESCRIPTIONS, 
-  canEditUser,
-  canCreateUser,
   FACTORY_NAMES,
-  DEPARTMENT_NAMES,
-  SERVICE_NAMES
+  FACTORY_RBAC_CONFIG
 } from './config';
 import { useAuth } from './Components/AuthContext';
 import TreePermissions from './Components/TreePermissions';
@@ -226,12 +221,18 @@ function Dashboard() {
             permissionMetadata.factories.push(factory);
           }
 
-          // Add department to factory
+          // Add department to factory with factory short form prefix
           if (!permissionMetadata.departments[factory]) {
             permissionMetadata.departments[factory] = [];
           }
-          if (!permissionMetadata.departments[factory].includes(department)) {
-            permissionMetadata.departments[factory].push(department);
+          
+          // Get factory short form from FACTORY_RBAC_CONFIG
+          const factoryConfig = FACTORY_RBAC_CONFIG[factory];
+          const factoryShortForm = factoryConfig?.document_name?.toLowerCase() || factory;
+          
+          const prefixedDepartment = `${factoryShortForm}_${department}`;
+          if (!permissionMetadata.departments[factory].includes(prefixedDepartment)) {
+            permissionMetadata.departments[factory].push(prefixedDepartment);
           }
 
           // Add service to department
@@ -428,23 +429,28 @@ function Dashboard() {
   };
 
   const canEditPermissions = (targetUserRole) => {
-    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+    // Use the new RBAC system - only admin can edit permissions
+    return getCurrentUserRole() === 'admin';
   };
 
   const canEditRole = (targetUserRole) => {
-    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+    // Use the new RBAC system - only admin can edit roles
+    return getCurrentUserRole() === 'admin';
   };
 
   const canEditPassword = (targetUserRole) => {
-    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+    // Use the new RBAC system - only admin can edit passwords
+    return getCurrentUserRole() === 'admin';
   };
 
   const canDeleteUser = (targetUserRole) => {
-    return canEditUser(getCurrentUserRole(), getCurrentUserPermissions(), targetUserRole);
+    // Use the new RBAC system - only admin can delete users
+    return getCurrentUserRole() === 'admin';
   };
 
   const canCreateRole = (targetRole) => {
-    return canCreateUser(getCurrentUserRole(), getCurrentUserPermissions());
+    // Use the new RBAC system - only admin can create users
+    return getCurrentUserRole() === 'admin';
   };
 
   return (

@@ -37,7 +37,7 @@ const ReactorReports = () => {
       formData.append('send_whatsapp', sendWhatsapp);
       formData.append('date', date);
 
-      const response = await fetch(getApiUrl('reactor-reports'), {
+      const response = await fetch(getApiUrl('reactor_reports'), {
         method: 'POST',
         body: formData,
         credentials: 'include',

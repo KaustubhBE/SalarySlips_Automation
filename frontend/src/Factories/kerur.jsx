@@ -26,9 +26,8 @@ const KerurFactory = () => {
     }
     
     return kerurDepartments.filter(dept => {
-      // Extract the base department key (remove factory prefix)
-      const baseDepartmentKey = dept.key.replace('kr_', '');
-      return canAccessFactoryDepartment('kerur', baseDepartmentKey);
+      // Use the full prefixed department key (kr_store, kr_humanresource, etc.)
+      return canAccessFactoryDepartment('kerur', dept.key);
     });
   };
 

@@ -12,8 +12,9 @@ const HumnabadFactory = () => {
 
   // Static departments for Humnabad factory with hardcoded navigation (only existing departments)
   const humnabadDepartments = [
-    { key: 'hbd_store', name: 'Store', route: '/humnabad/hbd_store' },
-    { key: 'hbd_humanresource', name: 'Human Resource', route: '/humnabad/hbd_humanresource' }
+    { key: 'hb_store', name: 'Store', route: '/humnabad/hb_store' },
+    { key: 'hb_humanresource', name: 'Human Resource', route: '/humnabad/hb_humanresource' },
+    { key: 'hb_operations', name: 'Operations', route: '/humnabad/hb_operations' }
   ];
 
   // Filter departments based on user permissions
@@ -25,9 +26,8 @@ const HumnabadFactory = () => {
     }
     
     return humnabadDepartments.filter(dept => {
-      // Extract the base department key (remove factory prefix)
-      const baseDepartmentKey = dept.key.replace('hbd_', '');
-      return canAccessFactoryDepartment('humnabad', baseDepartmentKey);
+      // Use the full prefixed department key (hb_store, hb_humanresource, etc.)
+      return canAccessFactoryDepartment('humnabad', dept.key);
     });
   };
 

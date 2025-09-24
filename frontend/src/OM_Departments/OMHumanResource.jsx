@@ -5,7 +5,7 @@ import Processing from './OM_Services/OM_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
-import { DEPARTMENTS_CONFIG } from '../config';
+// DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
 const OMHumanResource = () => {
@@ -17,8 +17,8 @@ const OMHumanResource = () => {
   
   // Static services for OM Human Resource department (only existing services)
   const omHRServices = [
-    { key: 'om_single-processing', name: 'Single Processing', route: '/omkar/om_humanresource/om_single-processing' },
-    { key: 'om_batch-processing', name: 'Batch Processing', route: '/omkar/om_humanresource/om_batch-processing' }
+    { key: 'om_single_processing', name: 'Single Processing', route: '/omkar/om_humanresource/om_single_processing' },
+    { key: 'om_batch_processing', name: 'Batch Processing', route: '/omkar/om_humanresource/om_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -36,11 +36,9 @@ const OMHumanResource = () => {
     }
     
     // For regular users, check which services they can access
-    return omHRServices.filter(service => {
-      // Extract the base service key (remove factory prefix)
-      const baseServiceKey = service.key.replace('om_', '');
-      return canAccessService(baseServiceKey, 'omkar', 'humanresource');
-    });
+    return omHRServices.filter(service => 
+      canAccessService(service.key, 'omkar', 'humanresource')
+    );
   };
 
   const accessibleServices = getAccessibleServices();
@@ -52,11 +50,8 @@ const OMHumanResource = () => {
     // Admin has access to everything
     if (isAdmin) return true;
     
-    // Extract the base service key (remove factory prefix)
-    const baseServiceKey = serviceKey.replace('om_', '');
-    
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(baseServiceKey, 'omkar', 'humanresource');
+    return canAccessService(serviceKey, 'omkar', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -109,14 +104,14 @@ const OMHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="om_single-processing/*" element={
-        isAuthenticated && hasUserPermission('om_single-processing') ? 
+      <Route path="om_single_processing/*" element={
+        isAuthenticated && hasUserPermission('om_single_processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/omkar" replace />
       } />
 
-      <Route path="om_batch-processing/*" element={
-        isAuthenticated && hasUserPermission('om_batch-processing') ? 
+      <Route path="om_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('om_batch_processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/omkar" replace />
       } />

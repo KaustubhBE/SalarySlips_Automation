@@ -273,7 +273,7 @@ const KR_MaterialList = () => {
 
   if (dataLoading) {
     return (
-      <div className="material-list-container">
+      <div className="material_list-container">
         <div className="material-form-wrapper">
           <h2>Add New Material</h2>
           <div className="loading-message">
@@ -285,7 +285,7 @@ const KR_MaterialList = () => {
   }
 
   return (
-    <div className="material-list-container">
+    <div className="material_list-container">
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 
