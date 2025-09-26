@@ -68,13 +68,27 @@ class WhatsAppServer {
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
         
-        const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
+        // Function to get user-specific uploads directory
+        const getUserUploadsDir = (userEmail) => {
+            const sanitizedEmail = userEmail ? userEmail.replace(/[^a-zA-Z0-9._-]/g, '_') : 'unknown_user';
+            const userDir = path.join(process.cwd(), 'uploads', `${sanitizedEmail}_temp`);
+            if (!fs.existsSync(userDir)) {
+                fs.mkdirSync(userDir, { recursive: true });
+            }
+            return userDir;
+        };
+
+        const baseUploadsDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(baseUploadsDir)) {
+            fs.mkdirSync(baseUploadsDir, { recursive: true });
         }
+        
         const storage = multer.diskStorage({
             destination: (req, file, cb) => {
-                cb(null, uploadsDir);
+                // Get user email from request headers or body
+                const userEmail = req.headers['x-user-email'] || req.body?.user_email || req.body?.email;
+                const userDir = getUserUploadsDir(userEmail);
+                cb(null, userDir);
             },
             filename: (req, file, cb) => {
                 const original = file.originalname;
@@ -85,12 +99,42 @@ class WhatsAppServer {
         });
         this.upload = multer({ storage });
 
-        this.cleanUploads = () => {
+        this.cleanUserUploads = (userEmail) => {
             try {
-                const files = fs.readdirSync(uploadsDir);
+                const userDir = getUserUploadsDir(userEmail);
+                if (fs.existsSync(userDir)) {
+                    const files = fs.readdirSync(userDir);
+                    for (const f of files) {
+                        try {
+                            fs.unlinkSync(path.join(userDir, f));
+                        } catch (e) {
+                            console.warn('Failed to delete user upload file', f, e.message);
+                        }
+                    }
+                    console.log(`Cleaned up uploads for user: ${userEmail}`);
+                }
+            } catch (e) {
+                console.warn('Failed to clean user uploads directory', e.message);
+            }
+        };
+
+        this.cleanUploads = () => {
+            // Legacy cleanup - clean all uploads (for backward compatibility)
+            try {
+                const files = fs.readdirSync(baseUploadsDir);
                 for (const f of files) {
                     try {
-                        fs.unlinkSync(path.join(uploadsDir, f));
+                        const filePath = path.join(baseUploadsDir, f);
+                        if (fs.statSync(filePath).isDirectory()) {
+                            // Clean user-specific directories
+                            const userFiles = fs.readdirSync(filePath);
+                            for (const userFile of userFiles) {
+                                fs.unlinkSync(path.join(filePath, userFile));
+                            }
+                            fs.rmdirSync(filePath);
+                        } else {
+                            fs.unlinkSync(filePath);
+                        }
                     } catch (e) {
                         console.warn('Failed to delete upload file', f, e.message);
                     }
@@ -417,7 +461,13 @@ class WhatsAppServer {
                 console.error('Error in /send-message:', error);
                 res.status(500).json({ success: false, error: error.message });
             } finally {
-                this.cleanUploads();
+                // Get user email for cleanup
+                const userEmail = req.headers['x-user-email'] || req.body?.user_email || req.body?.email;
+                if (userEmail) {
+                    this.cleanUserUploads(userEmail);
+                } else {
+                    this.cleanUploads(); // Fallback to legacy cleanup
+                }
             }
         });
 
@@ -491,7 +541,13 @@ class WhatsAppServer {
                 console.error('Error in /send-bulk:', error);
                 res.status(500).json({ success: false, error: error.message });
             } finally {
-                this.cleanUploads();
+                // Get user email for cleanup
+                const userEmail = req.headers['x-user-email'] || req.body?.user_email || req.body?.email;
+                if (userEmail) {
+                    this.cleanUserUploads(userEmail);
+                } else {
+                    this.cleanUploads(); // Fallback to legacy cleanup
+                }
             }
         });
     }

@@ -338,9 +338,24 @@ def should_start_table_on_new_page(doc, table_rows, table_name_length=0, logger=
             logging.warning(f"Error estimating table space: {e}")
         return False  # Default to current page if estimation fails
 
-def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
+def prepare_file_paths(file_paths, user_email=None, base_output_dir=None, is_upload=False):
+    """
+    Prepare file paths for processing, handling both uploaded files and existing file paths.
+    This function validates file paths and saves uploaded files to user-specific temporary directory.
     
+    Args:
+        file_paths: List of file paths or uploaded file objects
+        user_email: User's email address for user-specific temp directory
+        base_output_dir: Base output directory path
+        is_upload: Boolean indicating if files are uploaded (need to be saved)
+        
+    Returns:
+        list: List of valid file paths ready for processing
+    """
     try:
+        # Import temp_manager here to avoid circular imports
+        from .temp_manager import get_user_temp_dir
+        
         # Initialize empty list if no file paths provided
         if not file_paths:
             return []
@@ -348,6 +363,16 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
         # Convert single path to list if it's not already
         if not isinstance(file_paths, list):
             file_paths = [file_paths]
+        
+        # Get user-specific temp directory
+        temp_dir = None
+        if is_upload and user_email and base_output_dir:
+            temp_dir = get_user_temp_dir(user_email, base_output_dir)
+        elif is_upload and not user_email:
+            # Fallback to base temp directory if no user email provided
+            temp_dir = os.path.join(base_output_dir, "temp") if base_output_dir else None
+            if temp_dir:
+                os.makedirs(temp_dir, exist_ok=True)
             
         # Validate each path and collect valid ones
         valid_paths = []
@@ -359,11 +384,15 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
                 if is_upload:
                     # Handle uploaded file
                     if hasattr(path, 'filename') and path.filename:
-                        temp_path = os.path.join(temp_dir, path.filename)
-                        path.save(temp_path)
-                        valid_paths.append(temp_path)
-                        seen_filenames.add(path.filename)
-                        logging.info(f"Saved attachment file to: {temp_path}")
+                        if temp_dir:
+                            temp_path = os.path.join(temp_dir, path.filename)
+                            path.save(temp_path)
+                            valid_paths.append(temp_path)
+                            seen_filenames.add(path.filename)
+                            logging.info(f"Saved attachment file to user temp dir: {temp_path}")
+                        else:
+                            errors.append("No temp directory available for uploaded file")
+                            logging.error("No temp directory available for uploaded file")
                 else:
                     # Handle existing file path
                     if os.path.exists(path) and os.path.isfile(path):
@@ -381,7 +410,10 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
                 errors.append(f"Error processing file {path}: {str(e)}")
                 logging.error(f"Error processing file {path}: {str(e)}")
                 
-        logging.info(f"Prepared {len(valid_paths)} valid file paths with {len(errors)} errors")
+        logging.info(f"Prepared {len(valid_paths)} valid file paths for user: {user_email}")
+        if errors:
+            logging.warning(f"File preparation completed with {len(errors)} errors")
+        
         return valid_paths
     except Exception as e:
         logging.error(f"Error preparing file paths: {str(e)}")
@@ -1790,12 +1822,12 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
             result["errors"].append("Invalid Google Sheet ID format")
             return result
 
-        # Create temporary directory for attachments
-        temp_dir = os.path.join(output_dir, "temp_attachments")
-        os.makedirs(temp_dir, exist_ok=True)
+        # Get user-specific temporary directory for attachments
+        from .temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_id, output_dir)
         
         # Save attachment files temporarily and store their paths
-        attachment_paths = prepare_file_paths_func(attachment_files, temp_dir=temp_dir, is_upload=True)
+        attachment_paths = prepare_file_paths_func(attachment_files, user_email=user_id, base_output_dir=output_dir, is_upload=True)
 
         try:
             # Fetch data from Google Sheet
@@ -1936,33 +1968,9 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
             except Exception as e:
                 logger.error("Error removing temporary template: {}".format(e))
 
-        # Clean up temporary attachment files
-        for attachment_path in attachment_paths:
-            try:
-                if os.path.exists(attachment_path):
-                    os.remove(attachment_path)
-            except Exception as e:
-                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
-
-        # Remove temporary directory and any remaining files
-        try:
-            if os.path.exists(temp_dir):
-                remaining_files = os.listdir(temp_dir)
-                if remaining_files:
-                    for file in remaining_files:
-                        try:
-                            file_path = os.path.join(temp_dir, file)
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                        except Exception as e:
-                            logger.error("Error removing remaining file {}: {}".format(file, e))
-                
-                try:
-                    os.rmdir(temp_dir)
-                except Exception as e:
-                    logger.error("Failed to remove temporary directory {}: {}".format(temp_dir, e))
-        except Exception as e:
-            logger.error("Error during final cleanup: {}".format(e))
+        # Clean up user-specific temporary directory
+        from .temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_id, output_dir)
 
         # Update result with delivery stats
         result["delivery_stats"] = delivery_stats

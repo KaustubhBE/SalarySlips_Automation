@@ -581,9 +581,24 @@ def get_employee_contact(employee_name: str, contact_employees: List[Dict]) -> s
         return ""
 
 
-def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
-    """Maintain original prepare_file_paths function for backward compatibility"""
+def prepare_file_paths(file_paths, user_email=None, base_output_dir=None, is_upload=False):
+    """
+    Prepare file paths for processing with user-specific temporary directories.
+    Maintains backward compatibility with temp_dir parameter.
+    
+    Args:
+        file_paths: List of file paths or uploaded file objects
+        user_email: User's email address for user-specific temp directory
+        base_output_dir: Base output directory path
+        is_upload: Boolean indicating if files are uploaded (need to be saved)
+        
+    Returns:
+        list: List of valid file paths ready for processing
+    """
     try:
+        # Import temp_manager here to avoid circular imports
+        from .temp_manager import get_user_temp_dir
+        
         if not file_paths:
             return []
             
@@ -607,19 +622,30 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
             except Exception:
                 return os.path.basename(filename)
         
+        # Get user-specific temp directory
+        temp_dir = None
+        if is_upload and user_email and base_output_dir:
+            temp_dir = get_user_temp_dir(user_email, base_output_dir)
+        elif is_upload and not user_email and base_output_dir:
+            # Fallback to base temp directory if no user email provided
+            temp_dir = os.path.join(base_output_dir, "temp")
+            os.makedirs(temp_dir, exist_ok=True)
+        
         for path in file_paths:
             if is_upload:
                 if hasattr(path, 'filename') and path.filename:
                     # Normalize and clean the filename to avoid unwanted numeric prefixes
                     original_filename = os.path.basename(path.filename)
                     cleaned_filename = _remove_numeric_prefix(original_filename)
-                    if temp_dir and not os.path.exists(temp_dir):
-                        os.makedirs(temp_dir, exist_ok=True)
-                    temp_path = os.path.join(temp_dir, cleaned_filename) if temp_dir else cleaned_filename
-                    path.save(temp_path)
-                    valid_paths.append(temp_path)
-                    seen_filenames.add(cleaned_filename)
-                    logging.info(f"Saved attachment file as '{cleaned_filename}' (original: '{original_filename}') to: {temp_path}")
+                    
+                    if temp_dir:
+                        temp_path = os.path.join(temp_dir, cleaned_filename)
+                        path.save(temp_path)
+                        valid_paths.append(temp_path)
+                        seen_filenames.add(cleaned_filename)
+                        logging.info(f"Saved attachment file as '{cleaned_filename}' (original: '{original_filename}') to user temp dir: {temp_path}")
+                    else:
+                        logging.error("No temp directory available for uploaded file")
             else:
                 if os.path.exists(path) and os.path.isfile(path):
                     filename = os.path.basename(path)
@@ -632,7 +658,7 @@ def prepare_file_paths(file_paths, temp_dir=None, is_upload=False):
                 else:
                     logging.warning(f"Invalid or non-existent file path: {path}")
                 
-        logging.info(f"Prepared {len(valid_paths)} valid file paths")
+        logging.info(f"Prepared {len(valid_paths)} valid file paths for user: {user_email}")
         return valid_paths
     except Exception as e:
         logging.error(f"Error preparing file paths: {str(e)}")

@@ -402,9 +402,9 @@ def preview_file():
 
         logger.info('Processing file: %s', file.filename)
         
-        # Create a temporary file to store the uploaded file
-        temp_dir = os.path.join(BASE_DIR, 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
+        # Get user-specific temporary directory for file preview
+        from Utils.temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_id, BASE_DIR)
         temp_path = os.path.join(temp_dir, file.filename)
         
         # Save the uploaded file
@@ -419,10 +419,9 @@ def preview_file():
         logger.error("Error previewing file: {}".format(e), exc_info=True)
         return jsonify({"error": str(e)}), 500
     finally:
-        # Clean up the temporary file
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-            logger.info('Temporary file removed')
+        # Clean up user-specific temporary directory
+        from Utils.temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_id, BASE_DIR)
 
 # def delayed_open_frontend():
 #     """Open frontend URL after a short delay to ensure server is running"""
@@ -1250,9 +1249,9 @@ def retry_reports():
         if not validate_sheet_id(sheet_id):
             return jsonify({"error": "Invalid Google Sheet ID format"}), 400
         
-        # Create temporary directory for attachments
-        temp_dir = os.path.join(OUTPUT_DIR, "temp_attachments")
-        os.makedirs(temp_dir, exist_ok=True)
+        # Get user-specific temporary directory for attachments
+        from Utils.temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_id, OUTPUT_DIR)
         
         # Reconstruct attachment files from base64 data
         attachment_paths = []
@@ -1469,23 +1468,9 @@ def retry_reports():
                 logger.error(f"Error processing template {file_name}: {e}")
                 continue
         
-        # Clean up temporary attachment files
-        for attachment_path in attachment_paths:
-            try:
-                if os.path.exists(attachment_path):
-                    os.remove(attachment_path)
-            except Exception as e:
-                logger.error("Error removing temporary attachment file {}: {}".format(attachment_path, e))
-        
-        # Remove temporary directory and any remaining files
-        try:
-            if os.path.exists(temp_dir):
-                remaining_files = os.listdir(temp_dir)
-                if remaining_files:
-                    logger.warning("Remaining files in temp directory: {}".format(remaining_files))
-                os.rmdir(temp_dir)
-        except Exception as e:
-            logger.error("Error cleaning up temp directory: {}".format(e))
+        # Clean up user-specific temporary directory
+        from Utils.temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_id, OUTPUT_DIR)
         
         return jsonify({
             "success": True,
@@ -1519,9 +1504,9 @@ def reactor_report():
         except Exception as e:
             logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
-        # Create temporary directory for processing
-        temp_dir = os.path.join(OUTPUT_DIR, "temp_reactor_reports")
-        os.makedirs(temp_dir, exist_ok=True)
+        # Get user-specific temporary directory for processing
+        from Utils.temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_id, OUTPUT_DIR)
         template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
         if not os.path.exists(template_path):
             return jsonify({"error": "Reactor report template not found"}), 500
@@ -1541,22 +1526,9 @@ def reactor_report():
             logger=logger,
             send_email_smtp=send_email_smtp
         )
-        # Clean up temporary files
-        try:
-            if os.path.exists(temp_dir):
-                for file in os.listdir(temp_dir):
-                    file_path = os.path.join(temp_dir, file)
-                    try:
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
-                    except Exception as e:
-                        logger.error(f"Error removing temporary file {file}: {e}")
-                try:
-                    os.rmdir(temp_dir)
-                except Exception as e:
-                    logger.error(f"Failed to remove temporary directory {temp_dir}: {e}")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
+        # Clean up user-specific temporary directory
+        from Utils.temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_id, OUTPUT_DIR)
         if 'error' in result:
             return jsonify({"error": result['error']}), 400
         return jsonify(result), 200
@@ -1598,9 +1570,9 @@ def kr_reactor_report():
             logger.error(f"Error fetching sheet IDs from Google Sheet: {e}")
             return jsonify({"error": "Failed to fetch sheet IDs from Google Sheet"}), 500
         
-        # Create temporary directory for processing
-        temp_dir = os.path.join(OUTPUT_DIR, "temp_kr_reactor_reports")
-        os.makedirs(temp_dir, exist_ok=True)
+        # Get user-specific temporary directory for processing
+        from Utils.temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_id, OUTPUT_DIR)
         template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
         
         if not os.path.exists(template_path):
@@ -1627,22 +1599,9 @@ def kr_reactor_report():
             google_refresh_token=google_refresh_token
         )
         
-        # Clean up temporary files
-        try:
-            if os.path.exists(temp_dir):
-                for file in os.listdir(temp_dir):
-                    file_path = os.path.join(temp_dir, file)
-                    try:
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
-                    except Exception as e:
-                        logger.error(f"Error removing temporary file {file}: {e}")
-                try:
-                    os.rmdir(temp_dir)
-                except Exception as e:
-                    logger.error(f"Failed to remove temporary directory {temp_dir}: {e}")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
+        # Clean up user-specific temporary directory
+        from Utils.temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_id, OUTPUT_DIR)
         
         if 'error' in result:
             return jsonify({"error": result['error']}), 400

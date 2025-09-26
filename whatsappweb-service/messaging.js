@@ -181,7 +181,7 @@ class WhatsAppMessaging {
                 return false;
             }
 
-            const formattedNumber = this.formatPhoneNumber(whatsappNumber);
+            const formattedNumber = this.formatPhoneNumber(whatsappNumber, processName);
             
             // Check if phone number is valid
             if (!formattedNumber) {
@@ -440,7 +440,7 @@ class WhatsAppMessaging {
         return results;
     }
 
-    async prepareFilePaths(filePaths, tempDir = null, isUpload = false) {
+    async prepareFilePaths(filePaths, userEmail = null, baseOutputDir = null, isUpload = false) {
         try {
             if (!filePaths) return [];
 
@@ -451,14 +451,34 @@ class WhatsAppMessaging {
             const validPaths = [];
             const seenFilenames = new Set();
 
+            // Get user-specific temp directory
+            let tempDir = null;
+            if (isUpload && userEmail && baseOutputDir) {
+                const sanitizedEmail = userEmail.replace(/[^a-zA-Z0-9._-]/g, '_');
+                tempDir = path.join(baseOutputDir, `${sanitizedEmail}_temp`);
+                if (!fs.existsSync(tempDir)) {
+                    fs.mkdirSync(tempDir, { recursive: true });
+                }
+            } else if (isUpload && baseOutputDir) {
+                // Fallback to base temp directory
+                tempDir = path.join(baseOutputDir, 'temp');
+                if (!fs.existsSync(tempDir)) {
+                    fs.mkdirSync(tempDir, { recursive: true });
+                }
+            }
+
             for (const filePath of filePaths) {
                 if (isUpload) {
                     if (filePath.filename) {
-                        const tempPath = path.join(tempDir, filePath.filename);
-                        await fs.promises.writeFile(tempPath, filePath.buffer);
-                        validPaths.push(tempPath);
-                        seenFilenames.add(filePath.filename);
-                        console.log(`Saved uploaded file: ${tempPath}`);
+                        if (tempDir) {
+                            const tempPath = path.join(tempDir, filePath.filename);
+                            await fs.promises.writeFile(tempPath, filePath.buffer);
+                            validPaths.push(tempPath);
+                            seenFilenames.add(filePath.filename);
+                            console.log(`Saved uploaded file to user temp dir: ${tempPath}`);
+                        } else {
+                            console.error('No temp directory available for uploaded file');
+                        }
                     }
                 } else {
                     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -476,7 +496,7 @@ class WhatsAppMessaging {
                 }
             }
 
-            console.log(`Prepared ${validPaths.length} valid file paths`);
+            console.log(`Prepared ${validPaths.length} valid file paths for user: ${userEmail}`);
             return validPaths;
         } catch (error) {
             console.error('Error preparing file paths:', error);
@@ -684,11 +704,23 @@ class WhatsAppMessaging {
         return false;
     }
 
-    formatPhoneNumber(phoneNumber) {
+    formatPhoneNumber(phoneNumber, processName = null) {
         // Simple phone number formatting - WhatsApp Web handles validation
         let cleaned = phoneNumber.toString().replace(/\D/g, '');
         
         console.log(`Original phone number: "${phoneNumber}" -> Cleaned: "${cleaned}"`);
+        console.log(`Process name: "${processName}"`);
+        
+        // Add country code 91 for specific process types
+        if (processName === 'single_processing' || processName === 'batch_processing') {
+            // Check if the number already has country code 91
+            if (!cleaned.startsWith('91')) {
+                cleaned = '91' + cleaned;
+                console.log(`Added country code 91 for process "${processName}": "${cleaned}"`);
+            } else {
+                console.log(`Country code 91 already present for process "${processName}": "${cleaned}"`);
+            }
+        }
         
         // Basic validation - ITU standard: 4-15 digits (including country code)
         if (!cleaned || cleaned.length < 4 || cleaned.length > 15) {

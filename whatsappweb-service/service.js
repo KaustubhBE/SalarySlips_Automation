@@ -126,12 +126,12 @@ class WhatsAppService {
         return this.messagingClient.sendBulkMessages(contacts, message, filePaths, fileSequence, processName, options);
     }
 
-    async prepareFilePaths(filePaths, tempDir = null, isUpload = false) {
-        return this.messagingClient.prepareFilePaths(filePaths, tempDir, isUpload);
+    async prepareFilePaths(filePaths, userEmail = null, baseOutputDir = null, isUpload = false) {
+        return this.messagingClient.prepareFilePaths(filePaths, userEmail, baseOutputDir, isUpload);
     }
 
-    formatPhoneNumber(phoneNumber) {
-        return this.messagingClient.formatPhoneNumber(phoneNumber);
+    formatPhoneNumber(phoneNumber, processName = null) {
+        return this.messagingClient.formatPhoneNumber(phoneNumber, processName);
     }
 
     getMessageTemplate(processName, messageType = 'default', variables = {}) {
