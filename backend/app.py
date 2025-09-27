@@ -391,6 +391,12 @@ def preview_file():
 
     temp_path = None
     try:
+        # Get user_id from session for authentication and temp directory
+        user_id = session.get('user', {}).get('email')
+        if not user_id:
+            logger.error("No user_id found in session. User must be logged in to preview files.")
+            return jsonify({"error": "User not authenticated"}), 401
+
         if 'file' not in request.files:
             logger.error('No file in request')
             return jsonify({"error": "No file provided"}), 400
