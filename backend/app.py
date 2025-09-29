@@ -2745,13 +2745,17 @@ def send_log_report_to_user(user_email, delivery_stats, send_email_enabled, send
                 # Get user phone number from WhatsApp service
                 user_phone = get_user_phone_from_whatsapp_service(user_email)
                 if user_phone:
-                    # Send WhatsApp message with PDF attachment
+                    # Send WhatsApp message with PDF attachment using caption
+                    options = {
+                        'use_template_as_caption': True  # Always use caption for log reports
+                    }
                     success = send_whatsapp_message(
                         contact_name="Report Generator",
                         message=log_report_text,
                         file_paths=[pdf_path],
                         whatsapp_number=user_phone,
-                        process_name="log_report"
+                        process_name="log_report",
+                        options=options
                     )
                     if success:
                         logger.info(f"Log report WhatsApp with PDF attachment sent successfully to {user_email}")
