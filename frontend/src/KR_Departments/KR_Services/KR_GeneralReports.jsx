@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import '../../Reports.css';
 import { getApiUrl } from '../../config';
 import { useAuth } from '../../Components/AuthContext';
+import LoadingSpinner from '../../LoadingSpinner';
 
 const Reports = () => {
   const [templateFiles, setTemplateFiles] = useState([]);
@@ -16,8 +17,6 @@ const Reports = () => {
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
-  const [showAttachmentDropdown, setShowAttachmentDropdown] = useState(false);
   const [previewItems, setPreviewItems] = useState([]);
   const [draggedItem, setDraggedItem] = useState(null);
   const [previewTitle, setPreviewTitle] = useState('');
@@ -370,7 +369,12 @@ const Reports = () => {
     });
 
     if (type === 'template') {
-      if (validFiles.length > 1) {
+      // Check caption mode limits
+      if (useTemplateAsCaption && validFiles.length > 1) {
+        alert('Caption mode is enabled. Only one template file can be uploaded.');
+        return;
+      }
+      if (!useTemplateAsCaption && validFiles.length > 1) {
         alert('Only one template file can be uploaded');
         return;
       }
@@ -380,6 +384,17 @@ const Reports = () => {
       setAttachmentFiles(prevFiles => {
         const newFiles = { ...prevFiles };
         let maxKey = Object.keys(newFiles).length > 0 ? Math.max(...Object.keys(newFiles).map(Number)) : 0;
+        
+        // Check caption mode limits for attachments
+        if (useTemplateAsCaption) {
+          const currentCount = Object.keys(newFiles).length;
+          const newFilesCount = validFiles.length;
+          if (currentCount + newFilesCount > 1) {
+            alert('Caption mode is enabled. Only one attachment file can be uploaded.');
+            return prevFiles;
+          }
+        }
+        
         validFiles.forEach(file => {
           maxKey += 1;
           newFiles[maxKey] = { file, type: getFileType(file) };
@@ -409,7 +424,12 @@ const Reports = () => {
     });
 
     if (type === 'template') {
-      if (validFiles.length > 1) {
+      // Check caption mode limits
+      if (useTemplateAsCaption && validFiles.length > 1) {
+        alert('Caption mode is enabled. Only one template file can be uploaded.');
+        return;
+      }
+      if (!useTemplateAsCaption && validFiles.length > 1) {
         alert('Only one template file can be uploaded');
         return;
       }
@@ -419,6 +439,17 @@ const Reports = () => {
       setAttachmentFiles(prevFiles => {
         const newFiles = { ...prevFiles };
         let maxKey = Object.keys(newFiles).length > 0 ? Math.max(...Object.keys(newFiles).map(Number)) : 0;
+        
+        // Check caption mode limits for attachments
+        if (useTemplateAsCaption) {
+          const currentCount = Object.keys(newFiles).length;
+          const newFilesCount = validFiles.length;
+          if (currentCount + newFilesCount > 1) {
+            alert('Caption mode is enabled. Only one attachment file can be uploaded.');
+            return prevFiles;
+          }
+        }
+        
         validFiles.forEach(file => {
           maxKey += 1;
           newFiles[maxKey] = { file, type: getFileType(file) };
@@ -538,6 +569,63 @@ const Reports = () => {
 
     setPreviewItems(resequencedItems);
     setDraggedItem(null);
+  };
+
+  const handleRemovePreviewItem = (sequenceNo) => {
+    const itemToRemove = previewItems.find(item => item.sequence_no === sequenceNo);
+    if (!itemToRemove) return;
+
+    // Remove from the appropriate state based on file type
+    if (itemToRemove.file_type === 'message') {
+      // Remove template file
+      setTemplateFiles([]);
+      // Update preview items without template
+      const updatedItems = previewItems.filter(item => item.sequence_no !== sequenceNo);
+      // Re-sequence remaining items
+      const resequencedItems = updatedItems.map((item, index) => ({
+        ...item,
+        sequence_no: index + 1
+      }));
+      setPreviewItems(resequencedItems);
+    } else {
+      // Remove attachment file
+      const attachmentFileToRemove = Object.values(attachmentFiles).find(
+        obj => obj.file.name === itemToRemove.file_name
+      );
+      
+      if (attachmentFileToRemove) {
+        // Find the key for this attachment file
+        let keyToRemove = null;
+        for (const key in attachmentFiles) {
+          if (attachmentFiles[key].file.name === itemToRemove.file_name) {
+            keyToRemove = key;
+            break;
+          }
+        }
+        
+        if (keyToRemove) {
+          const newAttachmentFiles = { ...attachmentFiles };
+          delete newAttachmentFiles[keyToRemove];
+          
+          // Re-sequence the remaining attachment files
+          const filesArr = Object.values(newAttachmentFiles);
+          const resequenced = {};
+          filesArr.forEach((obj, i) => {
+            resequenced[i + 1] = obj;
+          });
+          
+          setAttachmentFiles(resequenced);
+          
+          // Update preview items
+          const updatedItems = previewItems.filter(item => item.sequence_no !== sequenceNo);
+          const resequencedItems = updatedItems.map((item, index) => ({
+            ...item,
+            sequence_no: index + 1
+          }));
+          setPreviewItems(resequencedItems);
+        }
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -768,6 +856,9 @@ const Reports = () => {
 
   return (
     <div className="reports-container">
+      {/* Loading Spinner */}
+      {isLoading && <LoadingSpinner />}
+      
       {/* Token Expired Modal */}
       {showTokenExpiredModal && (
         <div className="modal-overlay">
@@ -777,7 +868,7 @@ const Reports = () => {
             {isRefreshingToken ? (
               <div className="loading-state">
                 <p>Refreshing token and retrying reports...</p>
-                <div className="spinner"></div>
+                <LoadingSpinner />
               </div>
             ) : (
               <div id="google-signin-btn-reports"></div>
@@ -802,6 +893,40 @@ const Reports = () => {
         />
       </div>
 
+      {/* Caption Option - Permanent checkbox */}
+      <div className="caption-section">
+        <div className="caption-option">
+          <label className="caption-checkbox-label">
+            <input
+              type="checkbox"
+              checked={useTemplateAsCaption}
+              onChange={(e) => {
+                setUseTemplateAsCaption(e.target.checked);
+                // Clear files when switching modes to avoid conflicts
+                if (e.target.checked) {
+                  // When enabling caption mode, limit to 1 template and 1 attachment
+                  if (templateFiles.length > 1) {
+                    setTemplateFiles([templateFiles[0]]);
+                  }
+                  if (Object.keys(attachmentFiles).length > 1) {
+                    const firstAttachment = Object.values(attachmentFiles)[0];
+                    setAttachmentFiles({ 1: firstAttachment });
+                  }
+                }
+              }}
+              className="caption-checkbox"
+            />
+            <span className="caption-checkbox-text">
+              Use template text as attachment caption (Single file mode)
+            </span>
+          </label>
+          <p className="caption-help-text">
+            When enabled: Upload exactly 1 template file and 1 attachment file. 
+            When disabled: Upload multiple files as needed.
+          </p>
+        </div>
+      </div>
+
       <div className="drop-zones-container">
         <div 
           className={`drop-zone ${isDraggingTemplate ? 'dragging' : ''}`}
@@ -813,7 +938,10 @@ const Reports = () => {
           <div className="drop-zone-content-template">
             <h3>Template Files</h3>
             <p>Drag and drop template files here</p>
-            <p className="file-types">Supported formats: .docx</p>
+            <p className="file-types">
+              Supported formats: .docx
+              {useTemplateAsCaption && <span className="mode-indicator"> (Single file mode)</span>}
+            </p>
             <div className="file-input-container">
               <input
                 type="file"
@@ -826,32 +954,10 @@ const Reports = () => {
                 className="browse-button"
                 onClick={() => {
                   document.getElementById('template-file-input').click();
-                  setShowTemplateDropdown(!showTemplateDropdown);
                 }}
               >
                 Browse Template Files
               </button>
-              {showTemplateDropdown && (
-                <div className="files-dropdown">
-                  {templateFiles.length > 0 ? (
-                    templateFiles.map((file, index) => (
-                      <div key={`template-${index}`} className="file-item">
-                        <span className="file-name" title={file.name}>
-                          {file.name}
-                        </span>
-                        <button 
-                          className="remove-button"
-                          onClick={() => handleRemoveFile(index, 'template')}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-files">No files selected</div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -866,12 +972,15 @@ const Reports = () => {
           <div className="drop-zone-content-attachment">
             <h3>Attachment Files</h3>
             <p>Drag and drop files to be attached here</p>
-            <p className="file-types">Supported formats: .txt, .docx, .png, .jpg, .jpeg, .pdf</p>
+            <p className="file-types">
+              Supported formats: .txt, .docx, .png, .jpg, .jpeg, .pdf
+              {useTemplateAsCaption && <span className="mode-indicator"> (Single file mode)</span>}
+            </p>
             <div className="file-input-container">
               <input
                 type="file"
                 id="attachment-file-input"
-                multiple
+                multiple={!useTemplateAsCaption}
                 onChange={(e) => handleFileInput(e, 'attachment')}
                 accept=".txt,.docx,.png,.jpg,.jpeg,.pdf"
                 style={{ display: 'none' }}
@@ -880,32 +989,10 @@ const Reports = () => {
                 className="browse-button"
                 onClick={() => {
                   document.getElementById('attachment-file-input').click();
-                  setShowAttachmentDropdown(!showAttachmentDropdown);
                 }}
               >
                 Browse Attachment Files
               </button>
-              {showAttachmentDropdown && (
-                <div className="files-dropdown">
-                  {Object.entries(attachmentFiles).length > 0 ? (
-                    Object.entries(attachmentFiles).map(([key, obj], index) => (
-                      <div key={`attachment-${key}`} className="file-item">
-                        <span className="file-name" title={obj.file.name}>
-                          {obj.file.name} ({obj.type})
-                        </span>
-                        <button 
-                          className="remove-button"
-                          onClick={() => handleRemoveFile(index, 'attachment')}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-files">No files selected</div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -967,6 +1054,16 @@ const Reports = () => {
                       <div className={`preview-item-content ${item.file_type === 'file' ? 'attachment' : 'template'}`}>
                         {item.file_type === 'message' ? 'Template Content' : item.file_name}
                       </div>
+                      <button 
+                        className="preview-item-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePreviewItem(item.sequence_no);
+                        }}
+                        title="Remove this item"
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -976,26 +1073,6 @@ const Reports = () => {
                 </div>
               )}
             </div>
-            
-            {/* Caption Checkbox - Only show when exactly 1 template and 1 attachment */}
-            {templateFiles.length === 1 && Object.keys(attachmentFiles).length === 1 && (
-              <div className="caption-option">
-                <label className="caption-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={useTemplateAsCaption}
-                    onChange={(e) => setUseTemplateAsCaption(e.target.checked)}
-                    className="caption-checkbox"
-                  />
-                  <span className="caption-checkbox-text">
-                    Use template text as attachment caption
-                  </span>
-                </label>
-                <p className="caption-help-text">
-                  When enabled, the template content will be used as the caption for the attachment file.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>

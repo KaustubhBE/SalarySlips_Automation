@@ -444,6 +444,205 @@ def send_bulk_whatsapp_messages(contacts: List[Dict], message: Union[str, List[s
     )
 
 
+def handle_reactor_report_notification_with_stats(recipients_data, input_date, file_path, sheets_processed, user_email: str = None):
+    """
+    Enhanced function for reactor report notifications with delivery statistics tracking
+    """
+    client = WhatsAppNodeClient(user_email=user_email)
+    
+    # Initialize delivery statistics
+    delivery_stats = {
+        "total_recipients": 0,
+        "successful_deliveries": 0,
+        "failed_deliveries": 0,
+        "failed_contacts": []
+    }
+    
+    # Validate that we have a user email
+    if not client.has_user_email():
+        logging.error("No user email available for reactor report notification. Please ensure user is logged in.")
+        return {
+            "success": False,
+            "error": "USER_NOT_LOGGED_IN",
+            "delivery_stats": delivery_stats
+        }
+    
+    # Check if service is ready
+    if not client.check_service_health():
+        logging.error("WhatsApp service is not ready")
+        return {
+            "success": False,
+            "error": "WHATSAPP_SERVICE_NOT_READY",
+            "delivery_stats": delivery_stats
+        }
+    
+    try:
+        # Parse recipients from recipients_data
+        if not recipients_data or len(recipients_data) < 2:
+            logging.error("No recipients data provided for reactor report")
+            return {
+                "success": False,
+                "error": "NO_RECIPIENTS_DATA",
+                "delivery_stats": delivery_stats
+            }
+        
+        headers = [h.strip() for h in recipients_data[0]]
+        logging.info(f"Available headers: {headers}")
+        
+        # Look for various possible column names
+        name_idx = None
+        phone_idx = None
+        whatsapp_idx = None
+        country_code_idx = None
+        
+        # Try different possible column names
+        for i, header in enumerate(headers):
+            header_lower = header.lower()
+            if 'name' in header_lower:
+                name_idx = i
+            elif 'phone' in header_lower or 'contact' in header_lower or 'mobile' in header_lower:
+                phone_idx = i
+            elif 'whatsapp' in header_lower:
+                whatsapp_idx = i
+            elif 'country code' in header_lower or 'countrycode' in header_lower.replace(' ', ''):
+                country_code_idx = i
+        
+        logging.info(f"Recipients headers found: Name={name_idx}, Phone={phone_idx}, WhatsApp={whatsapp_idx}, Country Code={country_code_idx}")
+        
+        # Check if we have the required columns
+        has_phone_contact = (phone_idx is not None) or (whatsapp_idx is not None)
+        has_separate_phone_components = (phone_idx is not None) and (country_code_idx is not None)
+        
+        if name_idx is None or (not has_phone_contact and not has_separate_phone_components):
+            logging.error("Required columns for WhatsApp notifications not found in recipients data")
+            logging.error(f"Available headers: {headers}")
+            return {
+                "success": False,
+                "error": "MISSING_REQUIRED_COLUMNS",
+                "delivery_stats": delivery_stats
+            }
+        
+        success_count = 0
+        total_recipients = 0
+        
+        for row in recipients_data[1:]:
+            try:
+                # Calculate the maximum index we need to check
+                max_indices = [name_idx]
+                if phone_idx is not None:
+                    max_indices.append(phone_idx)
+                if whatsapp_idx is not None:
+                    max_indices.append(whatsapp_idx)
+                if country_code_idx is not None:
+                    max_indices.append(country_code_idx)
+                
+                if len(row) <= max(max_indices):
+                    continue
+                    
+                recipient_name = row[name_idx].strip()
+                phone_number = row[phone_idx].strip() if phone_idx is not None else ''
+                whatsapp_number = row[whatsapp_idx].strip() if whatsapp_idx is not None else ''
+                country_code = row[country_code_idx].strip() if country_code_idx is not None else ''
+                
+                # Determine the contact number based on available data
+                contact_number = None
+                failure_reason = None
+                
+                if whatsapp_number:
+                    # Use WhatsApp number if available
+                    contact_number = whatsapp_number
+                    logging.info(f"Using WhatsApp number for {recipient_name}: {contact_number}")
+                elif phone_number and country_code:
+                    # Combine country code and phone number
+                    contact_number = f"{country_code}{phone_number}".replace(' ', '')
+                    logging.info(f"Combining country code and phone for {recipient_name}: Country Code '{country_code}' + Phone '{phone_number}' = '{contact_number}'")
+                elif phone_number:
+                    # Use phone number as-is if no country code
+                    contact_number = phone_number
+                    logging.info(f"Using phone number for {recipient_name}: {contact_number}")
+                else:
+                    failure_reason = "Missing contact number"
+                
+                logging.info(f"Processing recipient: {recipient_name}, Final Contact: {contact_number}")
+                
+                if recipient_name and contact_number:
+                    # Validate phone number format for reactor reports
+                    contact_cleaned = contact_number.replace(' ', '').replace('-', '').replace('+', '')
+                    
+                    # Check if the contact number has proper format (minimum 4 digits as per ITU standard)
+                    if len(contact_cleaned) < 4:
+                        failure_reason = f"Invalid phone number format - too short ({len(contact_cleaned)} digits)"
+                        logging.warning(f"Skipping WhatsApp message for {recipient_name}: {failure_reason}")
+                    elif len(contact_cleaned) > 15:
+                        failure_reason = f"Invalid phone number format - too long ({len(contact_cleaned)} digits)"
+                        logging.warning(f"Skipping WhatsApp message for {recipient_name}: {failure_reason}")
+                    else:
+                        logging.info(f"Valid phone number for {recipient_name}: {contact_number} -> Cleaned: {contact_cleaned}")
+                        total_recipients += 1
+                        
+                        # Send WhatsApp message using unified function
+                        success = client.send_message(
+                            contact_name=recipient_name,
+                            whatsapp_number=contact_number,
+                            process_name="reactor_report",
+                            file_paths=[file_path],
+                            variables={
+                                "input_date": input_date,
+                                "sheets_processed": sheets_processed
+                            },
+                            options={}
+                        )
+                        
+                        if success is True:
+                            success_count += 1
+                            logging.info(f"Reactor report WhatsApp message sent successfully to {recipient_name}")
+                        else:
+                            failure_reason = f"WhatsApp send failed: {success}"
+                            logging.error(f"Failed to send reactor report WhatsApp message to {recipient_name}: {success}")
+                else:
+                    failure_reason = "Missing contact number or name"
+                    logging.warning(f"Skipping WhatsApp notification for {recipient_name}: {failure_reason}")
+                
+                # Track failed deliveries
+                if failure_reason:
+                    delivery_stats["failed_deliveries"] += 1
+                    delivery_stats["failed_contacts"].append({
+                        "name": recipient_name,
+                        "contact": contact_number if contact_number else "N/A",
+                        "reason": failure_reason
+                    })
+                else:
+                    delivery_stats["successful_deliveries"] += 1
+                    
+            except Exception as e:
+                logging.error(f"Error sending reactor report WhatsApp notification to {recipient_name if 'recipient_name' in locals() else 'unknown'}: {e}")
+                delivery_stats["failed_deliveries"] += 1
+                delivery_stats["failed_contacts"].append({
+                    "name": recipient_name if 'recipient_name' in locals() else 'unknown',
+                    "contact": contact_number if 'contact_number' in locals() else "N/A",
+                    "reason": f"Exception: {str(e)}"
+                })
+                continue
+        
+        # Update total recipients
+        delivery_stats["total_recipients"] = total_recipients
+        
+        logging.info(f"Reactor report WhatsApp notifications: {success_count}/{total_recipients} successful")
+        
+        return {
+            "success": success_count > 0,
+            "delivery_stats": delivery_stats
+        }
+        
+    except Exception as e:
+        logging.error(f"Error processing reactor report WhatsApp notifications: {e}")
+        return {
+            "success": False,
+            "error": "REACTOR_NOTIFICATION_ERROR",
+            "delivery_stats": delivery_stats
+        }
+
+
 def handle_reactor_report_notification(recipients_data, input_date, file_path, sheets_processed, user_email: str = None):
     """
     Legacy function for reactor report notifications - now uses unified approach
@@ -473,6 +672,7 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
         name_idx = None
         phone_idx = None
         whatsapp_idx = None
+        country_code_idx = None
         
         # Try different possible column names
         for i, header in enumerate(headers):
@@ -483,10 +683,16 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
                 phone_idx = i
             elif 'whatsapp' in header_lower:
                 whatsapp_idx = i
+            elif 'country code' in header_lower or 'countrycode' in header_lower.replace(' ', ''):
+                country_code_idx = i
         
-        logging.info(f"Recipients headers found: Name={name_idx}, Phone={phone_idx}, WhatsApp={whatsapp_idx}")
+        logging.info(f"Recipients headers found: Name={name_idx}, Phone={phone_idx}, WhatsApp={whatsapp_idx}, Country Code={country_code_idx}")
         
-        if name_idx is None or (phone_idx is None and whatsapp_idx is None):
+        # Check if we have the required columns
+        has_phone_contact = (phone_idx is not None) or (whatsapp_idx is not None)
+        has_separate_phone_components = (phone_idx is not None) and (country_code_idx is not None)
+        
+        if name_idx is None or (not has_phone_contact and not has_separate_phone_components):
             logging.error("Required columns for WhatsApp notifications not found in recipients data")
             logging.error(f"Available headers: {headers}")
             return "MISSING_REQUIRED_COLUMNS"
@@ -496,53 +702,78 @@ def handle_reactor_report_notification(recipients_data, input_date, file_path, s
         
         for row in recipients_data[1:]:
             try:
-                if len(row) > max(name_idx, phone_idx or 0, whatsapp_idx or 0):
-                    recipient_name = row[name_idx].strip()
-                    phone_number = row[phone_idx].strip() if phone_idx is not None else ''
-                    whatsapp_number = row[whatsapp_idx].strip() if whatsapp_idx is not None else ''
+                # Calculate the maximum index we need to check
+                max_indices = [name_idx]
+                if phone_idx is not None:
+                    max_indices.append(phone_idx)
+                if whatsapp_idx is not None:
+                    max_indices.append(whatsapp_idx)
+                if country_code_idx is not None:
+                    max_indices.append(country_code_idx)
+                
+                if len(row) <= max(max_indices):
+                    continue
                     
-                    # Use WhatsApp number if available, otherwise use phone number
-                    contact_number = whatsapp_number if whatsapp_number else phone_number
+                recipient_name = row[name_idx].strip()
+                phone_number = row[phone_idx].strip() if phone_idx is not None else ''
+                whatsapp_number = row[whatsapp_idx].strip() if whatsapp_idx is not None else ''
+                country_code = row[country_code_idx].strip() if country_code_idx is not None else ''
+                
+                # Determine the contact number based on available data
+                contact_number = None
+                
+                if whatsapp_number:
+                    # Use WhatsApp number if available
+                    contact_number = whatsapp_number
+                    logging.info(f"Using WhatsApp number for {recipient_name}: {contact_number}")
+                elif phone_number and country_code:
+                    # Combine country code and phone number
+                    contact_number = f"{country_code}{phone_number}".replace(' ', '')
+                    logging.info(f"Combining country code and phone for {recipient_name}: Country Code '{country_code}' + Phone '{phone_number}' = '{contact_number}'")
+                elif phone_number:
+                    # Use phone number as-is if no country code
+                    contact_number = phone_number
+                    logging.info(f"Using phone number for {recipient_name}: {contact_number}")
+                
+                logging.info(f"Processing recipient: {recipient_name}, Final Contact: {contact_number}")
+                
+                if recipient_name and contact_number:
+                    # Validate phone number format for reactor reports
+                    # Extract country code and phone number from the contact
+                    contact_cleaned = contact_number.replace(' ', '').replace('-', '').replace('+', '')
                     
-                    logging.info(f"Processing recipient: {recipient_name}, Contact: {contact_number}")
+                    # Check if the contact number has proper format (minimum 4 digits as per ITU standard)
+                    if len(contact_cleaned) < 4:
+                        logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too short ({len(contact_cleaned)} digits)")
+                        continue
                     
-                    if recipient_name and contact_number:
-                        # Validate phone number format for reactor reports
-                        # Extract country code and phone number from the contact
-                        contact_cleaned = contact_number.replace(' ', '').replace('-', '').replace('+', '')
-                        
-                        # Check if the contact number has proper format (minimum 4 digits as per ITU standard)
-                        if len(contact_cleaned) < 4:
-                            logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too short ({len(contact_cleaned)} digits)")
-                            continue
-                        
-                        if len(contact_cleaned) > 15:
-                            logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too long ({len(contact_cleaned)} digits)")
-                            continue
-                        
-                        logging.info(f"Valid phone number for {recipient_name}: {contact_number} -> Cleaned: {contact_cleaned}")
-                        total_recipients += 1
-                        
-                        # Send WhatsApp message using unified function
-                        success = client.send_message(
-                            contact_name=recipient_name,
-                            whatsapp_number=contact_number,
-                            process_name="reactor_report",
-                            file_paths=[file_path],
-                            variables={
-                                "input_date": input_date,
-                                "sheets_processed": sheets_processed
-                            },
-                            options={}
-                        )
-                        
-                        if success is True:
-                            success_count += 1
-                            logging.info(f"Reactor report WhatsApp message sent successfully to {recipient_name}")
-                        else:
-                            logging.error(f"Failed to send reactor report WhatsApp message to {recipient_name}: {success}")
+                    if len(contact_cleaned) > 15:
+                        logging.warning(f"Skipping WhatsApp message for {recipient_name}: Invalid phone number format - too long ({len(contact_cleaned)} digits)")
+                        continue
+                    
+                    logging.info(f"Valid phone number for {recipient_name}: {contact_number} -> Cleaned: {contact_cleaned}")
+                    total_recipients += 1
+                    
+                    # Send WhatsApp message using unified function
+                    success = client.send_message(
+                        contact_name=recipient_name,
+                        whatsapp_number=contact_number,
+                        process_name="reactor_report",
+                        file_paths=[file_path],
+                        variables={
+                            "input_date": input_date,
+                            "sheets_processed": sheets_processed
+                        },
+                        options={}
+                    )
+                    
+                    if success is True:
+                        success_count += 1
+                        logging.info(f"Reactor report WhatsApp message sent successfully to {recipient_name}")
                     else:
-                        logging.warning(f"Skipping WhatsApp notification for {recipient_name}: Missing contact number")
+                        logging.error(f"Failed to send reactor report WhatsApp message to {recipient_name}: {success}")
+                else:
+                    logging.warning(f"Skipping WhatsApp notification for {recipient_name}: Missing contact number or name")
             except Exception as e:
                 logging.error(f"Error sending reactor report WhatsApp notification to {recipient_name if 'recipient_name' in locals() else 'unknown'}: {e}")
                 continue

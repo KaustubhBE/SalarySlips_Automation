@@ -738,7 +738,7 @@ class WhatsAppMessaging {
         console.log(`Process name: "${processName}"`);
         
         // Add country code 91 for specific process types
-        if (processName === 'single_processing' || processName === 'batch_processing') {
+        if (processName === 'single_processing' || processName === 'batch_processing' || processName === 'salary_slip') {
             // Check if the number already has country code 91
             if (!cleaned.startsWith('91')) {
                 cleaned = '91' + cleaned;

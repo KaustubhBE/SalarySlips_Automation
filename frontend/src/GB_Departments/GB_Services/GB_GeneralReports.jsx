@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import '../../Reports.css';
 import { getApiUrl } from '../../config';
 import { useAuth } from '../../Components/AuthContext';
+import LoadingSpinner from '../../LoadingSpinner';
 
 const Reports = () => {
   const [templateFiles, setTemplateFiles] = useState([]);
@@ -768,6 +769,9 @@ const Reports = () => {
 
   return (
     <div className="reports-container">
+      {/* Loading Spinner */}
+      {isLoading && <LoadingSpinner />}
+      
       {/* Token Expired Modal */}
       {showTokenExpiredModal && (
         <div className="modal-overlay">
@@ -777,7 +781,7 @@ const Reports = () => {
             {isRefreshingToken ? (
               <div className="loading-state">
                 <p>Refreshing token and retrying reports...</p>
-                <div className="spinner"></div>
+                <LoadingSpinner />
               </div>
             ) : (
               <div id="google-signin-btn-reports"></div>

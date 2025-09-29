@@ -918,6 +918,12 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             "email": False,
             "whatsapp": False
         },
+        "delivery_stats": {
+            "total_recipients": 0,
+            "successful_deliveries": 0,
+            "failed_deliveries": 0,
+            "failed_contacts": []
+        },
         "output_file": None,
         "errors": [],
         "warnings": []
@@ -1388,6 +1394,11 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                         """
                     # Send email to each recipient individually to avoid syntax errors
                     success_count = 0
+                    total_email_recipients = len(recipients_to)
+                    
+                    # Update delivery stats for email recipients
+                    result["delivery_stats"]["total_recipients"] += total_email_recipients
+                    
                     for recipient in recipients_to:
                         try:
                             if process_name == "kr_reactor-report":
@@ -1434,34 +1445,63 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                     cc=','.join(recipients_cc) if recipients_cc else None,
                                     bcc=','.join(recipients_bcc) if recipients_bcc else None
                                 )
+                            
+                            # Track email delivery results
                             if success is True:
                                 success_count += 1
+                                result["delivery_stats"]["successful_deliveries"] += 1
                                 logger.info(f"Email sent successfully to {recipient}")
-                            elif success == "USER_NOT_LOGGED_IN":
-                                result["errors"].append(f"User session expired for {recipient}. Please log in again.")
-                                logger.error(f"User session expired for {recipient}")
-                            elif success == "NO_SMTP_CREDENTIALS":
-                                result["errors"].append(f"Email credentials not found for {recipient}. Please check your settings.")
-                                logger.error(f"Email credentials not found for {recipient}")
-                            elif success == "INVALID_RECIPIENT":
-                                result["errors"].append(f"Invalid recipient email address: {recipient}")
-                                logger.error(f"Invalid recipient email address: {recipient}")
-                            elif success == "NO_VALID_RECIPIENTS":
-                                result["errors"].append(f"No valid recipient emails found for {recipient}")
-                                logger.error(f"No valid recipient emails found for {recipient}")
-                            elif success == "SMTP_AUTH_FAILED":
-                                result["errors"].append(f"Email authentication failed for {recipient}. Please check your credentials.")
-                                logger.error(f"Email authentication failed for {recipient}")
-                            elif success == "SMTP_ERROR":
-                                result["errors"].append(f"Email service error for {recipient}. Please try again later.")
-                                logger.error(f"Email service error for {recipient}")
-                            elif success == "EMAIL_SEND_ERROR":
-                                result["errors"].append(f"Failed to send email to {recipient}")
-                                logger.error(f"Failed to send email to {recipient}")
                             else:
-                                result["errors"].append(f"Failed to send email to {recipient}")
-                                logger.error(f"Failed to send email to {recipient}")
+                                result["delivery_stats"]["failed_deliveries"] += 1
+                                failure_reason = "Unknown error"
+                                
+                                if success == "USER_NOT_LOGGED_IN":
+                                    failure_reason = "User session expired"
+                                    result["errors"].append(f"User session expired for {recipient}. Please log in again.")
+                                    logger.error(f"User session expired for {recipient}")
+                                elif success == "NO_SMTP_CREDENTIALS":
+                                    failure_reason = "Email credentials not found"
+                                    result["errors"].append(f"Email credentials not found for {recipient}. Please check your settings.")
+                                    logger.error(f"Email credentials not found for {recipient}")
+                                elif success == "INVALID_RECIPIENT":
+                                    failure_reason = "Invalid recipient email address"
+                                    result["errors"].append(f"Invalid recipient email address: {recipient}")
+                                    logger.error(f"Invalid recipient email address: {recipient}")
+                                elif success == "NO_VALID_RECIPIENTS":
+                                    failure_reason = "No valid recipient emails found"
+                                    result["errors"].append(f"No valid recipient emails found for {recipient}")
+                                    logger.error(f"No valid recipient emails found for {recipient}")
+                                elif success == "SMTP_AUTH_FAILED":
+                                    failure_reason = "Email authentication failed"
+                                    result["errors"].append(f"Email authentication failed for {recipient}. Please check your credentials.")
+                                    logger.error(f"Email authentication failed for {recipient}")
+                                elif success == "SMTP_ERROR":
+                                    failure_reason = "Email service error"
+                                    result["errors"].append(f"Email service error for {recipient}. Please try again later.")
+                                    logger.error(f"Email service error for {recipient}")
+                                elif success == "EMAIL_SEND_ERROR":
+                                    failure_reason = "Email send error"
+                                    result["errors"].append(f"Failed to send email to {recipient}")
+                                    logger.error(f"Failed to send email to {recipient}")
+                                else:
+                                    failure_reason = f"Unknown error: {success}"
+                                    result["errors"].append(f"Failed to send email to {recipient}")
+                                    logger.error(f"Failed to send email to {recipient}")
+                                
+                                # Add to failed contacts list
+                                result["delivery_stats"]["failed_contacts"].append({
+                                    "name": recipient,
+                                    "contact": recipient,
+                                    "reason": failure_reason
+                                })
+                                
                         except Exception as e:
+                            result["delivery_stats"]["failed_deliveries"] += 1
+                            result["delivery_stats"]["failed_contacts"].append({
+                                "name": recipient,
+                                "contact": recipient,
+                                "reason": f"Exception: {str(e)}"
+                            })
                             result["errors"].append(f"Error sending email to {recipient}: {e}")
                             logger.error(f"Error sending email to {recipient}: {e}")
                     
@@ -1478,37 +1518,55 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
         # Send WhatsApp messages if enabled
         if send_whatsapp and result["output_file"]:
             try:
-                
-                success = handle_reactor_report_notification(
+                # Track delivery statistics for WhatsApp notifications
+                whatsapp_result = handle_reactor_report_notification_with_stats(
                     recipients_data=sheet_recipients_data,
                     input_date=input_date,
                     file_path=result["output_file"],
-                    sheets_processed=result["sheets_processed"]
+                    sheets_processed=result["sheets_processed"],
+                    user_email=user_id
                 )
-                if success is True:
-                    result["notifications_sent"]["whatsapp"] = True
-                    logger.info("Reactor report WhatsApp notifications sent successfully")
-                elif success == "USER_NOT_LOGGED_IN":
-                    result["errors"].append("User session expired. Please log in again.")
-                    logger.error("User session expired for WhatsApp notifications")
-                elif success == "WHATSAPP_SERVICE_NOT_READY":
-                    result["warnings"].append("WhatsApp service is not ready. Please try again later.")
-                    logger.warning("WhatsApp service is not ready")
-                elif success == "NO_RECIPIENTS_DATA":
-                    result["warnings"].append("No recipients data provided for WhatsApp notifications.")
-                    logger.warning("No recipients data provided for WhatsApp notifications")
-                elif success == "MISSING_REQUIRED_COLUMNS":
-                    result["warnings"].append("Required columns for WhatsApp notifications not found.")
-                    logger.warning("Required columns for WhatsApp notifications not found")
-                elif success == "NO_SUCCESSFUL_NOTIFICATIONS":
-                    result["warnings"].append("No WhatsApp notifications were sent successfully.")
-                    logger.warning("No WhatsApp notifications were sent successfully")
-                elif success == "REACTOR_NOTIFICATION_ERROR":
-                    result["warnings"].append("Error processing WhatsApp notifications.")
-                    logger.warning("Error processing WhatsApp notifications")
+                
+                if isinstance(whatsapp_result, dict) and "delivery_stats" in whatsapp_result:
+                    # Update delivery stats from WhatsApp notifications
+                    result["delivery_stats"]["total_recipients"] += whatsapp_result["delivery_stats"]["total_recipients"]
+                    result["delivery_stats"]["successful_deliveries"] += whatsapp_result["delivery_stats"]["successful_deliveries"]
+                    result["delivery_stats"]["failed_deliveries"] += whatsapp_result["delivery_stats"]["failed_deliveries"]
+                    result["delivery_stats"]["failed_contacts"].extend(whatsapp_result["delivery_stats"]["failed_contacts"])
+                    
+                    if whatsapp_result["delivery_stats"]["successful_deliveries"] > 0:
+                        result["notifications_sent"]["whatsapp"] = True
+                        logger.info("Reactor report WhatsApp notifications sent successfully")
+                    else:
+                        result["warnings"].append("No WhatsApp notifications were sent successfully.")
+                        logger.warning("No WhatsApp notifications were sent successfully")
                 else:
-                    result["warnings"].append("Some or all reactor report WhatsApp notifications failed")
-                    logger.warning("Some or all reactor report WhatsApp notifications failed")
+                    # Handle legacy return values
+                    success = whatsapp_result
+                    if success is True:
+                        result["notifications_sent"]["whatsapp"] = True
+                        logger.info("Reactor report WhatsApp notifications sent successfully")
+                    elif success == "USER_NOT_LOGGED_IN":
+                        result["errors"].append("User session expired. Please log in again.")
+                        logger.error("User session expired for WhatsApp notifications")
+                    elif success == "WHATSAPP_SERVICE_NOT_READY":
+                        result["warnings"].append("WhatsApp service is not ready. Please try again later.")
+                        logger.warning("WhatsApp service is not ready")
+                    elif success == "NO_RECIPIENTS_DATA":
+                        result["warnings"].append("No recipients data provided for WhatsApp notifications.")
+                        logger.warning("No recipients data provided for WhatsApp notifications")
+                    elif success == "MISSING_REQUIRED_COLUMNS":
+                        result["warnings"].append("Required columns for WhatsApp notifications not found.")
+                        logger.warning("Required columns for WhatsApp notifications not found")
+                    elif success == "NO_SUCCESSFUL_NOTIFICATIONS":
+                        result["warnings"].append("No WhatsApp notifications were sent successfully.")
+                        logger.warning("No WhatsApp notifications were sent successfully")
+                    elif success == "REACTOR_NOTIFICATION_ERROR":
+                        result["warnings"].append("Error processing WhatsApp notifications.")
+                        logger.warning("Error processing WhatsApp notifications")
+                    else:
+                        result["warnings"].append("Some or all reactor report WhatsApp notifications failed")
+                        logger.warning("Some or all reactor report WhatsApp notifications failed")
             except Exception as e:
                 logger.error(f"Error processing WhatsApp notifications: {e}")
                 result["errors"].append(f"Error processing WhatsApp notifications: {e}")
@@ -1522,6 +1580,16 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 result["message"] = f"Reactor reports generated with {len(result['errors'])} errors"
         else:
             result["message"] = "Failed to generate reactor reports"
+            
+        # Send log report to the user who generated the report (only if notifications were sent)
+        if (send_email or send_whatsapp) and result["generated_files"] > 0:
+            try:
+                # Import the log report function from app.py
+                from app import send_log_report_to_user
+                send_log_report_to_user(user_id, result["delivery_stats"], send_email, send_whatsapp, logger)
+                logger.info("Log report sent successfully to user")
+            except Exception as e:
+                logger.error(f"Error sending log report to user: {e}")
             
     except Exception as e:
         logger.error(f"Critical error in process_reactor_reports: {e}")
