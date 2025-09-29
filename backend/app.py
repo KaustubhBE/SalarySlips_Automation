@@ -429,29 +429,6 @@ def preview_file():
         from Utils.temp_manager import cleanup_user_temp_dir
         cleanup_user_temp_dir(user_id, BASE_DIR)
 
-# def delayed_open_frontend():
-#     """Open frontend URL after a short delay to ensure server is running"""
-#     global _frontend_opened
-#     if _frontend_opened:
-#         return
-#     try:
-#         # Wait for server to start
-#         time.sleep(2)
-#         logger.info("Attempting to open frontend URL...")
-#         webbrowser.open(FRONTEND_URL)
-#         logger.info("Successfully opened frontend URL: {}".format(FRONTEND_URL))
-#         _frontend_opened = True
-#     except Exception as e:
-#         logger.error("Failed to open frontend URL: {}".format(str(e)), exc_info=True)
-
-# @app.before_request
-# def before_request():
-#     """Handle pre-request tasks"""
-#     try:
-#         delayed_open_frontend()
-#     except Exception as e:
-#         logger.error("Error in before_request: {}".format(str(e)), exc_info=True)
-
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
@@ -1174,6 +1151,7 @@ def generate_report():
         send_whatsapp = request.form.get('send_whatsapp') == 'true'
         send_email = request.form.get('send_email') == 'true'
         mail_subject = request.form.get('mail_subject')
+        use_template_as_caption = request.form.get('use_template_as_caption') == 'true'
 
         # Import the new function from process_utils
         from Utils.process_utils import process_general_reports
@@ -1188,6 +1166,7 @@ def generate_report():
             send_whatsapp=send_whatsapp,
             send_email=send_email,
             mail_subject=mail_subject,
+            use_template_as_caption=use_template_as_caption,
             user_id=user_id,
             output_dir=OUTPUT_DIR,
             logger=logger,

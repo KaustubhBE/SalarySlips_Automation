@@ -173,6 +173,7 @@ class WhatsAppMessaging {
             console.log(`  - Message: "${message}"`);
             console.log(`  - File sequence:`, fileSequence);
             console.log(`  - Process name: ${processName}`);
+            console.log(`  - Options:`, options);
             
             await this.authClient.waitForReady();
 
@@ -324,14 +325,20 @@ class WhatsAppMessaging {
             const validFilePaths = await this.prepareFilePaths(filePaths);
             const perFileDelayMs = Number(options.perFileDelayMs || 1000);
 
-            // Only send message immediately if there's no sequencing, otherwise handle in sequencing section
+            // Only send message immediately if there's no sequencing and not using template as caption
+            // If using template as caption and there are files, the message will be sent as caption
             if (finalMessage && (!fileSequence || fileSequence.length === 0)) {
-                const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
-                if (!messageSent) {
-                    console.error(`Failed to send message to ${contactName}`);
-                    return false;
+                // Don't send message as separate text if using template as caption and there are files
+                if (options.use_template_as_caption && validFilePaths.length > 0) {
+                    console.log(`Skipping separate message send - will use as caption for files`);
+                } else {
+                    const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
+                    if (!messageSent) {
+                        console.error(`Failed to send message to ${contactName}`);
+                        return false;
+                    }
+                    console.log(`Message sent to ${contactName}`);
                 }
-                console.log(`Message sent to ${contactName}`);
             }
 
             // Handle sequencing: send items in the order specified by fileSequence
@@ -348,13 +355,17 @@ class WhatsAppMessaging {
                 for (const seqItem of sortedItems) {
                     try {
                         if (seqItem.file_type === 'message') {
-                            // Send the message text
-                            console.log(`Sending message (sequence ${seqItem.sequence_no}): "${finalMessage}"`);
-                            const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
-                            if (!messageSent) {
-                                console.error(`Failed to send message in sequence ${seqItem.sequence_no}`);
+                            // Send the message text only if not using template as caption
+                            if (options.use_template_as_caption && validFilePaths.length > 0) {
+                                console.log(`Skipping message in sequence ${seqItem.sequence_no} - will use as caption for files`);
                             } else {
-                                console.log(`Message sent successfully in sequence ${seqItem.sequence_no}`);
+                                console.log(`Sending message (sequence ${seqItem.sequence_no}): "${finalMessage}"`);
+                                const messageSent = await this.sendMessageWithRetry(formattedNumber, finalMessage);
+                                if (!messageSent) {
+                                    console.error(`Failed to send message in sequence ${seqItem.sequence_no}`);
+                                } else {
+                                    console.log(`Message sent successfully in sequence ${seqItem.sequence_no}`);
+                                }
                             }
                         } else if (seqItem.file_type === 'file') {
                             // Find and send the corresponding file
@@ -365,7 +376,14 @@ class WhatsAppMessaging {
                             if (filePath) {
                                 console.log(`Sending file (sequence ${seqItem.sequence_no}): ${seqItem.file_name}`);
                                 const media = MessageMedia.fromFilePath(filePath);
-                                await this.authClient.client.sendMessage(formattedNumber, media);
+                                
+                                // Check if we should use template as caption
+                                if (options.use_template_as_caption && message && message.trim()) {
+                                    console.log(`Using template message as caption for file: ${seqItem.file_name}`);
+                                    await this.authClient.client.sendMessage(formattedNumber, media, { caption: message });
+                                } else {
+                                    await this.authClient.client.sendMessage(formattedNumber, media);
+                                }
                             } else {
                                 console.warn(`File not found for sequence ${seqItem.sequence_no}: ${seqItem.file_name}`);
                             }
@@ -385,7 +403,15 @@ class WhatsAppMessaging {
                     for (const filePath of validFilePaths) {
                         try {
                             const media = MessageMedia.fromFilePath(filePath);
-                            await this.authClient.client.sendMessage(formattedNumber, media);
+                            
+                            // Check if we should use template as caption
+                            if (options.use_template_as_caption && message && message.trim()) {
+                                console.log(`Using template message as caption for file: ${path.basename(filePath)}`);
+                                await this.authClient.client.sendMessage(formattedNumber, media, { caption: message });
+                            } else {
+                                await this.authClient.client.sendMessage(formattedNumber, media);
+                            }
+                            
                             console.log(`File sent: ${path.basename(filePath)}`);
                             
                             await new Promise(resolve => setTimeout(resolve, perFileDelayMs));

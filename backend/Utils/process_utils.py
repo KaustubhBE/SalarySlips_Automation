@@ -1780,7 +1780,7 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
             'message': f'Error syncing material data: {str(e)}'
         }
 
-def process_general_reports(template_files, attachment_files, file_sequence, sheet_id, sheet_name, send_whatsapp, send_email, mail_subject, user_id, output_dir, logger, send_email_smtp, send_whatsapp_message, validate_sheet_id_func, prepare_file_paths_func, fetch_google_sheet_data_func, process_template_func, send_log_report_to_user_func):
+def process_general_reports(template_files, attachment_files, file_sequence, sheet_id, sheet_name, send_whatsapp, send_email, mail_subject, use_template_as_caption, user_id, output_dir, logger, send_email_smtp, send_whatsapp_message, validate_sheet_id_func, prepare_file_paths_func, fetch_google_sheet_data_func, process_template_func, send_log_report_to_user_func):
     """
     Process general reports using reactor report template logic with table and column processing
     This function moves the heavy functionality from app.py to process_utils.py
@@ -1934,7 +1934,7 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
                         success, failure_reason = handle_whatsapp_validation_and_sending(
                             recipient_name, country_code, phone_no, recipient_phone,
                             message_content, attachment_paths, file_sequence,
-                            send_whatsapp_message, logger
+                            use_template_as_caption, send_whatsapp_message, logger
                         )
                         
                         if not success:
@@ -2123,7 +2123,7 @@ def add_data_as_reactor_tables(doc, data_dict, logger):
         logger.error(f"Error adding data as reactor tables: {e}")
 
 
-def handle_whatsapp_validation_and_sending(recipient_name, country_code, phone_no, recipient_phone, message_content, attachment_paths, file_sequence, send_whatsapp_message, logger):
+def handle_whatsapp_validation_and_sending(recipient_name, country_code, phone_no, recipient_phone, message_content, attachment_paths, file_sequence, use_template_as_caption, send_whatsapp_message, logger):
     """
     Handle WhatsApp validation and sending with proper error tracking
     """
@@ -2142,13 +2142,17 @@ def handle_whatsapp_validation_and_sending(recipient_name, country_code, phone_n
             recipient_name, country_code, phone_no, recipient_phone))
 
         # Send WhatsApp message with attachments
+        options = {
+            'use_template_as_caption': use_template_as_caption
+        }
         success = send_whatsapp_message(
             contact_name=recipient_name,
             message=message_content,
             file_paths=attachment_paths,
             file_sequence=file_sequence,
             whatsapp_number=recipient_phone,
-            process_name="report"
+            process_name="report",
+            options=options
         )
         
         # Handle different success/failure scenarios

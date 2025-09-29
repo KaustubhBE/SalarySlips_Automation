@@ -25,6 +25,7 @@ const Reports = () => {
   const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
   const [storedRequestData, setStoredRequestData] = useState(null);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  const [useTemplateAsCaption, setUseTemplateAsCaption] = useState(false);
 
   const { user } = useAuth();
 
@@ -216,6 +217,7 @@ const Reports = () => {
       setSendEmail(false);
       setMailSubject('');
       setPreviewItems([]);
+      setUseTemplateAsCaption(false);
       
       // Refresh the page after successful submission
       window.location.reload();
@@ -603,6 +605,7 @@ const Reports = () => {
       formData.append('send_whatsapp', sendWhatsapp);
       formData.append('send_email', sendEmail);
       formData.append('mail_subject', mailSubject);
+      formData.append('use_template_as_caption', useTemplateAsCaption);
 
       // Add file sequencing information as a JSON string
       formData.append('file_sequence', JSON.stringify(sortedItems.map(item => ({
@@ -731,6 +734,7 @@ const Reports = () => {
       setSendEmail(false);
       setMailSubject('');
       setPreviewItems([]);
+      setUseTemplateAsCaption(false);
       
       // Refresh the page after successful submission
       window.location.reload();
@@ -972,6 +976,26 @@ const Reports = () => {
                 </div>
               )}
             </div>
+            
+            {/* Caption Checkbox - Only show when exactly 1 template and 1 attachment */}
+            {templateFiles.length === 1 && Object.keys(attachmentFiles).length === 1 && (
+              <div className="caption-option">
+                <label className="caption-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={useTemplateAsCaption}
+                    onChange={(e) => setUseTemplateAsCaption(e.target.checked)}
+                    className="caption-checkbox"
+                  />
+                  <span className="caption-checkbox-text">
+                    Use template text as attachment caption
+                  </span>
+                </label>
+                <p className="caption-help-text">
+                  When enabled, the template content will be used as the caption for the attachment file.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
