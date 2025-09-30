@@ -14,7 +14,7 @@ const PadmavatiFactory = () => {
   const padmavatiDepartments = [
     { key: 'pv_store', name: 'Store', route: '/padmavati/pv_store' },
     { key: 'pv_humanresource', name: 'Human Resource', route: '/padmavati/pv_humanresource' },
-    { key: 'pv_operations', name: 'Operations', route: '/padmavati/pv_operations' }
+    { key: 'operations', name: 'Operations', route: '/padmavati/pv_operations' }
   ];
 
   // Filter departments based on user permissions

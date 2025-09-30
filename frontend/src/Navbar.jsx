@@ -31,10 +31,12 @@ const Navbar = ({ onLogout }) => {
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [authStartTime, setAuthStartTime] = useState(null);
   const [authElapsedTime, setAuthElapsedTime] = useState(0);
+  const [userInfoRetryCount, setUserInfoRetryCount] = useState(0);
   
   const pollingRef = useRef(null);
   const menuRef = useRef(null);
   const burgerRef = useRef(null);
+  const userInfoRetryRef = useRef(null);
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
@@ -184,7 +186,7 @@ const Navbar = ({ onLogout }) => {
   }, [menuOpen]);
 
   // Check WhatsApp authentication status
-  const checkWhatsAppAuthStatus = async () => {
+  const checkWhatsAppAuthStatus = async (isRetry = false, currentRetryCount = 0) => {
     try {
       const userIdentifier = getUserIdentifier();
       if (!userIdentifier) {
@@ -195,7 +197,7 @@ const Navbar = ({ onLogout }) => {
         return;
       }
 
-      console.log(`Checking WhatsApp auth status for user: ${userIdentifier}`);
+      console.log(`Checking WhatsApp auth status for user: ${userIdentifier}${isRetry ? ` (retry ${currentRetryCount}/3)` : ''}`);
       
       const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
         credentials: 'include',
@@ -219,20 +221,40 @@ const Navbar = ({ onLogout }) => {
               phoneNumber: data.userInfo.phoneNumber || 'Connected'
             });
             setStatusMsg(`WhatsApp is ready and connected as ${displayName}`);
+            setUserInfoRetryCount(0); // Reset retry count on success
           } else {
             setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
             setStatusMsg(`WhatsApp is ready and connected`);
+            
+            // Retry fetching user info if not available and retry count < 3
+            const nextRetryCount = currentRetryCount + 1;
+            if (nextRetryCount <= 3) {
+              console.log(`User info incomplete, scheduling retry ${nextRetryCount}/3`);
+              setUserInfoRetryCount(nextRetryCount);
+              
+              // Clear any existing retry timeout
+              if (userInfoRetryRef.current) {
+                clearTimeout(userInfoRetryRef.current);
+              }
+              
+              // Retry after 2 seconds
+              userInfoRetryRef.current = setTimeout(() => {
+                checkWhatsAppAuthStatus(true, nextRetryCount);
+              }, 2000);
+            }
           }
         } else {
           setIsAuthenticated(false);
           setUserInfo(null);
           setStatusMsg('');
+          setUserInfoRetryCount(0);
         }
       }
     } catch (error) {
       console.error('Error checking WhatsApp auth status:', error);
       setIsAuthenticated(false);
       setUserInfo(null);
+      setUserInfoRetryCount(0);
     }
   };
 
@@ -252,6 +274,7 @@ const Navbar = ({ onLogout }) => {
     setIsPolling(false);
     setAuthStartTime(Date.now());
     setAuthElapsedTime(0);
+    setUserInfoRetryCount(0); // Reset retry count on new login attempt
     
     try {
       console.log(`Starting WhatsApp login for user: ${userIdentifier}`);
@@ -289,9 +312,25 @@ const Navbar = ({ onLogout }) => {
             phoneNumber: data.userInfo.phoneNumber || 'Connected'
           });
           setStatusMsg(`Already authenticated as ${data.userInfo.name || data.userInfo.pushName || 'WhatsApp User'}`);
+          setUserInfoRetryCount(0); // Reset retry count on success
         } else {
           setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
           setStatusMsg(`Already authenticated`);
+          
+          // Retry fetching user info if not available
+          const nextRetryCount = 1;
+          console.log(`User info incomplete on login, scheduling retry ${nextRetryCount}/3`);
+          setUserInfoRetryCount(nextRetryCount);
+          
+          // Clear any existing retry timeout
+          if (userInfoRetryRef.current) {
+            clearTimeout(userInfoRetryRef.current);
+          }
+          
+          // Retry after 2 seconds
+          userInfoRetryRef.current = setTimeout(() => {
+            checkWhatsAppAuthStatus(true, nextRetryCount);
+          }, 2000);
         }
         setQRValue('');
         setIsPolling(false);
@@ -338,6 +377,12 @@ const Navbar = ({ onLogout }) => {
           setStatusMsg('WhatsApp logged out successfully');
           setQRValue('');
           setIsPolling(false);
+          setUserInfoRetryCount(0); // Reset retry count on logout
+          
+          // Clear any pending retry timeout
+          if (userInfoRetryRef.current) {
+            clearTimeout(userInfoRetryRef.current);
+          }
           
           // Start fresh login
           setTimeout(() => {
@@ -480,11 +525,14 @@ const Navbar = ({ onLogout }) => {
     }
   };
 
-  // Clean up polling on unmount
+  // Clean up polling and retry timers on unmount
   useEffect(() => {
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
+      }
+      if (userInfoRetryRef.current) {
+        clearTimeout(userInfoRetryRef.current);
       }
     };
   }, []);
@@ -519,8 +567,12 @@ const Navbar = ({ onLogout }) => {
     setIsPolling(false);
     setAuthStartTime(null);
     setAuthElapsedTime(0);
+    setUserInfoRetryCount(0);
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
+    }
+    if (userInfoRetryRef.current) {
+      clearTimeout(userInfoRetryRef.current);
     }
   };
 

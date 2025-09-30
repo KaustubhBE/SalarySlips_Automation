@@ -219,6 +219,12 @@ export const FACTORY_RBAC_CONFIG = {
           gb_single_processing: { name: 'Single Processing', permission: 'gb_single_processing' },
           gb_batch_processing: { name: 'Batch Processing', permission: 'gb_batch_processing' }
         }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          gb_general_reports: { name: 'General Reports', permission: 'gb_general_reports' }
+        }
       }
     }
   },
@@ -269,6 +275,12 @@ export const FACTORY_RBAC_CONFIG = {
           hb_single_processing: { name: 'Single Processing', permission: 'hb_single_processing' },
           hb_batch_processing: { name: 'Batch Processing', permission: 'hb_batch_processing' }
         }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          hb_general_reports: { name: 'General Reports', permission: 'hb_general_reports' }
+        }
       }
     }
   },
@@ -288,6 +300,12 @@ export const FACTORY_RBAC_CONFIG = {
           om_single_processing: { name: 'Single Processing', permission: 'om_single_processing' },
           om_batch_processing: { name: 'Batch Processing', permission: 'om_batch_processing' }
         }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          om_general_reports: { name: 'General Reports', permission: 'om_general_reports' }
+        }
       }
     }
   },
@@ -306,6 +324,12 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           pv_single_processing: { name: 'Single Processing', permission: 'pv_single_processing' },
           pv_batch_processing: { name: 'Batch Processing', permission: 'pv_batch_processing' }
+        }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          pv_general_reports: { name: 'General Reports', permission: 'pv_general_reports' }
         }
       }
     }
@@ -342,7 +366,7 @@ export const FACTORY_RBAC_CONFIG = {
       operations: {
         name: 'Operations',
         services: {
-          // No specific services found in HO_Services folder
+          ho_general_reports: { name: 'General Reports', permission: 'ho_general_reports' }
         }
       }
     }

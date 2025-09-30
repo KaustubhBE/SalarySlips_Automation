@@ -285,18 +285,20 @@ const Reports = () => {
     let items = [];
     let sequenceNo = 1;  // Start with sequence number 1
 
-    // Add template file if exists
+    // Add all template files
     if (currentTemplateFiles.length > 0) {
-      const content = await getTemplateFileContent(currentTemplateFiles[0]);
-      if (content) {
-        items.push({
-          file_name: currentTemplateFiles[0].name,
-          file_type: 'message',
-          sequence_no: sequenceNo,
-          content: content, // Re-added for UI display
-          file: currentTemplateFiles[0] // Re-added for internal logic/UI display
-        });
-        sequenceNo++;
+      for (const templateFile of currentTemplateFiles) {
+        const content = await getTemplateFileContent(templateFile);
+        if (content) {
+          items.push({
+            file_name: templateFile.name,
+            file_type: 'message',
+            sequence_no: sequenceNo,
+            content: content, // Re-added for UI display
+            file: templateFile // Re-added for internal logic/UI display
+          });
+          sequenceNo++;
+        }
       }
     }
 
@@ -370,16 +372,14 @@ const Reports = () => {
 
     if (type === 'template') {
       // Check caption mode limits
-      if (useTemplateAsCaption && validFiles.length > 1) {
+      if (useTemplateAsCaption && (templateFiles.length + validFiles.length) > 1) {
         alert('Caption mode is enabled. Only one template file can be uploaded.');
         return;
       }
-      if (!useTemplateAsCaption && validFiles.length > 1) {
-        alert('Only one template file can be uploaded');
-        return;
-      }
-      setTemplateFiles(validFiles);
-      await buildAndSetPreviewItems(validFiles, attachmentFiles); // Update preview immediately
+      // Append new files to existing template files
+      const updatedTemplateFiles = [...templateFiles, ...validFiles];
+      setTemplateFiles(updatedTemplateFiles);
+      // Preview will be updated automatically by useEffect
     } else {
       setAttachmentFiles(prevFiles => {
         const newFiles = { ...prevFiles };
@@ -399,14 +399,15 @@ const Reports = () => {
           maxKey += 1;
           newFiles[maxKey] = { file, type: getFileType(file) };
         });
-        buildAndSetPreviewItems(templateFiles, newFiles); // Update preview immediately
         return newFiles;
       });
     }
-  }, [templateFiles, attachmentFiles, buildAndSetPreviewItems, getFileType]); // Add dependencies for handleFilePreview, templateFiles and attachmentFiles
+  }, [templateFiles, attachmentFiles, getFileType, useTemplateAsCaption]); // Removed buildAndSetPreviewItems from dependencies
 
-  const handleFileInput = (e, type) => {
+  const handleFileInput = useCallback((e, type) => {
+    console.log('handleFileInput called:', { type, useTemplateAsCaption, templateFilesCount: templateFiles.length, attachmentFilesCount: Object.keys(attachmentFiles).length });
     const selectedFiles = Array.from(e.target.files);
+    console.log('Selected files:', selectedFiles.map(f => f.name));
     const validFiles = selectedFiles.filter(file => {
       const fileType = file.type;
       const isValidType = 
@@ -425,16 +426,14 @@ const Reports = () => {
 
     if (type === 'template') {
       // Check caption mode limits
-      if (useTemplateAsCaption && validFiles.length > 1) {
+      if (useTemplateAsCaption && (templateFiles.length + validFiles.length) > 1) {
         alert('Caption mode is enabled. Only one template file can be uploaded.');
         return;
       }
-      if (!useTemplateAsCaption && validFiles.length > 1) {
-        alert('Only one template file can be uploaded');
-        return;
-      }
-      setTemplateFiles(validFiles);
-      buildAndSetPreviewItems(validFiles, attachmentFiles); // Update preview immediately
+      // Append new files to existing template files
+      const updatedTemplateFiles = [...templateFiles, ...validFiles];
+      setTemplateFiles(updatedTemplateFiles);
+      // Preview will be updated automatically by useEffect
     } else {
       setAttachmentFiles(prevFiles => {
         const newFiles = { ...prevFiles };
@@ -454,16 +453,14 @@ const Reports = () => {
           maxKey += 1;
           newFiles[maxKey] = { file, type: getFileType(file) };
         });
-        buildAndSetPreviewItems(templateFiles, newFiles); // Update preview immediately
         return newFiles;
       });
     }
-  };
+  }, [templateFiles, useTemplateAsCaption, getFileType]);
 
-  const handleRemoveFile = (index, type) => {
+  const handleRemoveFile = useCallback((index, type) => {
     if (type === 'template') {
       setTemplateFiles([]); // Template is removed
-      buildAndSetPreviewItems([], attachmentFiles); // Update preview immediately
     } else { // type === 'attachment'
       setAttachmentFiles(prevFiles => {
         const newFiles = { ...prevFiles };
@@ -487,11 +484,10 @@ const Reports = () => {
         filesArr.forEach((obj, i) => {
           resequenced[i + 1] = obj;
         });
-        buildAndSetPreviewItems(templateFiles, resequenced); // Update preview immediately
         return resequenced;
       });
     }
-  };
+  }, [previewItems]);
 
   const validateSheetId = (id) => {
     // Google Sheet ID is typically 20-100 characters long
@@ -577,9 +573,10 @@ const Reports = () => {
 
     // Remove from the appropriate state based on file type
     if (itemToRemove.file_type === 'message') {
-      // Remove template file
-      setTemplateFiles([]);
-      // Update preview items without template
+      // Remove specific template file
+      const updatedTemplateFiles = templateFiles.filter(file => file.name !== itemToRemove.file_name);
+      setTemplateFiles(updatedTemplateFiles);
+      // Update preview items without this template
       const updatedItems = previewItems.filter(item => item.sequence_no !== sequenceNo);
       // Re-sequence remaining items
       const resequencedItems = updatedItems.map((item, index) => ({
@@ -901,28 +898,49 @@ const Reports = () => {
               type="checkbox"
               checked={useTemplateAsCaption}
               onChange={(e) => {
-                setUseTemplateAsCaption(e.target.checked);
-                // Clear files when switching modes to avoid conflicts
+                // Check if user is trying to enable caption mode
                 if (e.target.checked) {
-                  // When enabling caption mode, limit to 1 template and 1 attachment
-                  if (templateFiles.length > 1) {
-                    setTemplateFiles([templateFiles[0]]);
-                  }
-                  if (Object.keys(attachmentFiles).length > 1) {
-                    const firstAttachment = Object.values(attachmentFiles)[0];
-                    setAttachmentFiles({ 1: firstAttachment });
+                  // Check if multiple files are already uploaded
+                  const hasMultipleTemplates = templateFiles.length > 1;
+                  const hasMultipleAttachments = Object.keys(attachmentFiles).length > 1;
+                  
+                  if (hasMultipleTemplates || hasMultipleAttachments) {
+                    // Prevent switching to caption mode and show alert
+                    e.preventDefault();
+                    
+                    let message = "Cannot activate caption mode because:\n\n";
+                    if (hasMultipleTemplates) {
+                      message += `• Multiple template files are uploaded (${templateFiles.length} files)\n`;
+                    }
+                    if (hasMultipleAttachments) {
+                      message += `• Multiple attachment files are uploaded (${Object.keys(attachmentFiles).length} files)\n`;
+                    }
+                    message += "\nCaption mode requires exactly 1 template file and 1 attachment file.\n";
+                    message += "Please remove extra files before enabling caption mode.";
+                    
+                    alert(message);
+                    return; // Don't change the checkbox state
                   }
                 }
+                
+                // If no multiple files or disabling caption mode, proceed normally
+                setUseTemplateAsCaption(e.target.checked);
               }}
               className="caption-checkbox"
+              disabled={!useTemplateAsCaption && (templateFiles.length > 1 || Object.keys(attachmentFiles).length > 1)}
             />
             <span className="caption-checkbox-text">
               Use template text as attachment caption (Single file mode)
+              {!useTemplateAsCaption && (templateFiles.length > 1 || Object.keys(attachmentFiles).length > 1) && (
+                <span style={{color: '#ff6b6b', fontSize: '0.9em'}}> (Blocked - Multiple files uploaded)</span>
+              )}
             </span>
           </label>
           <p className="caption-help-text">
             When enabled: Upload exactly 1 template file and 1 attachment file. 
             When disabled: Upload multiple files as needed.
+            <br />
+            <strong>Note:</strong> Cannot enable caption mode if multiple files are already uploaded.
           </p>
         </div>
       </div>
@@ -944,8 +962,10 @@ const Reports = () => {
             </p>
             <div className="file-input-container">
               <input
+                key={`template-input-${useTemplateAsCaption}`}
                 type="file"
                 id="template-file-input"
+                multiple={!useTemplateAsCaption}
                 onChange={(e) => handleFileInput(e, 'template')}
                 accept=".docx"
                 style={{ display: 'none' }}
@@ -978,6 +998,7 @@ const Reports = () => {
             </p>
             <div className="file-input-container">
               <input
+                key={`attachment-input-${useTemplateAsCaption}`}
                 type="file"
                 id="attachment-file-input"
                 multiple={!useTemplateAsCaption}
@@ -1052,7 +1073,7 @@ const Reports = () => {
                         {item.sequence_no}.
                       </div>
                       <div className={`preview-item-content ${item.file_type === 'file' ? 'attachment' : 'template'}`}>
-                        {item.file_type === 'message' ? 'Template Content' : item.file_name}
+                        {item.file_name}
                       </div>
                       <button 
                         className="preview-item-delete-btn"

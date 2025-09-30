@@ -12,8 +12,7 @@ const OMOperations = () => {
   
   // Static services for OM Operations department (only existing services)
   const omOperationsServices = [
-    { key: 'om_general_reports', name: 'General Reports', route: '/omkar/om_operations/om_general_reports' },
-    { key: 'om_reactor_reports', name: 'Reactor Reports', route: '/omkar/om_operations/om_reactor_reports' }
+    { key: 'om_general_reports', name: 'General Reports', route: '/omkar/om_operations/om_general_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -79,14 +78,14 @@ const OMOperations = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
-          Factory: Kerur<br/>
+          Factory: Omkar<br/>
           Department: Operations<br/>
           Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
           Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
         </div>
       )}
-      <h2>Operations - Kerur</h2>
+      <h2>Operations - Omkar</h2>
       <h3>Available Services ({accessibleServices.length}):</h3>
       
       {/* Service Navigation Buttons */}

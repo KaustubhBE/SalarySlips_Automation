@@ -1924,117 +1924,205 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
             "failed_contacts": []
         }
 
-        # Process each template file
-        generated_files = []
+        # STEP 1: Pre-process all template files and extract their content
+        template_data = []  # List to store template info: {filename, temp_path, content}
+        
         for template_file in template_files:
             if not template_file.filename.endswith('.docx'):
+                logger.warning(f"Skipping non-docx template: {template_file.filename}")
                 continue
 
-            # Save template temporarily
-            temp_template_path = os.path.join(reports_output_dir, "temp_{}".format(template_file.filename))
-            template_file.save(temp_template_path)
-
-            # Read template content for messages
             try:
+                # Save template temporarily
+                temp_template_path = os.path.join(reports_output_dir, "temp_{}".format(template_file.filename))
+                template_file.save(temp_template_path)
+
+                # Read template content for messages
                 from docx import Document
                 doc = Document(temp_template_path)
                 template_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                
+                template_data.append({
+                    'filename': template_file.filename,
+                    'temp_path': temp_template_path,
+                    'raw_content': template_content
+                })
+                
+                logger.info(f"Pre-processed template: {template_file.filename}")
+                
             except Exception as e:
-                logger.error("Error reading template content: {}".format(e))
-                result["errors"].append("Failed to read template content")
+                logger.error("Error pre-processing template {}: {}".format(template_file.filename, e))
+                result["errors"].append(f"Failed to pre-process template: {template_file.filename}")
                 continue
-            
-            # Process each row of data
-            for row in data_rows:
-                try:
-                    # Create data dictionary from headers and row
-                    data_dict = dict(zip(headers, row))
-
-                    recipient_name = data_dict.get('Name', 'unknown')
-                    
-                    # Generate report for this row using reactor report template logic
-                    output_filename = "report_{}.docx".format(recipient_name)
-                    output_path = os.path.join(reports_output_dir, output_filename)
-                    
-                    # Process the template with data using reactor report table logic
-                    success = process_template_with_reactor_logic(temp_template_path, output_path, data_dict, logger)
-                    if success:
-                        generated_files.append(output_path)
-                    else:
-                        logger.warning(f"Failed to process template for {recipient_name}")
-                        continue
-
-                    # Process template content for messages
-                    message_content = template_content
-                    email_content = template_content
-
-                    # Replace placeholders in message content
-                    for key, value in data_dict.items():
-                        placeholder = "{{{}}}".format(key)
-                        message_content = message_content.replace(placeholder, str(value))
-                        email_content = email_content.replace(placeholder, str(value))
-                        mail_subject = mail_subject.replace(placeholder, str(value))
-
-                    # Get contact details from Google Sheet data
-                    recipient_email = data_dict.get('Email ID - To')
-                    cc_email = data_dict.get('Email ID - CC', '')
-                    bcc_email = data_dict.get('Email ID - BCC', '')
-                    
-                    # Helper to split emails by comma or newline and join as comma-separated string
-                    def clean_emails(email_str):
-                        if not email_str:
-                            return None
-                        import re
-                        emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
-                        return ','.join(emails) if emails else None
-                    
-                    recipient_email = clean_emails(recipient_email)
-                    cc_email = clean_emails(cc_email)
-                    bcc_email = clean_emails(bcc_email)
-                    
-                    country_code = data_dict.get('Country Code', '').strip()
-                    phone_no = data_dict.get('Contact No.', '').strip()
-                    # Format phone number properly: remove spaces and combine country code + number
-                    recipient_phone = f"{country_code}{phone_no}".replace(' ', '')
-
-                    # Handle WhatsApp notifications with validation
-                    if send_whatsapp:
-                        success, failure_reason = handle_whatsapp_validation_and_sending(
-                            recipient_name, country_code, phone_no, recipient_phone,
-                            message_content, attachment_paths, file_sequence,
-                            use_template_as_caption, send_whatsapp_message, logger
-                        )
-                        
-                        if not success:
-                            delivery_stats["failed_deliveries"] += 1
-                            delivery_stats["failed_contacts"].append({
-                                "name": recipient_name,
-                                "contact": recipient_phone if recipient_phone else (phone_no if phone_no else country_code),
-                                "reason": failure_reason
-                            })
-                        else:
-                            delivery_stats["successful_deliveries"] += 1
-
-                    # Handle email notifications
-                    if send_email:
-                        success, failure_reason = handle_email_sending(
-                            recipient_name, recipient_email, cc_email, bcc_email,
-                            mail_subject, email_content, attachment_paths,
-                            user_id, send_email_smtp, logger
-                        )
-                        
-                        if not success:
-                            logger.warning(f"Email sending failed for {recipient_name}: {failure_reason}")
-
-                except Exception as e:
-                    logger.error("Error processing row: {}".format(e))
-                    continue
-
-            # Clean up temporary template
+        
+        if not template_data:
+            result["errors"].append("No valid template files to process")
+            return result
+        
+        logger.info(f"Pre-processed {len(template_data)} template files")
+        
+        # STEP 2: Process each recipient with ALL templates in file_sequence order
+        generated_files = []
+        
+        for row in data_rows:
             try:
-                os.remove(temp_template_path)
+                # Create data dictionary from headers and row
+                data_dict = dict(zip(headers, row))
+                recipient_name = data_dict.get('Name', 'unknown')
+                
+                logger.info(f"Processing recipient: {recipient_name}")
+                
+                # STEP 2a: Process each template for this recipient
+                recipient_template_contents = {}  # Map filename -> processed content
+                
+                for template_info in template_data:
+                    try:
+                        # Replace placeholders in template content for this recipient
+                        processed_content = template_info['raw_content']
+                        
+                        for key, value in data_dict.items():
+                            placeholder = "{{{}}}".format(key)
+                            processed_content = processed_content.replace(placeholder, str(value))
+                        
+                        recipient_template_contents[template_info['filename']] = processed_content
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing template {template_info['filename']} for {recipient_name}: {e}")
+                        continue
+                
+                # STEP 2b: Prepare message content for Email (combine all templates)
+                # For WhatsApp: Templates will be sent separately in sequence
+                # For Email: Combine all templates into one email body
+                email_content = ""
+                
+                if file_sequence and len(file_sequence) > 0:
+                    # Find all message-type items in file_sequence (sorted by sequence_no)
+                    message_items = sorted(
+                        [item for item in file_sequence if item.get('file_type') == 'message'],
+                        key=lambda x: x.get('sequence_no', 0)
+                    )
+                    
+                    if message_items:
+                        # Combine all templates in sequence order for EMAIL
+                        combined_messages = []
+                        
+                        for message_item in message_items:
+                            message_filename = message_item.get('file_name')
+                            
+                            if message_filename in recipient_template_contents:
+                                combined_messages.append(recipient_template_contents[message_filename])
+                                logger.info(f"Added template '{message_filename}' for {recipient_name}")
+                            else:
+                                logger.warning(f"Template '{message_filename}' not found for {recipient_name}")
+                        
+                        # Join all templates with double newline separator for email
+                        email_content = "\n\n".join(combined_messages) if combined_messages else ""
+                        
+                        logger.info(f"Prepared {len(combined_messages)} template(s) for {recipient_name}")
+                    else:
+                        # No message items in sequence, use first template
+                        email_content = list(recipient_template_contents.values())[0] if recipient_template_contents else ""
+                else:
+                    # No file_sequence provided, use first template
+                    email_content = list(recipient_template_contents.values())[0] if recipient_template_contents else ""
+                
+                # Replace placeholders in mail subject
+                processed_mail_subject = mail_subject
+                for key, value in data_dict.items():
+                    placeholder = "{{{}}}".format(key)
+                    processed_mail_subject = processed_mail_subject.replace(placeholder, str(value))
+
+                # STEP 2c: Get contact details from Google Sheet data
+                recipient_email = data_dict.get('Email ID - To')
+                cc_email = data_dict.get('Email ID - CC', '')
+                bcc_email = data_dict.get('Email ID - BCC', '')
+                
+                # Helper to split emails by comma or newline and join as comma-separated string
+                def clean_emails(email_str):
+                    if not email_str:
+                        return None
+                    import re
+                    emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
+                    return ','.join(emails) if emails else None
+                
+                recipient_email = clean_emails(recipient_email)
+                cc_email = clean_emails(cc_email)
+                bcc_email = clean_emails(bcc_email)
+                
+                country_code = data_dict.get('Country Code', '').strip()
+                phone_no = data_dict.get('Contact No.', '').strip()
+                # Format phone number properly: remove spaces and combine country code + number
+                recipient_phone = f"{country_code}{phone_no}".replace(' ', '')
+
+                # STEP 2d: Handle WhatsApp notifications with validation and file sequencing
+                if send_whatsapp:
+                    # For WhatsApp: Handle file_sequence based on caption mode
+                    whatsapp_file_sequence = []
+                    
+                    if use_template_as_caption:
+                        # Caption mode: Remove message items (first template will be used as caption)
+                        whatsapp_file_sequence = [
+                            item for item in file_sequence 
+                            if item.get('file_type') == 'file'
+                        ] if file_sequence else []
+                        
+                        # Use first template as caption message
+                        caption_message = list(recipient_template_contents.values())[0] if recipient_template_contents else ""
+                        
+                        logger.info(f"Caption mode: Using template as caption, {len(whatsapp_file_sequence)} files in sequence")
+                    else:
+                        # Normal mode: Keep ALL message items and file items
+                        # Each template will be sent as a SEPARATE message in sequence
+                        whatsapp_file_sequence = file_sequence if file_sequence else []
+                        caption_message = ""  # Not used in normal mode
+                        
+                        logger.info(f"Normal mode: {len(whatsapp_file_sequence)} items in sequence")
+                    
+                    # Re-number the sequence to be continuous
+                    for idx, item in enumerate(whatsapp_file_sequence, start=1):
+                        item['sequence_no'] = idx
+                    
+                    logger.info(f"WhatsApp file sequence for {recipient_name}: {whatsapp_file_sequence}")
+                    
+                    # Pass recipient_template_contents so each message item can get its content
+                    success, failure_reason = handle_whatsapp_validation_and_sending_v2(
+                        recipient_name, country_code, phone_no, recipient_phone,
+                        recipient_template_contents, attachment_paths, whatsapp_file_sequence,
+                        use_template_as_caption, caption_message, send_whatsapp_message, logger
+                    )
+                    
+                    if not success:
+                        delivery_stats["failed_deliveries"] += 1
+                        delivery_stats["failed_contacts"].append({
+                            "name": recipient_name,
+                            "contact": recipient_phone if recipient_phone else (phone_no if phone_no else country_code),
+                            "reason": failure_reason
+                        })
+                    else:
+                        delivery_stats["successful_deliveries"] += 1
+
+                # STEP 2e: Handle email notifications with all attachments
+                if send_email:
+                    success, failure_reason = handle_email_sending(
+                        recipient_name, recipient_email, cc_email, bcc_email,
+                        processed_mail_subject, email_content, attachment_paths,
+                        user_id, send_email_smtp, logger
+                    )
+                    
+                    if not success:
+                        logger.warning(f"Email sending failed for {recipient_name}: {failure_reason}")
+
             except Exception as e:
-                logger.error("Error removing temporary template: {}".format(e))
+                logger.error("Error processing row for recipient {}: {}".format(recipient_name if 'recipient_name' in locals() else 'unknown', e))
+                continue
+        
+        # STEP 3: Clean up temporary template files
+        for template_info in template_data:
+            try:
+                os.remove(template_info['temp_path'])
+                logger.info(f"Cleaned up temporary template: {template_info['filename']}")
+            except Exception as e:
+                logger.error("Error removing temporary template {}: {}".format(template_info['filename'], e))
 
         # Clean up user-specific temporary directory
         from .temp_manager import cleanup_user_temp_dir
@@ -2252,6 +2340,118 @@ def handle_whatsapp_validation_and_sending(recipient_name, country_code, phone_n
 
     except Exception as e:
         logger.error("Error sending WhatsApp message to {}: {}".format(recipient_phone, e))
+        return False, f"Exception: {str(e)}"
+
+def handle_whatsapp_validation_and_sending_v2(recipient_name, country_code, phone_no, recipient_phone, recipient_template_contents, attachment_paths, file_sequence, use_template_as_caption, caption_message, send_whatsapp_message, logger):
+    """
+    Handle WhatsApp validation and sending with multiple templates as separate messages
+    Each template is sent as a separate WhatsApp message in sequence order
+    """
+    try:
+        # Validate phone number components
+        if not country_code or not country_code.strip():
+            return False, "Missing Country Code"
+        
+        if not phone_no or not phone_no.strip():
+            return False, "Missing Contact No."
+        
+        if not recipient_phone or len(recipient_phone.replace(' ', '')) < 4:
+            return False, f"Invalid phone number format (Country Code: {country_code}, Contact No.: {phone_no})"
+        
+        logger.info("Valid phone number for {}: Country Code '{}', Contact No. '{}' -> Formatted: '{}'".format(
+            recipient_name, country_code, phone_no, recipient_phone))
+
+        # Sort file_sequence by sequence_no
+        sorted_sequence = sorted(file_sequence, key=lambda x: x.get('sequence_no', 0)) if file_sequence else []
+        
+        logger.info(f"Processing {len(sorted_sequence)} items in sequence for {recipient_name}")
+        
+        # Send each item in sequence
+        import time
+        for seq_item in sorted_sequence:
+            try:
+                item_type = seq_item.get('file_type')
+                sequence_no = seq_item.get('sequence_no')
+                
+                if item_type == 'message':
+                    # Send template message
+                    template_filename = seq_item.get('file_name')
+                    template_content = recipient_template_contents.get(template_filename, "")
+                    
+                    if not template_content:
+                        logger.warning(f"No content found for template '{template_filename}' in sequence {sequence_no}")
+                        continue
+                    
+                    logger.info(f"Sending template '{template_filename}' as message (sequence {sequence_no})")
+                    
+                    # Send just the message (no files, no sequence)
+                    options = {'use_template_as_caption': False}  # Don't use caption for separate messages
+                    success = send_whatsapp_message(
+                        contact_name=recipient_name,
+                        message=template_content,
+                        file_paths=[],  # No files for template messages
+                        file_sequence=[],  # No sequence - sending one item at a time
+                        whatsapp_number=recipient_phone,
+                        process_name="report",
+                        options=options
+                    )
+                    
+                    if success is not True:
+                        logger.error(f"Failed to send template '{template_filename}' to {recipient_name}: {success}")
+                        return False, f"Failed to send template message: {success}"
+                    
+                    logger.info(f"Template '{template_filename}' sent successfully (sequence {sequence_no})")
+                    
+                elif item_type == 'file':
+                    # Send file attachment
+                    file_name = seq_item.get('file_name')
+                    
+                    # Find the file path in attachment_paths
+                    import os
+                    file_path = next((path for path in attachment_paths if os.path.basename(path) == file_name), None)
+                    
+                    if not file_path:
+                        logger.warning(f"File '{file_name}' not found in attachment_paths for sequence {sequence_no}")
+                        continue
+                    
+                    logger.info(f"Sending file '{file_name}' (sequence {sequence_no})")
+                    
+                    # Check if we should use caption (only in caption mode)
+                    if use_template_as_caption and caption_message:
+                        options = {'use_template_as_caption': True}
+                        message_to_send = caption_message
+                    else:
+                        options = {'use_template_as_caption': False}
+                        message_to_send = ""  # No message, just file
+                    
+                    success = send_whatsapp_message(
+                        contact_name=recipient_name,
+                        message=message_to_send,
+                        file_paths=[file_path],  # Single file
+                        file_sequence=[],  # No sequence - sending one item at a time
+                        whatsapp_number=recipient_phone,
+                        process_name="report",
+                        options=options
+                    )
+                    
+                    if success is not True:
+                        logger.error(f"Failed to send file '{file_name}' to {recipient_name}: {success}")
+                        return False, f"Failed to send file: {success}"
+                    
+                    logger.info(f"File '{file_name}' sent successfully (sequence {sequence_no})")
+                
+                # Add delay between items (1 second)
+                time.sleep(1)
+                
+            except Exception as e:
+                logger.error(f"Error sending sequence item {sequence_no} to {recipient_name}: {e}")
+                continue
+        
+        logger.info(f"All {len(sorted_sequence)} items sent successfully to {recipient_name}")
+        return True, None
+
+    except Exception as e:
+        logger.error("Error in WhatsApp sending to {}: {}".format(recipient_phone, e))
         return False, f"Exception: {str(e)}"
 
 def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, mail_subject, email_content, attachment_paths, user_id, send_email_smtp, logger):

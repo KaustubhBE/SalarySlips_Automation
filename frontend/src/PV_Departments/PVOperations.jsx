@@ -12,8 +12,7 @@ const PVOperations = () => {
   
   // Static services for PV Operations department (only existing services)
   const pvOperationsServices = [
-    { key: 'pv_general_reports', name: 'General Reports', route: '/padmavati/pv_operations/pv_general_reports' },
-    { key: 'pv_reactor_reports', name: 'Reactor Reports', route: '/padmavati/pv_operations/pv_reactor_reports' }
+    { key: 'pv_general_reports', name: 'General Reports', route: '/padmavati/pv_operations/pv_general_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -79,14 +78,14 @@ const PVOperations = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
-          Factory: Kerur<br/>
+          Factory: Padmavati<br/>
           Department: Operations<br/>
           Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
           Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
         </div>
       )}
-      <h2>Operations - Kerur</h2>
+      <h2>Operations - Padmavati</h2>
       <h3>Available Services ({accessibleServices.length}):</h3>
       
       {/* Service Navigation Buttons */}

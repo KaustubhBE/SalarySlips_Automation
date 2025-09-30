@@ -35,11 +35,20 @@ import PadmavatiFactory from './Factories/padmavati';
 import HumnabadFactory from './Factories/humnabad';
 import GBStore from './GB_Departments/GBStore';
 import GBHumanResource from './GB_Departments/GBHumanResource';
+import GBOperations from './GB_Departments/GBOperations';
 import KRStore from './KR_Departments/KRStore';
 import KRHumanResource from './KR_Departments/KRHumanResource';
 import KROperations from './KR_Departments/KROperations';
+import OMOperations from './OM_Departments/OMOperations';
+import HBOperations from './HB_Departments/HBOperations';
+import PVOperations from './PV_Departments/PVOperations';
 import KR_ReactorReports from './KR_Departments/KR_Services/KR_ReactorReports';
 import KR_GeneralReports from './KR_Departments/KR_Services/KR_GeneralReports';
+import PV_GeneralReports from './PV_Departments/PV_Services/PV_GeneralReports';
+import OM_GeneralReports from './OM_Departments/OM_Services/OM_GeneralReports';
+import HO_GeneralReports from './HO_Departments/HO_Services/HO_GeneralReports';
+import GB_GeneralReports from './GB_Departments/GB_Services/GB_GeneralReports';
+import HB_GeneralReports from './HB_Departments/HB_Services/HB_GeneralReports';
 import OMStore from './OM_Departments/OMStore';
 import OMHumanResource from './OM_Departments/OMHumanResource';
 import HBDStore from './HB_Departments/HBStore';
@@ -59,7 +68,8 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
   const componentMap = {
     'gulbarga': {
       'store': GBStore,
-      'humanresource': GBHumanResource
+      'humanresource': GBHumanResource,
+      'operations': GBOperations
     },
     'kerur': {
       'store': KRStore,
@@ -68,15 +78,18 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
     },
     'omkar': {
       'store': OMStore,
-      'humanresource': OMHumanResource
+      'humanresource': OMHumanResource,
+      'operations': OMOperations
     },
     'humnabad': {
       'store': HBDStore,
-      'humanresource': HBDHumanResource
+      'humanresource': HBDHumanResource,
+      'operations': HBOperations
     },
     'padmavati': {
       'store': PVStore,
-      'humanresource': PVHumanResource
+      'humanresource': PVHumanResource,
+      'operations': PVOperations
     },
     'headoffice': {
       'accounts': HOAccounts,
@@ -175,12 +188,22 @@ const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
   // Extract department name from URL path since routes are hardcoded
   const pathname = window.location.pathname;
   const pathParts = pathname.split('/');
-  const departmentKey = pathParts[2]; // e.g., "kr_humanresource" from "/kerur/kr_humanresource"
+  const departmentKey = pathParts[2]; // e.g., "gb_operations" from "/gulbarga/gb_operations"
+  
+  // Strip factory prefix from department key to get the base department key
+  let actualDepartmentKey = departmentKey;
+  if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
+      departmentKey.startsWith('pv_') || departmentKey.startsWith('om_') || 
+      departmentKey.startsWith('hb_') || departmentKey.startsWith('ho_'))) {
+    // Extract the base department key (remove factory prefix)
+    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
+  }
   
   // Debug logging
   console.log('DepartmentRouteGuard:', {
     factoryKey,
     departmentKey,
+    actualDepartmentKey,
     pathname,
     pathParts,
     user: user?.role,
@@ -191,8 +214,8 @@ const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
     return <Navigate to="/login" replace />;
   }
   
-  // Check if user can access this factory/department combination
-  const canAccess = canAccessFactoryDepartment(factoryKey, departmentKey);
+  // Check if user can access this factory/department combination using the actual department key
+  const canAccess = canAccessFactoryDepartment(factoryKey, actualDepartmentKey);
   
   console.log('DepartmentRouteGuard canAccess result:', canAccess);
   
@@ -527,6 +550,38 @@ function App() {
             /> : 
             <Navigate to="/login" replace />
         } />
+        <Route path="/:factoryKey/gb_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="gb_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/om_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="om_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/hb_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="hb_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/pv_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="pv_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
 
         {/* Generic Department Routes - Must come after specific factory-prefixed routes */}
         <Route path="/:factoryKey/:departmentKey" element={
@@ -550,6 +605,58 @@ function App() {
         <Route path="/kerur/kr_operations/kr_general_reports" element={
           isAuthenticated ? 
             <KR_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Padmavati Operations General Reports Route */}
+        <Route path="/padmavati/pv_operations/pv_general_reports" element={
+          isAuthenticated ? 
+            <PV_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Omkar Operations General Reports Route */}
+        <Route path="/omkar/om_operations/om_general_reports" element={
+          isAuthenticated ? 
+            <OM_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Head Office Operations General Reports Route */}
+        <Route path="/headoffice/ho_operations/ho_general_reports" element={
+          isAuthenticated ? 
+            <HO_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Gulbarga Operations General Reports Route */}
+        <Route path="/gulbarga/gb_operations/gb_general_reports" element={
+          isAuthenticated ? 
+            <GB_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Humnabad Operations General Reports Route */}
+        <Route path="/humnabad/hb_operations/hb_general_reports" element={
+          isAuthenticated ? 
+            <HB_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Additional Operations General Reports Routes */}
+        <Route path="/gulbarga/gb_operations/gb_general_reports" element={
+          isAuthenticated ? 
+            <GB_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/omkar/om_operations/om_general_reports" element={
+          isAuthenticated ? 
+            <OM_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/padmavati/pv_operations/pv_general_reports" element={
+          isAuthenticated ? 
+            <PV_GeneralReports /> : 
             <Navigate to="/login" replace />
         } />
 

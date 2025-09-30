@@ -12,8 +12,7 @@ const HBOperations = () => {
   
   // Static services for HB Operations department (only existing services)
   const krOperationsServices = [
-    { key: 'kr_general_reports', name: 'General Reports', route: '/kerur/kr_operations/kr_general_reports' },
-    { key: 'kr_reactor_reports', name: 'Reactor Reports', route: '/kerur/kr_operations/kr_reactor_reports' }
+    { key: 'hb_general_reports', name: 'General Reports', route: '/humnabad/hb_operations/hb_general_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -27,7 +26,7 @@ const HBOperations = () => {
     
     // For regular users, check which services they can access
     return krOperationsServices.filter(service => 
-      canAccessService(service.key, 'kerur', 'operations')
+      canAccessService(service.key, 'humnabad', 'operations')
     );
   };
 
@@ -42,7 +41,7 @@ const HBOperations = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/kerur');
+    navigate('/humnabad');
   };
 
   if (!user) {
@@ -79,14 +78,14 @@ const HBOperations = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
-          Factory: Kerur<br/>
+          Factory: Humnabad<br/>
           Department: Operations<br/>
           Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
           Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
         </div>
       )}
-      <h2>Operations - Kerur</h2>
+      <h2>Operations - Humnabad</h2>
       <h3>Available Services ({accessibleServices.length}):</h3>
       
       {/* Service Navigation Buttons */}

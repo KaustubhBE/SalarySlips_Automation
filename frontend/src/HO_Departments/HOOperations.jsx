@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './HO_Services/HO_Processing';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
@@ -14,9 +13,7 @@ const HOOperations = () => {
   
   // Static services for HO Operations department (only existing services)
   const hoOperationsServices = [
-    { key: 'production', name: 'Production Management', route: '/headoffice/operations/production' },
-    { key: 'quality', name: 'Quality Control', route: '/headoffice/operations/quality' },
-    { key: 'reports', name: 'Operations Reports', route: '/headoffice/operations/reports' }
+    { key: 'ho_general_reports', name: 'General Reports', route: '/headoffice/ho_operations/ho_general_reports' },
   ];
 
   // Get accessible services based on user permissions

@@ -12,8 +12,7 @@ const GBOperations = () => {
   
   // Static services for GB Operations department (only existing services)
   const gbOperationsServices = [
-    { key: 'gb_general_reports', name: 'General Reports', route: '/gulbarga/gb_operations/gb_general_reports' },
-    { key: 'gb_reactor_reports', name: 'Reactor Reports', route: '/gulbarga/gb_operations/gb_reactor_reports' }
+    { key: 'gb_general_reports', name: 'General Reports', route: '/gulbarga/gb_operations/gb_general_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -79,14 +78,14 @@ const GBOperations = () => {
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
           <strong>Debug Info:</strong><br/>
           User Role: {user?.role}<br/>
-          Factory: Kerur<br/>
+          Factory: Gulbarga<br/>
           Department: Operations<br/>
           Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
           User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
           Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
         </div>
       )}
-      <h2>Operations - Kerur</h2>
+      <h2>Operations - Gulbarga</h2>
       <h3>Available Services ({accessibleServices.length}):</h3>
       
       {/* Service Navigation Buttons */}
