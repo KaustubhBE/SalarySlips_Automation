@@ -14,7 +14,7 @@ const HumnabadFactory = () => {
   const humnabadDepartments = [
     { key: 'hb_store', name: 'Store', route: '/humnabad/hb_store' },
     { key: 'hb_humanresource', name: 'Human Resource', route: '/humnabad/hb_humanresource' },
-    { key: 'operations', name: 'Operations', route: '/humnabad/hb_operations' }
+    { key: 'hb_operations', name: 'Operations', route: '/humnabad/hb_operations' }
   ];
 
   // Filter departments based on user permissions

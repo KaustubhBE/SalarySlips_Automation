@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './PV_Services/PV_Processing';
-import Reports from '../Reports';
-import ReactorReports from '../ReactorReports';
-import Inventory from '../Inventory';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
@@ -17,7 +13,10 @@ const PVStore = () => {
   
   // Static services for PV Store department (only existing services)
   const pmStoreServices = [
-    { key: 'pv_place_order', name: 'Place Order', route: '/padmavati/pv_store/pv_place_order' }
+    { key: 'pv_place_order', name: 'Place Order', route: '/padmavati/pv_store/pv_place_order' },
+    { key: 'pv_material_list', name: 'Add Material', route: '/padmavati/pv_store/pv_material_list' },
+    { key: 'pv_material_inward', name: 'Material Inward', route: '/padmavati/pv_store/pv_material_inward' },
+    { key: 'pv_material_outward', name: 'Material Outward', route: '/padmavati/pv_store/pv_material_outward' }
   ];
 
   // Get accessible services based on user permissions

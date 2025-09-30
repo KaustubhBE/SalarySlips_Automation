@@ -9,9 +9,7 @@ const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
-// Utility Functions
-
-const OM_MaterialInward = () => {
+const PV_MaterialOutward = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -23,12 +21,11 @@ const OM_MaterialInward = () => {
     quantity: ''
   })
 
-  // General form data for party name and place (applies to all items)
+  // General form data for given to and description (applies to all items)
   const [generalFormData, setGeneralFormData] = useState({
-    partyName: '',
-    place: ''
+    givenTo: '',
+    description: ''
   })
-
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -36,14 +33,11 @@ const OM_MaterialInward = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
-  const [partyNames, setPartyNames] = useState([])
-  const [places, setPlaces] = useState([])
-  const [partyPlaceMapping, setPartyPlaceMapping] = useState({}) // Store party name to place mapping
-  const [partyLoading, setPartyLoading] = useState(true)
-  const [placesLoading, setPlacesLoading] = useState(true)
+  const [authorityNames, setAuthorityNames] = useState([])
+  const [authorityLoading, setAuthorityLoading] = useState(true)
 
   // Multi-item management
-  const [inwardItems, setInwardItems] = useState([])
+  const [outwardItems, setOutwardItems] = useState([])
   
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
@@ -123,7 +117,7 @@ const OM_MaterialInward = () => {
       quantity: formData.quantity
     }
 
-    setInwardItems(prev => [...prev, newItem])
+    setOutwardItems(prev => [...prev, newItem])
     
     // Reset only the item-specific fields after adding item
     setFormData(prev => ({
@@ -138,7 +132,7 @@ const OM_MaterialInward = () => {
   }
 
   const handleRemoveItem = (itemId) => {
-    setInwardItems(prev => prev.filter(item => item.id !== itemId))
+    setOutwardItems(prev => prev.filter(item => item.id !== itemId))
   }
 
   const handleEditItem = (item) => {
@@ -278,7 +272,7 @@ const OM_MaterialInward = () => {
       return
     }
 
-    setInwardItems(prev => prev.map(item => 
+    setOutwardItems(prev => prev.map(item => 
       item.id === editingItem 
         ? { ...item, ...editFormData }
         : item
@@ -308,18 +302,15 @@ const OM_MaterialInward = () => {
           onChange={(e) => handleInputChange(field, e.target.value)}
           required={required}
           className="form-select"
-          disabled={dataLoading || partyLoading || placesLoading || 
+          disabled={dataLoading || authorityLoading || 
                    (field === 'subCategory' && !formData.category) || 
                    (field === 'particulars' && !formData.category) ||
                    (field === 'materialName' && !formData.category) ||
                    (field === 'uom' && !formData.category) ||
-                   (field === 'partyName' && partyLoading) ||
-                   (field === 'place' && placesLoading)}
+                   (field === 'givenTo' && authorityLoading)}
         >
           <option value="">
-            {field === 'partyName' && partyLoading ? 'Loading party names...' :
-             field === 'place' && placesLoading ? 'Loading places...' :
-             `Select ${label}`}
+            {field === 'givenTo' && authorityLoading ? 'Loading authority names...' : `Select ${label}`}
           </option>
           {options.map((option, index) => (
             <option key={index} value={option}>
@@ -331,50 +322,42 @@ const OM_MaterialInward = () => {
     )
   }
 
-  // Fetch party and place data with mapping from Google Sheets
-  const fetchPartyPlaceData = async () => {
+  // Fetch authority list data from Google Sheets
+  const fetchAuthorityList = async () => {
     try {
-      setPartyLoading(true)
-      setPlacesLoading(true)
-      
-      // Find the Omkar plant data to get the sheet ID
-      const omkarPlant = PLANT_DATA.find(plant => plant.document_name === 'OM')
-      const sheetId = omkarPlant?.material_sheet_id
+      setAuthorityLoading(true)
+      // Find the PV plant data to get the sheet ID
+      const pvPlant = PLANT_DATA.find(plant => plant.document_name === 'PV')
+      const sheetId = pvPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Omkar plant')
+        console.error('No sheet ID found for PV plant')
         setMessage('No Google Sheet configuration found for Kerur plant')
         setMessageType('error')
         return
       }
       
-      const response = await axios.get(getApiUrl('get_party_place_data'), {
+      const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'OM',
-          sheet_name: 'Party List',
+          factory: 'PV',
+          sheet_name: 'Authority List',
           sheet_id: sheetId
         }
       })
       
       if (response.data.success) {
-        const { party_names, places, party_place_mapping } = response.data.data
-        
-        // Sort arrays alphabetically for better UX
-        setPartyNames(party_names.sort())
-        setPlaces(places.sort())
-        setPartyPlaceMapping(party_place_mapping)
+        setAuthorityNames(response.data.data)
       } else {
-        console.error('Failed to load party place data:', response.data.error)
-        setMessage('Failed to load party and place data')
+        console.error('Failed to load authority list:', response.data.error)
+        setMessage('Failed to load authority list data')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error fetching party place data:', error)
-      setMessage('Error loading party and place data. Please try again.')
+      console.error('Error fetching authority list:', error)
+      setMessage('Error loading authority list data. Please try again.')
       setMessageType('error')
     } finally {
-      setPartyLoading(false)
-      setPlacesLoading(false)
+      setAuthorityLoading(false)
     }
   }
 
@@ -384,7 +367,7 @@ const OM_MaterialInward = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'OM' }
+          params: { factory: 'PV' }
         })
         
         if (response.data.success) {
@@ -404,7 +387,7 @@ const OM_MaterialInward = () => {
     }
 
     fetchMaterialData()
-    fetchPartyPlaceData()
+    fetchAuthorityList()
   }, [])
 
   const handleInputChange = (field, value) => {
@@ -453,32 +436,28 @@ const OM_MaterialInward = () => {
   }
 
   const handleGeneralInputChange = (field, value) => {
-    setGeneralFormData(prev => {
-      const newGeneralFormData = {
-        ...prev,
-        [field]: value
-      }
-
-      // Auto-select place when party name is selected
-      if (field === 'partyName' && value && partyPlaceMapping[value]) {
-        newGeneralFormData.place = partyPlaceMapping[value]
-      }
-
-      return newGeneralFormData
-    })
+    setGeneralFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (inwardItems.length === 0) {
-      alert('Please add at least one item to record material inward.')
+    if (outwardItems.length === 0) {
+      alert('Please add at least one item to record material outward.')
       return
     }
 
-    if (!generalFormData.partyName || !generalFormData.place) {
-      alert('Please fill in Party Name and Place for the inward record.')
+    if (!generalFormData.givenTo) {
+      alert('Please fill in Given To for the outward record.')
+      return
+    }
+
+    if (!generalFormData.description) {
+      alert('Please fill in Description for the outward record.')
       return
     }
 
@@ -490,7 +469,7 @@ const OM_MaterialInward = () => {
       let successCount = 0
       let errorCount = 0
       
-      for (const item of inwardItems) {
+      for (const item of outwardItems) {
         try {
           const payload = {
             category: item.category,
@@ -499,14 +478,14 @@ const OM_MaterialInward = () => {
             materialName: item.materialName,
             uom: item.uom,
             quantity: item.quantity,
-            partyName: generalFormData.partyName,
-            place: generalFormData.place,
+            givenTo: generalFormData.givenTo,
+            description: generalFormData.description,
             timestamp: new Date().toISOString(),
-            department: 'OM',
-            type: 'inward'
+            department: 'PV',
+            type: 'outward'
           }
 
-          const response = await axios.post(getApiUrl('material_inward'), payload)
+          const response = await axios.post(getApiUrl('material_outward'), payload)
           
           if (response.data.success) {
             successCount++
@@ -521,9 +500,9 @@ const OM_MaterialInward = () => {
       }
       
       if (successCount > 0) {
-        setMessage(`Material inward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}`)
+        setMessage(`Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}`)
         setMessageType('success')
-        setInwardItems([])
+        setOutwardItems([])
         setFormData({
           category: '',
           subCategory: '',
@@ -533,16 +512,16 @@ const OM_MaterialInward = () => {
           quantity: ''
         })
         setGeneralFormData({
-          partyName: '',
-          place: ''
+          givenTo: '',
+          description: ''
         })
       } else {
-        setMessage('Failed to record any material inward items. Please try again.')
+        setMessage('Failed to record any material outward items. Please try again.')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error recording material inward:', error)
-      setMessage('Error recording material inward. Please try again.')
+      console.error('Error recording material outward:', error)
+      setMessage('Error recording material outward. Please try again.')
       setMessageType('error')
     } finally {
       setLoading(false)
@@ -554,7 +533,7 @@ const OM_MaterialInward = () => {
       <div className="place_order-container">
         <div className="form-header">
           <div className="header-center">
-            <h2>Material Inward Form</h2>
+            <h2>Material Outward Form</h2>
           </div>
         </div>
         <div className="loading-message">
@@ -576,7 +555,7 @@ const OM_MaterialInward = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/omkar/om_store')} 
+          onClick={() => navigate('/padmavati/pv_store')} 
           className="back-button"
           style={{
             background: '#6c757d',
@@ -608,11 +587,12 @@ const OM_MaterialInward = () => {
       
       <div className="form-header">
         <div className="header-center">
-          <h2>Material Inward Form</h2>
+          <h2>Material Outward Form</h2>
         </div>
       </div>
       
       <div className="form-section">
+        
         {message && (
           <div className={`message ${messageType}`}>
             {message}
@@ -622,21 +602,21 @@ const OM_MaterialInward = () => {
         <form onSubmit={handleSubmit} className="material-form">
           {/* Form Status Indicator */}
           <div className="form-status">
-            <div className={`status-indicator ${inwardItems.length > 0 ? 'ready' : 'incomplete'}`}>
+            <div className={`status-indicator ${outwardItems.length > 0 ? 'ready' : 'incomplete'}`}>
               <span className="status-icon">
-                {inwardItems.length > 0 ? '✓' : '⚠'}
+                {outwardItems.length > 0 ? '✓' : '⚠'}
               </span>
               <span className="status-text">
-                {inwardItems.length === 0 
-                  ? 'Add at least one item to record material inward' 
-                  : `Ready to record inward! (${inwardItems.length} item${inwardItems.length > 1 ? 's' : ''} added)`
+                {outwardItems.length === 0 
+                  ? 'Add at least one item to record material outward' 
+                  : `Ready to record outward! (${outwardItems.length} item${outwardItems.length > 1 ? 's' : ''} added)`
                 }
               </span>
             </div>
           </div>
 
           {/* Added Items Table - Moved to top */}
-          {inwardItems.length > 0 && (
+          {outwardItems.length > 0 && (
             <div className="added-items-top-section">
               <div className="items-table-container">
                 <h3>Added Items</h3>
@@ -654,7 +634,7 @@ const OM_MaterialInward = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {inwardItems.map((item, index) => (
+                    {outwardItems.map((item, index) => (
                       <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
                         <td data-label="S.No">{index + 1}</td>
                         <td 
@@ -887,34 +867,35 @@ const OM_MaterialInward = () => {
               </div>
             </div>
           )}
+
           {/* Main Content Area */}
           <div className="form-main-content">
             {/* Left Section - Form Inputs */}
             <div className="form-left-section">
               {/* Form inputs for adding new item - Only show when no items exist */}
-              {inwardItems.length === 0 && (
+              {outwardItems.length === 0 && (
                 <div className="add-item-section">
                   <h3 className="add-item-header">
-                    Add Item to Inward
+                    Add Item to Outward
                   </h3>
                   <p className="add-item-description">
-                    Fill in the required fields below to add your first item to the inward record.
+                    Fill in the required fields below to add your first item to the outward record.
                   </p>
                 </div>
               )}
               <div className="form-row">
                 {/* Category - Required only if no items exist */}
                 <div className="form-group">
-                  <label htmlFor="category" className={inwardItems.length === 0 ? "required" : ""}>
-                    Category {inwardItems.length === 0 ? "*" : ""}
+                  <label htmlFor="category" className={outwardItems.length === 0 ? "required" : ""}>
+                    Category {outwardItems.length === 0 ? "*" : ""}
                   </label>
                   <select
                     id="category"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
-                    disabled={dataLoading || partyLoading || placesLoading}
+                    required={outwardItems.length === 0}
+                    className={`form-select ${outwardItems.length > 0 ? 'optional-field' : ''}`}
+                    disabled={dataLoading}
                   >
                     <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
                     {categories.map(category => (
@@ -959,15 +940,15 @@ const OM_MaterialInward = () => {
 
                 {/* Material Name - Required only if no items exist */}
                 <div className="form-group">
-                  <label htmlFor="materialName" className={inwardItems.length === 0 ? "required" : ""}>
-                    Material Name {inwardItems.length === 0 ? "*" : ""}
+                  <label htmlFor="materialName" className={outwardItems.length === 0 ? "required" : ""}>
+                    Material Name {outwardItems.length === 0 ? "*" : ""}
                   </label>
                   <select
                     id="materialName"
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    required={outwardItems.length === 0}
+                    className={`form-select ${outwardItems.length > 0 ? 'optional-field' : ''}`}
                     disabled={!formData.category || dataLoading}
                   >
                     <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -1013,16 +994,16 @@ const OM_MaterialInward = () => {
 
                 {/* Quantity - Required only if no items exist */}
                 <div className="form-group">
-                  <label htmlFor="quantity" className={inwardItems.length === 0 ? "required" : ""}>
-                    Quantity {inwardItems.length === 0 ? "**" : ""}
+                  <label htmlFor="quantity" className={outwardItems.length === 0 ? "required" : ""}>
+                    Quantity {outwardItems.length === 0 ? "*" : ""}
                   </label>
                   <input
                     type="text"
                     id="quantity"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-input quantity-input ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    required={outwardItems.length === 0}
+                    className={`form-input quantity-input ${outwardItems.length > 0 ? 'optional-field' : ''}`}
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
                     inputMode="numeric"
@@ -1032,15 +1013,15 @@ const OM_MaterialInward = () => {
 
                 {/* UOM - Required only if no items exist */}
                 <div className="form-group">
-                  <label htmlFor="uom" className={inwardItems.length === 0 ? "required" : ""}>
-                    UOM {inwardItems.length === 0 ? "*" : ""}
+                  <label htmlFor="uom" className={outwardItems.length === 0 ? "required" : ""}>
+                    UOM {outwardItems.length === 0 ? "*" : ""}
                   </label>
                   <select
                     id="uom"
                     value={formData.uom}
                     onChange={(e) => handleInputChange('uom', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    required={outwardItems.length === 0}
+                    className={`form-select ${outwardItems.length > 0 ? 'optional-field' : ''}`}
                     disabled={dataLoading}
                   >
                     <option value="">Select UOM</option>
@@ -1066,46 +1047,44 @@ const OM_MaterialInward = () => {
             </div>
           </div>
 
-          {/* General Form Fields - Party Name and Place */}
+          {/* General Form Fields - Given To and Description */}
           <div className="form-row">
-            {/* Party Name - Required */}
+            {/* Given To - Required */}
             <div className="form-group">
-              <label htmlFor="generalPartyName" className="required">
-                Party Name *
+              <label htmlFor="generalGivenTo" className="required">
+                Given To *
               </label>
               <select
-                id="generalPartyName"
-                value={generalFormData.partyName}
-                onChange={(e) => handleGeneralInputChange('partyName', e.target.value)}
+                id="generalGivenTo"
+                value={generalFormData.givenTo}
+                onChange={(e) => handleGeneralInputChange('givenTo', e.target.value)}
                 required
                 className="form-select"
-                disabled={partyLoading}
+                disabled={authorityLoading}
               >
-                <option value="">{partyLoading ? 'Loading party names...' : 'Select Party Name'}</option>
-                {partyNames.map(party => (
-                  <option key={party} value={party}>{party}</option>
+                <option value="">{authorityLoading ? 'Loading authority names...' : 'Select Authority Name'}</option>
+                {authorityNames.map((authority, index) => (
+                  <option key={index} value={authority}>
+                    {authority}
+                  </option>
                 ))}
               </select>
             </div>
 
-            {/* Place - Required */}
+            {/* Description - Required */}
             <div className="form-group">
-              <label htmlFor="generalPlace" className="required">
-                Place *
+              <label htmlFor="generalDescription" className="required">
+                Description *
               </label>
-              <select
-                id="generalPlace"
-                value={generalFormData.place}
-                onChange={(e) => handleGeneralInputChange('place', e.target.value)}
+              <textarea
+                id="generalDescription"
+                value={generalFormData.description}
+                onChange={(e) => handleGeneralInputChange('description', e.target.value)}
                 required
-                className="form-select"
-                disabled={placesLoading}
-              >
-                <option value="">{placesLoading ? 'Loading places...' : 'Select Place'}</option>
-                {places.map(place => (
-                  <option key={place} value={place}>{place}</option>
-                ))}
-              </select>
+                className="form-textarea"
+                placeholder="Enter detailed description of the material outward"
+                rows="4"
+              />
             </div>
           </div>
 
@@ -1113,14 +1092,14 @@ const OM_MaterialInward = () => {
           <div className="form-actions">
             <button 
               type="submit" 
-              className={`submit-btn ${inwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
-              disabled={inwardItems.length === 0}
-              title={inwardItems.length === 0 ? 'Add at least one item' : 'Ready to record inward'}
+              className={`submit-btn ${outwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
+              disabled={outwardItems.length === 0}
+              title={outwardItems.length === 0 ? 'Add at least one item' : 'Ready to record outward'}
             >
-              Record Inward {inwardItems.length > 0 ? '✓' : ''}
+              Record Outward {outwardItems.length > 0 ? '✓' : ''}
             </button>
             <button type="button" className="reset-btn" onClick={() => {
-              setInwardItems([])
+              setOutwardItems([])
               setFormData({
                 category: '',
                 subCategory: '',
@@ -1130,8 +1109,8 @@ const OM_MaterialInward = () => {
                 quantity: ''
               })
               setGeneralFormData({
-                partyName: '',
-                place: ''
+                givenTo: '',
+                description: ''
               })
               alert('Form reset!')
             }}>Reset</button>
@@ -1142,4 +1121,4 @@ const OM_MaterialInward = () => {
   )
 }
 
-export default OM_MaterialInward
+export default PV_MaterialOutward

@@ -13,6 +13,30 @@ import KR_PlaceOrder from './KR_Departments/KR_Services/KR_PlaceOrder';
 import KR_MaterialList from './KR_Departments/KR_Services/KR_MaterialList';
 import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
+
+// Import OM department components
+import OM_PlaceOrder from './OM_Departments/OM_Services/OM_PlaceOrder';
+import OM_MaterialList from './OM_Departments/OM_Services/OM_MaterialList';
+import OM_MaterialInward from './OM_Departments/OM_Services/OM_MaterialInward';
+import OM_MaterialOutward from './OM_Departments/OM_Services/OM_MaterialOutward';
+
+// Import PV department components
+import PV_PlaceOrder from './PV_Departments/PV_Services/PV_PlaceOrder';
+import PV_MaterialList from './PV_Departments/PV_Services/PV_MaterialList';
+import PV_MaterialInward from './PV_Departments/PV_Services/PV_MaterialInward';
+import PV_MaterialOutward from './PV_Departments/PV_Services/PV_MaterialOutward';
+
+// Import HB department components
+import HB_PlaceOrder from './HB_Departments/HB_Services/HB_PlaceOrder';
+import HB_MaterialList from './HB_Departments/HB_Services/HB_MaterialList';
+import HB_MaterialInward from './HB_Departments/HB_Services/HB_MaterialInward';
+import HB_MaterialOutward from './HB_Departments/HB_Services/HB_MaterialOutward';
+
+// Import GB department components
+import GB_PlaceOrder from './GB_Departments/GB_Services/GB_PlaceOrder';
+import GB_MaterialList from './GB_Departments/GB_Services/GB_MaterialList';
+import GB_MaterialInward from './GB_Departments/GB_Services/GB_MaterialInward';
+import GB_MaterialOutward from './GB_Departments/GB_Services/GB_MaterialOutward';
 import SheetsMaterialList from './HO_Departments/HO_Services/Sheets-MaterialList';
 
 // Import specific processing components
@@ -125,10 +149,10 @@ const DepartmentWrapper = () => {
   // Handle factory-prefixed department keys by stripping the prefix
   let actualDepartmentKey = departmentKey;
   if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
-      departmentKey.startsWith('pm_') || departmentKey.startsWith('om_') || 
+      departmentKey.startsWith('pv_') || departmentKey.startsWith('om_') || 
       departmentKey.startsWith('hb_') || departmentKey.startsWith('ho_'))) {
     // Extract the base department key (remove factory prefix)
-    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pm_|om_|hb_|ho_)/, '');
+    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
   }
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
@@ -154,7 +178,7 @@ const FactoryPrefixedDepartmentWrapper = ({ departmentType }) => {
   const { factoryKey } = useParams();
   
   // Extract the base department key (remove factory prefix)
-  const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pm_|om_|hb_|ho_)/, '');
+  const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
   
@@ -877,12 +901,12 @@ function App() {
         } />
         <Route path="/gulbarga/gb_store/gb_place_order" element={
           isAuthenticated ? 
-            <KR_PlaceOrder /> : 
+            <GB_PlaceOrder /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/humnabad/hb_store/hb_place_order" element={
           isAuthenticated ? 
-            <KR_PlaceOrder /> : 
+            <HB_PlaceOrder /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/headoffice/ho_store/ho_material_list" element={
@@ -892,12 +916,12 @@ function App() {
         } />
         <Route path="/omkar/om_store/om_place_order" element={
           isAuthenticated ? 
-            <KR_PlaceOrder /> : 
+            <OM_PlaceOrder /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/padmavati/pv_store/pv_place_order" element={
           isAuthenticated ? 
-            <KR_PlaceOrder /> : 
+            <PV_PlaceOrder /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/kerur/kr_store/kr_material_inward" element={
@@ -908,6 +932,74 @@ function App() {
         <Route path="/kerur/kr_store/kr_material_outward" element={
           isAuthenticated ? 
             <KR_MaterialOutward /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* GB Store Routes */}
+        <Route path="/gulbarga/gb_store/gb_add-material" element={
+          isAuthenticated ? 
+            <GB_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/gulbarga/gb_store/gb_material_inward" element={
+          isAuthenticated ? 
+            <GB_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/gulbarga/gb_store/gb_material_outward" element={
+          isAuthenticated ? 
+            <GB_MaterialOutward /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* OM Store Routes */}
+        <Route path="/omkar/om_store/om_add-material" element={
+          isAuthenticated ? 
+            <OM_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/omkar/om_store/om_material_inward" element={
+          isAuthenticated ? 
+            <OM_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/omkar/om_store/om_material_outward" element={
+          isAuthenticated ? 
+            <OM_MaterialOutward /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* PV Store Routes */}
+        <Route path="/padmavati/pv_store/pv_add-material" element={
+          isAuthenticated ? 
+            <PV_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/padmavati/pv_store/pv_material_inward" element={
+          isAuthenticated ? 
+            <PV_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/padmavati/pv_store/pv_material_outward" element={
+          isAuthenticated ? 
+            <PV_MaterialOutward /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* HB Store Routes */}
+        <Route path="/humnabad/hb_store/hb_add-material" element={
+          isAuthenticated ? 
+            <HB_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/humnabad/hb_store/hb_material_inward" element={
+          isAuthenticated ? 
+            <HB_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/humnabad/hb_store/hb_material_outward" element={
+          isAuthenticated ? 
+            <HB_MaterialOutward /> : 
             <Navigate to="/login" replace />
         } />
 

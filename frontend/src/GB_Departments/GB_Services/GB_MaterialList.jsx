@@ -4,7 +4,7 @@ import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 
-const OM_MaterialList = () => {
+const GB_MaterialList = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -140,7 +140,7 @@ const OM_MaterialList = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'OM' }
+          params: { factory: 'GB' }
         })
         
         if (response.data.success) {
@@ -242,7 +242,7 @@ const OM_MaterialList = () => {
         uom: formData.uom,
         initialQuantity: formData.initialQuantity,
         timestamp: new Date().toISOString(),
-        department: 'OM'
+        department: 'GB'
       }
 
       const response = await axios.post(getApiUrl('add_material'), payload)
@@ -296,7 +296,7 @@ const OM_MaterialList = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/omkar/om_store')} 
+          onClick={() => navigate('/gulbarga/gb_store')} 
           className="back-button"
           style={{
             background: '#6c757d',
@@ -491,4 +491,4 @@ const OM_MaterialList = () => {
   )
 }
 
-export default OM_MaterialList
+export default GB_MaterialList

@@ -9,7 +9,7 @@ const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
-const KR_MaterialOutward = () => {
+const OM_MaterialOutward = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -326,12 +326,12 @@ const KR_MaterialOutward = () => {
   const fetchAuthorityList = async () => {
     try {
       setAuthorityLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the Omkar plant data to get the sheet ID
+      const omkarPlant = PLANT_DATA.find(plant => plant.document_name === 'OM')
+      const sheetId = omkarPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for Omkar plant')
         setMessage('No Google Sheet configuration found for Kerur plant')
         setMessageType('error')
         return
@@ -339,7 +339,7 @@ const KR_MaterialOutward = () => {
       
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'OM',
           sheet_name: 'Authority List',
           sheet_id: sheetId
         }
@@ -367,7 +367,7 @@ const KR_MaterialOutward = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'KR' }
+          params: { factory: 'OM' }
         })
         
         if (response.data.success) {
@@ -481,7 +481,7 @@ const KR_MaterialOutward = () => {
             givenTo: generalFormData.givenTo,
             description: generalFormData.description,
             timestamp: new Date().toISOString(),
-            department: 'KR',
+            department: 'OM',
             type: 'outward'
           }
 
@@ -555,7 +555,7 @@ const KR_MaterialOutward = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/kerur/kr_store')} 
+          onClick={() => navigate('/omkar/om_store')} 
           className="back-button"
           style={{
             background: '#6c757d',
@@ -1121,4 +1121,4 @@ const KR_MaterialOutward = () => {
   )
 }
 
-export default KR_MaterialOutward
+export default OM_MaterialOutward

@@ -11,7 +11,7 @@ const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
 // Utility Functions
 
-const OM_MaterialInward = () => {
+const GB_MaterialInward = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -337,20 +337,20 @@ const OM_MaterialInward = () => {
       setPartyLoading(true)
       setPlacesLoading(true)
       
-      // Find the Omkar plant data to get the sheet ID
-      const omkarPlant = PLANT_DATA.find(plant => plant.document_name === 'OM')
-      const sheetId = omkarPlant?.material_sheet_id
+      // Find the GB plant data to get the sheet ID
+      const gbPlant = PLANT_DATA.find(plant => plant.document_name === 'GB')
+      const sheetId = gbPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Omkar plant')
-        setMessage('No Google Sheet configuration found for Kerur plant')
+        console.error('No sheet ID found for GB plant')
+        setMessage('No Google Sheet configuration found for gulbarga plant')
         setMessageType('error')
         return
       }
       
       const response = await axios.get(getApiUrl('get_party_place_data'), {
         params: { 
-          factory: 'OM',
+          factory: 'GB',
           sheet_name: 'Party List',
           sheet_id: sheetId
         }
@@ -384,7 +384,7 @@ const OM_MaterialInward = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'OM' }
+          params: { factory: 'GB' }
         })
         
         if (response.data.success) {
@@ -502,7 +502,7 @@ const OM_MaterialInward = () => {
             partyName: generalFormData.partyName,
             place: generalFormData.place,
             timestamp: new Date().toISOString(),
-            department: 'OM',
+            department: 'GB',
             type: 'inward'
           }
 
@@ -576,7 +576,7 @@ const OM_MaterialInward = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/omkar/om_store')} 
+          onClick={() => navigate('/gulbarga/gb_store')} 
           className="back-button"
           style={{
             background: '#6c757d',
@@ -1142,4 +1142,4 @@ const OM_MaterialInward = () => {
   )
 }
 
-export default OM_MaterialInward
+export default GB_MaterialInward

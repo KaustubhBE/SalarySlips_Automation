@@ -29,7 +29,7 @@ const generateFallbackOrderId = () => {
   const month = now.getMonth() + 1
   const year = now.getFullYear() % 100
   const timestamp = now.getTime()
-  return `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
+  return `OM_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
 }
 
 // Material Name Options Helper
@@ -130,7 +130,7 @@ const useMaterialData = () => {
     try {
       setDataLoading(true)
       const response = await axios.get(getApiUrl('get_material_data'), {
-        params: { factory: 'KR' }
+        params: { factory: 'OM' }
       })
       
       if (response.data.success) {
@@ -155,12 +155,12 @@ const useSessionManagement = () => {
 
   const registerSession = (orderId) => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('om_active_sessions') || '{}')
       activeSessions[sessionId] = {
         timestamp: Date.now(),
         orderId: orderId
       }
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('om_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error registering session:', error)
     }
@@ -168,9 +168,9 @@ const useSessionManagement = () => {
 
   const cleanupSession = () => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('om_active_sessions') || '{}')
       delete activeSessions[sessionId]
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('om_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error cleaning up session:', error)
     }
@@ -178,7 +178,7 @@ const useSessionManagement = () => {
 
   const cleanupOldSessions = () => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('om_active_sessions') || '{}')
       const now = Date.now()
       
       Object.keys(activeSessions).forEach(sessionKey => {
@@ -187,7 +187,7 @@ const useSessionManagement = () => {
         }
       })
       
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('om_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error cleaning up old sessions:', error)
     }
@@ -196,7 +196,7 @@ const useSessionManagement = () => {
   return { sessionId, registerSession, cleanupSession, cleanupOldSessions }
 }
 
-const KR_PlaceOrder = () => {
+const OM_PlaceOrder = () => {
   const navigate = useNavigate()
   
   // State Management
@@ -235,18 +235,18 @@ const KR_PlaceOrder = () => {
   const fetchAuthorityList = async () => {
     try {
       setAuthorityLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the Omkar plant data to get the sheet ID
+      const omkarPlant = PLANT_DATA.find(plant => plant.document_name === 'OM')
+      const sheetId = omkarPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for Omkar plant')
         return
       }
       
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'OM',
           sheet_name: 'Authority List',
           sheet_id: sheetId
         }
@@ -273,7 +273,7 @@ const KR_PlaceOrder = () => {
     try {
       console.log('Generating order ID from backend...')
       const response = await axios.post(getApiUrl('get_next_order_id'), {
-        factory: 'KR'
+        factory: 'OM'
       })
       
       if (response.data.success) {
@@ -638,7 +638,7 @@ const KR_PlaceOrder = () => {
         givenBy: formData.givenBy,
         description: formData.description,
         importance: formData.importance,
-        factory: 'KR'
+        factory: 'OM'
       }
       
       console.log('Submitting order data:', orderData)
@@ -647,7 +647,7 @@ const KR_PlaceOrder = () => {
       if (response.data.success) {
         // Mark order as completed in localStorage for backup
         try {
-          const completedOrders = JSON.parse(localStorage.getItem('kr_completed_orders') || '[]')
+          const completedOrders = JSON.parse(localStorage.getItem('om_completed_orders') || '[]')
           completedOrders.push({
             orderId,
             timestamp: Date.now(),
@@ -659,7 +659,7 @@ const KR_PlaceOrder = () => {
               importance: formData.importance
             }
           })
-          localStorage.setItem('kr_completed_orders', JSON.stringify(completedOrders))
+          localStorage.setItem('om_completed_orders', JSON.stringify(completedOrders))
         } catch (error) {
           console.error('Error saving completed order to localStorage:', error)
         }
@@ -745,7 +745,7 @@ const KR_PlaceOrder = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/kerur/kr_store')} 
+          onClick={() => navigate('/omkar/om_store')} 
           className="back-button"
           style={{
             background: '#6c757d',
@@ -1278,5 +1278,5 @@ const KR_PlaceOrder = () => {
   )
 }
 
-export default KR_PlaceOrder
+export default OM_PlaceOrder
 

@@ -210,7 +210,10 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          gb_place_order: { name: 'Place Order', permission: 'gb_place_order' }
+          gb_place_order: { name: 'Place Order', permission: 'gb_place_order' },
+          gb_material_list: { name: 'Add Material', permission: 'gb_material_list' },
+          gb_material_inward: { name: 'Material Inward', permission: 'gb_material_inward' },
+          gb_material_outward: { name: 'Material Outward', permission: 'gb_material_outward' }
         }
       },
       humanresource: {
@@ -239,8 +242,7 @@ export const FACTORY_RBAC_CONFIG = {
           kr_material_list: { name: 'Material List', permission: 'kr_material_list' },
           kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
           kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
-          kr_order_status: { name: 'Order Status', permission: 'kr_order_status' },
-          kr_general_reports: { name: 'General Reports', permission: 'kr_general_reports' }
+          kr_order_status: { name: 'Order Status', permission: 'kr_order_status' }
         }
       },
       humanresource: {
@@ -266,7 +268,10 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          hb_place_order: { name: 'Place Order', permission: 'hb_place_order' }
+          hb_place_order: { name: 'Place Order', permission: 'hb_place_order' },
+          hb_material_list: { name: 'Add Material', permission: 'hb_material_list' },
+          hb_material_inward: { name: 'Material Inward', permission: 'hb_material_inward' },
+          hb_material_outward: { name: 'Material Outward', permission: 'hb_material_outward' }
         }
       },
       humanresource: {
@@ -291,7 +296,10 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          om_placeorder: { name: 'Place Order', permission: 'om_place_order' }
+          om_place_order: { name: 'Place Order', permission: 'om_place_order' },
+          om_material_list: { name: 'Add Material', permission: 'om_material_list' },
+          om_material_inward: { name: 'Material Inward', permission: 'om_material_inward' },
+          om_material_outward: { name: 'Material Outward', permission: 'om_material_outward' }
         }
       },
       humanresource: {
@@ -316,7 +324,10 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          pv_place_order: { name: 'Place Order', permission: 'pv_place_order' }
+          pv_place_order: { name: 'Place Order', permission: 'pv_place_order' },
+          pv_material_list: { name: 'Add Material', permission: 'pv_material_list' },
+          pv_material_inward: { name: 'Material Inward', permission: 'pv_material_inward' },
+          pv_material_outward: { name: 'Material Outward', permission: 'pv_material_outward' }
         }
       },
       humanresource: {

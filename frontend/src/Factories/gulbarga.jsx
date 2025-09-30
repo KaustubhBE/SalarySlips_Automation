@@ -14,7 +14,7 @@ const GulbargaFactory = () => {
   const gulbargaDepartments = [
     { key: 'gb_store', name: 'Store', route: '/gulbarga/gb_store' },
     { key: 'gb_humanresource', name: 'Human Resource', route: '/gulbarga/gb_humanresource' },
-    { key: 'operations', name: 'Operations', route: '/gulbarga/gb_operations' }
+    { key: 'gb_operations', name: 'Operations', route: '/gulbarga/gb_operations' }
   ];
 
   // Filter departments based on user permissions
