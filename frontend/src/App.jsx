@@ -889,7 +889,7 @@ function App() {
             <KRStore /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/kerur/kr_store/kr_add-material" element={
+        <Route path="/kerur/kr_store/kr_material_list" element={
           isAuthenticated ? 
             <KR_MaterialList /> : 
             <Navigate to="/login" replace />
@@ -936,7 +936,7 @@ function App() {
         } />
 
         {/* GB Store Routes */}
-        <Route path="/gulbarga/gb_store/gb_add-material" element={
+        <Route path="/gulbarga/gb_store/gb_material_list" element={
           isAuthenticated ? 
             <GB_MaterialList /> : 
             <Navigate to="/login" replace />
@@ -953,7 +953,7 @@ function App() {
         } />
 
         {/* OM Store Routes */}
-        <Route path="/omkar/om_store/om_add-material" element={
+        <Route path="/omkar/om_store/om_material_list" element={
           isAuthenticated ? 
             <OM_MaterialList /> : 
             <Navigate to="/login" replace />
@@ -970,7 +970,7 @@ function App() {
         } />
 
         {/* PV Store Routes */}
-        <Route path="/padmavati/pv_store/pv_add-material" element={
+        <Route path="/padmavati/pv_store/pv_material_list" element={
           isAuthenticated ? 
             <PV_MaterialList /> : 
             <Navigate to="/login" replace />
@@ -987,7 +987,7 @@ function App() {
         } />
 
         {/* HB Store Routes */}
-        <Route path="/humnabad/hb_store/hb_add-material" element={
+        <Route path="/humnabad/hb_store/hb_material_list" element={
           isAuthenticated ? 
             <HB_MaterialList /> : 
             <Navigate to="/login" replace />

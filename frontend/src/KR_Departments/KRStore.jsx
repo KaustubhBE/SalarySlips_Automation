@@ -18,7 +18,7 @@ const KRStore = () => {
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
     { key: 'kr_place_order', name: 'Order Intent', route: '/kerur/kr_store/kr_place_order' },
-    { key: 'kr_material_list', name: 'Add Material', route: '/kerur/kr_store/kr_add-material' },
+    { key: 'kr_material_list', name: 'Add Material', route: '/kerur/kr_store/kr_material_list' },
     { key: 'kr_material_inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material_inward' },
     { key: 'kr_material_outward', name: 'Material Outward', route: '/kerur/kr_store/kr_material_outward' },
   ];
@@ -110,7 +110,7 @@ const KRStore = () => {
       <Route path="kr_place_order" element={<KR_PlaceOrder />} />
       
       {/* KR Add Material Service Route */}
-      <Route path="kr_add-material" element={<KR_MaterialList />} />
+      <Route path="kr_material_list" element={<KR_MaterialList />} />
       
       
       {/* KR Material Inward Service Route */}
