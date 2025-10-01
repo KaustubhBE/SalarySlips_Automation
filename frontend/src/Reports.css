@@ -481,8 +481,6 @@
     margin: 0 0 15px 0;
     color: #333;
     font-size: 16px;
-    text-align: center;
-    font-weight: 600;
   }
   
   .headers-container {
@@ -492,30 +490,28 @@
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
+    padding: 0 10px;
   }
   
   .header-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 15px;
+    padding: 8px 12px;
     background-color: white;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    min-width: 120px;
-    text-align: center;
+    min-width: 100px;
   }
   
   .header-label {
     font-weight: 500;
     color: #495057;
     white-space: nowrap;
-    text-align: center;
-    width: 100%;
   }
   
   .copy-all-headers-button {
-    padding: 10px 15px;
+    padding: 8px 12px;
     background-color: #007bff;
     color: white;
     border: none;
@@ -528,7 +524,6 @@
     height: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
   }
   
   .copy-all-headers-button:hover {
