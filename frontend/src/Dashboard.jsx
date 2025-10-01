@@ -23,6 +23,7 @@ function Dashboard() {
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUserIdForActions, setSelectedUserIdForActions] = useState(null);
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -319,6 +320,7 @@ function Dashboard() {
   const handleEditAppPassword = (user) => {
     setEditingUserId(user.id);
     setEditingAppPassword("");
+    setSelectedUserIdForActions(null); // Clear mobile selection
   };
 
   // Convert permission_metadata back to tree permissions format for editing
@@ -344,6 +346,7 @@ function Dashboard() {
   const handleEditPermissions = (user) => {
     setEditingUserId(user.id);
     setSelectedUser(user);
+    setSelectedUserIdForActions(null); // Clear mobile selection
     
     // Load from permission_metadata only
     let permissions = {};
@@ -407,6 +410,7 @@ function Dashboard() {
     setShowPermissionsModal(false);
     setEditingPermissions({});
     setSelectedUser(null);
+    setSelectedUserIdForActions(null); // Clear mobile selection
   };
 
   // Get current user info from auth context
@@ -453,6 +457,11 @@ function Dashboard() {
     return getCurrentUserRole() === 'admin';
   };
 
+  const handleUserRowClick = (userId) => {
+    // Toggle selection: if the same user is clicked, deselect; otherwise select the new user
+    setSelectedUserIdForActions(prevId => prevId === userId ? null : userId);
+  };
+
   return (
     <div className="dashboard-container centered">
       <div className="dashboard-header">
@@ -490,10 +499,13 @@ function Dashboard() {
             <tbody>
               {getFilteredUsers().map(user => (
                 <React.Fragment key={user.id}>
-                  <tr>
+                  <tr 
+                    className={`user-row ${selectedUserIdForActions === user.id ? 'user-row-selected' : ''}`}
+                    onClick={() => handleUserRowClick(user.id)}
+                  >
                     <td title={user.username}>{user.username}</td>
                     <td title={user.email}>{user.email}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <select
                         className="role-select"
                         value={user.role}
@@ -508,8 +520,8 @@ function Dashboard() {
                         {getCurrentUserRole() === 'admin' && <option value="admin">Admin</option>}
                       </select>
                     </td>
-                    <td>
-                      <div className="user-actions-buttons">
+                    <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
+                      <div className={`user-actions-buttons ${selectedUserIdForActions === user.id ? 'show-actions' : ''}`}>
                         {canEditPassword(user.role) && (
                           <button
                             className="action-button edit-button"
@@ -540,6 +552,51 @@ function Dashboard() {
                       </div>
                     </td>
                   </tr>
+                  {/* Mobile actions row - shown when user is selected on mobile */}
+                  {selectedUserIdForActions === user.id && (
+                    <tr className="mobile-actions-row">
+                      <td colSpan={4}>
+                        <div className="mobile-user-actions-buttons">
+                          {canEditPassword(user.role) && (
+                            <button
+                              className="action-button edit-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditAppPassword(user);
+                              }}
+                              title="Edit Password"
+                            >
+                              Password
+                            </button>
+                          )}
+                          {canEditPermissions(user.role) && (
+                            <button
+                              className="action-button permissions-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditPermissions(user);
+                              }}
+                              title="Edit Permissions"
+                            >
+                              Permissions
+                            </button>
+                          )}
+                          {canDeleteUser(user.role) && (
+                            <button 
+                              className="action-button delete-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteUser(user.id);
+                              }}
+                              title="Delete User"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {editingUserId === user.id && !showPermissionsModal && (
                     <tr>
                       <td colSpan={4} className="user-actions-row">

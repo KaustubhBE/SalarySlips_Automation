@@ -236,6 +236,15 @@ table tr:hover {
   background-color: #f8fafc;
 }
 
+/* User row styles for mobile */
+.user-row {
+  transition: background-color 0.2s ease;
+}
+
+.user-row-selected {
+  background-color: #e0f2fe !important;
+}
+
 /* Form Controls in Table */
 .role-select {
   width: 100%;
@@ -425,6 +434,16 @@ table tr:hover {
   justify-content: center;
   align-items: center;
   max-width: 200px;
+}
+
+/* Hide mobile actions row on desktop */
+.mobile-actions-row {
+  display: none;
+}
+
+/* Make user rows non-clickable on desktop */
+.user-row {
+  cursor: default;
 }
 
 .action-button {
@@ -1297,7 +1316,7 @@ table tr:hover {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 850px) {
   .dashboard-container {
     margin: 10px auto;
     padding: 10px;
@@ -1320,14 +1339,112 @@ table tr:hover {
     font-size: 0.8rem;
   }
   
+  /* Maintain table layout and prevent column collapse */
+  table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  
+  /* Adjust column widths for 3 columns on mobile (no Actions column) */
+  table th:nth-child(1),
+  table td:nth-child(1) {
+    width: 25%; /* Username */
+  }
+  
+  table th:nth-child(2),
+  table td:nth-child(2) {
+    width: 45%; /* Email */
+  }
+  
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 30%; /* Role */
+  }
+  
+  /* Mobile-specific: Make user rows clickable */
+  .user-row {
+    cursor: pointer !important;
+  }
+  
+  /* Mobile-specific: Hide Actions column header and desktop actions cell */
+  table th:nth-child(4),
+  .actions-cell {
+    display: none !important;
+  }
+  
+  /* Mobile-specific: Show mobile actions row */
+  .mobile-actions-row {
+    display: table-row !important;
+  }
+  
+  /* Mobile-specific: Show actions when user is selected */
+  .user-row-selected + tr .user-actions-row,
+  .user-row-selected .actions-cell.show-mobile-actions {
+    display: table-cell;
+  }
+  
+  /* Create a new row for actions on mobile */
+  .user-row-selected ~ tr .user-actions-row {
+    display: table-row;
+  }
+  
   .action-button {
-    padding: 5px 6px;
-    font-size: 0.7rem;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
   
   .user-actions-buttons {
-    max-width: 160px;
-    gap: 3px;
+    display: none; /* Hide by default on mobile */
+    max-width: none;
+    gap: 8px;
+  }
+  
+  /* Show actions when row is selected */
+  .user-actions-buttons.show-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 10px 0;
+  }
+  
+  /* Style for selected row */
+  .user-row-selected {
+    background-color: #dbeafe !important;
+    border-left: 3px solid #3b82f6;
+  }
+  
+  /* Mobile actions row - shown below selected user */
+  .mobile-actions-row {
+    background-color: #f0f9ff !important;
+    border-left: 3px solid #3b82f6;
+  }
+  
+  .mobile-actions-row td {
+    padding: 15px 8px !important;
+    border-bottom: 2px solid #3b82f6 !important;
+  }
+  
+  /* Ensure buttons appear in a horizontal row, wrap if needed */
+  .mobile-user-actions-buttons {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+  
+  .mobile-user-actions-buttons .action-button {
+    flex: 0 0 auto;
+    min-width: 85px;
+    max-width: 115px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
   
   .edit-app-password-inline {
@@ -1440,12 +1557,69 @@ table tr:hover {
     font-size: 0.75rem;
   }
   
+  /* Maintain table layout */
+  table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  
+  /* Column widths for small screens */
+  table th:nth-child(1),
+  table td:nth-child(1) {
+    width: 25%; /* Username */
+  }
+  
+  table th:nth-child(2),
+  table td:nth-child(2) {
+    width: 45%; /* Email */
+  }
+  
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 30%; /* Role */
+  }
+  
+  /* Mobile-specific: Make user rows clickable */
+  .user-row {
+    cursor: pointer !important;
+  }
+  
+  /* Mobile-specific: Hide Actions column */
+  table th:nth-child(4),
+  .actions-cell {
+    display: none !important;
+  }
+  
+  /* Mobile-specific: Show mobile actions row */
+  .mobile-actions-row {
+    display: table-row !important;
+  }
+  
+  /* Keep horizontal layout on very small screens, allow wrap if needed */
+  .mobile-user-actions-buttons {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+  
+  .mobile-user-actions-buttons .action-button {
+    flex: 0 0 auto;
+    padding: 9px 8px;
+    font-size: 0.75rem;
+    min-width: 80px;
+    max-width: 95px;
+  }
+  
   .action-button {
-    padding: 4px 5px;
-    font-size: 0.65rem;
+    padding: 8px 10px;
+    font-size: 0.8rem;
   }
   
   .user-actions-buttons {
+    display: none !important;
     max-width: 140px;
     gap: 2px;
   }
