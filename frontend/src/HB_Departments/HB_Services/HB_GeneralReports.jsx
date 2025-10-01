@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../Reports.css';
 import { getApiUrl } from '../../config';
 import { useAuth } from '../../Components/AuthContext';
 import LoadingSpinner from '../../LoadingSpinner';
 
 const Reports = () => {
+  const navigate = useNavigate();
   const [templateFiles, setTemplateFiles] = useState([]);
   const [attachmentFiles, setAttachmentFiles] = useState({});
   const [isDraggingTemplate, setIsDraggingTemplate] = useState(false);
@@ -874,6 +876,45 @@ const Reports = () => {
         </div>
       )}
 
+      {/* Back Button Section - Consistent across all pages */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        alignItems: 'center', 
+        marginBottom: '20px',
+        padding: '10px 0',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <button 
+          onClick={() => navigate('/humnabad/hb_operations')} 
+          className="back-button"
+          style={{
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = '#5a6268'
+            e.target.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = '#6c757d'
+            e.target.style.transform = 'translateY(0)'
+          }}
+        >
+          ← Back to Operations
+        </button>
+      </div>
 
       <h1>Generate Reports</h1>
       
