@@ -1202,7 +1202,7 @@ const Reports = () => {
                 <button 
                   className="copy-all-headers-button"
                   onClick={() => {
-                    const headers = ['Name', 'Country Code', 'Contact No.', 'Email ID'];
+                    const headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To'];
                     navigator.clipboard.writeText(headers.join('\t'));
                     alert('Headers copied to clipboard! Paste them in the first row of your Google Sheet');
                   }}
