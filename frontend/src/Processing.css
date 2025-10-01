@@ -102,7 +102,7 @@
   justify-content: space-between;
   gap: 20px;
   margin: 20px 0;
-  padding: 15px;
+  padding: 15px 20px;
   background-color: #f5f5f5;
   border-radius: 6px;
 }
@@ -226,12 +226,17 @@
   .input-elements {
     gap: 15px;
     padding: 15px;
+    max-width: 100%;
+  }
+
+  .months-container {
+    overflow-x: visible;
   }
 
   .option-select {
     flex-direction: column;
     gap: 15px;
-    padding: 10px;
+    padding: 10px 15px;
   }
 
   .whatsappToggle,
@@ -244,6 +249,82 @@
     padding: 10px 20px;
     font-size: 14px;
     min-height: 40px;
+  }
+
+  /* Month and year selection for tablets - stack vertically */
+  .month-group {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+  }
+
+  .month-group .form-group {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .month-group .form-group select,
+  .month-group .form-group input {
+    width: 100%;
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .month-group .form-group label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+
+  .remove-month-btn {
+    margin-top: 8px;
+  }
+}
+
+/* Tablet/Medium screens (481px to 768px) - Stack vertically */
+@media (min-width: 481px) and (max-width: 768px) {
+  .month-group {
+    flex-direction: column !important;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px;
+  }
+
+  .month-group .form-group {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 0;
+    text-align: center;
+  }
+
+  .month-group .form-group select,
+  .month-group .form-group input {
+    width: 100% !important;
+    font-size: 14px;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  .month-group .form-group label {
+    font-size: 13px;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+
+  .months-container {
+    padding: 10px;
+  }
+
+  .remove-month-btn {
+    margin-top: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .add-month-btn {
+    padding: 8px 15px;
+    font-size: 13px;
   }
 }
 
@@ -268,7 +349,7 @@
 
   .option-select {
     gap: 10px;
-    padding: 8px;
+    padding: 8px 12px;
   }
 
   .whatsappToggle,
@@ -341,6 +422,7 @@
   padding: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  overflow-x: auto;
 }
 
 .month-group {
@@ -390,16 +472,23 @@
   padding-right: 32px;
 }
 
-/* Add responsive styles for smaller screens */
+/* Stack month/year vertically on small screens */
 @media (max-width: 480px) {
   .month-group {
     flex-direction: column;
     align-items: center;
+    gap: 10px;
+    padding: 10px;
+  }
+  
+  .month-group .form-group {
+    width: 100%;
   }
   
   .month-group .form-group select,
   .month-group .form-group input {
     width: 100%;
+    max-width: 280px;
   }
 }
 
