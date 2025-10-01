@@ -8,7 +8,7 @@ import Inventory from '../Inventory';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const HBDStore = () => {
+const HBStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
@@ -27,7 +27,7 @@ const HBDStore = () => {
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBDStore.jsx - getAccessibleServices called:', {
+    console.log('HBStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
@@ -63,7 +63,7 @@ const HBDStore = () => {
   const handleServiceNavigation = (service) => {
     if (service.route) {
       // Use new navigation pattern for HB Store services
-      console.log('HBDStore.jsx - Navigating to service:', {
+      console.log('HBStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -151,4 +151,4 @@ const HBDStore = () => {
   );
 };
 
-export default HBDStore;
+export default HBStore;

@@ -38,7 +38,7 @@ const Navbar = ({ onLogout }) => {
   const burgerRef = useRef(null);
   const userInfoRetryRef = useRef(null);
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, getUserFactories, getUserDepartments, getUserServices, hasPermission } = useAuth();
 
   // Format time in a readable format
   const formatTime = (seconds) => {
@@ -104,13 +104,28 @@ const Navbar = ({ onLogout }) => {
     // Get departments for this factory from the new RBAC system
     const userDepartments = getUserDepartments(factoryKey);
     
+    // Get factory short code for prefixing
+    const factoryShortCodes = {
+      'gulbarga': 'gb',
+      'kerur': 'kr',
+      'humnabad': 'hb',
+      'omkar': 'om',
+      'padmavati': 'pv',
+      'headoffice': 'ho'
+    };
+    const shortCode = factoryShortCodes[factoryKey] || '';
+    
     // Convert to the format expected by the navbar
     return userDepartments.map(deptKey => {
       // Remove factory prefix to get base department key
       const baseDeptKey = deptKey.replace(/^(gb|kr|hb|om|pv|ho)_/, '');
       
+      // Store both the base key and the prefixed key
+      const prefixedDeptKey = `${shortCode}_${baseDeptKey}`;
+      
       return {
         key: baseDeptKey,
+        prefixedKey: prefixedDeptKey,
         name: baseDeptKey.charAt(0).toUpperCase() + baseDeptKey.slice(1).replace(/([A-Z])/g, ' $1'),
         description: `${baseDeptKey.charAt(0).toUpperCase() + baseDeptKey.slice(1)} Department`,
         services: {}
@@ -122,18 +137,36 @@ const Navbar = ({ onLogout }) => {
   const getAccessibleServicesForDepartment = (factoryKey, departmentKey) => {
     if (!factoryKey || !departmentKey) return [];
     
+    // Get factory short code for prefixing
+    const factoryShortCodes = {
+      'gulbarga': 'gb',
+      'kerur': 'kr',
+      'humnabad': 'hb',
+      'omkar': 'om',
+      'padmavati': 'pv',
+      'headoffice': 'ho'
+    };
+    const shortCode = factoryShortCodes[factoryKey] || '';
+    
     // Get services for this factory-department combination from the new RBAC system
     const userServices = getUserServices(factoryKey, departmentKey);
     
+    // Build the prefixed department key for the route
+    const prefixedDeptKey = `${shortCode}_${departmentKey}`;
+    
     // Convert to the format expected by the navbar
-    return userServices.map(serviceKey => {
+    const services = userServices.map(serviceKey => {
+      const route = `/${factoryKey}/${prefixedDeptKey}/${serviceKey}`;
+      console.log(`Navbar: Generated route for ${serviceKey}:`, route);
       return {
         key: serviceKey,
         name: serviceKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         description: `${serviceKey.replace(/_/g, ' ')} service`,
-        route: `/${factoryKey}/${departmentKey}/${serviceKey}`
+        route: route
       };
     });
+    
+    return services;
   };
 
   // Check if user has specific permission using new RBAC system
@@ -149,6 +182,7 @@ const Navbar = ({ onLogout }) => {
   };
 
   const closeMenu = (path) => {
+    console.log('Navbar: Navigating to:', path);
     setMenuOpen(false);
     setOpenDropdowns({});
     navigate(path);
@@ -580,30 +614,56 @@ const Navbar = ({ onLogout }) => {
   if (!getUserIdentifier()) {
     return (
       <div className='navbar'>
-        <div className='burger-menu' ref={burgerRef}>
-          <FaBars onClick={toggleMenu} />
-          {menuOpen && (
-            <div className='menu' ref={menuRef}>
-              <div className="menu-item" onClick={() => closeMenu('/app')}>
-                <span className="menu-item-text">Home</span>
-              </div>
-              <div className="menu-divider"></div>
-              <div className="menu-item" onClick={() => closeMenu('/privacy-policy')}>
-                <span className="menu-item-text">Privacy Policy</span>
-              </div>
-              <div className="menu-item" onClick={() => closeMenu('/terms-and-conditions')}>
-                <span className="menu-item-text">Terms & Conditions</span>
-              </div>
+        <div className='navbar-left'>
+          <div className='burger-menu' ref={burgerRef}>
+            <div className='burger-icon' onClick={toggleMenu}>
+              <FaBars />
             </div>
-          )}
-          <Link to='/app'>
+            
+            {menuOpen && (
+              <div className='menu-overlay' onClick={() => setMenuOpen(false)}>
+                <div className='menu-panel' ref={menuRef} onClick={e => e.stopPropagation()}>
+                  <div className="menu-header">
+                    <img src={beLogo} className='menu-logo' alt='BE Logo' />
+                    <button className="menu-close" onClick={() => setMenuOpen(false)}>×</button>
+                  </div>
+
+                  <div className="menu-body">
+                    <div className="menu-item" onClick={() => closeMenu('/app')}>
+                      <span className="menu-item-icon">🏠</span>
+                      <span className="menu-item-text">Home</span>
+                    </div>
+                  </div>
+
+                  <div className="menu-footer">
+                    <div className="menu-footer-item" onClick={() => closeMenu('/privacy-policy')}>
+                      Privacy Policy
+                    </div>
+                    <div className="menu-footer-item" onClick={() => closeMenu('/terms-and-conditions')}>
+                      Terms & Conditions
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <Link to='/app' className="navbar-logo-link">
             <img src={beLogo} className='be-logo' alt='BE Logo' />
           </Link>
         </div>
         
         <div className="navbar-right">
-          <FaSignOutAlt className="logout-icon" onClick={handleLogout} title="Logout" />
-          <FaCog className="settings-icon" onClick={() => navigate('/settings')} title="Settings" />
+          <FaCog 
+            className="navbar-icon settings-icon" 
+            onClick={() => navigate('/settings')} 
+            title="Settings" 
+          />
+          <FaSignOutAlt 
+            className="navbar-icon logout-icon" 
+            onClick={handleLogout} 
+            title="Logout" 
+          />
         </div>
       </div>
     );
@@ -611,111 +671,122 @@ const Navbar = ({ onLogout }) => {
 
   return (
     <div className='navbar'>
-      <div className='burger-menu' ref={burgerRef}>
-        <FaBars onClick={toggleMenu} />
-        {menuOpen && (
-          <div className='menu' ref={menuRef}>
-            <div className="menu-item" onClick={() => closeMenu('/app')}>
-              <span className="menu-item-text">Home</span>
-            </div>
-            
-            {/* Factory Navigation with 2-layer dropdown */}
-            {getAccessibleFactoriesForUser().map(factory => {
-              const accessibleDepartments = getAccessibleDepartmentsForFactory(factory);
-              
-              // Only show factory if it has accessible departments
-              if (accessibleDepartments.length === 0) return null;
-              
-              return (
-                <div key={factory} className="dropdown-container">
-                  <div 
-                    className="dropdown-header" 
-                    onClick={() => toggleDropdown(`factory-${factory}`)}
-                  >
-                    <span className="dropdown-text">
-                      {FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1)}
-                    </span>
-                    <span className={`dropdown-arrow ${openDropdowns[`factory-${factory}`] ? 'open' : ''}`}>
-                      ▼
-                    </span>
+      <div className='navbar-left'>
+        <div className='burger-menu' ref={burgerRef}>
+          <div className='burger-icon' onClick={toggleMenu}>
+            <FaBars />
+          </div>
+          
+          {menuOpen && (
+            <div className='menu-overlay' onClick={() => setMenuOpen(false)}>
+              <div className='menu-panel' ref={menuRef} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">
+                  <img src={beLogo} className='menu-logo' alt='BE Logo' />
+                  <button className="menu-close" onClick={() => setMenuOpen(false)}>×</button>
+                </div>
+
+                <div className="menu-body">
+                  {/* Home */}
+                  <div className="menu-item" onClick={() => closeMenu('/app')}>
+                    <span className="menu-item-text">Home</span>
                   </div>
                   
-                  {openDropdowns[`factory-${factory}`] && (
-                    <div className="dropdown-content">
-                      {/* Department Navigation */}
-                      {accessibleDepartments.map(dept => {
-                        const accessibleServices = getAccessibleServicesForDepartment(factory, dept.key);
+                  {/* Factory Navigation */}
+                  {getAccessibleFactoriesForUser().map(factory => {
+                    const accessibleDepartments = getAccessibleDepartmentsForFactory(factory);
+                    if (accessibleDepartments.length === 0) return null;
+                    
+                    return (
+                      <div key={factory} className="menu-section">
+                        <div 
+                          className="menu-section-header" 
+                          onClick={() => toggleDropdown(`factory-${factory}`)}
+                        >
+                          <span className="menu-section-title">
+                            {FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1)}
+                          </span>
+                          <span className={`menu-section-arrow ${openDropdowns[`factory-${factory}`] ? 'open' : ''}`}>
+                            ›
+                          </span>
+                        </div>
                         
-                        // Only show department if it has accessible services
-                        if (accessibleServices.length === 0) return null;
-                        
-                        return (
-                          <div key={dept.key} className="sub-dropdown-container">
-                            <div 
-                              className="sub-dropdown-header"
-                              onClick={() => toggleDropdown(`dept-${factory}-${dept.key}`)}
-                            >
-                              <span className="sub-dropdown-text">{dept.name}</span>
-                              <span className={`sub-dropdown-arrow ${openDropdowns[`dept-${factory}-${dept.key}`] ? 'open' : ''}`}>
-                                ▼
-                              </span>
-                            </div>
-                            
-                            {openDropdowns[`dept-${factory}-${dept.key}`] && (
-                              <div className="sub-dropdown-content">
-                                {/* Service Navigation */}
-                                {accessibleServices.map(service => (
+                        {openDropdowns[`factory-${factory}`] && (
+                          <div className="menu-section-content">
+                            {accessibleDepartments.map(dept => {
+                              const accessibleServices = getAccessibleServicesForDepartment(factory, dept.key);
+                              if (accessibleServices.length === 0) return null;
+                              
+                              return (
+                                <div key={dept.key} className="menu-subsection">
                                   <div 
-                                    key={service.key} 
-                                    className="service-menu-item"
-                                    onClick={() => closeMenu(service.route)}
-                                    title={service.description}
+                                    className="menu-subsection-header"
+                                    onClick={() => toggleDropdown(`dept-${factory}-${dept.key}`)}
                                   >
-                                    <span className="service-item-text">{service.name}</span>
+                                    <span className="menu-subsection-title">{dept.name}</span>
+                                    <span className={`menu-subsection-arrow ${openDropdowns[`dept-${factory}-${dept.key}`] ? 'open' : ''}`}>
+                                      ›
+                                    </span>
                                   </div>
-                                ))}
-                              </div>
-                            )}
+                                  
+                                  {openDropdowns[`dept-${factory}-${dept.key}`] && (
+                                    <div className="menu-subsection-content">
+                                      {accessibleServices.map(service => (
+                                        <div 
+                                          key={service.key} 
+                                          className="menu-service-item"
+                                          onClick={() => closeMenu(service.route)}
+                                          title={service.description}
+                                        >
+                                          {service.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Reports Department */}
+                  {hasUserPermission('reports') && (
+                    <div className="menu-item" onClick={() => closeMenu('/reports-department')}>
+                      <span className="menu-item-text">Reports</span>
+                    </div>
+                  )}
+                  
+                  {/* User Management */}
+                  {user?.role === 'admin' && (
+                    <div className="menu-item" onClick={() => closeMenu('/dashboard')}>
+                      <span className="menu-item-text">User Management</span>
                     </div>
                   )}
                 </div>
-              );
-            })}
-            
-            {/* Reports Department */}
-            {hasUserPermission('reports') && (
-              <div className="menu-item" onClick={() => closeMenu('/reports-department')}>
-                <span className="menu-item-text">Reports Department</span>
+
+                <div className="menu-footer">
+                  <div className="menu-footer-item" onClick={() => closeMenu('/privacy-policy')}>
+                    Privacy Policy
+                  </div>
+                  <div className="menu-footer-item" onClick={() => closeMenu('/terms-and-conditions')}>
+                    Terms & Conditions
+                  </div>
+                </div>
               </div>
-            )}
-            
-            {/* User Management */}
-            {user?.role === 'admin' && (
-              <div className="menu-item" onClick={() => closeMenu('/dashboard')}>
-                <span className="menu-item-text">User Management</span>
-              </div>
-            )}
-            
-            <div className="menu-divider"></div>
-            <div className="menu-item" onClick={() => closeMenu('/privacy-policy')}>
-              <span className="menu-item-text">Privacy Policy</span>
             </div>
-            <div className="menu-item" onClick={() => closeMenu('/terms-and-conditions')}>
-              <span className="menu-item-text">Terms & Conditions</span>
-            </div>
-          </div>
-        )}
-        <Link to='/app'>
+          )}
+        </div>
+        
+        <Link to='/app' className="navbar-logo-link">
           <img src={beLogo} className='be-logo' alt='BE Logo' />
         </Link>
       </div>
       
       <div className="navbar-right">
         <FaWhatsapp 
-          className="whatsapp-icon" 
+          className="navbar-icon whatsapp-icon" 
           onClick={startWhatsappLogin} 
           title={isAuthenticated ? 
             (userInfo && userInfo.name && userInfo.name !== 'Loading...' && userInfo.name !== 'WhatsApp User' ? 
@@ -723,8 +794,16 @@ const Navbar = ({ onLogout }) => {
               "WhatsApp: Connected (Loading user info...)") : 
             `Check WhatsApp Status for ${getUserIdentifier()}`} 
         />
-        <FaSignOutAlt className="logout-icon" onClick={handleLogout} title="Logout" />
-        <FaCog className="settings-icon" onClick={() => navigate('/settings')} title="Settings" />
+        <FaCog 
+          className="navbar-icon settings-icon" 
+          onClick={() => navigate('/settings')} 
+          title="Settings" 
+        />
+        <FaSignOutAlt 
+          className="navbar-icon logout-icon" 
+          onClick={handleLogout} 
+          title="Logout" 
+        />
       </div>
       
       {/* WhatsApp QR Modal */}

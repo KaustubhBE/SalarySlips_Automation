@@ -45,7 +45,7 @@ import GBProcessing from './GB_Departments/GB_Services/GB_Processing';
 import PVProcessing from './PV_Departments/PV_Services/PV_Processing';
 import OMProcessing from './OM_Departments/OM_Services/OM_Processing';
 import HOProcessing from './HO_Departments/HO_Services/HO_Processing';
-import HBDProcessing from './HB_Departments/HB_Services/HB_Processing';
+import HBProcessing from './HB_Departments/HB_Services/HB_Processing';
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import Inventory from './Inventory';
@@ -75,8 +75,8 @@ import GB_GeneralReports from './GB_Departments/GB_Services/GB_GeneralReports';
 import HB_GeneralReports from './HB_Departments/HB_Services/HB_GeneralReports';
 import OMStore from './OM_Departments/OMStore';
 import OMHumanResource from './OM_Departments/OMHumanResource';
-import HBDStore from './HB_Departments/HBStore';
-import HBDHumanResource from './HB_Departments/HBHumanResource';
+import HBStore from './HB_Departments/HBStore';
+import HBHumanResource from './HB_Departments/HBHumanResource';
 import PVStore from './PV_Departments/PVStore';
 import PVHumanResource from './PV_Departments/PVHumanResource';
 import HOAccounts from './HO_Departments/HOAccounts';
@@ -106,8 +106,8 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
       'operations': OMOperations
     },
     'humnabad': {
-      'store': HBDStore,
-      'humanresource': HBDHumanResource,
+      'store': HBStore,
+      'humanresource': HBHumanResource,
       'operations': HBOperations
     },
     'padmavati': {
@@ -133,7 +133,7 @@ const getProcessingComponent = (factoryKey, mode) => {
     'gulbarga': GBProcessing,
     'kerur': KRProcessing,
     'omkar': OMProcessing,
-    'humnabad': HBDProcessing,
+    'humnabad': HBProcessing,
     'padmavati': PVProcessing,
     'headoffice': HOProcessing
   };
@@ -728,14 +728,14 @@ function App() {
           />
         } />
 
-        <Route path="/:factoryKey/:departmentKey/pm_single_processing/*" element={
+        <Route path="/:factoryKey/:departmentKey/pv_single_processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="single_processing"
             component={<ProcessingWrapper mode="single" />}
           />
         } />
 
-        <Route path="/:factoryKey/:departmentKey/pm_batch_processing/*" element={
+        <Route path="/:factoryKey/:departmentKey/pv_batch_processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="batch_processing"
             component={<ProcessingWrapper mode="batch" />}
@@ -817,13 +817,13 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/pm_single_processing/*" element={
+        <Route path="/pv_single_processing/*" element={
           isAuthenticated ? 
             <PVHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/pm_batch_processing/*" element={
+        <Route path="/pv_batch_processing/*" element={
           isAuthenticated ? 
             <PVHumanResource /> : 
             <Navigate to="/login" replace />
@@ -855,13 +855,13 @@ function App() {
 
         <Route path="/hb_single_processing/*" element={
           isAuthenticated ? 
-            <HBDHumanResource /> : 
+            <HBHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
         <Route path="/hb_batch_processing/*" element={
           isAuthenticated ? 
-            <HBDHumanResource /> : 
+            <HBHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
@@ -1065,13 +1065,13 @@ function App() {
 
         <Route path="/hb_humanresource/*" element={
           isAuthenticated ? 
-            <HBDHumanResource /> : 
+            <HBHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
         <Route path="/hb_store/*" element={
           isAuthenticated ? 
-            <HBDStore /> : 
+            <HBStore /> : 
             <Navigate to="/login" replace />
         } />
 

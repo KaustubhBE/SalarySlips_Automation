@@ -8,7 +8,7 @@ import Inventory from '../Inventory';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 
-const HBDHumanResource = () => {
+const HBHumanResource = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
@@ -25,7 +25,7 @@ const HBDHumanResource = () => {
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBDHumanResource.jsx - getAccessibleServices called:', {
+    console.log('HBHumanResource.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
@@ -61,7 +61,7 @@ const HBDHumanResource = () => {
   const handleServiceNavigation = (service) => {
     if (service.route) {
       // Use new navigation pattern for HB HR services
-      console.log('HBDHumanResource.jsx - Navigating to service:', {
+      console.log('HBHumanResource.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -160,4 +160,4 @@ const HBDHumanResource = () => {
   );
 };
 
-export default HBDHumanResource;
+export default HBHumanResource;

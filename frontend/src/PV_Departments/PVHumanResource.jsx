@@ -16,9 +16,9 @@ const PVHumanResource = () => {
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
   // Static services for PV Human Resource department (only existing services)
-  const pmHRServices = [
-    { key: 'pm_single_processing', name: 'Single Processing', route: '/padmavati/pv_humanresource/pm_single_processing' },
-    { key: 'pm_batch_processing', name: 'Batch Processing', route: '/padmavati/pv_humanresource/pm_batch_processing' }
+  const pvHRServices = [
+    { key: 'pv_single_processing', name: 'Single Processing', route: '/padmavati/pv_humanresource/pv_single_processing' },
+    { key: 'pv_batch_processing', name: 'Batch Processing', route: '/padmavati/pv_humanresource/pv_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
@@ -32,11 +32,11 @@ const PVHumanResource = () => {
     
     // Admin has access to everything
     if (isAdmin) {
-      return pmHRServices;
+      return pvHRServices;
     }
     
     // For regular users, check which services they can access
-    return pmHRServices.filter(service => 
+    return pvHRServices.filter(service => 
       canAccessService(service.key, 'padmavati', 'humanresource')
     );
   };
@@ -104,14 +104,14 @@ const PVHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="pm_single_processing/*" element={
-        isAuthenticated && hasUserPermission('pm_single_processing') ? 
+      <Route path="pv_single_processing/*" element={
+        isAuthenticated && hasUserPermission('pv_single_processing') ? 
           <Processing mode="single" /> : 
           <Navigate to="/padmavati" replace />
       } />
 
-      <Route path="pm_batch_processing/*" element={
-        isAuthenticated && hasUserPermission('pm_batch_processing') ? 
+      <Route path="pv_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('pv_batch_processing') ? 
           <Processing mode="batch" /> : 
           <Navigate to="/padmavati" replace />
       } />

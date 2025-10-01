@@ -351,7 +351,7 @@ def get_factory_initials(factory_name):
         'Gulbarga': 'GB',
         'Humnabad': 'HB',
         'Omkar': 'OM',
-        'Padmavati': 'PM',
+        'Padmavati': 'PV',
         'Head Office': 'HO'
     }
     return factory_mapping.get(factory_name, factory_name[:2].upper())

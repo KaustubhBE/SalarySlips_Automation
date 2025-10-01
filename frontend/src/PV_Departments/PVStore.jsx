@@ -12,7 +12,7 @@ const PVStore = () => {
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
   // Static services for PV Store department (only existing services)
-  const pmStoreServices = [
+  const pvStoreServices = [
     { key: 'pv_place_order', name: 'Place Order', route: '/padmavati/pv_store/pv_place_order' },
     { key: 'pv_material_list', name: 'Add Material', route: '/padmavati/pv_store/pv_material_list' },
     { key: 'pv_material_inward', name: 'Material Inward', route: '/padmavati/pv_store/pv_material_inward' },
@@ -30,11 +30,11 @@ const PVStore = () => {
     
     // Admin has access to everything
     if (isAdmin) {
-      return pmStoreServices;
+      return pvStoreServices;
     }
     
     // For regular users, check which services they can access
-    return pmStoreServices.filter(service => 
+    return pvStoreServices.filter(service => 
       canAccessService(service.key, 'padmavati', 'store')
     );
   };
