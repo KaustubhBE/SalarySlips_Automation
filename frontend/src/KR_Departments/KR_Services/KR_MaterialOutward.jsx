@@ -703,9 +703,22 @@ const KR_MaterialOutward = () => {
                               disabled={!editFormData.category}
                             >
                               <option value="">Select Particulars</option>
-                              {editFormData.category && materialData[editFormData.category]?.particulars?.map(particular => (
-                                <option key={particular} value={particular}>{particular}</option>
-                              ))}
+                              {editFormData.category && (() => {
+                                const categoryData = materialData[editFormData.category];
+                                if (!categoryData) return null;
+                                
+                                // If subCategory is selected, get particulars from subCategory structure
+                                if (editFormData.subCategory && categoryData.materialNames && typeof categoryData.materialNames === 'object' && categoryData.materialNames[editFormData.subCategory]) {
+                                  return Object.keys(categoryData.materialNames[editFormData.subCategory]).map(particular => (
+                                    <option key={particular} value={particular}>{particular}</option>
+                                  ));
+                                }
+                                
+                                // Otherwise, get particulars from category level
+                                return categoryData.particulars?.map(particular => (
+                                  <option key={particular} value={particular}>{particular}</option>
+                                ));
+                              })()}
                             </select>
                           ) : (
                             item.particulars || '-'
@@ -932,9 +945,22 @@ const KR_MaterialOutward = () => {
                     disabled={!formData.category || dataLoading}
                   >
                     <option value="">Select Particulars</option>
-                    {formData.category && materialData[formData.category]?.particulars?.map(particular => (
-                      <option key={particular} value={particular}>{particular}</option>
-                    ))}
+                    {formData.category && (() => {
+                      const categoryData = materialData[formData.category];
+                      if (!categoryData) return null;
+                      
+                      // If subCategory is selected, get particulars from subCategory structure
+                      if (formData.subCategory && categoryData.materialNames && typeof categoryData.materialNames === 'object' && categoryData.materialNames[formData.subCategory]) {
+                        return Object.keys(categoryData.materialNames[formData.subCategory]).map(particular => (
+                          <option key={particular} value={particular}>{particular}</option>
+                        ));
+                      }
+                      
+                      // Otherwise, get particulars from category level
+                      return categoryData.particulars?.map(particular => (
+                        <option key={particular} value={particular}>{particular}</option>
+                      ));
+                    })()}
                   </select>
                 </div>
 
