@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../PlaceOrder.css'
+import LoadingSpinner from '../../LoadingSpinner'
 
 // Constants
 const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
@@ -219,6 +220,19 @@ const KR_PlaceOrder = () => {
   const [authorityNames, setAuthorityNames] = useState([])
   const [authorityLoading, setAuthorityLoading] = useState(true)
   
+  // Recipients functionality
+  const [recipients, setRecipients] = useState([])
+  const [recipientsLoading, setRecipientsLoading] = useState(true)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [selectedRecipients, setSelectedRecipients] = useState([])
+  const [notificationMethod, setNotificationMethod] = useState('both') // 'email', 'whatsapp', 'both'
+  const [sendingNotification, setSendingNotification] = useState(false)
+  const [lastSubmittedOrderId, setLastSubmittedOrderId] = useState(null)
+  const [lastSubmittedOrderData, setLastSubmittedOrderData] = useState(null)
+  const [enableEmailNotification, setEnableEmailNotification] = useState(true)
+  const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
   const [editFormData, setEditFormData] = useState({})
@@ -264,6 +278,39 @@ const KR_PlaceOrder = () => {
     }
   }
 
+  // Fetch recipients list data from Google Sheets
+  const fetchRecipientsList = async () => {
+    try {
+      setRecipientsLoading(true)
+      // Find the Kerur plant data to get the sheet ID
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        return
+      }
+      
+      const response = await axios.get(getApiUrl('get_recipients_list'), {
+        params: { 
+          factory: 'KR',
+          sheet_name: 'Recipents List',
+          sheet_id: sheetId
+        }
+      })
+      
+      if (response.data.success) {
+        setRecipients(response.data.data)
+      } else {
+        console.error('Failed to load recipients list:', response.data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching recipients list:', error)
+    } finally {
+      setRecipientsLoading(false)
+    }
+  }
+
   // Order ID Management
   const handleGenerateOrderId = async () => {
     if (orderIdGenerated) {
@@ -304,6 +351,7 @@ const KR_PlaceOrder = () => {
     // Fetch material data first
     fetchMaterialData()
     fetchAuthorityList()
+    fetchRecipientsList()
     
     // Update current date/time
     const updateDateTime = () => {
@@ -603,6 +651,90 @@ const KR_PlaceOrder = () => {
     setEditFormData({})
   }
 
+  // Handle recipient selection
+  const handleRecipientToggle = (recipient) => {
+    setSelectedRecipients(prev => {
+      const isSelected = prev.some(r => r['Email ID - To'] === recipient['Email ID - To'])
+      if (isSelected) {
+        return prev.filter(r => r['Email ID - To'] !== recipient['Email ID - To'])
+      } else {
+        return [...prev, recipient]
+      }
+    })
+  }
+
+  // Select/Deselect all recipients
+  const handleSelectAllRecipients = () => {
+    if (selectedRecipients.length === recipients.length) {
+      setSelectedRecipients([])
+    } else {
+      setSelectedRecipients([...recipients])
+    }
+  }
+
+  // Send notifications
+  const handleSendNotifications = async () => {
+    if (selectedRecipients.length === 0) {
+      alert('Please select at least one recipient')
+      return
+    }
+
+    if (!lastSubmittedOrderId || !lastSubmittedOrderData) {
+      alert('No order data found. Please try again.')
+      return
+    }
+
+    try {
+      setSendingNotification(true)
+      
+      // Get sheet ID from PLANT_DATA
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      const notificationData = {
+        orderId: lastSubmittedOrderId,
+        orderData: lastSubmittedOrderData,
+        recipients: selectedRecipients,
+        method: notificationMethod,
+        factory: 'KR',
+        autoSend: false, // Manual send with selected recipients
+        sheetId: sheetId, // Send sheet ID to backend
+        sheetName: 'Recipents List' // Send sheet name to backend
+      }
+
+      const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
+
+      if (response.data.success) {
+        alert('Notifications sent successfully!')
+        setShowNotificationModal(false)
+        setSelectedRecipients([])
+        setLastSubmittedOrderId(null)
+        setLastSubmittedOrderData(null)
+        
+        // Reset order ID for next order
+        setOrderIdGenerated(false)
+        setOrderId('')
+      } else {
+        alert(`Failed to send notifications: ${response.data.message}`)
+      }
+    } catch (error) {
+      console.error('Error sending notifications:', error)
+      alert(`Error sending notifications: ${error.response?.data?.message || error.message}`)
+    } finally {
+      setSendingNotification(false)
+    }
+  }
+
+  // Close notification modal
+  const handleCloseNotificationModal = () => {
+    setShowNotificationModal(false)
+    setSelectedRecipients([])
+    
+    // Reset order ID for next order
+    setOrderIdGenerated(false)
+    setOrderId('')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -631,6 +763,8 @@ const KR_PlaceOrder = () => {
     }
     
     try {
+      setIsSubmitting(true)
+      
       // Submit order to backend using existing order ID
       const orderData = {
         orderId,
@@ -675,7 +809,16 @@ const KR_PlaceOrder = () => {
         // Clean up current session
         cleanupSession()
         
-        // Reset form after successful submission (keep same order ID)
+        // Prepare order data for notification
+        const notificationOrderData = {
+          orderItems,
+          givenBy: formData.givenBy,
+          description: formData.description,
+          importance: formData.importance,
+          dateTime: formatDateTime(new Date())
+        }
+        
+        // Reset form after successful submission
         setFormData({
           category: '',
           subCategory: '',
@@ -689,13 +832,90 @@ const KR_PlaceOrder = () => {
         })
         setOrderItems([])
         
-        alert(`Order ${orderId} submitted successfully!`)
+        // Determine notification method
+        const bothEnabled = enableEmailNotification && enableWhatsappNotification
+        const emailOnly = enableEmailNotification && !enableWhatsappNotification
+        const whatsappOnly = !enableEmailNotification && enableWhatsappNotification
+        
+        // If both notifications are enabled, auto-send to all recipients
+        if (bothEnabled) {
+          try {
+            console.log('Auto-sending notifications to all recipients from Google Sheets...')
+            
+            // Get sheet ID and sheet name from PLANT_DATA
+            const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+            const sheetId = kerurPlant?.material_sheet_id
+            
+            if (!sheetId) {
+              alert('❌ Error: No sheet ID found for Kerur plant configuration')
+              // Reset order ID for next order
+              setOrderIdGenerated(false)
+              setOrderId('')
+              return
+            }
+            
+            // Send notifications automatically - backend will fetch all recipients from Google Sheets
+            const autoNotificationData = {
+              orderId,
+              orderData: notificationOrderData,
+              recipients: [], // Empty array - backend will fetch from Google Sheets
+              method: 'both',
+              factory: 'KR',
+              autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
+              sheetId: sheetId, // Send sheet ID to backend
+              sheetName: 'Recipents List' // Send sheet name to backend
+            }
+            
+            const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
+            
+            if (notifResponse.data.success) {
+              const stats = notifResponse.data.delivery_stats
+              alert(`✅ Order ${orderId} Submitted Successfully!\n\n📊 Notification Summary:\n✅ Sent: ${stats.successful_deliveries}/${stats.total_recipients} recipients\n❌ Failed: ${stats.failed_deliveries}\n\nThe order has been placed and all recipients have been notified.`)
+            } else {
+              alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, notifications failed:\n${notifResponse.data.message}`)
+            }
+            
+            // Reset order ID for next order
+            setOrderIdGenerated(false)
+            setOrderId('')
+            
+          } catch (notifError) {
+            console.error('Error sending auto-notifications:', notifError)
+            alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, there was an error sending notifications:\n${notifError.response?.data?.message || notifError.message}`)
+            
+            // Reset order ID for next order
+            setOrderIdGenerated(false)
+            setOrderId('')
+          }
+        } 
+        // If only one notification method is enabled, show modal for recipient selection
+        else if (emailOnly || whatsappOnly) {
+          // Save order data for notification modal
+          setLastSubmittedOrderId(orderId)
+          setLastSubmittedOrderData(notificationOrderData)
+          
+          // Set notification method based on toggles
+          setNotificationMethod(emailOnly ? 'email' : 'whatsapp')
+          
+          alert(`Order ${orderId} submitted successfully!`)
+          setShowNotificationModal(true)
+        } 
+        // If notifications disabled, just reset order ID
+        else {
+          alert(`Order ${orderId} submitted successfully!`)
+          
+          // Reset order ID for next order
+          setOrderIdGenerated(false)
+          setOrderId('')
+        }
       } else {
         alert(`Failed to submit order: ${response.data.message}`)
       }
     } catch (error) {
       console.error('Error submitting order:', error)
       alert(`Error submitting order: ${error.response?.data?.message || error.message}`)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -735,6 +955,9 @@ const KR_PlaceOrder = () => {
 
   return (
     <div className="place_order-container">
+      {/* Loading Spinner */}
+      {isSubmitting && <LoadingSpinner />}
+      
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 
@@ -1227,6 +1450,42 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
+        {/* Notification Settings */}
+        <div className="notification-section">
+          <h2>Notification Methods</h2>
+          <div className="toggle-container">
+            <div className="toggle-item">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={enableEmailNotification}
+                  onChange={(e) => setEnableEmailNotification(e.target.checked)}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+              <span className="toggle-label">Send via Email</span>
+            </div>
+
+            <div className="toggle-item">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={enableWhatsappNotification}
+                  onChange={(e) => setEnableWhatsappNotification(e.target.checked)}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+              <span className="toggle-label">Send via WhatsApp</span>
+            </div>
+          </div>
+          {!enableEmailNotification && !enableWhatsappNotification && (
+            <div className="notification-warning">
+              <span className="warning-icon">⚠️</span>
+              No notification method selected. Order will be placed without sending notifications.
+            </div>
+          )}
+        </div>
+
         {/* Description - Full Width */}
         <div className="form-row">
           <div className="form-group full-width">
@@ -1274,6 +1533,137 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
       </form>
+
+      {/* Notification Modal */}
+      {showNotificationModal && (
+        <div className="notification-modal-overlay">
+          <div className="notification-modal">
+            <div className="notification-modal-header">
+              <h3>Send Order Notification</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCloseNotificationModal}
+                title="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="notification-modal-body">
+              <div className="order-summary">
+                <h4>Order Summary</h4>
+                <div className="summary-item">
+                  <strong>Order ID:</strong> {lastSubmittedOrderId}
+                </div>
+                <div className="summary-item">
+                  <strong>Date & Time:</strong> {lastSubmittedOrderData?.dateTime}
+                </div>
+                <div className="summary-item">
+                  <strong>Given By:</strong> {lastSubmittedOrderData?.givenBy}
+                </div>
+                <div className="summary-item">
+                  <strong>Importance:</strong> {lastSubmittedOrderData?.importance}
+                </div>
+                <div className="summary-item">
+                  <strong>Items Count:</strong> {lastSubmittedOrderData?.orderItems?.length || 0}
+                </div>
+              </div>
+
+              <div className="notification-method-section">
+                <h4>Notification Method</h4>
+                <div className="notification-method-display">
+                  {notificationMethod === 'both' && (
+                    <div className="method-badge both">
+                      <span>📧</span> Email & <span>📱</span> WhatsApp
+                    </div>
+                  )}
+                  {notificationMethod === 'email' && (
+                    <div className="method-badge email">
+                      <span>📧</span> Email Only
+                    </div>
+                  )}
+                  {notificationMethod === 'whatsapp' && (
+                    <div className="method-badge whatsapp">
+                      <span>📱</span> WhatsApp Only
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="recipients-section">
+                <div className="recipients-header">
+                  <h4>Select Recipients</h4>
+                  <button 
+                    className="select-all-btn"
+                    onClick={handleSelectAllRecipients}
+                    type="button"
+                  >
+                    {selectedRecipients.length === recipients.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+
+                {recipientsLoading ? (
+                  <div className="recipients-loading">
+                    <p>Loading recipients...</p>
+                  </div>
+                ) : recipients.length === 0 ? (
+                  <div className="recipients-empty">
+                    <p>No recipients found</p>
+                  </div>
+                ) : (
+                  <div className="recipients-list">
+                    {recipients.map((recipient, index) => (
+                      <label key={index} className="recipient-item">
+                        <input
+                          type="checkbox"
+                          checked={selectedRecipients.some(r => r['Email ID - To'] === recipient['Email ID - To'])}
+                          onChange={() => handleRecipientToggle(recipient)}
+                        />
+                        <div className="recipient-info">
+                          <div className="recipient-name">{recipient.Name}</div>
+                          {recipient['Email ID - To'] && (
+                            <div className="recipient-detail">
+                              <span className="recipient-icon">📧</span>
+                              {recipient['Email ID - To']}
+                            </div>
+                          )}
+                          {recipient['Contact No.'] && (
+                            <div className="recipient-detail">
+                              <span className="recipient-icon">📱</span>
+                              {recipient['Contact No.']}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="selected-count">
+                Selected: {selectedRecipients.length} of {recipients.length} recipients
+              </div>
+            </div>
+
+            <div className="notification-modal-footer">
+              <button
+                className="send-notification-btn"
+                onClick={handleSendNotifications}
+                disabled={sendingNotification || selectedRecipients.length === 0}
+              >
+                {sendingNotification ? 'Sending...' : 'Send Notifications'}
+              </button>
+              <button
+                className="skip-notification-btn"
+                onClick={handleCloseNotificationModal}
+                disabled={sendingNotification}
+              >
+                Skip for Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

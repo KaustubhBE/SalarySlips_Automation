@@ -158,12 +158,18 @@ class WhatsAppSessionManager {
         const timeSinceCreation = now - session.createdAt;
         
         // Use longer timeout for authenticated sessions
-        const isAuthenticated = session.authenticatedAt && (now - session.authenticatedAt) < 24 * 60 * 60 * 1000; // 24 hours
-        const effectiveTimeout = isAuthenticated ? 2 * 60 * 60 * 1000 : this.sessionTimeout; // 2 hours for authenticated, 30 min for others
+        // For authenticated sessions, check against authentication time (24 hours)
+        // For non-authenticated sessions, check against last access time (30 min)
+        if (session.authenticatedAt) {
+            const timeSinceAuthentication = now - session.authenticatedAt;
+            const authenticationTimeout = 24 * 60 * 60 * 1000; // 24 hours
+            const isNotTooRecent = timeSinceCreation > 5000; // 5 seconds minimum age
+            
+            return timeSinceAuthentication < authenticationTimeout && isNotTooRecent;
+        }
         
-        // Session is valid if:
-        // 1. It's been accessed within the timeout period
-        // 2. It hasn't been created too recently (prevent rapid recreation)
+        // For non-authenticated sessions, use the default timeout based on last access
+        const effectiveTimeout = this.sessionTimeout; // 30 min for non-authenticated
         const isWithinAccessTimeout = timeSinceLastAccess < effectiveTimeout;
         const isNotTooRecent = timeSinceCreation > 5000; // 5 seconds minimum age
         

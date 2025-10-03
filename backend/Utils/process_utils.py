@@ -234,37 +234,62 @@ def format_table_professional(table, is_header=False, logger=None):
         
         # Format each cell
         for i, row in enumerate(table.rows):
-            for j, cell in enumerate(row.cells):
-                # Set vertical alignment to center
-                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                
-                # Set paragraph alignment
-                for paragraph in cell.paragraphs:
-                    if i == 0:  # Header row
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    else:  # Data rows
-                        if j == 0:  # First column
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                        else:
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    # Format text
-                    for run in paragraph.runs:
-                        if i == 0:  # Header row
-                            run.bold = True
-                            run.font.size = Pt(11)
-                        else:
-                            run.font.size = Pt(10)
-                
-                # Set background colors
-                if i == 0:  # Header row
-                    set_cell_background_color(cell, "f9cb9c")
-                else:
-                    # Alternate row colors
-                    if i % 2 == 0:
-                        set_cell_background_color(cell, "FFFFFF")
-                    else:
-                        set_cell_background_color(cell, "e8f0fe")
+            try:
+                for j, cell in enumerate(row.cells):
+                    try:
+                        # Set vertical alignment to center
+                        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                        
+                        # Set paragraph alignment
+                        for paragraph in cell.paragraphs:
+                            try:
+                                if i == 0:  # Header row
+                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                else:  # Data rows
+                                    if j == 0:  # First column
+                                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                                    else:
+                                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                
+                                # Format text
+                                for run in paragraph.runs:
+                                    try:
+                                        if i == 0:  # Header row
+                                            run.bold = True
+                                            run.font.size = Pt(11)
+                                        else:
+                                            run.font.size = Pt(10)
+                                    except Exception as e:
+                                        if logger:
+                                            logger.warning(f"Error formatting run in cell [{i},{j}]: {e}")
+                                        continue
+                            except Exception as e:
+                                if logger:
+                                    logger.warning(f"Error formatting paragraph in cell [{i},{j}]: {e}")
+                                continue
+                        
+                        # Set background colors
+                        try:
+                            if i == 0:  # Header row
+                                set_cell_background_color(cell, "f9cb9c")
+                            else:
+                                # Alternate row colors
+                                if i % 2 == 0:
+                                    set_cell_background_color(cell, "FFFFFF")
+                                else:
+                                    set_cell_background_color(cell, "e8f0fe")
+                        except Exception as e:
+                            if logger:
+                                logger.warning(f"Error setting background color for cell [{i},{j}]: {e}")
+                            continue
+                    except Exception as e:
+                        if logger:
+                            logger.warning(f"Error processing cell [{i},{j}]: {e}")
+                        continue
+            except Exception as e:
+                if logger:
+                    logger.warning(f"Error processing row {i}: {e}")
+                continue
         
     except Exception as e:
         if logger:
@@ -1619,7 +1644,16 @@ def get_sheet_name_by_id(plant_id, plant_data):
     """Get sheet name by plant ID from plant data"""
     for plant in plant_data:
         if plant.get('material_sheet_id') == plant_id:
-            return plant.get('sheet_name', 'Material List')
+            sheet_name = plant.get('sheet_name', 'Material List')
+            
+            # Handle both old string format and new object format for backward compatibility
+            if isinstance(sheet_name, str):
+                return sheet_name
+            elif isinstance(sheet_name, dict):
+                # Always return 'Material List' for MaterialList sheet
+                return sheet_name.get('MaterialList', 'Material List')
+            
+            return 'Material List'
     return 'Material List'
 
 def get_plant_material_data_from_sheets(plant_id, plant_data):
@@ -2650,3 +2684,478 @@ def generate_log_report_pdf(delivery_stats, output_dir, logger):
     except Exception as e:
         logger.error(f"Error generating log report PDF: {e}")
         return None
+
+def process_order_notification(order_id, order_data, recipients, method, factory, template_path, output_dir, user_email, logger, send_email_smtp, send_whatsapp_message):
+    """
+    Process order notification by creating a formatted document and sending via email/WhatsApp
+    """
+    try:
+        from docx import Document
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+        import os
+        
+        # Initialize result tracking
+        result = {
+            "success": False,
+            "message": "",
+            "delivery_stats": {
+                "total_recipients": len(recipients),
+                "successful_deliveries": 0,
+                "failed_deliveries": 0,
+                "failed_contacts": []
+            },
+            "errors": [],
+            "warnings": []
+        }
+        
+        logger.info(f"Processing order notification for Order ID: {order_id}")
+        logger.info(f"Recipients count: {len(recipients)}, Method: {method}, Factory: {factory}")
+        logger.info(f"Order data keys: {list(order_data.keys()) if order_data else 'None'}")
+        logger.info(f"Order items count: {len(order_data.get('orderItems', [])) if order_data else 0}")
+        
+        # Create document
+        doc = None
+        try:
+            if template_path and os.path.exists(template_path):
+                logger.info(f"Attempting to use template: {template_path}")
+                doc = Document(template_path)
+                logger.info(f"Template loaded successfully: {template_path}")
+            else:
+                logger.info("Template not found, creating new document")
+                doc = Document()
+        except Exception as e:
+            logger.warning(f"Error loading template, falling back to new document: {e}")
+            try:
+                doc = Document()
+                logger.info("Fallback: Created new document successfully")
+            except Exception as e2:
+                logger.error(f"Error creating new document: {e2}")
+                raise
+        
+        if doc is None:
+            raise Exception("Failed to create document")
+        
+        # Add content to document (don't clear template content)
+        logger.info("Adding content to document...")
+        
+        # Debug document structure
+        try:
+            logger.info(f"Document has {len(doc.paragraphs)} paragraphs")
+            logger.info(f"Document has {len(doc.tables)} tables")
+            if hasattr(doc, 'element') and hasattr(doc.element, 'body'):
+                logger.info(f"Document body has {len(doc.element.body)} elements")
+        except Exception as e:
+            logger.warning(f"Could not inspect document structure: {e}")
+        
+        # Add title
+        try:
+            logger.info("Adding title paragraph...")
+            title_para = doc.add_paragraph()
+            title_run = title_para.add_run(f"🧾 Material Order - {factory}")
+            title_run.bold = True
+            title_run.font.size = Pt(18)
+            title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            logger.info("Title paragraph added successfully")
+        except Exception as e:
+            logger.error(f"Error adding title paragraph: {e}")
+            raise
+        
+        try:
+            logger.info("Adding spacing paragraph...")
+            doc.add_paragraph()  # Spacing
+            logger.info("Spacing paragraph added successfully")
+        except Exception as e:
+            logger.error(f"Error adding spacing paragraph: {e}")
+            raise
+        
+        # Add order header information
+        try:
+            logger.info("Adding order header information...")
+            header_para = doc.add_paragraph()
+            header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Order ID
+            order_id_run = header_para.add_run(f"Order ID: {order_id}")
+            order_id_run.bold = True
+            order_id_run.font.size = Pt(14)
+            logger.info("Order header information added successfully")
+        except Exception as e:
+            logger.error(f"Error adding order header information: {e}")
+            raise
+        
+        try:
+            logger.info("Adding final spacing paragraph...")
+            doc.add_paragraph()  # Spacing
+            logger.info("Final spacing paragraph added successfully")
+        except Exception as e:
+            logger.error(f"Error adding final spacing paragraph: {e}")
+            raise
+        
+        # Create Order Details Table
+        try:
+            logger.info("Creating order details table...")
+            
+            # Add heading paragraph
+            logger.info("Adding details heading paragraph...")
+            details_heading = doc.add_paragraph("Order Details")
+            details_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in details_heading.runs:
+                run.bold = True
+                run.font.size = Pt(12)
+            logger.info("Details heading paragraph created successfully")
+            
+            # Create table
+            logger.info("Creating table with 5 rows and 2 columns...")
+            try:
+                details_table = doc.add_table(rows=5, cols=2)
+                logger.info(f"Table created with {len(details_table.rows)} rows and {len(details_table.rows[0].cells)} columns")
+            except Exception as table_error:
+                logger.warning(f"Error creating table with template, trying fallback approach: {table_error}")
+                # Fallback: create a new document without template
+                logger.info("Creating fallback document without template...")
+                doc = Document()
+                details_table = doc.add_table(rows=5, cols=2)
+                logger.info("Fallback table created successfully")
+            
+            # Set table alignment
+            logger.info("Setting table alignment...")
+            details_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            logger.info("Order details table created successfully")
+            
+        except Exception as e:
+            logger.error(f"Error creating order details table: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            raise
+        
+        # Add order details
+        try:
+            logger.info("Populating order details table...")
+            details_data = [
+                ("Date & Time", order_data.get('dateTime', 'N/A')),
+                ("Given By", order_data.get('givenBy', 'N/A')),
+                ("Importance", order_data.get('importance', 'Normal')),
+                ("Description", order_data.get('description', 'N/A')),
+                ("Status", "Pending")
+            ]
+            
+            for i, (label, value) in enumerate(details_data):
+                logger.info(f"Processing details row {i}: {label} = {value}")
+                row = details_table.rows[i]
+                cells = row.cells
+                cells[0].text = label
+                cells[1].text = str(value)
+            logger.info("Order details table populated successfully")
+        except Exception as e:
+            logger.error(f"Error populating order details table: {e}")
+            raise
+        
+        # Format cells
+        try:
+            logger.info("Formatting details table cells...")
+            for i, (label, value) in enumerate(details_data):
+                row = details_table.rows[i]
+                cells = row.cells
+                for cell in cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            # Make label cells bold
+                            if i < len(details_data):  # Ensure we're within bounds
+                                run.bold = True
+                            run.font.size = Pt(10)
+            logger.info("Details table cells formatted successfully")
+        except Exception as e:
+            logger.error(f"Error formatting details table cells: {e}")
+            raise
+        
+        # Apply professional formatting
+        try:
+            format_table_professional(details_table, is_header=False, logger=logger)
+        except Exception as e:
+            logger.warning(f"Could not apply professional formatting to details table: {e}")
+            # Continue without formatting
+        
+        doc.add_paragraph()  # Spacing
+        
+        # Create Order Items Table
+        items_heading = doc.add_paragraph("Order Items")
+        items_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        for run in items_heading.runs:
+            run.bold = True
+            run.font.size = Pt(12)
+        
+        order_items = order_data.get('orderItems', [])
+        
+        if order_items:
+            # Create table with headers
+            items_table = doc.add_table(rows=1, cols=7)
+            items_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Add header row
+            header_cells = items_table.rows[0].cells
+            headers = ['S.No', 'Category', 'Sub Category', 'Particulars', 'Material Name', 'Quantity', 'UOM']
+            for i, header_text in enumerate(headers):
+                header_cells[i].text = header_text
+                header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in header_cells[i].paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.bold = True
+                        run.font.size = Pt(11)
+            
+            # Add data rows
+            for idx, item in enumerate(order_items, 1):
+                row = items_table.add_row()
+                cells = row.cells
+                
+                cells[0].text = str(idx)
+                cells[1].text = item.get('category', '')
+                cells[2].text = item.get('subCategory', '-')
+                cells[3].text = item.get('particulars', '-')
+                cells[4].text = item.get('materialName', '')
+                cells[5].text = str(item.get('quantity', ''))
+                cells[6].text = item.get('uom', '')
+                
+                # Format cells
+                for i, cell in enumerate(cells):
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        if i == 0:  # S.No
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        elif i in [5, 6]:  # Quantity and UOM
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        else:
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        
+                        for run in paragraph.runs:
+                            run.font.size = Pt(10)
+            
+            # Apply professional formatting
+            try:
+                format_table_professional(items_table, is_header=True, logger=logger)
+            except Exception as e:
+                logger.warning(f"Could not apply professional formatting to items table: {e}")
+                # Continue without formatting
+        
+        # Add footer
+        doc.add_paragraph()
+        footer = doc.add_paragraph(f"Generated by Bajaj Earths - {factory} Store")
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in footer.runs:
+            run.font.size = Pt(9)
+            run.font.italic = True
+        
+        # Save document
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        docx_filename = f"order_{order_id}_{timestamp_str}.docx"
+        docx_path = os.path.join(output_dir, docx_filename)
+        doc.save(docx_path)
+        
+        logger.info(f"Order document created: {docx_path}")
+        
+        # Convert to PDF
+        pdf_filename = f"order_{order_id}_{timestamp_str}.pdf"
+        pdf_path = os.path.join(output_dir, pdf_filename)
+        
+        pdf_created = False
+        if convert_docx_to_pdf(docx_path, pdf_path):
+            logger.info(f"Successfully converted to PDF: {pdf_path}")
+            pdf_created = True
+            # Use PDF for notifications
+            notification_file = pdf_path
+        else:
+            logger.warning("PDF conversion failed, using DOCX file")
+            result["warnings"].append("PDF conversion failed, using DOCX file")
+            # Use DOCX for notifications
+            notification_file = docx_path
+        
+        # Prepare notification message
+        notification_message = f"""📦 *Material Order Notification*
+
+*Order ID:* {order_id}
+*Factory:* {factory}
+*Date & Time:* {order_data.get('dateTime', 'N/A')}
+*Given By:* {order_data.get('givenBy', 'N/A')}
+*Importance:* {order_data.get('importance', 'Normal')}
+
+*Description:*
+{order_data.get('description', 'N/A')}
+
+*Total Items:* {len(order_items)}
+
+Please find the detailed order document attached."""
+        
+        # Send notifications to recipients
+        send_email = method in ['email', 'both']
+        send_whatsapp = method in ['whatsapp', 'both']
+        
+        for recipient in recipients:
+            recipient_name = recipient.get('Name', 'Unknown')
+            recipient_email = recipient.get('Email ID - To', '')
+            recipient_phone_raw = recipient.get('Contact No.', '')
+            country_code = recipient.get('Country Code', '91')
+            
+            # Format phone number
+            recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '')
+            
+            logger.info(f"Processing recipient: {recipient_name}")
+            
+            # Send email
+            if send_email and recipient_email:
+                try:
+                    email_subject = f"Material Order {order_id} - {factory}"
+                    email_body = f"""
+                    <html>
+                    <body>
+                    <h2>Material Order Notification</h2>
+                    <p>Dear <b>{recipient_name}</b>,</p>
+                    <p>A new material order has been placed. Please find the details below:</p>
+                    
+                    <table style="border-collapse: collapse; margin: 20px 0;">
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Order ID:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_id}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{factory}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date & Time:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('dateTime', 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('givenBy', 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('importance', 'Normal')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{len(order_items)}</td>
+                        </tr>
+                    </table>
+                    
+                    <p><strong>Description:</strong><br>{order_data.get('description', 'N/A')}</p>
+                    
+                    <p>Please find the detailed order document attached.</p>
+                    
+                    <p>Best regards,<br>Bajaj Earths - {factory} Store</p>
+                    </body>
+                    </html>
+                    """
+                    
+                    success = send_email_smtp(
+                        recipient_email=recipient_email,
+                        subject=email_subject,
+                        body=email_body,
+                        attachment_paths=[notification_file],
+                        user_email=user_email
+                    )
+                    
+                    if success is True:
+                        result["delivery_stats"]["successful_deliveries"] += 1
+                        logger.info(f"Email sent successfully to {recipient_name} ({recipient_email})")
+                    else:
+                        result["delivery_stats"]["failed_deliveries"] += 1
+                        failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
+                        result["delivery_stats"]["failed_contacts"].append({
+                            "name": recipient_name,
+                            "contact": recipient_email,
+                            "reason": failure_reason
+                        })
+                        logger.error(f"Failed to send email to {recipient_name}: {success}")
+                        
+                except Exception as e:
+                    result["delivery_stats"]["failed_deliveries"] += 1
+                    result["delivery_stats"]["failed_contacts"].append({
+                        "name": recipient_name,
+                        "contact": recipient_email,
+                        "reason": f"Exception: {str(e)}"
+                    })
+                    logger.error(f"Error sending email to {recipient_name}: {e}")
+            
+            # Send WhatsApp
+            if send_whatsapp and recipient_phone_raw:
+                try:
+                    # Validate phone number
+                    if not country_code or not recipient_phone_raw.strip():
+                        result["delivery_stats"]["failed_deliveries"] += 1
+                        result["delivery_stats"]["failed_contacts"].append({
+                            "name": recipient_name,
+                            "contact": recipient_phone_raw,
+                            "reason": "Missing phone number or country code"
+                        })
+                        logger.warning(f"Skipping WhatsApp for {recipient_name}: Missing phone data")
+                        continue
+                    
+                    success = send_whatsapp_message(
+                        contact_name=recipient_name,
+                        message=notification_message,
+                        file_paths=[notification_file],
+                        whatsapp_number=recipient_phone,
+                        process_name="order_notification"
+                    )
+                    
+                    if success is True:
+                        result["delivery_stats"]["successful_deliveries"] += 1
+                        logger.info(f"WhatsApp sent successfully to {recipient_name} ({recipient_phone})")
+                    else:
+                        result["delivery_stats"]["failed_deliveries"] += 1
+                        failure_reason = f"WhatsApp error: {success}" if isinstance(success, str) else "WhatsApp send failed"
+                        result["delivery_stats"]["failed_contacts"].append({
+                            "name": recipient_name,
+                            "contact": recipient_phone,
+                            "reason": failure_reason
+                        })
+                        logger.error(f"Failed to send WhatsApp to {recipient_name}: {success}")
+                        
+                except Exception as e:
+                    result["delivery_stats"]["failed_deliveries"] += 1
+                    result["delivery_stats"]["failed_contacts"].append({
+                        "name": recipient_name,
+                        "contact": recipient_phone,
+                        "reason": f"Exception: {str(e)}"
+                    })
+                    logger.error(f"Error sending WhatsApp to {recipient_name}: {e}")
+        
+        # Clean up temporary files
+        try:
+            if pdf_created and os.path.exists(docx_path):
+                os.remove(docx_path)
+                logger.info(f"Cleaned up temporary DOCX: {docx_path}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up DOCX file: {e}")
+        
+        # Set final status
+        successful = result["delivery_stats"]["successful_deliveries"]
+        total = result["delivery_stats"]["total_recipients"]
+        
+        if successful > 0:
+            result["success"] = True
+            result["message"] = f"Notifications sent successfully to {successful}/{total} recipients"
+        else:
+            result["message"] = "Failed to send notifications to any recipients"
+        
+        logger.info(f"Order notification processing completed: {successful}/{total} successful")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in process_order_notification: {e}")
+        return {
+            "success": False,
+            "message": f"Error processing order notification: {str(e)}",
+            "errors": [str(e)],
+            "delivery_stats": {
+                "total_recipients": len(recipients),
+                "successful_deliveries": 0,
+                "failed_deliveries": len(recipients),
+                "failed_contacts": []
+            }
+        }

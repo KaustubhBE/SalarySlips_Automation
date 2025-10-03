@@ -2090,6 +2090,68 @@ def get_authority_list():
             "error": str(e)
         }), 500
 
+@app.route("/api/get_recipients_list", methods=["GET"])
+def get_recipients_list():
+    """Get recipients list from Google Sheets for notification population"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Recipents List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Fetch recipients list from Google Sheets
+        recipients_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not recipients_data or len(recipients_data) < 3:
+            return jsonify({
+                "success": True,
+                "data": [],
+                "message": f"No recipients data found in sheet {sheet_name}. Need at least 3 rows (headers at row 2, data from row 3)"
+            }), 200
+        
+        # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
+        headers = [h.strip() for h in recipients_data[1]]  # Row 2 contains headers
+        
+        # Expected headers: "Name, Country Code, Contact No., Email ID - To"
+        expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To']
+        logger.info(f"Found headers in recipients sheet: {headers}")
+        
+        # Build recipients list
+        recipients = []
+        for row in recipients_data[2:]:  # Process data rows starting from Row 3 (index 2)
+            if row and len(row) > 0:
+                recipient = {}
+                for i, header in enumerate(headers):
+                    if i < len(row):
+                        recipient[header] = row[i].strip()
+                
+                # Only add if has name and at least one contact method
+                if recipient.get('Name') and (recipient.get('Email ID - To') or recipient.get('Contact No.')):
+                    recipients.append(recipient)
+        
+        return jsonify({
+            "success": True,
+            "data": recipients,
+            "factory": factory,
+            "sheet_name": sheet_name
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching recipients list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/get_party_place_data", methods=["GET"])
 def get_party_place_data():
     """Get party and place data from Google Sheets for dropdown population"""
@@ -2713,6 +2775,147 @@ def get_next_order_id_endpoint():
     except Exception as e:
         logger.error(f"Error generating order ID: {str(e)}")
         return jsonify({"success": False, "message": f"Error generating order ID: {str(e)}"}), 500
+
+@app.route("/api/send_order_notification", methods=["POST"])
+def send_order_notification():
+    """Send order notification via email and/or WhatsApp"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_email = session.get('user', {}).get('email')
+        if not user_email:
+            return jsonify({"error": "No user email found"}), 400
+        
+        data = request.get_json()
+        logger.info(f"Received order notification request: {data}")
+        
+        # Validate required fields
+        required_fields = ['orderId', 'orderData', 'method', 'factory']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        order_id = data.get('orderId')
+        order_data = data.get('orderData')
+        recipients = data.get('recipients', [])
+        method = data.get('method')  # 'email', 'whatsapp', or 'both'
+        factory = data.get('factory', 'KR')
+        auto_send = data.get('autoSend', False)
+        sheet_id = data.get('sheetId')
+        sheet_name = data.get('sheetName', 'Recipents List')
+        
+        # If autoSend is True and no recipients provided, fetch from Google Sheets
+        if auto_send and (not recipients or len(recipients) == 0):
+            if not sheet_id:
+                return jsonify({
+                    "success": False,
+                    "message": "Sheet ID is required for auto-send"
+                }), 400
+            
+            try:
+                logger.info(f"Auto-send enabled, fetching recipients from Google Sheets")
+                logger.info(f"Sheet: '{sheet_name}', ID: {sheet_id}, Factory: {factory}")
+                
+                # Fetch recipients from Google Sheets using provided sheet ID and name
+                recipients_data = fetch_google_sheet_data(sheet_id, sheet_name)
+                
+                if not recipients_data or len(recipients_data) < 3:
+                    return jsonify({
+                        "success": False,
+                        "message": f"No recipients found in sheet '{sheet_name}'. Need at least 3 rows (headers at row 2, data from row 3)"
+                    }), 400
+                
+                # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
+                headers = [h.strip() for h in recipients_data[1]]  # Row 2 contains headers
+                
+                # Expected headers: "Name, Country Code, Contact No., Email ID - To"
+                expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To']
+                logger.info(f"Found headers in sheet: {headers}")
+                
+                # Process data rows starting from Row 3 (index 2)
+                recipients = []
+                for row in recipients_data[2:]:
+                    if row and len(row) > 0:
+                        recipient = {}
+                        for i, header in enumerate(headers):
+                            if i < len(row):
+                                recipient[header] = row[i].strip()
+                        
+                        # Only add if has name and at least one contact method
+                        if recipient.get('Name') and (recipient.get('Email ID - To') or recipient.get('Contact No.')):
+                            recipients.append(recipient)
+                
+                logger.info(f"Successfully fetched {len(recipients)} recipients from Google Sheets")
+                
+            except Exception as e:
+                logger.error(f"Error fetching recipients from Google Sheets: {str(e)}")
+                return jsonify({
+                    "success": False,
+                    "message": f"Error fetching recipients: {str(e)}"
+                }), 500
+        
+        if not recipients or len(recipients) == 0:
+            return jsonify({
+                "success": False,
+                "message": "No recipients available for notification"
+            }), 400
+        
+        # Get user-specific temporary directory
+        from Utils.temp_manager import get_user_temp_dir
+        temp_dir = get_user_temp_dir(user_email, OUTPUT_DIR)
+        
+        # Get template path
+        template_path = os.path.join(os.path.dirname(__file__), "reactorreportformat.docx")
+        
+        if not os.path.exists(template_path):
+            logger.warning("Reactor report template not found, will create basic document")
+            template_path = None
+        
+        # Import the order notification processing function
+        from Utils.process_utils import process_order_notification
+        
+        # Process and send order notification
+        result = process_order_notification(
+            order_id=order_id,
+            order_data=order_data,
+            recipients=recipients,
+            method=method,
+            factory=factory,
+            template_path=template_path,
+            output_dir=temp_dir,
+            user_email=user_email,
+            logger=logger,
+            send_email_smtp=send_email_smtp,
+            send_whatsapp_message=send_whatsapp_message
+        )
+        
+        # Clean up user-specific temporary directory
+        from Utils.temp_manager import cleanup_user_temp_dir
+        cleanup_user_temp_dir(user_email, OUTPUT_DIR)
+        
+        if result.get('success'):
+            return jsonify({
+                "success": True,
+                "message": result.get('message', 'Notifications sent successfully'),
+                "delivery_stats": result.get('delivery_stats', {})
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": result.get('message', 'Failed to send notifications'),
+                "errors": result.get('errors', [])
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error sending order notification: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error sending order notification: {str(e)}"
+        }), 500
 
 
 def send_log_report_to_user(user_email, delivery_stats, send_email_enabled, send_whatsapp_enabled, logger):
