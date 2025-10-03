@@ -130,6 +130,7 @@ const TreeBasedPermissions = ({
                 <span className="factory-name">{factoryData.name}</span>
               </label>
               <button
+                type="button"
                 className="expand-button"
                 onClick={() => toggleNode(factoryKey)}
                 disabled={!canEdit}
@@ -201,12 +202,6 @@ function AddUser() {
     setAppPassword('');
     setRole('user');
     setPermissions({});
-    
-    // Debug logging for configuration
-    console.log('AddUser component mounted');
-    console.log('ENDPOINTS:', ENDPOINTS);
-    console.log('ENDPOINTS.ADD_USER:', ENDPOINTS.ADD_USER);
-    console.log('getApiUrl(ENDPOINTS.ADD_USER):', getApiUrl(ENDPOINTS.ADD_USER));
   }, []);
 
   // Set default permissions when role or departments change
@@ -255,14 +250,14 @@ function AddUser() {
       services: {}
     };
 
-    // Process each tree permission key (e.g., "gulbarga.humanresource.single_processing")
+    // Process each tree permission key (e.g., "kerur.store.kr_place_order")
     Object.keys(treePermissions).forEach(key => {
       if (treePermissions[key] === true) {
         const parts = key.split('.');
         if (parts.length >= 3) {
           const factory = parts[0];
           const department = parts[1];
-          const service = parts[2];
+          const serviceKey = parts[2]; // This is the full service key like "kr_place_order"
 
           // Add factory to factories array
           if (!permissionMetadata.factories.includes(factory)) {
@@ -283,13 +278,13 @@ function AddUser() {
             permissionMetadata.departments[factory].push(prefixedDepartment);
           }
 
-          // Add service to department
-          const serviceKey = `${factory}.${department}`;
-          if (!permissionMetadata.services[serviceKey]) {
-            permissionMetadata.services[serviceKey] = [];
+          // Add service to department - use the full service key
+          const serviceKeyForMetadata = `${factory}.${department}`;
+          if (!permissionMetadata.services[serviceKeyForMetadata]) {
+            permissionMetadata.services[serviceKeyForMetadata] = [];
           }
-          if (!permissionMetadata.services[serviceKey].includes(service)) {
-            permissionMetadata.services[serviceKey].push(service);
+          if (!permissionMetadata.services[serviceKeyForMetadata].includes(serviceKey)) {
+            permissionMetadata.services[serviceKeyForMetadata].push(serviceKey);
           }
         }
       }
@@ -310,27 +305,27 @@ function AddUser() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     
-    // Debug logging
-    console.log('ENDPOINTS:', ENDPOINTS);
-    console.log('ENDPOINTS.ADD_USER:', ENDPOINTS.ADD_USER);
-    console.log('getApiUrl(ENDPOINTS.ADD_USER):', getApiUrl(ENDPOINTS.ADD_USER));
+    // Check if user has selected any permissions
+    if (Object.keys(permissions).length === 0) {
+      setError('Please select at least one permission for the user.');
+      return;
+    }
     
     try {
       // Convert tree permissions to permission_metadata format (same as Dashboard.jsx)
       const permissionMetadata = convertTreePermissionsToMetadata(permissions);
       
-      console.log('Original permissions:', permissions);
-      console.log('Converted permission_metadata:', permissionMetadata);
+      const requestData = { 
+        username, 
+        email, 
+        password, 
+        appPassword,
+        role,
+        permission_metadata: permissionMetadata // Use permission_metadata format
+      };
       
       const response = await axios.post(getApiUrl(ENDPOINTS.ADD_USER), 
-        { 
-          username, 
-          email, 
-          password, 
-          appPassword,
-          role,
-          permission_metadata: permissionMetadata // Use permission_metadata format
-        },
+        requestData,
         {
           withCredentials: true,
           headers: {
@@ -346,9 +341,6 @@ function AddUser() {
         resetForm();
       }
     } catch (err) {
-      console.error('Error details:', err);
-      console.error('Error response:', err.response);
-      console.error('Error request:', err.request);
       setError(err.response?.data?.error || 'Error adding user');
       setSuccess('');
     }
@@ -495,6 +487,9 @@ function AddUser() {
 
             <div className="form-group permissions-section">
               <label>Permissions:</label>
+              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
+                Selected: {Object.keys(permissions).length} permission(s)
+              </div>
               <TreeBasedPermissions
                 permissions={permissions}
                 onPermissionChange={handlePermissionChange}

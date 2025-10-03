@@ -245,6 +245,8 @@ def generate_permission_metadata(role, user_permission_metadata=None):
     Generate permission metadata based on role and user-specific permissions.
     Admin gets all permissions, regular users get specific permissions.
     """
+    logger.info(f"generate_permission_metadata called with role: {role}, user_permission_metadata: {user_permission_metadata}")
+    
     if role == 'admin':
         # Admin gets access to all factories, departments, and services
         all_factories = list(FACTORY_RBAC_CONFIG.keys())
@@ -265,18 +267,22 @@ def generate_permission_metadata(role, user_permission_metadata=None):
                 department_services = list(FACTORY_RBAC_CONFIG[factory]['departments'][department]['services'].keys())
                 all_services[service_key] = department_services
         
-        return {
+        result = {
             'factories': all_factories,
             'departments': all_departments,
             'services': all_services
         }
+        logger.info(f"Generated admin permissions: {result}")
+        return result
     
     # For regular users, use the provided permission metadata or return empty
-    return user_permission_metadata or {
+    result = user_permission_metadata or {
         'factories': [],
         'departments': {},
         'services': {}
     }
+    logger.info(f"Generated user permissions: {result}")
+    return result
 
 
 # Load environment variables from .env file
@@ -496,11 +502,18 @@ def add_user():
         app_password = data.get('appPassword') or data.get('app_password')
         permission_metadata = data.get('permission_metadata', {})
 
+        # Debug logging
+        logger.info(f"Add user request - Role: {role}")
+        logger.info(f"Add user request - Original permission_metadata: {permission_metadata}")
+
         if not all([username, email, role, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
         # Generate permission metadata using centralized configuration
         permission_metadata = generate_permission_metadata(role, permission_metadata)
+        
+        # Debug logging
+        logger.info(f"Add user request - Generated permission_metadata: {permission_metadata}")
 
         user_id = firebase_add_user(
             username=username, 
