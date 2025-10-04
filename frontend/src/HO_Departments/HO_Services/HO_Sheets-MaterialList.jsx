@@ -5,19 +5,41 @@ import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../MaterialList.css'
 
 const SheetsMaterialList = () => {
-  const navigate = useNavigate()
+const navigate = useNavigate()
   
-  // State management
-  const [selectedPlant, setSelectedPlant] = useState('')
-  const [materialData, setMaterialData] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('')
-  const [syncDescription, setSyncDescription] = useState('')
+// State management
+const [selectedPlant, setSelectedPlant] = useState('')
+const [materialData, setMaterialData] = useState({})
+const [loading, setLoading] = useState(false)
+const [message, setMessage] = useState('')
+const [messageType, setMessageType] = useState('')
+const [syncDescription, setSyncDescription] = useState('')
+const [syncResults, setSyncResults] = useState(null)
+const [showAlert, setShowAlert] = useState(false)
 
   // Handle back to department navigation
   const handleBackToDepartment = () => {
     navigate('/ho_store')
+  }
+
+  // Show alert function
+  const showAlertMessage = (title, message, type = 'info') => {
+    setShowAlert({
+      title,
+      message,
+      type,
+      show: true
+    })
+    
+    // Auto-hide alert after 5 seconds
+    setTimeout(() => {
+      setShowAlert(prev => ({ ...prev, show: false }))
+    }, 5000)
+  }
+
+  // Close alert function
+  const closeAlert = () => {
+    setShowAlert(prev => ({ ...prev, show: false }))
   }
 
   // Handle plant selection change
@@ -59,17 +81,20 @@ const SheetsMaterialList = () => {
     if (!selectedPlant) {
       setMessage('Please select a plant first')
       setMessageType('error')
+      showAlertMessage('Validation Error', 'Please select a plant first', 'error')
       return
     }
     
     if (!syncDescription.trim()) {
       setMessage('Please provide a description for this sync operation')
       setMessageType('error')
+      showAlertMessage('Validation Error', 'Please provide a description for this sync operation', 'error')
       return
     }
     
     setLoading(true)
     setMessage('')
+    setSyncResults(null)
     
     try {
       // Get current user info from session
@@ -94,20 +119,70 @@ const SheetsMaterialList = () => {
       })
       
       if (response.data.success) {
-        setMessage(response.data.message || 'Material data synced successfully!')
+        const syncData = response.data
+        const totalSynced = syncData.total_synced || 0
+        const totalProcessed = syncData.total_processed || 0
+        const skippedCount = syncData.skipped_count || 0
+        
+        // Store detailed sync results
+        setSyncResults({
+          success: true,
+          message: syncData.message || 'Material data sync completed!',
+          totalProcessed: totalProcessed,
+          totalSynced: totalSynced,
+          skippedRows: syncData.skipped_rows || [],
+          skippedCount: skippedCount,
+          skippedReasons: syncData.skipped_reasons || {},
+          timestamp: new Date().toISOString()
+        })
+        
+        setMessage(syncData.message || 'Material data sync completed!')
         setMessageType('success')
-        // Clear the description after successful sync
+        
+        // Show alert with detailed information - always show regardless of sync count
+        let alertMessage = ''
+        let alertType = 'success'
+        
+        if (totalSynced === 0 && totalProcessed === 0) {
+          // No data to process
+          alertMessage = 'No material data found to sync for this plant.'
+          alertType = 'info'
+        } else if (totalSynced === 0 && skippedCount > 0) {
+          // All items were skipped
+          alertMessage = `Sync completed! No items were synced to Firebase. ${skippedCount} items were skipped due to missing data. Check details below.`
+          alertType = 'warning'
+        } else if (totalSynced > 0 && skippedCount > 0) {
+          // Some items synced, some skipped
+          alertMessage = `Sync completed! ${totalSynced} items synced to Firebase, ${skippedCount} items skipped. Check details below.`
+          alertType = 'success'
+        } else if (totalSynced > 0 && skippedCount === 0) {
+          // All items synced successfully
+          alertMessage = `Sync completed successfully! ${totalSynced} items synced to Firebase.`
+          alertType = 'success'
+        } else {
+          // Fallback
+          alertMessage = `Sync completed! ${totalSynced} items synced, ${skippedCount} items skipped. Check details below.`
+          alertType = 'success'
+        }
+        
+        showAlertMessage('Sync Completed', alertMessage, alertType)
+        
+        // Clear the description after sync completion
         setSyncDescription('')
         // Refresh the material data after sync
         handlePlantChange(selectedPlant)
       } else {
-        setMessage(response.data.message || 'Failed to sync material data')
+        const errorMessage = response.data.message || 'Failed to sync material data'
+        setMessage(errorMessage)
         setMessageType('error')
+        showAlertMessage('Sync Failed', errorMessage, 'error')
       }
     } catch (error) {
       console.error('Error syncing material data:', error)
-      setMessage(error.response?.data?.message || 'Error syncing material data. Please try again.')
+      const errorMessage = error.response?.data?.message || 'Error syncing material data. Please try again.'
+      setMessage(errorMessage)
       setMessageType('error')
+      showAlertMessage('Sync Error', errorMessage, 'error')
     } finally {
       setLoading(false)
     }
@@ -116,8 +191,63 @@ const SheetsMaterialList = () => {
 
   return (
     <div className="material_list-container">
+      {/* Back Button Section - Consistent across all pages */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        alignItems: 'center', 
+        marginBottom: '20px',
+        padding: '10px 0',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <button 
+          onClick={handleBackToDepartment} 
+          className="back-button"
+          style={{
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = '#5a6268'
+            e.target.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = '#6c757d'
+            e.target.style.transform = 'translateY(0)'
+          }}
+        >
+          ← Back to Store
+        </button>
+      </div>
+      
       <div className="material-form-wrapper">
         <h2>Sheets Material List</h2>
+        
+        {/* Alert Modal */}
+        {showAlert && showAlert.show && (
+          <div className="alert-overlay">
+            <div className={`alert-modal alert-${showAlert.type}`}>
+              <div className="alert-header">
+                <h3>{showAlert.title}</h3>
+                <button className="alert-close" onClick={closeAlert}>×</button>
+              </div>
+              <div className="alert-body">
+                <p>{showAlert.message}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Message Display */}
         {message && (
@@ -195,12 +325,86 @@ const SheetsMaterialList = () => {
           </div>
         )}
 
-        {/* Back Button - Left Aligned */}
-        <div className="back-button-container">
-          <button onClick={handleBackToDepartment} className="nav-link back-button">
-            ← Back to Store
-          </button>
-        </div>
+        {/* Sync Results Display */}
+        {syncResults && (
+          <div className="sync-results-display">
+            <h3>Sync Results</h3>
+            <div className="sync-summary">
+              <div className="sync-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Total Processed:</span>
+                  <span className="stat-value">{syncResults.totalProcessed}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Successfully Synced:</span>
+                  <span className={`stat-value ${syncResults.totalSynced > 0 ? 'success' : 'info'}`}>
+                    {syncResults.totalSynced}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Skipped:</span>
+                  <span className={`stat-value ${syncResults.skippedCount > 0 ? 'warning' : 'info'}`}>
+                    {syncResults.skippedCount}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Show message when no items were synced */}
+              {syncResults.totalSynced === 0 && syncResults.totalProcessed > 0 && (
+                <div className="no-sync-message">
+                  <div className="no-sync-icon">⚠️</div>
+                  <p>No items were synced to Firebase. All items were skipped due to missing required data.</p>
+                </div>
+              )}
+              
+              {/* Show message when no data was processed */}
+              {syncResults.totalProcessed === 0 && (
+                <div className="no-data-message">
+                  <div className="no-data-icon">ℹ️</div>
+                  <p>No material data was found to process for this plant.</p>
+                </div>
+              )}
+              
+              {syncResults.skippedCount > 0 && (
+                <div className="skipped-details">
+                  <h4>Skipped Items Details:</h4>
+                  <div className="skipped-reasons">
+                    {Object.entries(syncResults.skippedReasons).map(([reason, count]) => (
+                      <div key={reason} className="reason-item">
+                        <span className="reason-text">{reason}:</span>
+                        <span className="reason-count">{count} items</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {syncResults.skippedRows && syncResults.skippedRows.length > 0 && (
+                    <div className="skipped-rows">
+                      <h5>Sample Skipped Rows:</h5>
+                      <div className="skipped-rows-list">
+                        {syncResults.skippedRows.slice(0, 5).map((row, index) => (
+                          <div key={index} className="skipped-row">
+                            <span className="row-info">Row {row.rowNumber || index + 1}:</span>
+                            <span className="row-reason">{row.reason}</span>
+                          </div>
+                        ))}
+                        {syncResults.skippedRows.length > 5 && (
+                          <div className="more-rows">
+                            ... and {syncResults.skippedRows.length - 5} more rows
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="sync-timestamp">
+                <small>Sync completed at: {new Date(syncResults.timestamp).toLocaleString()}</small>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )

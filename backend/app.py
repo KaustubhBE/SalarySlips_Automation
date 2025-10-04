@@ -2669,7 +2669,15 @@ def get_plant_material_data():
         user_email = session.get('user', {}).get('email', 'Unknown User')
         logging.info(f"User {user_email} requested material data for plant {plant_name} (ID: {plant_id})")
         
-        sheet_data = get_plant_material_data_from_sheets(plant_id, plant_data)
+        sheet_result = get_plant_material_data_from_sheets(plant_id, plant_data)
+        
+        # Handle both old and new return formats for backward compatibility
+        if isinstance(sheet_result, dict) and 'material_data' in sheet_result:
+            # New format with skipped data
+            sheet_data = sheet_result['material_data']
+        else:
+            # Old format (fallback)
+            sheet_data = sheet_result
         
         return jsonify({
             "success": True,
@@ -2723,6 +2731,11 @@ def sync_plant_material_data():
             return jsonify({
                 "success": True,
                 "message": f"Material data synced successfully for {plant_name}",
+                "total_processed": result.get('total_processed', 0),
+                "total_synced": result.get('total_synced', 0),
+                "skipped_count": result.get('skipped_count', 0),
+                "skipped_rows": result.get('skipped_rows', []),
+                "skipped_reasons": result.get('skipped_reasons', {}),
                 "data": result.get('data', {})
             }), 200
         else:

@@ -1735,9 +1735,19 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         
         # Process data rows (skip rows 1 and 2, start from row 3 - index 2)
         material_data = {}
+        skipped_rows = []
+        skipped_reasons = {}
+        total_processed = 0
         
-        for row in all_data[2:]:  # Start from row 3 (index 2)
+        for row_index, row in enumerate(all_data[2:], start=3):  # Start from row 3 (index 2), but row_index starts from 3
+            total_processed += 1
+            
             if len(row) < max(header_indices.values()) + 1:
+                skipped_rows.append({
+                    'rowNumber': row_index,
+                    'reason': 'Incomplete row data'
+                })
+                skipped_reasons['Incomplete row data'] = skipped_reasons.get('Incomplete row data', 0) + 1
                 continue  # Skip incomplete rows
             
             try:
@@ -1748,9 +1758,26 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 uom = row[header_indices.get('UOM', 4)].strip()
                 initial_quantity = row[header_indices.get('Initial/nQuantity', 5)].strip() if 'Initial/nQuantity' in header_indices else '0'
                 
-                # Validate compulsory fields
-                if not category or not material_name or not uom:
-                    logging.warning(f"Skipping row due to missing compulsory fields: Category='{category}', Material Name='{material_name}', UOM='{uom}'")
+                # Validate compulsory fields and track specific missing fields
+                missing_fields = []
+                if not category:
+                    missing_fields.append('Category')
+                if not material_name:
+                    missing_fields.append('Material Name')
+                if not uom:
+                    missing_fields.append('UOM')
+                
+                if missing_fields:
+                    reason = f"Missing: {', '.join(missing_fields)}"
+                    logging.warning(f"Skipping row {row_index} due to missing compulsory fields: Category='{category}', Material Name='{material_name}', UOM='{uom}'")
+                    skipped_rows.append({
+                        'rowNumber': row_index,
+                        'reason': reason,
+                        'category': category,
+                        'materialName': material_name,
+                        'uom': uom
+                    })
+                    skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
                     continue  # Skip rows without essential data
                 
                 # Set default quantity to 0 if not provided
@@ -1792,8 +1819,19 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
             material_data[category]['subCategories'] = list(material_data[category]['subCategories'])
             material_data[category]['particulars'] = list(material_data[category]['particulars'])
         
-        logging.info(f"Successfully fetched material data for plant {plant_id}: {len(material_data)} categories")
-        return material_data
+        # Calculate total materials processed successfully
+        total_materials = sum(len(category_data.get('materialNames', [])) for category_data in material_data.values())
+        
+        logging.info(f"Successfully fetched material data for plant {plant_id}: {len(material_data)} categories, {total_materials} materials processed, {len(skipped_rows)} rows skipped")
+        
+        return {
+            'material_data': material_data,
+            'total_processed': total_processed,
+            'total_materials': total_materials,
+            'skipped_rows': skipped_rows,
+            'skipped_count': len(skipped_rows),
+            'skipped_reasons': skipped_reasons
+        }
         
     except Exception as e:
         logging.error(f"Error fetching material data from Google Sheets: {e}")
@@ -1806,13 +1844,21 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
     """Sync material data from Google Sheets to Firebase"""
     try:
         # First, get the data from Google Sheets
-        sheet_data = get_plant_material_data_from_sheets(plant_id, plant_data)
+        sheet_result = get_plant_material_data_from_sheets(plant_id, plant_data)
         
-        if not sheet_data:
+        if not sheet_result or not sheet_result.get('material_data'):
             return {
                 'success': False,
                 'message': 'No data found in Google Sheets'
             }
+        
+        # Extract data from the result
+        sheet_data = sheet_result['material_data']
+        total_processed = sheet_result.get('total_processed', 0)
+        total_materials = sheet_result.get('total_materials', 0)
+        skipped_rows = sheet_result.get('skipped_rows', [])
+        skipped_count = sheet_result.get('skipped_count', 0)
+        skipped_reasons = sheet_result.get('skipped_reasons', {})
         
         # Get the correct document name for Firebase storage
         document_name = get_plant_document_name_by_id(plant_id, plant_data)
@@ -1867,6 +1913,11 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
         return {
             'success': True,
             'message': f'Successfully synced {len(materials)} materials for {plant_name} to {document_name} document',
+            'total_processed': total_processed,
+            'total_synced': len(materials),
+            'skipped_count': skipped_count,
+            'skipped_rows': skipped_rows,
+            'skipped_reasons': skipped_reasons,
             'data': {
                 'materialsCount': len(materials),
                 'categories': len(sheet_data),
