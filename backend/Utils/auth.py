@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash, generate_password_hash
-from Utils.firebase_utils import db, get_user_by_email, get_user_by_email_with_metadata
+from Utils.firebase_utils import db, get_user_by_email, get_user_by_email_with_metadata, update_user_oauth_tokens
 import logging
 import os
 import requests
@@ -440,9 +440,26 @@ def google_oauth_callback():
         tokens = token_response.json()
         access_token = tokens.get('access_token')
         refresh_token = tokens.get('refresh_token')
+        granted_scopes = tokens.get('scope', '').split()
         
         if not access_token:
             return jsonify({'success': False, 'error': 'No access token received'}), 400
+        
+        # Validate that we received the expected scopes
+        expected_scopes = [
+            'https://www.googleapis.com/auth/gmail.send',
+            'https://www.googleapis.com/auth/gmail.compose',
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive.file'
+        ]
+        
+        logger.info(f"Granted scopes: {granted_scopes}")
+        
+        # Check if we have the minimum required scopes
+        missing_scopes = [scope for scope in expected_scopes if scope not in granted_scopes]
+        if missing_scopes:
+            logger.warning(f"Missing expected scopes: {missing_scopes}")
+            # Continue anyway, but log the warning
         
         # Get user info from Google
         user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo'
@@ -571,8 +588,24 @@ def google_oauth_callback():
             'permission_metadata': permission_metadata,
             'tree_permissions': tree_permissions,
             'google_picture': user.get('google_picture', picture),
-            'has_gmail_access': bool(access_token)  # Indicate if user has Gmail permissions
+            'has_gmail_access': bool(access_token),  # Indicate if user has Gmail permissions
+            'has_sheets_access': 'https://www.googleapis.com/auth/spreadsheets' in granted_scopes,
+            'has_drive_access': 'https://www.googleapis.com/auth/drive.file' in granted_scopes,
+            'granted_scopes': granted_scopes
         }
+        
+        # Store OAuth tokens in Firebase
+        try:
+            update_user_oauth_tokens(
+                user.get('id'), 
+                access_token, 
+                refresh_token, 
+                granted_scopes
+            )
+            logger.info(f"Stored OAuth tokens for user: {email}")
+        except Exception as e:
+            logger.error(f"Failed to store OAuth tokens for user {email}: {e}")
+            # Continue with login even if token storage fails
         
         # Set session
         session['user'] = user_response
@@ -581,6 +614,8 @@ def google_oauth_callback():
         logger.info(f"Google OAuth with Gmail permissions successful: {email}")
         logger.info(f"User permissions: {permissions}")
         logger.info(f"Gmail access token available: {bool(access_token)}")
+        logger.info(f"Sheets access available: {user_response.get('has_sheets_access', False)}")
+        logger.info(f"Drive access available: {user_response.get('has_drive_access', False)}")
         
         return jsonify({'success': True, 'user': user_response}), 200
         

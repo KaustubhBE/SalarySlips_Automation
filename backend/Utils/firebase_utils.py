@@ -625,3 +625,72 @@ def get_all_orders():
     except Exception as e:
         logging.error(f"Error fetching all orders: {str(e)}")
         return []
+
+def update_user_oauth_tokens(user_id, access_token, refresh_token, granted_scopes=None):
+    """Update user's Google OAuth tokens and scopes"""
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        update_data = {
+            'google_access_token': access_token,
+            'google_refresh_token': refresh_token,
+            'last_token_refresh': datetime.now().isoformat()
+        }
+        
+        if granted_scopes:
+            update_data['granted_scopes'] = granted_scopes
+            update_data['has_sheets_access'] = 'https://www.googleapis.com/auth/spreadsheets' in granted_scopes
+            update_data['has_drive_access'] = 'https://www.googleapis.com/auth/drive.file' in granted_scopes
+            update_data['has_gmail_access'] = any(scope.startswith('https://www.googleapis.com/auth/gmail') for scope in granted_scopes)
+        
+        user_ref.update(update_data)
+        logging.info(f"Updated OAuth tokens for user {user_id}")
+        return True
+    except Exception as e:
+        logging.error(f"Error updating OAuth tokens for user {user_id}: {e}")
+        return False
+
+def get_user_oauth_tokens(user_id):
+    """Get user's Google OAuth tokens"""
+    try:
+        user_doc = db.collection('USERS').document(user_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            return {
+                'access_token': user_data.get('google_access_token'),
+                'refresh_token': user_data.get('google_refresh_token'),
+                'granted_scopes': user_data.get('granted_scopes', []),
+                'has_sheets_access': user_data.get('has_sheets_access', False),
+                'has_drive_access': user_data.get('has_drive_access', False),
+                'has_gmail_access': user_data.get('has_gmail_access', False)
+            }
+        return None
+    except Exception as e:
+        logging.error(f"Error getting OAuth tokens for user {user_id}: {e}")
+        return None
+
+def get_user_by_email_with_oauth_tokens(email):
+    """Get user with OAuth tokens included"""
+    try:
+        users_ref = db.collection('USERS')
+        query = users_ref.where('email', '==', email).limit(1)
+        docs = query.stream()
+        
+        for doc in docs:
+            user_data = doc.to_dict()
+            user_data['id'] = doc.id
+            
+            # Include OAuth token information
+            user_data['oauth_tokens'] = {
+                'access_token': user_data.get('google_access_token'),
+                'refresh_token': user_data.get('google_refresh_token'),
+                'granted_scopes': user_data.get('granted_scopes', []),
+                'has_sheets_access': user_data.get('has_sheets_access', False),
+                'has_drive_access': user_data.get('has_drive_access', False),
+                'has_gmail_access': user_data.get('has_gmail_access', False)
+            }
+            
+            return user_data
+        return None
+    except Exception as e:
+        logging.error(f"Error getting user with OAuth tokens by email {email}: {e}")
+        return None

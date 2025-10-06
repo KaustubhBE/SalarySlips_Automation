@@ -42,7 +42,9 @@ from Utils.firebase_utils import (
     delete_order,
     get_all_orders,
     get_factory_initials,
-    get_next_order_id
+    get_next_order_id,
+    get_user_oauth_tokens,
+    update_user_oauth_tokens
 )
 import json
 from docx import Document
@@ -485,6 +487,76 @@ def get_drive_service():
         return service
     except Exception as e:
         app.logger.error("Error initializing Google Drive service: {}".format(e))
+        raise
+
+def get_user_drive_service(user_id):
+    """Get Google Drive service using user's OAuth tokens"""
+    try:
+        oauth_tokens = get_user_oauth_tokens(user_id)
+        if not oauth_tokens or not oauth_tokens.get('access_token'):
+            raise Exception("No OAuth tokens found for user")
+        
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        
+        credentials = Credentials(
+            token=oauth_tokens['access_token'],
+            refresh_token=oauth_tokens['refresh_token'],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET')
+        )
+        
+        # Refresh token if needed
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+            # Update the refreshed token in database
+            update_user_oauth_tokens(
+                user_id, 
+                credentials.token, 
+                credentials.refresh_token,
+                oauth_tokens.get('granted_scopes', [])
+            )
+        
+        service = build('drive', 'v3', credentials=credentials)
+        return service
+    except Exception as e:
+        app.logger.error(f"Error initializing user Google Drive service: {e}")
+        raise
+
+def get_user_sheets_service(user_id):
+    """Get Google Sheets service using user's OAuth tokens"""
+    try:
+        oauth_tokens = get_user_oauth_tokens(user_id)
+        if not oauth_tokens or not oauth_tokens.get('access_token'):
+            raise Exception("No OAuth tokens found for user")
+        
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        
+        credentials = Credentials(
+            token=oauth_tokens['access_token'],
+            refresh_token=oauth_tokens['refresh_token'],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET')
+        )
+        
+        # Refresh token if needed
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+            # Update the refreshed token in database
+            update_user_oauth_tokens(
+                user_id, 
+                credentials.token, 
+                credentials.refresh_token,
+                oauth_tokens.get('granted_scopes', [])
+            )
+        
+        service = build('sheets', 'v4', credentials=credentials)
+        return service
+    except Exception as e:
+        app.logger.error(f"Error initializing user Google Sheets service: {e}")
         raise
 
 @app.before_request
@@ -1143,6 +1215,38 @@ def get_logs():
 @app.route("/api/", methods=["GET"])
 def home():
     return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
+
+@app.route("/api/user/oauth-status", methods=["GET"])
+def get_user_oauth_status():
+    """Get user's OAuth token status and permissions"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_id = session.get('user', {}).get('id')
+        if not user_id:
+            return jsonify({"error": "User ID not found"}), 400
+        
+        oauth_tokens = get_user_oauth_tokens(user_id)
+        if not oauth_tokens:
+            return jsonify({
+                "success": True,
+                "has_oauth": False,
+                "message": "No OAuth tokens found"
+            }), 200
+        
+        return jsonify({
+            "success": True,
+            "has_oauth": True,
+            "has_sheets_access": oauth_tokens.get('has_sheets_access', False),
+            "has_drive_access": oauth_tokens.get('has_drive_access', False),
+            "has_gmail_access": oauth_tokens.get('has_gmail_access', False),
+            "granted_scopes": oauth_tokens.get('granted_scopes', [])
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting user OAuth status: {e}")
+        return jsonify({"error": "Failed to get OAuth status"}), 500
 
 @app.route("/api/update_permissions", methods=["POST"])
 def update_permissions():
