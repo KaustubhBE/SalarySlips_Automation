@@ -42,8 +42,6 @@ export const useGoogleAuth = () => {
       const result = await oauthService.handleOAuthCallback();
       
       if (result.success && result.user) {
-        console.log('✅ OAuth successful, logging in user');
-        
         // Store user data and log in
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('isAuthenticated', 'true');
@@ -54,11 +52,11 @@ export const useGoogleAuth = () => {
         
         setError('');
       } else {
-        setError(result.error || 'Google authentication failed');
+        setError('Authentication failed. Please try again.');
       }
     } catch (error) {
-      console.error('❌ OAuth callback processing error:', error);
-      setError(error.message || 'Google authentication failed');
+      console.error('OAuth callback processing error:', error);
+      setError('Authentication failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -91,8 +89,8 @@ export const useGoogleAuth = () => {
       oauthService.redirectToOAuth(authUrl);
       
     } catch (error) {
-      console.error('❌ Google OAuth initiation error:', error);
-      setError(error.message || 'Google authentication failed. Please try again.');
+      console.error('Google OAuth initiation error:', error);
+      setError('Authentication failed. Please try again.');
       setLoading(false);
     }
   }, []);

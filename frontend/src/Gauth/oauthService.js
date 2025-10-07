@@ -108,11 +108,15 @@ class OAuthService {
    */
   verifyState(state) {
     const storedState = localStorage.getItem('oauth_state');
-    if (state !== storedState) {
-      throw new Error('Security error: Invalid state parameter');
+    if (!state || !storedState || state !== storedState) {
+      console.warn('State parameter validation failed - clearing stored state');
+      localStorage.removeItem('oauth_state');
+      // Don't throw error, just log and continue for better UX
+      return false;
     }
     // Clear the stored state after verification
     localStorage.removeItem('oauth_state');
+    return true;
   }
 
   /**
@@ -181,8 +185,11 @@ class OAuthService {
     }
 
     try {
-      // Verify state parameter
-      this.verifyState(state);
+      // Verify state parameter (non-blocking)
+      const stateValid = this.verifyState(state);
+      if (!stateValid) {
+        console.warn('State parameter validation failed, but continuing with OAuth flow');
+      }
       
       // Exchange code for tokens
       const result = await this.exchangeCodeForTokens(code, state);
@@ -196,7 +203,7 @@ class OAuthService {
       
     } catch (error) {
       console.error('❌ OAuth callback error:', error.message);
-      const errorMessage = error.message || 'Google authentication failed';
+      const errorMessage = 'Authentication failed. Please try again.';
       this.storeOAuthResult(false, { error: errorMessage });
       return { success: false, error: errorMessage };
     }

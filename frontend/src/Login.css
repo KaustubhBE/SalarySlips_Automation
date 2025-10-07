@@ -206,7 +206,7 @@
   background: transparent !important;
   background: none;
   border: none;
-  color: #333;
+  color: #333 !important;
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.95rem;
@@ -217,7 +217,7 @@
 
 .login-link-btn {
   border: none;
-  color: #333;
+  color: #333 !important;
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.95rem;
@@ -230,7 +230,7 @@
 .login-links-container button:hover,
 .login-links-container button:focus,
 .login-links-container button:active {
-  color: #0056b3;
+  color: #0056b3 !important;
 }
 
 @media screen and (max-width: 480px) {

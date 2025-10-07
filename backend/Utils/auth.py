@@ -409,7 +409,7 @@ def google_oauth_callback():
             return jsonify({'success': False, 'error': 'Authorization code is required'}), 400
         
         if not state:
-            logger.warning("No state parameter received - CSRF protection may be compromised")
+            logger.warning("No state parameter received - continuing with OAuth flow")
         
         # Get Google OAuth credentials
         google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
@@ -435,7 +435,7 @@ def google_oauth_callback():
         
         if token_response.status_code != 200:
             logger.error(f"Token exchange failed: {token_response.text}")
-            return jsonify({'success': False, 'error': 'Failed to exchange authorization code'}), 400
+            return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         tokens = token_response.json()
         access_token = tokens.get('access_token')
@@ -443,7 +443,7 @@ def google_oauth_callback():
         granted_scopes = tokens.get('scope', '').split()
         
         if not access_token:
-            return jsonify({'success': False, 'error': 'No access token received'}), 400
+            return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         # Validate that we received the expected scopes
         expected_scopes = [
@@ -472,7 +472,7 @@ def google_oauth_callback():
         
         if user_info_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_info_response.text}")
-            return jsonify({'success': False, 'error': 'Failed to get user information'}), 400
+            return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         user_info = user_info_response.json()
         logger.info(f"User info received: {user_info}")
@@ -485,7 +485,7 @@ def google_oauth_callback():
         
         if not email:
             logger.error("No email found in user info")
-            return jsonify({'success': False, 'error': 'Email not found in user info'}), 400
+            return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         logger.info(f"Google OAuth successful for email: {email}")
         

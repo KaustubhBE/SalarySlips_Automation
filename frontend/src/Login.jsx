@@ -90,54 +90,29 @@ function Login() {
   // Display error from either regular login or Google OAuth
   const displayError = error || googleError;
   
-  // Show OAuth processing UI if this is a callback
+  // Show simple loading state if processing OAuth
   if (isOAuthCallback || isProcessing) {
     return (
       <div className="login-container" style={{ textAlign: 'center', padding: '50px' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{
-            width: '50px',
-            height: '50px',
-            border: '5px solid #f3f3f3',
-            borderTop: '5px solid #3498db',
+            width: '40px',
+            height: '40px',
+            border: '3px solid #f3f3f3',
+            borderTop: '3px solid #3498db',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 20px'
           }}></div>
         </div>
-        <h3>Processing Google Authentication...</h3>
-        <p>Please wait while we complete your login.</p>
-        <p style={{ fontSize: '14px', color: '#666' }}>You will be redirected automatically.</p>
+        <h3>Signing you in...</h3>
+        <p style={{ fontSize: '14px', color: '#666' }}>Please wait while we complete your authentication.</p>
         
         {displayError && (
           <div className="error-message" style={{ marginTop: '20px' }}>
             {displayError}
           </div>
         )}
-        
-        <div style={{ marginTop: '20px' }}>
-          <button 
-            onClick={() => {
-              console.log('=== OAUTH DEBUG INFO ===');
-              console.log('Current URL:', window.location.href);
-              console.log('LocalStorage oauth_result:', localStorage.getItem('oauth_result'));
-              console.log('LocalStorage oauth_state:', localStorage.getItem('oauth_state'));
-              console.log('Is OAuth callback:', isOAuthCallback);
-              console.log('Is processing:', isProcessing);
-              console.log('=== END DEBUG INFO ===');
-            }}
-            style={{ 
-              padding: '10px 20px', 
-              backgroundColor: '#007bff', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Debug Info
-          </button>
-        </div>
       </div>
     );
   }
