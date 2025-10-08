@@ -108,6 +108,8 @@ hosting_specifics.txt
 #config files
 frontend\src\config.js
 frontend\vite.config.js
+frontend\.env
+backend\.env
 
 # WhatsApp Web JS sessions, cache, and uploads (do not commit)
 whatsappweb-service/.wwebjs_auth/

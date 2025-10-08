@@ -56,7 +56,7 @@ const TermsAndConditions = () => {
         <div style={contentStyle}>
           <section style={sectionStyle}>
             <h2 style={headingStyle}>1. Acceptance of Terms</h2>
-            <p style={paragraphStyle}>By accessing and using the Bajaj Earths system, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the system.</p>
+            <p style={paragraphStyle}>By accessing and using the Bajaj Earths Admin Portal system, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the system. This system is designed for authorized personnel of Bajaj Earths Private Limited and its associated facilities.</p>
           </section>
 
           <section style={sectionStyle}>
@@ -64,9 +64,12 @@ const TermsAndConditions = () => {
             <p style={paragraphStyle}>As a user of the system, you agree to:</p>
             <ul style={listStyle}>
               <li style={listItemStyle}>Provide accurate and complete information</li>
-              <li style={listItemStyle}>Maintain the confidentiality of your account</li>
-              <li style={listItemStyle}>Use the system in compliance with all applicable laws</li>
-              <li style={listItemStyle}>Report any security breaches or unauthorized access</li>
+              <li style={listItemStyle}>Maintain the confidentiality of your account credentials</li>
+              <li style={listItemStyle}>Use the system in compliance with all applicable laws and company policies</li>
+              <li style={listItemStyle}>Report any security breaches or unauthorized access immediately</li>
+              <li style={listItemStyle}>Use the system only for authorized business purposes</li>
+              <li style={listItemStyle}>Ensure data accuracy when entering payroll and employee information</li>
+              <li style={listItemStyle}>Follow department-specific guidelines and procedures</li>
             </ul>
           </section>
 
@@ -75,37 +78,73 @@ const TermsAndConditions = () => {
             <p style={paragraphStyle}>The system is provided for authorized business purposes only. Users must not:</p>
             <ul style={listStyle}>
               <li style={listItemStyle}>Share access credentials with unauthorized persons</li>
-              <li style={listItemStyle}>Attempt to bypass security measures</li>
-              <li style={listItemStyle}>Use the system for any illegal activities</li>
-              <li style={listItemStyle}>Interfere with system operations</li>
+              <li style={listItemStyle}>Attempt to bypass security measures or access controls</li>
+              <li style={listItemStyle}>Use the system for any illegal activities or personal gain</li>
+              <li style={listItemStyle}>Interfere with system operations or other users' access</li>
+              <li style={listItemStyle}>Access data or functions outside their authorized scope</li>
+              <li style={listItemStyle}>Modify system settings or configurations without authorization</li>
+              <li style={listItemStyle}>Use the system for purposes other than business operations</li>
             </ul>
           </section>
 
           <section style={sectionStyle}>
-            <h2 style={headingStyle}>4. Data Management</h2>
-            <p style={paragraphStyle}>Users are responsible for:</p>
+            <h2 style={headingStyle}>4. Google API Integration and Data Management</h2>
+            <p style={paragraphStyle}>The system integrates with Google APIs for enhanced functionality. Users are responsible for:</p>
             <ul style={listStyle}>
-              <li style={listItemStyle}>Ensuring data accuracy and completeness</li>
-              <li style={listItemStyle}>Maintaining appropriate backups</li>
-              <li style={listItemStyle}>Following data retention policies</li>
-              <li style={listItemStyle}>Protecting sensitive information</li>
+              <li style={listItemStyle}>Understanding that the system accesses Google Sheets, Gmail, and Google Drive as necessary for operations</li>
+              <li style={listItemStyle}>Ensuring data accuracy and completeness when working with integrated services</li>
+              <li style={listItemStyle}>Following Google API usage policies and guidelines</li>
+              <li style={listItemStyle}>Maintaining appropriate backups of critical data</li>
+              <li style={listItemStyle}>Following data retention policies for both local and cloud-stored data</li>
+              <li style={listItemStyle}>Protecting sensitive information and maintaining confidentiality</li>
+              <li style={listItemStyle}>Complying with data privacy regulations when handling employee and payroll information</li>
             </ul>
           </section>
 
           <section style={sectionStyle}>
-            <h2 style={headingStyle}>5. System Availability</h2>
-            <p style={paragraphStyle}>While we strive to maintain system availability, we do not guarantee uninterrupted access. We reserve the right to perform maintenance and updates as needed.</p>
+            <h2 style={headingStyle}>5. Factory and Department Access</h2>
+            <p style={paragraphStyle}>Access to specific factories and departments is granted based on user roles and authorization levels:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Users are granted access only to their assigned factory and department</li>
+              <li style={listItemStyle}>Admin users have broader access across multiple facilities</li>
+              <li style={listItemStyle}>Department-specific permissions control access to various system modules</li>
+              <li style={listItemStyle}>Unauthorized access attempts will be logged and may result in account suspension</li>
+            </ul>
           </section>
 
           <section style={sectionStyle}>
-            <h2 style={headingStyle}>6. Modifications</h2>
+            <h2 style={headingStyle}>6. System Availability</h2>
+            <p style={paragraphStyle}>While we strive to maintain system availability, we do not guarantee uninterrupted access. We reserve the right to perform maintenance and updates as needed. This includes:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Scheduled maintenance windows will be communicated in advance</li>
+              <li style={listItemStyle}>Emergency maintenance may be performed with minimal notice</li>
+              <li style={listItemStyle}>System updates may temporarily affect certain features</li>
+              <li style={listItemStyle}>Google API service availability depends on Google's service status</li>
+            </ul>
+          </section>
+
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>7. Compliance and Legal Requirements</h2>
+            <p style={paragraphStyle}>Users must comply with all applicable laws and regulations, including:</p>
+            <ul style={listStyle}>
+              <li style={listItemStyle}>Labor laws and employment regulations</li>
+              <li style={listItemStyle}>Data protection and privacy laws</li>
+              <li style={listItemStyle}>Financial and tax compliance requirements</li>
+              <li style={listItemStyle}>Industry-specific regulations and standards</li>
+            </ul>
+          </section>
+
+          <section style={sectionStyle}>
+            <h2 style={headingStyle}>8. Modifications</h2>
             <p style={paragraphStyle}>We reserve the right to modify these terms at any time. Users will be notified of significant changes. Continued use of the system after changes constitutes acceptance of the modified terms.</p>
           </section>
 
           <section style={sectionStyle}>
-            <h2 style={headingStyle}>7. Contact</h2>
+            <h2 style={headingStyle}>9. Contact</h2>
             <p style={paragraphStyle}>For questions regarding these Terms and Conditions, please contact:</p>
-            <p style={paragraphStyle}>Email: info@bajajearths.com</p>
+            <p style={paragraphStyle}><strong>Email:</strong> info@bajajearths.com</p>
+            <p style={paragraphStyle}><strong>Phone:</strong> +91-22-2497 4755</p>
+            <p style={paragraphStyle}><strong>Address:</strong> 503, Lodha Supremus, Senapati Bapat Marg, Opposite World Towers, Railway Colony, Lower Parel (W), Mumbai, Maharashtra - 400013</p>
           </section>
         </div>
       </div>
