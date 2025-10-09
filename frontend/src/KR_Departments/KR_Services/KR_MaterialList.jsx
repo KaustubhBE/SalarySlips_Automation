@@ -80,14 +80,40 @@ const KR_MaterialList = () => {
 
   // Helper function to render hybrid input field
   const renderHybridInput = (field, label, required = false, options = [], placeholder = '') => {
+    // Special handling for UOM field - it should always be read-only and auto-selected
+    if (field === 'uom') {
+      return (
+        <div className="form-group">
+          <label htmlFor={field} className={required ? "required" : ""}>
+            {label}
+          </label>
+          <input
+            type="text"
+            id={field}
+            value={formData[field]}
+            readOnly
+            required={required}
+            className="form-input"
+            placeholder="UOM"
+            style={{
+              backgroundColor: '#f5f5f5',
+              cursor: 'not-allowed',
+              color: '#333'
+            }}
+            title="UOM is auto-selected based on material name"
+          />
+        </div>
+      )
+    }
+
     const isDropdown = inputModes[field] === 'dropdown'
     const value = formData[field]
     
     return (
       <div className="form-group">
         <div className="form-group-header">
-          <label htmlFor={field}>
-            {label} {required && '*'}
+          <label htmlFor={field} className={required ? "required" : ""}>
+            {label}
           </label>
           <button
             type="button"
@@ -108,8 +134,7 @@ const KR_MaterialList = () => {
             className="form-select"
             disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
                      (field === 'particulars' && !formData.category) ||
-                     (field === 'materialName' && !formData.category) ||
-                     (field === 'uom' && !formData.category)}
+                     (field === 'materialName' && !formData.category)}
           >
             <option value="">Select {label}</option>
             {options.map((option, index) => (
@@ -429,21 +454,14 @@ const KR_MaterialList = () => {
                   'uom',
                   'Unit of Measurement (UOM)',
                   true,
-                  (() => {
-                    if (!formData.category) return uomOptions;
-                    
-                    // For UOM, we'll use the general UOM options since the new data structure
-                    // doesn't store individual material UOMs in the hierarchical format
-                    // The UOM will be selected independently
-                    return uomOptions;
-                  })(),
+                  uomOptions,
                   'Enter new UOM'
                 )}
 
                 {/* Initial Quantity Field */}
                 <div className="form-group">
                   <label htmlFor="initialQuantity" className="required">
-                    Initial Quantity *
+                    Initial Quantity
                   </label>
                   <input
                     type="number"

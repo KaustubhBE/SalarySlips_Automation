@@ -829,23 +829,21 @@ const KR_MaterialInward = () => {
                         <td 
                           data-label="UOM"
                           className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                          title={editingItem === item.id ? "UOM is auto-selected based on material name" : "UOM is auto-selected based on material name"}
                         >
                           {editingItem === item.id ? (
-                            <select
+                            <input
+                              type="text"
                               value={editFormData.uom}
-                              onChange={(e) => handleEditInputChange('uom', e.target.value)}
-                              className="edit-select"
-                            >
-                              <option value="">Select UOM</option>
-                              {UOM_OPTIONS.map(uom => (
-                                <option key={uom} value={uom}>{uom}</option>
-                              ))}
-                            </select>
+                              readOnly
+                              className="edit-input"
+                              style={{
+                                backgroundColor: '#f5f5f5',
+                                cursor: 'not-allowed',
+                                color: '#333'
+                              }}
+                              title="UOM is auto-selected based on material name"
+                            />
                           ) : (
                             item.uom
                           )}
@@ -860,7 +858,7 @@ const KR_MaterialInward = () => {
                                   className="save-edit-btn"
                                   title="Save changes"
                                 >
-                                  ✓ Save
+                                  Save
                                 </button>
                                 <button
                                   type="button"
@@ -868,7 +866,7 @@ const KR_MaterialInward = () => {
                                   className="cancel-edit-btn"
                                   title="Cancel edit"
                                 >
-                                  ✕ Cancel
+                                  Cancel
                                 </button>
                               </div>
                               <div className="remove-actions-row">
@@ -878,7 +876,7 @@ const KR_MaterialInward = () => {
                                   className="remove-item-btn"
                                   title="Remove item"
                                 >
-                                  × Delete
+                                  Delete
                                 </button>
                               </div>
                             </div>
@@ -919,7 +917,7 @@ const KR_MaterialInward = () => {
                 {/* Category - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="category" className={inwardItems.length === 0 ? "required" : ""}>
-                    Category {inwardItems.length === 0 ? "*" : ""}
+                    Category
                   </label>
                   <select
                     id="category"
@@ -986,7 +984,7 @@ const KR_MaterialInward = () => {
                 {/* Material Name - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="materialName" className={inwardItems.length === 0 ? "required" : ""}>
-                    Material Name {inwardItems.length === 0 ? "*" : ""}
+                    Material Name
                   </label>
                   <select
                     id="materialName"
@@ -1040,7 +1038,7 @@ const KR_MaterialInward = () => {
                 {/* Quantity - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="quantity" className={inwardItems.length === 0 ? "required" : ""}>
-                    Quantity {inwardItems.length === 0 ? "**" : ""}
+                    Quantity
                   </label>
                   <input
                     type="text"
@@ -1059,21 +1057,23 @@ const KR_MaterialInward = () => {
                 {/* UOM - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="uom" className={inwardItems.length === 0 ? "required" : ""}>
-                    UOM {inwardItems.length === 0 ? "*" : ""}
+                    UOM
                   </label>
-                  <select
+                  <input
+                    type="text"
                     id="uom"
                     value={formData.uom}
-                    onChange={(e) => handleInputChange('uom', e.target.value)}
+                    readOnly
                     required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
-                    disabled={dataLoading}
-                  >
-                    <option value="">Select UOM</option>
-                    {UOM_OPTIONS.map(uom => (
-                      <option key={uom} value={uom}>{uom}</option>
-                    ))}
-                  </select>
+                    className={`form-input ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    placeholder="UOM"
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: '#333'
+                    }}
+                    title="UOM is auto-selected based on material name"
+                  />
                 </div>
 
 

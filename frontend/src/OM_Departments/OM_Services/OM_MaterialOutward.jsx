@@ -796,23 +796,21 @@ const OM_MaterialOutward = () => {
                         <td 
                           data-label="UOM"
                           className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                          title={editingItem === item.id ? "UOM is auto-selected based on material name" : "UOM is auto-selected based on material name"}
                         >
                           {editingItem === item.id ? (
-                            <select
+                            <input
+                              type="text"
                               value={editFormData.uom}
-                              onChange={(e) => handleEditInputChange('uom', e.target.value)}
-                              className="edit-select"
-                            >
-                              <option value="">Select UOM</option>
-                              {UOM_OPTIONS.map(uom => (
-                                <option key={uom} value={uom}>{uom}</option>
-                              ))}
-                            </select>
+                              readOnly
+                              className="edit-input"
+                              style={{
+                                backgroundColor: '#f5f5f5',
+                                cursor: 'not-allowed',
+                                color: '#333'
+                              }}
+                              title="UOM is auto-selected based on material name"
+                            />
                           ) : (
                             item.uom
                           )}
@@ -827,7 +825,7 @@ const OM_MaterialOutward = () => {
                                   className="save-edit-btn"
                                   title="Save changes"
                                 >
-                                  ✓ Save
+                                  Save
                                 </button>
                                 <button
                                   type="button"
@@ -835,7 +833,7 @@ const OM_MaterialOutward = () => {
                                   className="cancel-edit-btn"
                                   title="Cancel edit"
                                 >
-                                  ✕ Cancel
+                                  Cancel
                                 </button>
                               </div>
                               <div className="remove-actions-row">
@@ -845,7 +843,7 @@ const OM_MaterialOutward = () => {
                                   className="remove-item-btn"
                                   title="Remove item"
                                 >
-                                  × Delete
+                                  Delete
                                 </button>
                               </div>
                             </div>
@@ -887,7 +885,7 @@ const OM_MaterialOutward = () => {
                 {/* Category - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="category" className={outwardItems.length === 0 ? "required" : ""}>
-                    Category {outwardItems.length === 0 ? "*" : ""}
+                    Category
                   </label>
                   <select
                     id="category"
@@ -941,7 +939,7 @@ const OM_MaterialOutward = () => {
                 {/* Material Name - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="materialName" className={outwardItems.length === 0 ? "required" : ""}>
-                    Material Name {outwardItems.length === 0 ? "*" : ""}
+                    Material Name
                   </label>
                   <select
                     id="materialName"
@@ -995,7 +993,7 @@ const OM_MaterialOutward = () => {
                 {/* Quantity - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="quantity" className={outwardItems.length === 0 ? "required" : ""}>
-                    Quantity {outwardItems.length === 0 ? "*" : ""}
+                    Quantity
                   </label>
                   <input
                     type="text"
@@ -1014,21 +1012,23 @@ const OM_MaterialOutward = () => {
                 {/* UOM - Required only if no items exist */}
                 <div className="form-group">
                   <label htmlFor="uom" className={outwardItems.length === 0 ? "required" : ""}>
-                    UOM {outwardItems.length === 0 ? "*" : ""}
+                    UOM
                   </label>
-                  <select
+                  <input
+                    type="text"
                     id="uom"
                     value={formData.uom}
-                    onChange={(e) => handleInputChange('uom', e.target.value)}
+                    readOnly
                     required={outwardItems.length === 0}
-                    className={`form-select ${outwardItems.length > 0 ? 'optional-field' : ''}`}
-                    disabled={dataLoading}
-                  >
-                    <option value="">Select UOM</option>
-                    {UOM_OPTIONS.map(uom => (
-                      <option key={uom} value={uom}>{uom}</option>
-                    ))}
-                  </select>
+                    className={`form-input ${outwardItems.length > 0 ? 'optional-field' : ''}`}
+                    placeholder="UOM"
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: '#333'
+                    }}
+                    title="UOM is auto-selected based on material name"
+                  />
                 </div>
 
 
