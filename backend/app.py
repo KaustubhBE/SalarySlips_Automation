@@ -44,7 +44,12 @@ from Utils.firebase_utils import (
     get_factory_initials,
     get_next_order_id,
     get_user_oauth_tokens,
-    update_user_oauth_tokens
+    update_user_oauth_tokens,
+    delete_material,
+    update_material_quantity,
+    save_transaction,
+    get_material_details,
+    edit_material
 )
 import json
 from docx import Document
@@ -97,7 +102,9 @@ FACTORY_RBAC_CONFIG = {
                 'name': 'Store',
                 'services': {
                     'kr_place_order': {'name': 'Place Order', 'permission': 'kr_place_order'},
-                    'kr_material_list': {'name': 'Material List', 'permission': 'kr_material_list'},
+                    'kr_add_material_list': {'name': 'Material List', 'permission': 'kr_add_material_list'},
+                    'kr_edit_material_list': {'name': 'Material List', 'permission': 'kr_edit_material_list'},
+                    'kr_delete_material_list': {'name': 'Material List', 'permission': 'kr_delete_material_list'},
                     'kr_material_inward': {'name': 'Material Inward', 'permission': 'kr_material_inward'},
                     'kr_material_outward': {'name': 'Material Outward', 'permission': 'kr_material_outward'},
                     'kr_order_status': {'name': 'Order Status', 'permission': 'kr_order_status'}
@@ -2340,47 +2347,136 @@ def get_party_place_data():
 
 @app.route("/api/material_inward", methods=["POST"])
 def material_inward():
-    """Record material inward transaction"""
+    """Record material inward transaction and update current quantity"""
     try:
         if 'user' not in session:
             return jsonify({"error": "Not logged in"}), 401
         
         data = request.get_json()
+        logger.info(f"Material inward request data: {data}")
         
         # Validate required fields
         required_fields = ['category', 'materialName', 'uom', 'quantity', 'partyName', 'place']
         for field in required_fields:
             if field not in data or not data[field]:
+                logger.error(f"Missing required field: {field}")
                 return jsonify({
                     "success": False,
                     "error": f"Missing required field: {field}"
                 }), 400
         
-        # Create material inward record
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        
+        # First, check if material exists with exact match
+        logger.info(f"Checking material existence for: category='{data['category']}', materialName='{data['materialName']}', subCategory='{data.get('subCategory', '')}', particulars='{data.get('particulars', '')}'")
+        material_check = get_material_details(
+            factory=factory,
+            category=data['category'],
+            subCategory=data.get('subCategory', ''),
+            particulars=data.get('particulars', ''),
+            materialName=data['materialName']
+        )
+        
+        # Debug: Let's also check all materials in the database to see what exists
+        from Utils.firebase_utils import db
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        if factory_doc.exists:
+            existing_data = factory_doc.to_dict()
+            materials = existing_data.get('materials', [])
+            logger.info(f"Total materials in database: {len(materials)}")
+            for i, mat in enumerate(materials[:5]):  # Log first 5 materials for debugging
+                logger.info(f"Material {i}: category='{mat.get('category', '')}', materialName='{mat.get('materialName', '')}', subCategory='{mat.get('subCategory', '')}', particulars='{mat.get('particulars', '')}'")
+        
+        # If material doesn't exist, create it with initial quantity 0
+        if not material_check['success']:
+            logger.info(f"Material not found, creating new material: {data['materialName']}")
+            # Create new material with initial quantity 0
+            from Utils.firebase_utils import db
+            factory_ref = db.collection('MATERIAL').document(factory)
+            factory_doc = factory_ref.get()
+            
+            if factory_doc.exists:
+                existing_data = factory_doc.to_dict()
+                materials = existing_data.get('materials', [])
+            else:
+                materials = []
+            
+            # Add new material with initial quantity 0
+            new_material = {
+                'category': data['category'],
+                'subCategory': data.get('subCategory', ''),
+                'particulars': data.get('particulars', ''),
+                'materialName': data['materialName'],
+                'uom': data['uom'],
+                'initialQuantity': 0,
+                'currentQuantity': 0,
+                'createdAt': datetime.now().isoformat(),
+                'createdBy': session.get('user', {}).get('email', 'unknown')
+            }
+            
+            materials.append(new_material)
+            factory_ref.set({
+                'materials': materials
+            }, merge=True)
+            
+            logger.info(f"Created new material: {data['materialName']} with initial quantity 0")
+        else:
+            logger.info(f"Found existing material: {data['materialName']}, current quantity: {material_check['material'].get('currentQuantity', 0)}")
+        
+        # Update material quantity (add for inward)
+        logger.info(f"Updating material quantity for: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        quantity_result = update_material_quantity(
+            factory=factory,
+            category=data['category'],
+            subCategory=data.get('subCategory', ''),
+            particulars=data.get('particulars', ''),
+            materialName=data['materialName'],
+            quantityChange=data['quantity'],
+            operation='inward'
+        )
+        
+        if not quantity_result['success']:
+            logger.error(f"Quantity update failed: {quantity_result['message']}")
+            return jsonify({
+                "success": False,
+                "message": quantity_result['message']
+            }), 400
+        
+        # Create material inward transaction record
         inward_record = {
             'category': data['category'],
             'subCategory': data.get('subCategory', ''),
             'particulars': data.get('particulars', ''),
             'materialName': data['materialName'],
             'uom': data['uom'],
-            'quantity': data['quantity'],
+            'quantity': float(data['quantity']),
             'partyName': data['partyName'],
             'place': data['place'],
             'timestamp': data.get('timestamp', datetime.now().isoformat()),
-            'department': data.get('department', 'KR'),
+            'department': factory,
             'type': 'inward',
             'recordedBy': session.get('user', {}).get('email', 'unknown'),
-            'recordedAt': datetime.now().isoformat()
+            'recordedAt': datetime.now().isoformat(),
+            'previousQuantity': quantity_result['previous_quantity'],
+            'newQuantity': quantity_result['new_quantity']
         }
         
-        # Here you would typically save to database
-        # For now, we'll just log it and return success
+        # Save transaction to TRANSACTIONS collection
+        transaction_result = save_transaction(factory, inward_record)
+        
+        if not transaction_result['success']:
+            logger.warning(f"Failed to save transaction: {transaction_result['message']}")
+        
         logger.info(f"Material inward recorded: {inward_record}")
         
         return jsonify({
             "success": True,
             "message": "Material inward recorded successfully",
-            "data": inward_record
+            "data": inward_record,
+            "previousQuantity": quantity_result['previous_quantity'],
+            "newQuantity": quantity_result['new_quantity']
         }), 200
         
     except Exception as e:
@@ -2392,47 +2488,96 @@ def material_inward():
 
 @app.route("/api/material_outward", methods=["POST"])
 def material_outward():
-    """Record material outward transaction"""
+    """Record material outward transaction and update current quantity"""
     try:
         if 'user' not in session:
             return jsonify({"error": "Not logged in"}), 401
         
         data = request.get_json()
+        logger.info(f"Material outward request data: {data}")
         
         # Validate required fields
         required_fields = ['category', 'materialName', 'uom', 'quantity', 'givenTo', 'description']
         for field in required_fields:
             if field not in data or not data[field]:
+                logger.error(f"Missing required field: {field}")
                 return jsonify({
                     "success": False,
                     "error": f"Missing required field: {field}"
                 }), 400
         
-        # Create material outward record
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        
+        # First, check if material exists
+        logger.info(f"Checking material existence for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        material_check = get_material_details(
+            factory=factory,
+            category=data['category'],
+            subCategory=data.get('subCategory', ''),
+            particulars=data.get('particulars', ''),
+            materialName=data['materialName']
+        )
+        
+        if not material_check['success']:
+            logger.error(f"Material not found for outward transaction: {data['materialName']}")
+            return jsonify({
+                "success": False,
+                "message": f"Material '{data['materialName']}' not found in database. Cannot record outward transaction."
+            }), 400
+        
+        # Update material quantity (subtract for outward)
+        logger.info(f"Updating material quantity for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        quantity_result = update_material_quantity(
+            factory=factory,
+            category=data['category'],
+            subCategory=data.get('subCategory', ''),
+            particulars=data.get('particulars', ''),
+            materialName=data['materialName'],
+            quantityChange=data['quantity'],
+            operation='outward'
+        )
+        
+        if not quantity_result['success']:
+            logger.error(f"Quantity update failed for outward: {quantity_result['message']}")
+            return jsonify({
+                "success": False,
+                "message": quantity_result['message']
+            }), 400
+        
+        # Create material outward transaction record
         outward_record = {
             'category': data['category'],
             'subCategory': data.get('subCategory', ''),
             'particulars': data.get('particulars', ''),
             'materialName': data['materialName'],
             'uom': data['uom'],
-            'quantity': data['quantity'],
+            'quantity': float(data['quantity']),
             'givenTo': data['givenTo'],
             'description': data['description'],
             'timestamp': data.get('timestamp', datetime.now().isoformat()),
-            'department': data.get('department', 'KR'),
+            'department': factory,
             'type': 'outward',
             'recordedBy': session.get('user', {}).get('email', 'unknown'),
-            'recordedAt': datetime.now().isoformat()
+            'recordedAt': datetime.now().isoformat(),
+            'previousQuantity': quantity_result['previous_quantity'],
+            'newQuantity': quantity_result['new_quantity']
         }
         
-        # Here you would typically save to database
-        # For now, we'll just log it and return success
+        # Save transaction to TRANSACTIONS collection
+        transaction_result = save_transaction(factory, outward_record)
+        
+        if not transaction_result['success']:
+            logger.warning(f"Failed to save transaction: {transaction_result['message']}")
+        
         logger.info(f"Material outward recorded: {outward_record}")
         
         return jsonify({
             "success": True,
             "message": "Material outward recorded successfully",
-            "data": outward_record
+            "data": outward_record,
+            "previousQuantity": quantity_result['previous_quantity'],
+            "newQuantity": quantity_result['new_quantity']
         }), 200
         
     except Exception as e:
@@ -2444,7 +2589,7 @@ def material_outward():
 
 @app.route("/api/add_material", methods=["POST"])
 def add_material():
-    """Add a new material to Firebase"""
+    """Add a new material to Firebase with initial and current quantity"""
     try:
         logger.info("Add material endpoint called")
         logger.info(f"Request origin: {request.headers.get('Origin')}")
@@ -2458,7 +2603,7 @@ def add_material():
         logger.info(f"Received data: {data}")
         
         # Validate required fields
-        required_fields = ['category', 'materialName', 'uom']
+        required_fields = ['category', 'materialName', 'uom', 'initialQuantity']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({
@@ -2472,13 +2617,20 @@ def add_material():
         from Utils.firebase_utils import db
         from firebase_admin import firestore
         
-        # Prepare material data (simplified - no extra fields)
+        # Get initial quantity
+        initial_qty = float(data.get('initialQuantity', 0))
+        
+        # Prepare material data with quantity tracking
         material_data = {
             'category': data.get('category'),
             'subCategory': data.get('subCategory', ''),
             'particulars': data.get('particulars', ''),
             'materialName': data.get('materialName'),
-            'uom': data.get('uom')
+            'uom': data.get('uom'),
+            'initialQuantity': initial_qty,
+            'currentQuantity': initial_qty,  # Initially same as initialQuantity
+            'createdAt': datetime.now().isoformat(),
+            'createdBy': session.get('user', {}).get('email', 'unknown')
         }
         
         # Get the factory document
@@ -2501,11 +2653,13 @@ def add_material():
             'materials': materials
         }, merge=True)
         
-        logger.info(f"Material added successfully: {material_data['materialName']} to factory {factory}")
+        logger.info(f"Material added successfully: {material_data['materialName']} to factory {factory} with quantity {initial_qty}")
         
         return jsonify({
             "success": True,
-            "message": "Material added successfully"
+            "message": "Material added successfully",
+            "initialQuantity": initial_qty,
+            "currentQuantity": initial_qty
         }), 200
         
     except Exception as e:
@@ -2513,6 +2667,177 @@ def add_material():
         return jsonify({
             "success": False,
             "message": f"Error adding material: {str(e)}"
+        }), 500
+
+@app.route("/api/delete_material", methods=["POST"])
+def delete_material_endpoint():
+    """Delete a material from Firebase"""
+    try:
+        logger.info("Delete material endpoint called")
+        logger.info(f"Request origin: {request.headers.get('Origin')}")
+        
+        if 'user' not in session:
+            logger.warning("User not in session for delete_material request")
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        logger.info(f"Received delete data: {data}")
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        category = data.get('category')
+        subCategory = data.get('subCategory', '')
+        particulars = data.get('particulars', '')
+        materialName = data.get('materialName')
+        
+        # Call the delete_material function
+        result = delete_material(factory, category, subCategory, particulars, materialName)
+        
+        if result['success']:
+            logger.info(f"Material deleted successfully: {materialName} from factory {factory}")
+            return jsonify({
+                "success": True,
+                "message": result['message'],
+                "deleted_material": result['deleted_material']
+            }), 200
+        else:
+            logger.warning(f"Failed to delete material: {result['message']}")
+            return jsonify({
+                "success": False,
+                "message": result['message']
+            }), 400
+        
+    except Exception as e:
+        logger.error(f"Error deleting material: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error deleting material: {str(e)}"
+        }), 500
+
+@app.route("/api/get_material_details", methods=["POST"])
+def get_material_details_endpoint():
+    """Get complete material details including current quantity"""
+    try:
+        logger.info("Get material details endpoint called")
+        
+        if 'user' not in session:
+            logger.warning("User not in session for get_material_details request")
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        logger.info(f"Received get material details data: {data}")
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        category = data.get('category')
+        subCategory = data.get('subCategory', '')
+        particulars = data.get('particulars', '')
+        materialName = data.get('materialName')
+        
+        # Call the get_material_details function
+        result = get_material_details(factory, category, subCategory, particulars, materialName)
+        
+        if result['success']:
+            logger.info(f"Material details retrieved: {materialName} from factory {factory}")
+            return jsonify({
+                "success": True,
+                "message": result['message'],
+                "material": result['material']
+            }), 200
+        else:
+            logger.warning(f"Failed to get material details: {result['message']}")
+            return jsonify({
+                "success": False,
+                "message": result['message']
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting material details: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error getting material details: {str(e)}"
+        }), 500
+
+@app.route("/api/edit_material", methods=["POST"])
+def edit_material_endpoint():
+    """Edit material details including currentQuantity"""
+    try:
+        logger.info("Edit material endpoint called")
+        
+        if 'user' not in session:
+            logger.warning("User not in session for edit_material request")
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        logger.info(f"Received edit material data: {data}")
+        
+        # Validate required fields
+        required_fields = ['category', 'materialName']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        # Get factory from data or default to KR
+        factory = data.get('department', 'KR')
+        category = data.get('category')
+        subCategory = data.get('subCategory', '')
+        particulars = data.get('particulars', '')
+        materialName = data.get('materialName')
+        
+        # Prepare update data
+        updated_data = {
+            'updatedBy': session.get('user', {}).get('email', 'unknown')
+        }
+        
+        # Add fields that can be updated
+        if 'currentQuantity' in data:
+            updated_data['currentQuantity'] = float(data['currentQuantity'])
+        if 'uom' in data:
+            updated_data['uom'] = data['uom']
+        
+        # Call the edit_material function
+        result = edit_material(factory, category, subCategory, particulars, materialName, updated_data)
+        
+        if result['success']:
+            logger.info(f"Material edited successfully: {materialName} from factory {factory}")
+            return jsonify({
+                "success": True,
+                "message": result['message'],
+                "updated_material": result['updated_material']
+            }), 200
+        else:
+            logger.warning(f"Failed to edit material: {result['message']}")
+            return jsonify({
+                "success": False,
+                "message": result['message']
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error editing material: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error editing material: {str(e)}"
         }), 500
 
 

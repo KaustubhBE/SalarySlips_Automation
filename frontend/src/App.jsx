@@ -10,7 +10,9 @@ import Processing from './Processing';
 import Reports from './Reports';
 // Import add material components
 import KR_PlaceOrder from './KR_Departments/KR_Services/KR_PlaceOrder';
-import KR_MaterialList from './KR_Departments/KR_Services/KR_MaterialList';
+import KR_Add_MaterialList from './KR_Departments/KR_Services/KR_Add_MaterialList';
+import KR_Edit_MaterialList from './KR_Departments/KR_Services/KR_Edit_MaterialList';
+import KR_Delete_MaterialList from './KR_Departments/KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
 
@@ -889,9 +891,19 @@ function App() {
             <KRStore /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/kerur/kr_store/kr_material_list" element={
+        <Route path="/kerur/kr_store/kr_add_material_list" element={
           isAuthenticated ? 
-            <KR_MaterialList /> : 
+            <KR_Add_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_edit_material_list" element={
+          isAuthenticated ? 
+            <KR_Edit_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_delete_material_list" element={
+          isAuthenticated ? 
+            <KR_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/kerur/kr_store/kr_place_order" element={

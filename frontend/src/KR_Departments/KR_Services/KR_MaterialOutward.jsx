@@ -43,9 +43,48 @@ const KR_MaterialOutward = () => {
   const [editingItem, setEditingItem] = useState(null)
   const [editFormData, setEditFormData] = useState({})
   
+  // Quantity validation
+  const [currentQuantity, setCurrentQuantity] = useState(null)
+  const [quantityLoading, setQuantityLoading] = useState(false)
+  
   // Touch functionality for mobile
   const [touchStartTime, setTouchStartTime] = useState(null)
   const [touchStartPosition, setTouchStartPosition] = useState(null)
+
+  // Function to fetch current quantity from database
+  const fetchCurrentQuantity = async (category, subCategory, particulars, materialName) => {
+    try {
+      setQuantityLoading(true)
+      const payload = {
+        category: category,
+        subCategory: subCategory || '',
+        particulars: particulars || '',
+        materialName: materialName,
+        department: 'KR'
+      }
+
+      console.log('Fetching current quantity with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('Current quantity response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        const currentQty = material.currentQuantity || material.initialQuantity || 0
+        setCurrentQuantity(currentQty)
+        return currentQty
+      } else {
+        console.warn('Material not found in database:', response.data.message)
+        setCurrentQuantity(null)
+        return null
+      }
+    } catch (error) {
+      console.error('Error fetching current quantity:', error)
+      setCurrentQuantity(null)
+      return null
+    } finally {
+      setQuantityLoading(false)
+    }
+  }
 
   // Helper function to get UOM for a material
   const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
@@ -93,7 +132,7 @@ const KR_MaterialOutward = () => {
   }
 
   // Multi-item management functions
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     // If no fields are filled, don't add anything
     if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity) {
       return
@@ -105,6 +144,32 @@ const KR_MaterialOutward = () => {
         alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before adding an item.')
         return
       }
+    }
+
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(formData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      formData.category,
+      formData.subCategory,
+      formData.particulars,
+      formData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
+      return
     }
 
     const newItem = {
@@ -129,6 +194,9 @@ const KR_MaterialOutward = () => {
       uom: '',
       quantity: ''
     }))
+    
+    // Reset current quantity
+    setCurrentQuantity(null)
   }
 
   const handleRemoveItem = (itemId) => {
@@ -266,9 +334,35 @@ const KR_MaterialOutward = () => {
     })
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity) {
       alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before saving.')
+      return
+    }
+
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(editFormData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      editFormData.category,
+      editFormData.subCategory,
+      editFormData.particulars,
+      editFormData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
       return
     }
 
@@ -280,6 +374,7 @@ const KR_MaterialOutward = () => {
     
     setEditingItem(null)
     setEditFormData({})
+    setCurrentQuantity(null)
   }
 
   const handleCancelEdit = () => {
@@ -429,6 +524,21 @@ const KR_MaterialOutward = () => {
         if (autoUom) {
           newFormData.uom = autoUom
         }
+
+        // Auto-fetch current quantity when material name is selected
+        if (newFormData.category && value) {
+          fetchCurrentQuantity(
+            newFormData.category,
+            newFormData.subCategory || '',
+            newFormData.particulars || '',
+            value
+          )
+        }
+      }
+
+      // Clear current quantity when dependent fields change
+      if (field === 'category' || field === 'subCategory' || field === 'particulars') {
+        setCurrentQuantity(null)
       }
 
       return newFormData
@@ -468,6 +578,7 @@ const KR_MaterialOutward = () => {
       // Process each item individually using the existing endpoint
       let successCount = 0
       let errorCount = 0
+      let quantityUpdates = []
       
       for (const item of outwardItems) {
         try {
@@ -489,6 +600,15 @@ const KR_MaterialOutward = () => {
           
           if (response.data.success) {
             successCount++
+            // Store quantity update info
+            if (response.data.previousQuantity !== undefined && response.data.newQuantity !== undefined) {
+              quantityUpdates.push({
+                material: item.materialName,
+                previous: response.data.previousQuantity,
+                new: response.data.newQuantity,
+                removed: item.quantity
+              })
+            }
           } else {
             errorCount++
             console.error('Failed to record item:', item, response.data.message)
@@ -500,7 +620,17 @@ const KR_MaterialOutward = () => {
       }
       
       if (successCount > 0) {
-        setMessage(`Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}`)
+        let successMsg = `Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}\n\n`
+        
+        // Add quantity update details
+        if (quantityUpdates.length > 0) {
+          successMsg += 'Quantity Updates:\n'
+          quantityUpdates.forEach(update => {
+            successMsg += `• ${update.material}: ${update.previous} → ${update.new} (Removed: ${update.removed})\n`
+          })
+        }
+        
+        setMessage(successMsg)
         setMessageType('success')
         setOutwardItems([])
         setFormData({
@@ -1058,6 +1188,7 @@ const KR_MaterialOutward = () => {
                 </div>
 
 
+
                 {/* Add Item Button */}
                 <div className="form-group add-item-group">
                   <label>&nbsp;</label>
@@ -1138,6 +1269,7 @@ const KR_MaterialOutward = () => {
                 givenTo: '',
                 description: ''
               })
+              setCurrentQuantity(null)
               alert('Form reset!')
             }}>Reset</button>
           </div>

@@ -694,3 +694,357 @@ def get_user_by_email_with_oauth_tokens(email):
     except Exception as e:
         logging.error(f"Error getting user with OAuth tokens by email {email}: {e}")
         return None
+
+def delete_material(factory, category, subCategory, particulars, materialName):
+    """Delete a material from Firebase with exact match"""
+    try:
+        # Get the factory document
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        
+        if not factory_doc.exists:
+            return {
+                'success': False,
+                'message': f'Factory {factory} not found',
+                'deleted_material': None
+            }
+        
+        # Get existing materials array
+        existing_data = factory_doc.to_dict()
+        materials = existing_data.get('materials', [])
+        
+        # Find the exact match
+        deleted_material = None
+        updated_materials = []
+        found = False
+        
+        for material in materials:
+            # Check for exact match on all fields
+            if (material.get('category', '') == category and
+                material.get('subCategory', '') == subCategory and
+                material.get('particulars', '') == particulars and
+                material.get('materialName', '') == materialName):
+                deleted_material = material.copy()
+                found = True
+                # Don't add this material to the updated list (effectively deleting it)
+            else:
+                updated_materials.append(material)
+        
+        if not found:
+            return {
+                'success': False,
+                'message': 'No matching material found to delete',
+                'deleted_material': None
+            }
+        
+        # Update the factory document with the filtered materials array
+        factory_ref.set({
+            'materials': updated_materials
+        }, merge=True)
+        
+        logging.info(f"Material deleted successfully: {materialName} from factory {factory}")
+        
+        return {
+            'success': True,
+            'message': 'Material deleted successfully',
+            'deleted_material': deleted_material
+        }
+        
+    except Exception as e:
+        logging.error(f"Error deleting material: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error deleting material: {str(e)}',
+            'deleted_material': None
+        }
+
+def update_material_quantity(factory, category, subCategory, particulars, materialName, quantityChange, operation):
+    """
+    Update material current quantity
+    - operation: 'inward' (add) or 'outward' (subtract)
+    - Returns updated material and new currentQuantity
+    """
+    try:
+        # Get the factory document
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        
+        if not factory_doc.exists:
+            return {
+                'success': False,
+                'message': f'Factory {factory} not found',
+                'updated_material': None,
+                'previous_quantity': None,
+                'new_quantity': None
+            }
+        
+        # Get existing materials array
+        existing_data = factory_doc.to_dict()
+        materials = existing_data.get('materials', [])
+        
+        # Find the exact match and update quantity
+        updated_material = None
+        updated_materials = []
+        found = False
+        previous_quantity = None
+        new_quantity = None
+        
+        for material in materials:
+            # Check for exact match on all fields first
+            if (material.get('category', '') == category and
+                material.get('subCategory', '') == subCategory and
+                material.get('particulars', '') == particulars and
+                material.get('materialName', '') == materialName):
+                found = True
+            # If exact match not found, try flexible match (same category and materialName)
+            elif (material.get('category', '') == category and
+                  material.get('materialName', '') == materialName):
+                logging.info(f"Using flexible match for quantity update: category='{category}', materialName='{materialName}'")
+                found = True
+            
+            if found:
+                # Get current quantity (default to 0 if not set)
+                current_qty = float(material.get('currentQuantity', material.get('initialQuantity', 0)))
+                previous_quantity = current_qty
+                
+                # Calculate new quantity based on operation
+                if operation == 'inward':
+                    new_quantity = current_qty + float(quantityChange)
+                elif operation == 'outward':
+                    new_quantity = current_qty - float(quantityChange)
+                    # Prevent negative quantity
+                    if new_quantity < 0:
+                        return {
+                            'success': False,
+                            'message': f'Insufficient quantity. Available: {current_qty}, Requested: {quantityChange}',
+                            'updated_material': None,
+                            'previous_quantity': current_qty,
+                            'new_quantity': None
+                        }
+                else:
+                    return {
+                        'success': False,
+                        'message': f'Invalid operation: {operation}. Must be "inward" or "outward"',
+                        'updated_material': None,
+                        'previous_quantity': None,
+                        'new_quantity': None
+                    }
+                
+                # Update the material
+                material['currentQuantity'] = new_quantity
+                material['lastUpdated'] = datetime.now().isoformat()
+                updated_material = material.copy()
+                updated_materials.append(material)
+            else:
+                updated_materials.append(material)
+        
+        if not found:
+            return {
+                'success': False,
+                'message': 'No matching material found to update quantity',
+                'updated_material': None,
+                'previous_quantity': None,
+                'new_quantity': None
+            }
+        
+        # Update the factory document with the updated materials array
+        factory_ref.set({
+            'materials': updated_materials
+        }, merge=True)
+        
+        logging.info(f"Material quantity updated: {materialName} from {previous_quantity} to {new_quantity} (operation: {operation})")
+        
+        return {
+            'success': True,
+            'message': 'Material quantity updated successfully',
+            'updated_material': updated_material,
+            'previous_quantity': previous_quantity,
+            'new_quantity': new_quantity
+        }
+        
+    except Exception as e:
+        logging.error(f"Error updating material quantity: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error updating material quantity: {str(e)}',
+            'updated_material': None,
+            'previous_quantity': None,
+            'new_quantity': None
+        }
+
+def save_transaction(factory, transaction_data):
+    """Save inward/outward transaction to TRANSACTIONS collection"""
+    try:
+        # Get the transactions document for this factory
+        transactions_ref = db.collection('TRANSACTIONS').document(factory)
+        transactions_doc = transactions_ref.get()
+        
+        if transactions_doc.exists:
+            # Get existing transactions array
+            existing_data = transactions_doc.to_dict()
+            transactions = existing_data.get('transactions', [])
+        else:
+            # Create new factory document with empty transactions array
+            transactions = []
+        
+        # Add timestamp if not provided
+        if 'timestamp' not in transaction_data:
+            transaction_data['timestamp'] = datetime.now().isoformat()
+        
+        if 'recordedAt' not in transaction_data:
+            transaction_data['recordedAt'] = datetime.now().isoformat()
+        
+        # Add transaction to the array
+        transactions.append(transaction_data)
+        
+        # Update the factory document with the new transactions array
+        transactions_ref.set({
+            'transactions': transactions,
+            'factory': factory,
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        logging.info(f"Transaction saved: {transaction_data.get('type')} for {transaction_data.get('materialName')} in factory {factory}")
+        
+        return {
+            'success': True,
+            'message': 'Transaction saved successfully',
+            'transaction_id': len(transactions) - 1
+        }
+        
+    except Exception as e:
+        logging.error(f"Error saving transaction: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error saving transaction: {str(e)}',
+            'transaction_id': None
+        }
+
+def get_material_details(factory, category, subCategory, particulars, materialName):
+    """Get complete material details including current quantity"""
+    try:
+        # Get the factory document
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        
+        if not factory_doc.exists:
+            return {
+                'success': False,
+                'message': f'Factory {factory} not found',
+                'material': None
+            }
+        
+        # Get existing materials array
+        existing_data = factory_doc.to_dict()
+        materials = existing_data.get('materials', [])
+        
+        # Find the exact match first
+        for material in materials:
+            if (material.get('category', '') == category and
+                material.get('subCategory', '') == subCategory and
+                material.get('particulars', '') == particulars and
+                material.get('materialName', '') == materialName):
+                return {
+                    'success': True,
+                    'message': 'Material found',
+                    'material': material
+                }
+        
+        # If exact match not found, try a more flexible search
+        # Look for materials with same category and materialName, but different subCategory/particulars
+        logging.info(f"Exact match not found, trying flexible search for category='{category}', materialName='{materialName}'")
+        for material in materials:
+            if (material.get('category', '') == category and
+                material.get('materialName', '') == materialName):
+                logging.info(f"Found material with same category and name but different subCategory/particulars: subCategory='{material.get('subCategory', '')}', particulars='{material.get('particulars', '')}'")
+                return {
+                    'success': True,
+                    'message': 'Material found (flexible match)',
+                    'material': material
+                }
+        
+        return {
+            'success': False,
+            'message': 'No matching material found',
+            'material': None
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting material details: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error getting material details: {str(e)}',
+            'material': None
+        }
+
+def edit_material(factory, category, subCategory, particulars, materialName, updated_data):
+    """Edit material details including currentQuantity"""
+    try:
+        # Get the factory document
+        factory_ref = db.collection('MATERIAL').document(factory)
+        factory_doc = factory_ref.get()
+        
+        if not factory_doc.exists:
+            return {
+                'success': False,
+                'message': f'Factory {factory} not found',
+                'updated_material': None
+            }
+        
+        # Get existing materials array
+        existing_data = factory_doc.to_dict()
+        materials = existing_data.get('materials', [])
+        
+        # Find the exact match and update
+        updated_material = None
+        updated_materials = []
+        found = False
+        
+        for material in materials:
+            if (material.get('category', '') == category and
+                material.get('subCategory', '') == subCategory and
+                material.get('particulars', '') == particulars and
+                material.get('materialName', '') == materialName):
+                found = True
+                
+                # Update allowed fields
+                if 'currentQuantity' in updated_data:
+                    material['currentQuantity'] = updated_data['currentQuantity']
+                if 'uom' in updated_data:
+                    material['uom'] = updated_data['uom']
+                
+                material['lastUpdated'] = datetime.now().isoformat()
+                material['lastUpdatedBy'] = updated_data.get('updatedBy', 'unknown')
+                
+                updated_material = material.copy()
+                updated_materials.append(material)
+            else:
+                updated_materials.append(material)
+        
+        if not found:
+            return {
+                'success': False,
+                'message': 'No matching material found to edit',
+                'updated_material': None
+            }
+        
+        # Update the factory document with the updated materials array
+        factory_ref.set({
+            'materials': updated_materials
+        }, merge=True)
+        
+        logging.info(f"Material edited successfully: {materialName} from factory {factory}")
+        
+        return {
+            'success': True,
+            'message': 'Material updated successfully',
+            'updated_material': updated_material
+        }
+        
+    except Exception as e:
+        logging.error(f"Error editing material: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error editing material: {str(e)}',
+            'updated_material': None
+        }

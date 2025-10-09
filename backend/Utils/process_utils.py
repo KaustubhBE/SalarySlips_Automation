@@ -1711,8 +1711,8 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         headers = [header.strip() for header in all_data[1]]  # Row 2 contains headers
         logging.info(f"Found headers: {headers}")
         
-        # Expected headers: Category, Sub Category, Particulars, Material Name, UOM, Initial/nQuantity
-        expected_headers = ['Category', 'Sub Category', 'Particulars', 'Material Name', 'UOM', 'Initial/nQuantity']
+        # Expected headers: Category, Sub Category, Particulars, Material Name, UOM, Initial\nQuantity
+        expected_headers = ['Category', 'Sub Category', 'Particulars', 'Material Name', 'UOM', 'Initial\nQuantity']
         
         # Find column indices for expected headers
         header_indices = {}
@@ -1724,6 +1724,9 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                     break
         
         logging.info(f"Header indices found: {header_indices}")
+        logging.info(f"Looking for 'Initial\\nQuantity' header: {'Initial\\nQuantity' in header_indices}")
+        if 'Initial\nQuantity' not in header_indices:
+            logging.warning("'Initial\\nQuantity' header not found! Available headers: " + str(headers))
         
         # Check for required headers (Category, Material Name, UOM are compulsory)
         required_headers = ['Category', 'Material Name', 'UOM']
@@ -1756,7 +1759,10 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 particulars = row[header_indices.get('Particulars', 2)].strip() if 'Particulars' in header_indices else ''
                 material_name = row[header_indices.get('Material Name', 3)].strip()
                 uom = row[header_indices.get('UOM', 4)].strip()
-                initial_quantity = row[header_indices.get('Initial/nQuantity', 5)].strip() if 'Initial/nQuantity' in header_indices else '0'
+                initial_quantity = row[header_indices.get('Initial\nQuantity', 5)].strip() if 'Initial\nQuantity' in header_indices else '0'
+                
+                # Debug logging for initial quantity
+                logging.info(f"Row {row_index}: initial_quantity='{initial_quantity}', has_header={('Initial\nQuantity' in header_indices)}")
                 
                 # Validate compulsory fields and track specific missing fields
                 missing_fields = []
@@ -1869,13 +1875,16 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
         
         for category, category_data in sheet_data.items():
             for material_info in category_data.get('materialNames', []):
+                initial_qty = float(material_info.get('initialQuantity', '0') or '0')
+                
                 material_entry = {
                     'category': category,
                     'subCategory': material_info.get('subCategory', ''),
                     'particulars': material_info.get('particulars', ''),
                     'materialName': material_info.get('name', ''),
                     'uom': material_info.get('uom', ''),
-                    'initialQuantity': material_info.get('initialQuantity', '0'),
+                    'initialQuantity': initial_qty,
+                    'currentQuantity': initial_qty,  # Set currentQuantity = initialQuantity during sync
                     'syncedAt': sync_timestamp,
                     'syncedBy': synced_by,
                     'syncDescription': sync_description

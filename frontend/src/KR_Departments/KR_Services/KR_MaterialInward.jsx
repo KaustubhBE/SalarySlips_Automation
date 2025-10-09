@@ -489,6 +489,7 @@ const KR_MaterialInward = () => {
       // Process each item individually using the existing endpoint
       let successCount = 0
       let errorCount = 0
+      let quantityUpdates = []
       
       for (const item of inwardItems) {
         try {
@@ -510,6 +511,15 @@ const KR_MaterialInward = () => {
           
           if (response.data.success) {
             successCount++
+            // Store quantity update info
+            if (response.data.previousQuantity !== undefined && response.data.newQuantity !== undefined) {
+              quantityUpdates.push({
+                material: item.materialName,
+                previous: response.data.previousQuantity,
+                new: response.data.newQuantity,
+                added: item.quantity
+              })
+            }
           } else {
             errorCount++
             console.error('Failed to record item:', item, response.data.message)
@@ -521,7 +531,17 @@ const KR_MaterialInward = () => {
       }
       
       if (successCount > 0) {
-        setMessage(`Material inward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}`)
+        let successMsg = `Material inward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}\n\n`
+        
+        // Add quantity update details
+        if (quantityUpdates.length > 0) {
+          successMsg += 'Quantity Updates:\n'
+          quantityUpdates.forEach(update => {
+            successMsg += `• ${update.material}: ${update.previous} → ${update.new} (Added: ${update.added})\n`
+          })
+        }
+        
+        setMessage(successMsg)
         setMessageType('success')
         setInwardItems([])
         setFormData({

@@ -4,7 +4,7 @@ import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 
-const KR_MaterialList = () => {
+const KR_Delete_MaterialList = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -13,25 +13,17 @@ const KR_MaterialList = () => {
     particulars: '',
     materialName: '',
     uom: '',
-    initialQuantity: ''
+    currentQuantity: ''
   })
 
-  const [inputModes, setInputModes] = useState({
-    category: 'dropdown', // 'dropdown' or 'text'
-    subCategory: 'dropdown',
-    particulars: 'dropdown',
-    materialName: 'dropdown',
-    uom: 'dropdown'
-  })
+  const [fetchedMaterial, setFetchedMaterial] = useState(null)
 
-  const [loading, setLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
-
-  const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 
   // Helper function to get UOM for a material
   const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
@@ -44,7 +36,6 @@ const KR_MaterialList = () => {
     
     // If materialNames is an array (simple structure)
     if (Array.isArray(materialNames)) {
-      // Find the material in the simple array structure
       const material = materialNames.find(mat => 
         (typeof mat === 'string' ? mat : mat.name) === materialName
       )
@@ -78,83 +69,31 @@ const KR_MaterialList = () => {
     return ''
   }
 
-  // Helper function to render hybrid input field
-  const renderHybridInput = (field, label, required = false, options = [], placeholder = '') => {
-    // Special handling for UOM field - it should always be read-only and auto-selected
-    if (field === 'uom') {
-      return (
-        <div className="form-group">
-          <label htmlFor={field} className={required ? "required" : ""}>
-            {label}
-          </label>
-          <input
-            type="text"
-            id={field}
-            value={formData[field]}
-            readOnly
-            required={required}
-            className="form-input"
-            placeholder="UOM"
-            style={{
-              backgroundColor: '#f5f5f5',
-              cursor: 'not-allowed',
-              color: '#333'
-            }}
-            title="UOM is auto-selected based on material name"
-          />
-        </div>
-      )
-    }
-
-    const isDropdown = inputModes[field] === 'dropdown'
-    const value = formData[field]
-    
+  // Helper function to render simple dropdown
+  const renderDropdown = (field, label, required = false, options = []) => {
     return (
       <div className="form-group">
-        <div className="form-group-header">
-          <label htmlFor={field} className={required ? "required" : ""}>
-            {label}
-          </label>
-          <button
-            type="button"
-            className="toggle-mode-btn"
-            onClick={() => toggleInputMode(field)}
-            title={isDropdown ? 'Switch to text input' : 'Switch to dropdown'}
-          >
-            {isDropdown ? '✏️ Add New' : '📋 Select'}
-          </button>
-        </div>
+        <label htmlFor={field} className={required ? "required" : ""}>
+          {label}
+        </label>
         
-        {isDropdown ? (
-          <select
-            id={field}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            required={required}
-            className="form-select"
-            disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
-                     (field === 'particulars' && !formData.category) ||
-                     (field === 'materialName' && !formData.category)}
-          >
-            <option value="">Select {label}</option>
-            {options.map((option, index) => (
-              <option key={index} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            id={field}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            required={required}
-            className="form-input"
-            placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-            disabled={dataLoading}
-          />
-        )}
+        <select
+          id={field}
+          value={formData[field]}
+          onChange={(e) => handleInputChange(field, e.target.value)}
+          required={required}
+          className="form-select"
+          disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
+                   (field === 'particulars' && !formData.category) ||
+                   (field === 'materialName' && !formData.category)}
+        >
+          <option value="">Select {label}</option>
+          {options.map((option, index) => (
+            <option key={index} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </div>
     )
   }
@@ -198,24 +137,24 @@ const KR_MaterialList = () => {
           particulars: '',
           materialName: '',
           uom: '',
-          initialQuantity: ''
+          currentQuantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
           particulars: '',
           materialName: '',
           uom: '',
-          initialQuantity: ''
+          currentQuantity: ''
         }),
         // Reset dependent fields when particulars changes
         ...(field === 'particulars' && {
           materialName: '',
           uom: '',
-          initialQuantity: ''
+          currentQuantity: ''
         })
       }
 
-      // Auto-assign UOM when material name changes
+      // Auto-assign UOM and fetch material details when material name changes
       if (field === 'materialName' && value) {
         const autoUom = getUomForMaterial(
           newFormData.category,
@@ -226,36 +165,111 @@ const KR_MaterialList = () => {
         if (autoUom) {
           newFormData.uom = autoUom
         }
+
+        // Auto-fetch material details when material name is selected
+        if (newFormData.category && value) {
+          console.log('Auto-fetching material details for:', {
+            category: newFormData.category,
+            subCategory: newFormData.subCategory || '',
+            particulars: newFormData.particulars || '',
+            materialName: value
+          })
+          fetchMaterialDetails(
+            newFormData.category,
+            newFormData.subCategory || '',
+            newFormData.particulars || '',
+            value
+          )
+        }
       }
 
       return newFormData
     })
   }
 
-  const toggleInputMode = (field) => {
-    setInputModes(prev => ({
-      ...prev,
-      [field]: prev[field] === 'dropdown' ? 'text' : 'dropdown'
-    }))
-    
-    // Clear the field value when switching modes
-    setFormData(prev => ({
-      ...prev,
-      [field]: ''
-    }))
+  // Function to fetch material details
+  const fetchMaterialDetails = async (category, subCategory, particulars, materialName) => {
+    try {
+      const payload = {
+        category: category,
+        subCategory: subCategory,
+        particulars: particulars,
+        materialName: materialName,
+        department: 'KR'
+      }
+
+      console.log('Fetching material details with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('Material details response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        setFetchedMaterial(material)
+        
+        // Auto-populate the current quantity
+        setFormData(prev => ({
+          ...prev,
+          uom: material.uom,
+          currentQuantity: material.currentQuantity || material.initialQuantity || 0
+        }))
+        
+        setMessage(`Material details loaded successfully!\nCurrent Quantity: ${material.currentQuantity || material.initialQuantity || 0}`)
+        setMessageType('success')
+      } else {
+        setMessage(response.data.message || 'Material not found in database')
+        setMessageType('error')
+        setFetchedMaterial(null)
+        setFormData(prev => ({
+          ...prev,
+          currentQuantity: ''
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching material details:', error)
+      console.error('Error response:', error.response?.data)
+      setMessage(error.response?.data?.message || 'Error fetching material details. Please try again.')
+      setMessageType('error')
+      setFetchedMaterial(null)
+      setFormData(prev => ({
+        ...prev,
+        currentQuantity: ''
+      }))
+    }
   }
 
-  const handleSubmit = async (e) => {
+  const handleDeleteMaterial = async (e) => {
     e.preventDefault()
     
-    // Validation
-    if (!formData.category || !formData.materialName || !formData.uom || !formData.initialQuantity) {
-      setMessage('Please fill in all required fields (Category, Material Name, UOM, and Initial Quantity)')
+    // Validation - check if required fields are filled
+    if (!formData.category || !formData.materialName) {
+      setMessage('Please fill in required fields (Category and Material Name) to delete material')
       setMessageType('error')
       return
     }
 
-    setLoading(true)
+    if (!fetchedMaterial) {
+      setMessage('Please select a material name to load material details first')
+      setMessageType('error')
+      return
+    }
+
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this material?\n\n` +
+      `Category: ${formData.category}\n` +
+      `Sub Category: ${formData.subCategory || 'N/A'}\n` +
+      `Particulars: ${formData.particulars || 'N/A'}\n` +
+      `Material Name: ${formData.materialName}\n` +
+      `UOM: ${formData.uom || 'N/A'}\n` +
+      `Current Quantity: ${formData.currentQuantity}\n\n` +
+      `This action cannot be undone.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteLoading(true)
     setMessage('')
 
     try {
@@ -264,35 +278,47 @@ const KR_MaterialList = () => {
         subCategory: formData.subCategory || '',
         particulars: formData.particulars || '',
         materialName: formData.materialName,
-        uom: formData.uom,
-        initialQuantity: formData.initialQuantity,
-        timestamp: new Date().toISOString(),
         department: 'KR'
       }
 
-      const response = await axios.post(getApiUrl('add_material'), payload)
+      console.log('Deleting material with payload:', payload)
+      const response = await axios.post(getApiUrl('delete_material'), payload)
+      console.log('Delete material response:', response.data)
       
       if (response.data.success) {
-        setMessage('Material added successfully!')
+        const deletedMaterial = response.data.deleted_material
+        const successMessage = `Material deleted successfully!\n\n` +
+          `Deleted Material Details:\n` +
+          `Category: ${deletedMaterial.category}\n` +
+          `Sub Category: ${deletedMaterial.subCategory || 'N/A'}\n` +
+          `Particulars: ${deletedMaterial.particulars || 'N/A'}\n` +
+          `Material Name: ${deletedMaterial.materialName}\n` +
+          `UOM: ${deletedMaterial.uom}\n` +
+          `Current Quantity: ${formData.currentQuantity}`
+
+        setMessage(successMessage)
         setMessageType('success')
+        
+        // Clear the form after successful deletion
         setFormData({
           category: '',
           subCategory: '',
           particulars: '',
           materialName: '',
           uom: '',
-          initialQuantity: ''
+          currentQuantity: ''
         })
+        setFetchedMaterial(null)
       } else {
-        setMessage(response.data.message || 'Failed to add material')
+        setMessage(response.data.message || 'Failed to delete material')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error adding material:', error)
-      setMessage(error.response?.data?.message || 'Error adding material. Please try again.')
+      console.error('Error deleting material:', error)
+      setMessage(error.response?.data?.message || 'Error deleting material. Please try again.')
       setMessageType('error')
     } finally {
-      setLoading(false)
+      setDeleteLoading(false)
     }
   }
 
@@ -300,7 +326,7 @@ const KR_MaterialList = () => {
     return (
       <div className="material_list-container">
         <div className="material-form-wrapper">
-          <h2>Add New Material</h2>
+          <h2>Delete Material</h2>
           <div className="loading-message">
             <p>Loading material data...</p>
           </div>
@@ -311,7 +337,7 @@ const KR_MaterialList = () => {
 
   return (
     <div className="material_list-container">
-      {/* Back Button Section - Consistent across all pages */}
+      {/* Back Button Section */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'flex-start', 
@@ -352,7 +378,7 @@ const KR_MaterialList = () => {
       </div>
       
       <div className="material-form-wrapper">
-        <h2>Add New Material</h2>
+        <h2>Delete Material</h2>
         
         {message && (
           <div className={`message ${messageType}`}>
@@ -360,41 +386,38 @@ const KR_MaterialList = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="material-form">
+        <form onSubmit={handleDeleteMaterial} className="material-form">
           <div className="form-main-content">
             <div className="form-left-section">
               <div className="form-row">
                 {/* Category Field */}
-                {renderHybridInput(
+                {renderDropdown(
                   'category',
                   'Category',
                   true,
-                  categories,
-                  'Enter new category'
+                  categories
                 )}
 
                 {/* Sub Category Field */}
-                {renderHybridInput(
+                {renderDropdown(
                   'subCategory',
                   'Sub Category',
                   false,
-                  formData.category ? materialData[formData.category]?.subCategories || [] : [],
-                  'Enter new sub category'
+                  formData.category ? materialData[formData.category]?.subCategories || [] : []
                 )}
               </div>
 
               <div className="form-row">
                 {/* Particulars Field */}
-                {renderHybridInput(
+                {renderDropdown(
                   'particulars',
                   'Particulars',
                   false,
-                  formData.category ? materialData[formData.category]?.particulars || [] : [],
-                  'Enter new particulars'
+                  formData.category ? materialData[formData.category]?.particulars || [] : []
                 )}
 
                 {/* Material Name Field */}
-                {renderHybridInput(
+                {renderDropdown(
                   'materialName',
                   'Material Name',
                   true,
@@ -403,7 +426,6 @@ const KR_MaterialList = () => {
                     const categoryData = materialData[formData.category];
                     if (!categoryData) return [];
                     
-                    // Handle the same data structure as KR_PlaceOrder.jsx
                     let materialNames = categoryData.materialNames || [];
                     
                     // If materialNames is an array (simple structure)
@@ -443,37 +465,50 @@ const KR_MaterialList = () => {
                     }
                     
                     return [];
-                  })(),
-                  'Enter new material name'
+                  })()
                 )}
               </div>
 
               <div className="form-row">
-                {/* UOM Field */}
-                {renderHybridInput(
-                  'uom',
-                  'Unit of Measurement (UOM)',
-                  true,
-                  uomOptions,
-                  'Enter new UOM'
-                )}
-
-                {/* Initial Quantity Field */}
+                {/* UOM Field - Read-only, auto-selected */}
                 <div className="form-group">
-                  <label htmlFor="initialQuantity" className="required">
-                    Initial Quantity
+                  <label htmlFor="uom">
+                    Unit of Measurement (UOM)
                   </label>
                   <input
-                    type="number"
-                    id="initialQuantity"
-                    value={formData.initialQuantity}
-                    onChange={(e) => handleInputChange('initialQuantity', e.target.value)}
-                    required
-                    className="form-input no-spinner"
-                    placeholder="Enter initial quantity"
-                    min="0"
-                    step="0.01"
-                    disabled={dataLoading}
+                    type="text"
+                    id="uom"
+                    value={formData.uom}
+                    readOnly
+                    className="form-input"
+                    placeholder="Auto-selected"
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: '#333'
+                    }}
+                    title="UOM is auto-selected based on material name"
+                  />
+                </div>
+
+                {/* Current Quantity Field - Read-only */}
+                <div className="form-group">
+                  <label htmlFor="currentQuantity">
+                    Current Quantity
+                  </label>
+                  <input
+                    type="text"
+                    id="currentQuantity"
+                    value={formData.currentQuantity}
+                    readOnly
+                    className="form-input"
+                    placeholder="Fetched from database"
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: '#333'
+                    }}
+                    title="Current quantity is fetched from database"
                   />
                 </div>
               </div>
@@ -481,21 +516,39 @@ const KR_MaterialList = () => {
               <div className="form-actions">
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="btn btn-primary"
+                  disabled={deleteLoading || !formData.category || !formData.materialName || !fetchedMaterial}
+                  className="btn btn-danger"
+                  style={{
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    opacity: (!formData.category || !formData.materialName || !fetchedMaterial) ? 0.6 : 1
+                  }}
+                  title={(!formData.category || !formData.materialName || !fetchedMaterial) ? 
+                    'Select material and load details to enable delete' : 
+                    'Delete material from database'}
                 >
-                  {loading ? 'Adding...' : 'Add Material'}
+                  {deleteLoading ? 'Deleting...' : 'Delete Material'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({
-                    category: '',
-                    subCategory: '',
-                    particulars: '',
-                    materialName: '',
-                    uom: '',
-                    initialQuantity: ''
-                  })}
+                  onClick={() => {
+                    setFormData({
+                      category: '',
+                      subCategory: '',
+                      particulars: '',
+                      materialName: '',
+                      uom: '',
+                      currentQuantity: ''
+                    })
+                    setFetchedMaterial(null)
+                    setMessage('')
+                  }}
                   className="btn btn-secondary"
                 >
                   Clear Form
@@ -509,4 +562,4 @@ const KR_MaterialList = () => {
   )
 }
 
-export default KR_MaterialList
+export default KR_Delete_MaterialList

@@ -239,7 +239,9 @@ export const FACTORY_RBAC_CONFIG = {
         name: 'Store',
         services: {
           kr_place_order: { name: 'Place Order', permission: 'kr_place_order' },
-          kr_material_list: { name: 'Material List', permission: 'kr_material_list' },
+          kr_add_material_list: { name: 'Add to Material List', permission: 'kr_add_material_list' },
+          kr_edit_material_list: { name: 'Edit in Material List', permission: 'kr_edit_material_list' },
+          kr_delete_material_list: { name: 'Delete from Material List', permission: 'kr_delete_material_list' },
           kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
           kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
           kr_order_status: { name: 'Order Status', permission: 'kr_order_status' }
