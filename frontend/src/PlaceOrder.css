@@ -789,18 +789,19 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   transition: all 0.3s ease;
   margin: 0 auto;
-  min-width: 60px;
-  height: 32px;
+  min-width: 55px;
+  height: 28px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
 }
 
 .items-table .remove-item-btn:hover {
@@ -844,15 +845,15 @@
 .edit-actions-vertical {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  min-width: 130px;
+  min-width: 120px;
   padding: 5px;
 }
 
 .edit-actions-row {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   justify-content: center;
   align-items: center;
 }
@@ -868,17 +869,18 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   transition: all 0.3s ease;
-  min-width: 60px;
-  height: 32px;
+  min-width: 55px;
+  height: 28px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
 }
 
 .save-edit-btn:hover {
@@ -892,17 +894,18 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   transition: all 0.3s ease;
-  min-width: 60px;
-  height: 32px;
+  min-width: 55px;
+  height: 28px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
 }
 
 .cancel-edit-btn:hover {
