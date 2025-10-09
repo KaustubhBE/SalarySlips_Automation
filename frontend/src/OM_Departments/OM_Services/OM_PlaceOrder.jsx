@@ -983,24 +983,24 @@ const OM_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="UOM"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                        onDoubleClick={() => handleDoubleClickEdit(item, 'uom')}
-                        onTouchStart={(e) => handleTouchStart(e, item, 'uom')}
-                        onTouchEnd={(e) => handleTouchEnd(e, item, 'uom')}
-                        onTouchMove={handleTouchMove}
-                        title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                        className={editingItem === item.id ? "editing-cell" : ""}
+                        title="UOM is auto-selected based on material name"
+                        style={{ 
+                          backgroundColor: editingItem === item.id ? '#f5f5f5' : 'transparent'
+                        }}
                       >
                         {editingItem === item.id ? (
-                          <select
+                          <input
+                            type="text"
                             value={editFormData.uom}
-                            onChange={(e) => handleEditInputChange('uom', e.target.value)}
-                            className="edit-select"
-                          >
-                            <option value="">Select UOM</option>
-                                {UOM_OPTIONS.map(uom => (
-                              <option key={uom} value={uom}>{uom}</option>
-                            ))}
-                          </select>
+                            readOnly
+                            className="edit-input"
+                            style={{ 
+                              backgroundColor: '#f5f5f5', 
+                              cursor: 'not-allowed',
+                              color: '#333'
+                            }}
+                          />
                         ) : (
                           item.uom
                         )}
@@ -1015,7 +1015,7 @@ const OM_PlaceOrder = () => {
                                 className="save-edit-btn"
                                 title="Save changes"
                               >
-                                ✓ Save
+                                Save
                               </button>
                               <button
                                 type="button"
@@ -1023,7 +1023,7 @@ const OM_PlaceOrder = () => {
                                 className="cancel-edit-btn"
                                 title="Cancel edit"
                               >
-                                ✕ Cancel
+                                Cancel
                               </button>
                             </div>
                             <div className="remove-actions-row">
@@ -1033,7 +1033,7 @@ const OM_PlaceOrder = () => {
                                 className="remove-item-btn"
                                 title="Remove item"
                               >
-                                × Delete
+                                Delete
                               </button>
                             </div>
                           </div>
@@ -1075,7 +1075,7 @@ const OM_PlaceOrder = () => {
               {/* Category - Required only if no items exist */}
               <div className="form-group">
             <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
-              Category {orderItems.length === 0 ? "*" : ""}
+              Category
             </label>
             <select
               id="category"
@@ -1142,7 +1142,7 @@ const OM_PlaceOrder = () => {
           {/* Material Name - Required only if no items exist */}
           <div className="form-group">
             <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
-              Material Name {orderItems.length === 0 ? "*" : ""}
+              Material Name
             </label>
             <select
               id="materialName"
@@ -1164,7 +1164,7 @@ const OM_PlaceOrder = () => {
           {/* Quantity - Required only if no items exist */}
           <div className="form-group">
             <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
-              Quantity {orderItems.length === 0 ? "**" : ""}
+              Quantity
             </label>
             <input
               type="text"
@@ -1179,24 +1179,25 @@ const OM_PlaceOrder = () => {
             />
           </div>
 
-          {/* UOM - Required only if no items exist */}
+          {/* UOM - Auto-selected (Read-only) */}
           <div className="form-group">
             <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
-              UOM {orderItems.length === 0 ? "*" : ""}
+              UOM (Auto-selected)
             </label>
-            <select
+            <input
+              type="text"
               id="uom"
               value={formData.uom}
-              onChange={(e) => handleInputChange('uom', e.target.value)}
+              readOnly
               required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
-              disabled={dataLoading}
-            >
-              <option value="">Select UOM</option>
-              {UOM_OPTIONS.map(uom => (
-                <option key={uom} value={uom}>{uom}</option>
-              ))}
-            </select>
+              className={`form-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              placeholder="UOM"
+              style={{ 
+                backgroundColor: '#f5f5f5', 
+                cursor: 'not-allowed',
+                color: '#333'
+              }}
+            />
           </div>
 
           {/* Add Item Button */}
