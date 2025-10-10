@@ -48,8 +48,7 @@ from Utils.firebase_utils import (
     delete_material,
     update_material_quantity,
     save_transaction,
-    get_material_details,
-    edit_material
+    get_material_details
 )
 import json
 from docx import Document
@@ -103,7 +102,6 @@ FACTORY_RBAC_CONFIG = {
                 'services': {
                     'kr_place_order': {'name': 'Place Order', 'permission': 'kr_place_order'},
                     'kr_add_material_list': {'name': 'Material List', 'permission': 'kr_add_material_list'},
-                    'kr_edit_material_list': {'name': 'Material List', 'permission': 'kr_edit_material_list'},
                     'kr_delete_material_list': {'name': 'Material List', 'permission': 'kr_delete_material_list'},
                     'kr_material_inward': {'name': 'Material Inward', 'permission': 'kr_material_inward'},
                     'kr_material_outward': {'name': 'Material Outward', 'permission': 'kr_material_outward'},
@@ -2775,71 +2773,6 @@ def get_material_details_endpoint():
             "success": False,
             "message": f"Error getting material details: {str(e)}"
         }), 500
-
-@app.route("/api/edit_material", methods=["POST"])
-def edit_material_endpoint():
-    """Edit material details including currentQuantity"""
-    try:
-        logger.info("Edit material endpoint called")
-        
-        if 'user' not in session:
-            logger.warning("User not in session for edit_material request")
-            return jsonify({"error": "Not logged in"}), 401
-        
-        data = request.get_json()
-        logger.info(f"Received edit material data: {data}")
-        
-        # Validate required fields
-        required_fields = ['category', 'materialName']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({
-                    "success": False,
-                    "message": f"Missing required field: {field}"
-                }), 400
-        
-        # Get factory from data or default to KR
-        factory = data.get('department', 'KR')
-        category = data.get('category')
-        subCategory = data.get('subCategory', '')
-        particulars = data.get('particulars', '')
-        materialName = data.get('materialName')
-        
-        # Prepare update data
-        updated_data = {
-            'updatedBy': session.get('user', {}).get('email', 'unknown')
-        }
-        
-        # Add fields that can be updated
-        if 'currentQuantity' in data:
-            updated_data['currentQuantity'] = float(data['currentQuantity'])
-        if 'uom' in data:
-            updated_data['uom'] = data['uom']
-        
-        # Call the edit_material function
-        result = edit_material(factory, category, subCategory, particulars, materialName, updated_data)
-        
-        if result['success']:
-            logger.info(f"Material edited successfully: {materialName} from factory {factory}")
-            return jsonify({
-                "success": True,
-                "message": result['message'],
-                "updated_material": result['updated_material']
-            }), 200
-        else:
-            logger.warning(f"Failed to edit material: {result['message']}")
-            return jsonify({
-                "success": False,
-                "message": result['message']
-            }), 404
-        
-    except Exception as e:
-        logger.error(f"Error editing material: {str(e)}")
-        return jsonify({
-            "success": False,
-            "message": f"Error editing material: {str(e)}"
-        }), 500
-
 
 @app.route("/api/submit_order", methods=["POST"])
 def submit_order():

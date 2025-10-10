@@ -3,7 +3,6 @@ import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-do
 import { useAuth } from '../Components/AuthContext';
 import KR_PlaceOrder from './KR_Services/KR_PlaceOrder';
 import KR_Add_MaterialList from './KR_Services/KR_Add_MaterialList';
-import KR_Edit_MaterialList from './KR_Services/KR_Edit_MaterialList';
 import KR_Delete_MaterialList from './KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Services/KR_MaterialOutward';
@@ -21,7 +20,6 @@ const KRStore = () => {
   const krStoreServices = [
     { key: 'kr_place_order', name: 'Order Intent', route: '/kerur/kr_store/kr_place_order' },
     { key: 'kr_add_material_list', name: 'Add Material', route: '/kerur/kr_store/kr_add_material_list' },
-    { key: 'kr_edit_material_list', name: 'Edit Material', route: '/kerur/kr_store/kr_edit_material_list'},
     { key: 'kr_delete_material_list', name: 'Delete Material', route: '/kerur/kr_store/kr_delete_material_list'},
     { key: 'kr_material_inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material_inward' },
     { key: 'kr_material_outward', name: 'Material Outward', route: '/kerur/kr_store/kr_material_outward' },
@@ -115,7 +113,6 @@ const KRStore = () => {
       
       {/* KR Add Material Service Route */}
       <Route path="kr_add_material_list" element={<KR_Add_MaterialList />} />
-      <Route path="kr_edit_material_list" element={<KR_Edit_MaterialList />} />
       <Route path="kr_delete_material_list" element={<KR_Delete_MaterialList />} />
       
       {/* KR Material Inward Service Route */}

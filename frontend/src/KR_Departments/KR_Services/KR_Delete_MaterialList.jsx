@@ -24,6 +24,8 @@ const KR_Delete_MaterialList = () => {
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [materialToDelete, setMaterialToDelete] = useState(null)
 
   // Helper function to get UOM for a material
   const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
@@ -253,31 +255,30 @@ const KR_Delete_MaterialList = () => {
       return
     }
 
-    // Confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this material?\n\n` +
-      `Category: ${formData.category}\n` +
-      `Sub Category: ${formData.subCategory || 'N/A'}\n` +
-      `Particulars: ${formData.particulars || 'N/A'}\n` +
-      `Material Name: ${formData.materialName}\n` +
-      `UOM: ${formData.uom || 'N/A'}\n` +
-      `Current Quantity: ${formData.currentQuantity}\n\n` +
-      `This action cannot be undone.`
-    )
+    // Show custom confirmation modal
+    setMaterialToDelete({
+      category: formData.category,
+      subCategory: formData.subCategory || 'N/A',
+      particulars: formData.particulars || 'N/A',
+      materialName: formData.materialName,
+      uom: formData.uom || 'N/A',
+      currentQuantity: formData.currentQuantity
+    })
+    setShowConfirmModal(true)
+  }
 
-    if (!confirmed) {
-      return
-    }
-
+  // Function to handle actual deletion after confirmation
+  const confirmDelete = async () => {
+    setShowConfirmModal(false)
     setDeleteLoading(true)
     setMessage('')
 
     try {
       const payload = {
-        category: formData.category,
-        subCategory: formData.subCategory || '',
-        particulars: formData.particulars || '',
-        materialName: formData.materialName,
+        category: materialToDelete.category,
+        subCategory: materialToDelete.subCategory === 'N/A' ? '' : materialToDelete.subCategory,
+        particulars: materialToDelete.particulars === 'N/A' ? '' : materialToDelete.particulars,
+        materialName: materialToDelete.materialName,
         department: 'KR'
       }
 
@@ -294,10 +295,10 @@ const KR_Delete_MaterialList = () => {
           `Particulars: ${deletedMaterial.particulars || 'N/A'}\n` +
           `Material Name: ${deletedMaterial.materialName}\n` +
           `UOM: ${deletedMaterial.uom}\n` +
-          `Current Quantity: ${formData.currentQuantity}`
+          `Current Quantity: ${materialToDelete.currentQuantity}`
 
-        setMessage(successMessage)
-        setMessageType('success')
+        // Show alert box instead of setting message state
+        alert(successMessage)
         
         // Clear the form after successful deletion
         setFormData({
@@ -309,6 +310,9 @@ const KR_Delete_MaterialList = () => {
           currentQuantity: ''
         })
         setFetchedMaterial(null)
+        
+        // Refresh the page after successful deletion
+        window.location.reload()
       } else {
         setMessage(response.data.message || 'Failed to delete material')
         setMessageType('error')
@@ -320,6 +324,12 @@ const KR_Delete_MaterialList = () => {
     } finally {
       setDeleteLoading(false)
     }
+  }
+
+  // Function to cancel deletion
+  const cancelDelete = () => {
+    setShowConfirmModal(false)
+    setMaterialToDelete(null)
   }
 
   if (dataLoading) {
@@ -558,6 +568,137 @@ const KR_Delete_MaterialList = () => {
           </div>
         </form>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showConfirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '10px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            maxWidth: '500px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <h3 style={{
+              marginBottom: '20px',
+              color: '#333',
+              fontSize: '18px',
+              fontWeight: '600'
+            }}>
+              Are you sure you want to delete this material?
+            </h3>
+            
+            <div style={{
+              backgroundColor: '#f8f9fa',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              textAlign: 'left'
+            }}>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>Category:</strong> {materialToDelete?.category}
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>Sub Category:</strong> {materialToDelete?.subCategory}
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>Particulars:</strong> {materialToDelete?.particulars}
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>Material Name:</strong> {materialToDelete?.materialName}
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>UOM:</strong> {materialToDelete?.uom}
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <strong>Current Quantity:</strong> {materialToDelete?.currentQuantity}
+              </p>
+            </div>
+            
+            <p style={{
+              marginBottom: '25px',
+              color: '#dc3545',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
+              This action cannot be undone.
+            </p>
+            
+            <div style={{
+              display: 'flex',
+              gap: '15px',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minWidth: '100px',
+                  boxShadow: '0 2px 4px rgba(220, 53, 69, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#c82333'
+                  e.target.style.transform = 'translateY(-1px)'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#dc3545'
+                  e.target.style.transform = 'translateY(0)'
+                }}
+              >
+                DELETE
+              </button>
+              
+              <button
+                onClick={cancelDelete}
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  minWidth: '100px',
+                  boxShadow: '0 2px 4px rgba(108, 117, 125, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#5a6268'
+                  e.target.style.transform = 'translateY(-1px)'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#6c757d'
+                  e.target.style.transform = 'translateY(0)'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
