@@ -277,8 +277,18 @@ const KR_MaterialInward = () => {
               return material.uom
             }
           }
-          // If no specifications provided, return empty (don't fallback)
-          return ''
+          // If no specifications provided, search in any specification within the subcategory
+          for (const spec of Object.keys(subCategoryData)) {
+            const materials = subCategoryData[spec]
+            if (Array.isArray(materials)) {
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
+              }
+            }
+          }
         }
         // If subcategory data is direct array
         else if (Array.isArray(subCategoryData)) {
@@ -306,8 +316,18 @@ const KR_MaterialInward = () => {
                 return material.uom
               }
             }
-            // If no specifications provided, return empty (don't fallback)
-            return ''
+            // If no specifications provided, search in any specification within this subcategory
+            for (const spec of Object.keys(subCatData)) {
+              const materials = subCatData[spec]
+              if (Array.isArray(materials)) {
+                const material = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                )
+                if (material && typeof material === 'object') {
+                  return material.uom
+                }
+              }
+            }
           }
           // If this subcategory data is direct array
           else if (Array.isArray(subCatData)) {
@@ -714,19 +734,31 @@ const KR_MaterialInward = () => {
         })
       }
 
-      // Auto-assign UOM when material name changes (only if we have complete material details)
+      // Auto-assign UOM when material name changes
       if (field === 'materialName' && value) {
-        // Only auto-assign UOM if we have all required details
-        if (newFormData.category && value && newFormData.specifications) {
-          // Fetch UOM from backend for exact match
-          setTimeout(() => {
-            fetchMaterialUomFromBackend(
-              newFormData.category,
-              newFormData.subCategory || '',
-              newFormData.specifications,
-              value
-            )
-          }, 100)
+        // First try to get UOM from local data (works even without specifications)
+        if (newFormData.category && value) {
+          const localUom = getUomForMaterial(
+            newFormData.category,
+            value,
+            newFormData.subCategory,
+            newFormData.specifications
+          )
+          if (localUom) {
+            newFormData.uom = localUom
+          }
+          
+          // If we have specifications, also fetch from backend for exact match
+          if (newFormData.specifications) {
+            setTimeout(() => {
+              fetchMaterialUomFromBackend(
+                newFormData.category,
+                newFormData.subCategory || '',
+                newFormData.specifications,
+                value
+              )
+            }, 100)
+          }
         }
       }
 
@@ -1198,9 +1230,13 @@ const KR_MaterialInward = () => {
                     value={formData.subCategory}
                     onChange={(e) => handleInputChange('subCategory', e.target.value)}
                     className="form-select"
-                    disabled={!formData.category || dataLoading}
+                    disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
                   >
-                    <option value="">Select Sub Category</option>
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
+                       'No subcategories available' : 'Select Sub Category'}
+                    </option>
                     {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
                       <option key={subCat} value={subCat}>{subCat}</option>
                     ))}
@@ -1237,9 +1273,14 @@ const KR_MaterialInward = () => {
                     value={formData.specifications}
                     onChange={(e) => handleInputChange('specifications', e.target.value)}
                     className="form-select"
-                    disabled={!formData.category || dataLoading}
+                    disabled={!formData.category || !formData.materialName || dataLoading || getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0}
                   >
-                    <option value="">Select Specifications</option>
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !formData.materialName ? 'Select Material Name first' : 
+                       getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0 ? 
+                       'No specifications available' : 'Select Specifications'}
+                    </option>
                     {formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).map(spec => (
                       <option key={spec} value={spec}>{spec}</option>
                     ))}

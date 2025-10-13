@@ -438,17 +438,15 @@ const KR_Delete_MaterialList = () => {
                 }
               }, 100)
             } else {
-              // Only auto-assign UOM if we have all required details (including specifications)
-              if (newFormData.specifications) {
-                const autoUom = getUomForMaterial(
-                  newFormData.category,
-                  value,
-                  newFormData.subCategory,
-                  newFormData.specifications
-                )
-                if (autoUom) {
-                  newFormData.uom = autoUom
-                }
+              // Try to get UOM from local data (works even without specifications)
+              const autoUom = getUomForMaterial(
+                newFormData.category,
+                value,
+                newFormData.subCategory,
+                newFormData.specifications
+              )
+              if (autoUom) {
+                newFormData.uom = autoUom
               }
             }
           }
@@ -741,12 +739,27 @@ const KR_Delete_MaterialList = () => {
                 )}
 
                 {/* Sub Category Field */}
-                {renderDropdown(
-                  'subCategory',
-                  'Sub Category',
-                  false,
-                  formData.category ? materialData[formData.category]?.subCategories || [] : []
-                )}
+                <div className="form-group">
+                  <label htmlFor="subCategory">
+                    Sub Category
+                  </label>
+                  <select
+                    id="subCategory"
+                    value={formData.subCategory}
+                    onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                    className="form-select"
+                    disabled={dataLoading || !formData.category || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
+                  >
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
+                       'No subcategories available' : 'Select Sub Category'}
+                    </option>
+                    {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
+                      <option key={subCat} value={subCat}>{subCat}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="form-row">
@@ -759,12 +772,28 @@ const KR_Delete_MaterialList = () => {
                 )}
 
                 {/* Specifications Field */}
-                {renderDropdown(
-                  'specifications',
-                  'Specifications',
-                  false,
-                  formData.category && formData.materialName ? getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory) : []
-                )}
+                <div className="form-group">
+                  <label htmlFor="specifications">
+                    Specifications
+                  </label>
+                  <select
+                    id="specifications"
+                    value={formData.specifications}
+                    onChange={(e) => handleInputChange('specifications', e.target.value)}
+                    className="form-select"
+                    disabled={dataLoading || !formData.category || !formData.materialName || getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0}
+                  >
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !formData.materialName ? 'Select Material Name first' : 
+                       getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0 ? 
+                       'No specifications available' : 'Select Specifications'}
+                    </option>
+                    {formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).map(spec => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="form-row">
