@@ -309,6 +309,17 @@
   border-color: #28a745;
 }
 
+/* Optional field border colors */
+.optional-field-red {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
+}
+
+.optional-field-green {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1) !important;
+}
+
 /* Focus states for accessibility */
 .form-input:focus-visible,
 .form-select:focus-visible {

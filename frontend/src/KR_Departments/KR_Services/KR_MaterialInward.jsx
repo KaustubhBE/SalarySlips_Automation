@@ -1229,7 +1229,7 @@ const KR_MaterialInward = () => {
                     id="subCategory"
                     value={formData.subCategory}
                     onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                    className="form-select"
+                    className={`form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'optional-field-red' : formData.subCategory ? 'optional-field-green' : ''}`}
                     disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
                   >
                     <option value="">
@@ -1272,7 +1272,7 @@ const KR_MaterialInward = () => {
                     id="specifications"
                     value={formData.specifications}
                     onChange={(e) => handleInputChange('specifications', e.target.value)}
-                    className="form-select"
+                    className={`form-select ${!formData.specifications && formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length > 0 ? 'optional-field-red' : formData.specifications ? 'optional-field-green' : ''}`}
                     disabled={!formData.category || !formData.materialName || dataLoading || getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0}
                   >
                     <option value="">

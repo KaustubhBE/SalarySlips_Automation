@@ -362,6 +362,27 @@ const KR_Add_MaterialList = () => {
     const isDropdown = inputModes[field] === 'dropdown'
     const value = formData[field]
     
+    // Determine border color for optional fields
+    const getBorderClass = () => {
+      if (required) return '' // Required fields use default styling
+      
+      // For optional fields (subCategory, specifications)
+      if (field === 'subCategory') {
+        if (!value && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0) {
+          return 'optional-field-red'
+        } else if (value) {
+          return 'optional-field-green'
+        }
+      } else if (field === 'specifications') {
+        if (!value && formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length > 0) {
+          return 'optional-field-red'
+        } else if (value) {
+          return 'optional-field-green'
+        }
+      }
+      return ''
+    }
+    
     return (
       <div className="form-group">
         <div className="form-group-header">
@@ -384,7 +405,7 @@ const KR_Add_MaterialList = () => {
             value={value}
             onChange={(e) => handleInputChange(field, e.target.value)}
             required={required}
-            className="form-select"
+            className={`form-select ${getBorderClass()}`}
             disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
                      (field === 'specifications' && !formData.category) ||
                      (field === 'materialName' && !formData.category)}
@@ -403,7 +424,7 @@ const KR_Add_MaterialList = () => {
             value={value}
             onChange={(e) => handleInputChange(field, e.target.value)}
             required={required}
-            className="form-input"
+            className={`form-input ${getBorderClass()}`}
             placeholder={placeholder || `Enter ${label.toLowerCase()}`}
             disabled={dataLoading}
           />
