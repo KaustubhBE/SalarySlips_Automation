@@ -4,7 +4,7 @@ import beLogo from './assets/be-logo.png';
 import { 
   FaBars, 
   FaCog, 
-  FaSignOutAlt, 
+  FaPowerOff, 
   FaWhatsapp
 } from 'react-icons/fa';
 import ReportsDepartment from './Components/ReportsDepartment';
@@ -659,7 +659,7 @@ const Navbar = ({ onLogout }) => {
             onClick={() => navigate('/settings')} 
             title="Settings" 
           />
-          <FaSignOutAlt 
+          <FaPowerOff 
             className="navbar-icon logout-icon" 
             onClick={handleLogout} 
             title="Logout" 
@@ -799,7 +799,7 @@ const Navbar = ({ onLogout }) => {
           onClick={() => navigate('/settings')} 
           title="Settings" 
         />
-        <FaSignOutAlt 
+        <FaPowerOff 
           className="navbar-icon logout-icon" 
           onClick={handleLogout} 
           title="Logout" 
