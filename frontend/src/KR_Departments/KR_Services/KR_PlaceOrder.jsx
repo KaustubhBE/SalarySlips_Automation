@@ -1285,22 +1285,6 @@ const KR_PlaceOrder = () => {
         </div>
       </div>
       <form onSubmit={handleSubmit} className="material-form">
-        {/* Form Status Indicator */}
-        <div className="form-status">
-          <div className={`status-indicator ${orderItems.length > 0 && formData.givenBy && formData.description ? 'ready' : 'incomplete'}`}>
-            <span className="status-icon">
-              {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : '⚠'}
-            </span>
-            <span className="status-text">
-              {orderItems.length === 0 
-                ? 'Add at least one item to place order' 
-                : (!formData.givenBy || !formData.description) 
-                  ? 'Fill in Given By and Description fields' 
-                  : `Ready to place order! (${orderItems.length} item${orderItems.length > 1 ? 's' : ''} added)`
-              }
-            </span>
-          </div>
-        </div>
 
         {/* Added Items Table - Moved to top */}
         {orderItems.length > 0 && (
@@ -1789,7 +1773,7 @@ const KR_PlaceOrder = () => {
             type="submit" 
             className={`submit-btn ${orderItems.length > 0 && formData.givenBy && formData.description ? 'ready-to-submit' : 'disabled'}`}
             disabled={orderItems.length === 0 || !formData.givenBy || !formData.description}
-            title={orderItems.length === 0 ? 'Add at least one item' : (!formData.givenBy || !formData.description) ? 'Fill in Given By and Description' : 'Ready to submit'}
+            title={orderItems.length === 0 ? 'Add at least one item to place order' : (!formData.givenBy || !formData.description) ? 'Fill in Given By and Description' : 'Ready to submit'}
           >
             Place Order {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : ''}
           </button>

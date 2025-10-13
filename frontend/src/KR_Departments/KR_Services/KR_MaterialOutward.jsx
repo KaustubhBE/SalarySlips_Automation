@@ -1090,20 +1090,6 @@ const KR_MaterialOutward = () => {
         )}
 
         <form onSubmit={handleSubmit} className="material-form">
-          {/* Form Status Indicator */}
-          <div className="form-status">
-            <div className={`status-indicator ${outwardItems.length > 0 ? 'ready' : 'incomplete'}`}>
-              <span className="status-icon">
-                {outwardItems.length > 0 ? '✓' : '⚠'}
-              </span>
-              <span className="status-text">
-                {outwardItems.length === 0 
-                  ? 'Add at least one item to record material outward' 
-                  : `Ready to record outward! (${outwardItems.length} item${outwardItems.length > 1 ? 's' : ''} added)`
-                }
-              </span>
-            </div>
-          </div>
 
           {/* Added Items Table - Moved to top */}
           {outwardItems.length > 0 && (
@@ -1544,7 +1530,7 @@ const KR_MaterialOutward = () => {
               type="submit" 
               className={`submit-btn ${outwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
               disabled={outwardItems.length === 0}
-              title={outwardItems.length === 0 ? 'Add at least one item' : 'Ready to record outward'}
+              title={outwardItems.length === 0 ? 'Add at least one item to record outward' : 'Ready to record outward'}
             >
               Record Outward {outwardItems.length > 0 ? '✓' : ''}
             </button>

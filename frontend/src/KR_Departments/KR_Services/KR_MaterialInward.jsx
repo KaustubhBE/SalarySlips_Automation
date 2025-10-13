@@ -935,20 +935,6 @@ const KR_MaterialInward = () => {
         )}
 
         <form onSubmit={handleSubmit} className="material-form">
-          {/* Form Status Indicator */}
-          <div className="form-status">
-            <div className={`status-indicator ${inwardItems.length > 0 ? 'ready' : 'incomplete'}`}>
-              <span className="status-icon">
-                {inwardItems.length > 0 ? '✓' : '⚠'}
-              </span>
-              <span className="status-text">
-                {inwardItems.length === 0 
-                  ? 'Add at least one item to record material inward' 
-                  : `Ready to record inward! (${inwardItems.length} item${inwardItems.length > 1 ? 's' : ''} added)`
-                }
-              </span>
-            </div>
-          </div>
 
           {/* Added Items Table - Moved to top */}
           {inwardItems.length > 0 && (
@@ -1366,7 +1352,7 @@ const KR_MaterialInward = () => {
               type="submit" 
               className={`submit-btn ${inwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
               disabled={inwardItems.length === 0}
-              title={inwardItems.length === 0 ? 'Add at least one item' : 'Ready to record inward'}
+              title={inwardItems.length === 0 ? 'Add at least one item to record inward' : 'Ready to record inward'}
             >
               Record Inward {inwardItems.length > 0 ? '✓' : ''}
             </button>
