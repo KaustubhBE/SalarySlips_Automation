@@ -401,16 +401,6 @@ const KR_Delete_MaterialList = () => {
 
       // Auto-assign UOM and fetch material details when material name changes
       if (field === 'materialName' && value) {
-        const autoUom = getUomForMaterial(
-          newFormData.category,
-          value,
-          newFormData.subCategory,
-          newFormData.specifications
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
-        }
-
         // Auto-fetch material details when material name is selected
         if (newFormData.category && value) {
           // Auto-populate specifications if only one option is available
@@ -419,6 +409,16 @@ const KR_Delete_MaterialList = () => {
             const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
             if (availableSpecs.length === 1) {
               newFormData.specifications = availableSpecs[0]
+              // Now auto-assign UOM with the auto-selected specifications
+              const autoUom = getUomForMaterial(
+                newFormData.category,
+                value,
+                newFormData.subCategory,
+                newFormData.specifications
+              )
+              if (autoUom) {
+                newFormData.uom = autoUom
+              }
               // Now fetch material details with the auto-selected specifications
               setTimeout(() => {
                 // Only fetch if the form is still active and data is valid
@@ -437,13 +437,37 @@ const KR_Delete_MaterialList = () => {
                   )
                 }
               }, 100)
+            } else {
+              // Only auto-assign UOM if we have all required details (including specifications)
+              if (newFormData.specifications) {
+                const autoUom = getUomForMaterial(
+                  newFormData.category,
+                  value,
+                  newFormData.subCategory,
+                  newFormData.specifications
+                )
+                if (autoUom) {
+                  newFormData.uom = autoUom
+                }
+              }
             }
           }
         }
       }
 
-      // Fetch material details when specifications are manually selected
+      // Auto-assign UOM and fetch material details when specifications are manually selected
       if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        // Auto-assign UOM when specifications change (if we have complete material details)
+        const autoUom = getUomForMaterial(
+          newFormData.category,
+          newFormData.materialName,
+          newFormData.subCategory,
+          value
+        )
+        if (autoUom) {
+          newFormData.uom = autoUom
+        }
+
         setTimeout(() => {
           if (isFormActive.current) {
             console.log('Fetching material details for manual specification selection:', {

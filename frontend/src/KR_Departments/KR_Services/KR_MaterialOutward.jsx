@@ -322,7 +322,7 @@ const KR_MaterialOutward = () => {
         
         // If subcategory has specifications
         if (typeof subCategoryData === 'object') {
-          // If specific specification is selected, search there first
+          // If specific specification is selected, search ONLY there (exact match)
           if (specifications && subCategoryData[specifications]) {
             const materials = subCategoryData[specifications]
             const material = materials.find(mat => 
@@ -332,19 +332,8 @@ const KR_MaterialOutward = () => {
               return material.uom
             }
           }
-          
-          // Search in any specification within the subcategory
-          for (const spec of Object.keys(subCategoryData)) {
-            const materials = subCategoryData[spec]
-            if (Array.isArray(materials)) {
-              const material = materials.find(mat => 
-                (typeof mat === 'string' ? mat : mat.name) === materialName
-              )
-              if (material && typeof material === 'object') {
-                return material.uom
-              }
-            }
-          }
+          // If no specifications provided, return empty (don't fallback)
+          return ''
         }
         // If subcategory data is direct array
         else if (Array.isArray(subCategoryData)) {
@@ -358,20 +347,22 @@ const KR_MaterialOutward = () => {
       }
       
       // If no subcategory selected, search in all subcategories
-      for (const subCatData of Object.values(materialNames)) {
+      for (const [subCatKey, subCatData] of Object.entries(materialNames)) {
         if (typeof subCatData === 'object') {
           // If this subcategory has specifications
           if (Object.keys(subCatData).length > 0 && Array.isArray(Object.values(subCatData)[0])) {
-            for (const materials of Object.values(subCatData)) {
-              if (Array.isArray(materials)) {
-                const material = materials.find(mat => 
-                  (typeof mat === 'string' ? mat : mat.name) === materialName
-                )
-                if (material && typeof material === 'object') {
-                  return material.uom
-                }
+            // If specific specification is provided, search ONLY in that specification
+            if (specifications && subCatData[specifications]) {
+              const materials = subCatData[specifications]
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
               }
             }
+            // If no specifications provided, return empty (don't fallback)
+            return ''
           }
           // If this subcategory data is direct array
           else if (Array.isArray(subCatData)) {
@@ -387,6 +378,58 @@ const KR_MaterialOutward = () => {
     }
 
     return ''
+  }
+
+  // Function to fetch UOM from backend for exact material match
+  const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
+    try {
+      const payload = {
+        category: category,
+        subCategory: subCategory || '',
+        specifications: specifications || '',
+        materialName: materialName,
+        department: 'KR'
+      }
+
+      console.log('Fetching UOM from backend with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('UOM fetch response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        // Update UOM in form data
+        setFormData(prev => ({
+          ...prev,
+          uom: material.uom
+        }))
+        console.log('UOM updated to:', material.uom)
+      } else {
+        console.warn('Material not found in database for UOM fetch:', response.data.message)
+        // If material not found, try to find it without specifications
+        if (specifications) {
+          console.log('Retrying UOM fetch without specifications...')
+          const retryPayload = {
+            category: category,
+            subCategory: subCategory || '',
+            specifications: '',
+            materialName: materialName,
+            department: 'KR'
+          }
+          
+          const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+          if (retryResponse.data.success) {
+            const material = retryResponse.data.material
+            setFormData(prev => ({
+              ...prev,
+              uom: material.uom
+            }))
+            console.log('UOM updated to (without specs):', material.uom)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching UOM from backend:', error)
+    }
   }
 
   // Multi-item management functions
@@ -774,18 +817,8 @@ const KR_MaterialOutward = () => {
         })
       }
 
-      // Auto-assign UOM when material name changes
+      // Auto-assign UOM when material name changes (only if we have complete material details)
       if (field === 'materialName' && value) {
-        const autoUom = getUomForMaterial(
-          newFormData.category,
-          value,
-          newFormData.subCategory,
-          newFormData.specifications
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
-        }
-
         // Auto-populate specifications if only one option is available
         if (newFormData.category && value) {
           const categoryData = materialData[newFormData.category]
@@ -793,6 +826,15 @@ const KR_MaterialOutward = () => {
             const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
             if (availableSpecs.length === 1) {
               newFormData.specifications = availableSpecs[0]
+              // Now fetch UOM from backend with the auto-selected specifications
+              setTimeout(() => {
+                fetchMaterialUomFromBackend(
+                  newFormData.category,
+                  newFormData.subCategory || '',
+                  newFormData.specifications,
+                  value
+                )
+              }, 200)
               // Now fetch current quantity with the auto-selected specifications
               setTimeout(() => {
                 // Only fetch if the form is still active and data is valid
@@ -805,9 +847,35 @@ const KR_MaterialOutward = () => {
                   )
                 }
               }, 100)
+            } else {
+              // Only auto-assign UOM if we have all required details (including specifications)
+              if (newFormData.specifications) {
+                // Fetch UOM from backend for exact match
+                setTimeout(() => {
+                  fetchMaterialUomFromBackend(
+                    newFormData.category,
+                    newFormData.subCategory || '',
+                    newFormData.specifications,
+                    value
+                  )
+                }, 100)
+              }
             }
           }
         }
+      }
+
+      // Auto-assign UOM when specifications change (if we have complete material details)
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        // Fetch UOM from backend for exact match
+        setTimeout(() => {
+          fetchMaterialUomFromBackend(
+            newFormData.category,
+            newFormData.subCategory || '',
+            value,
+            newFormData.materialName
+          )
+        }, 100)
       }
 
       // Clear current quantity when dependent fields change
