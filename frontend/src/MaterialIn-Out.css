@@ -72,6 +72,16 @@
   font-size: 14px;
 }
 
+/* Center align specific field labels */
+.form-group label[for="category"],
+.form-group label[for="subCategory"],
+.form-group label[for="materialName"],
+.form-group label[for="specifications"],
+.form-group label[for="quantity"],
+.form-group label[for="uom"] {
+  text-align: center;
+}
+
 .form-group label.required::after {
   content: " *";
   color: #e74c3c;

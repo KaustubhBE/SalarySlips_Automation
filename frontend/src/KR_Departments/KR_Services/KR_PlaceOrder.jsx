@@ -340,6 +340,50 @@ const getUomForMaterial = (materialData, category, materialName, subCategory = '
   return '';
 };
 
+// Function to fetch UOM from backend for exact material match
+const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
+  try {
+    const payload = {
+      category: category,
+      subCategory: subCategory || '',
+      specifications: specifications || '',
+      materialName: materialName,
+      department: 'KR'
+    }
+
+    console.log('Fetching UOM from backend with payload:', payload)
+    const response = await axios.post(getApiUrl('get_material_details'), payload)
+    console.log('UOM fetch response:', response.data)
+    
+    if (response.data.success) {
+      const material = response.data.material
+      return material.uom
+    } else {
+      console.warn('Material not found in database for UOM fetch:', response.data.message)
+      // If material not found, try to find it without specifications
+      if (specifications) {
+        console.log('Retrying UOM fetch without specifications...')
+        const retryPayload = {
+          category: category,
+          subCategory: subCategory || '',
+          specifications: '',
+          materialName: materialName,
+          department: 'KR'
+        }
+        
+        const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+        if (retryResponse.data.success) {
+          const material = retryResponse.data.material
+          return material.uom
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching UOM from backend:', error)
+  }
+  return null
+}
+
 // Custom Hook for Material Data
 const useMaterialData = () => {
   const [materialData, setMaterialData] = useState({})
@@ -618,7 +662,18 @@ const KR_PlaceOrder = () => {
     }
   }, [])
 
+  // Helper function to validate numeric input
+  const validateNumericInput = (value) => {
+    // Allow empty string, numbers, and decimal point
+    return /^[0-9]*\.?[0-9]*$/.test(value)
+  }
+
   const handleInputChange = (field, value) => {
+    // For quantity field, only allow numeric input
+    if (field === 'quantity' && !validateNumericInput(value)) {
+      return // Don't update if input is not numeric
+    }
+    
     setFormData(prev => {
       const newFormData = {
         ...prev,
@@ -653,30 +708,58 @@ const KR_PlaceOrder = () => {
 
       // Auto-assign UOM immediately when material name changes
       if (field === 'materialName' && value) {
-        const autoUom = getUomForMaterial(
-          materialData,
-          newFormData.category,
-          value,
-          newFormData.subCategory,
-          '' // Don't require specifications for UOM lookup
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
+        // First try to get UOM from local data (works even without specifications)
+        if (newFormData.category && value) {
+          const localUom = getUomForMaterial(
+            materialData,
+            newFormData.category,
+            value,
+            newFormData.subCategory,
+            newFormData.specifications
+          )
+          if (localUom) {
+            newFormData.uom = localUom
+          }
+          
+          // If we have specifications, also fetch from backend for exact match
+          if (newFormData.specifications) {
+            setTimeout(() => {
+              fetchMaterialUomFromBackend(
+                newFormData.category,
+                newFormData.subCategory || '',
+                newFormData.specifications,
+                value
+              ).then(backendUom => {
+                if (backendUom) {
+                  setFormData(prev => ({
+                    ...prev,
+                    uom: backendUom
+                  }))
+                }
+              })
+            }, 100)
+          }
         }
       }
 
-      // Auto-assign UOM when specifications changes (if different UOM available)
-      if (field === 'specifications' && value && newFormData.materialName) {
-        const autoUom = getUomForMaterial(
-          materialData,
-          newFormData.category,
-          newFormData.materialName,
-          newFormData.subCategory,
-          value
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
-        }
+      // Auto-assign UOM when specifications change (if we have complete material details)
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        // Fetch UOM from backend for exact match
+        setTimeout(() => {
+          fetchMaterialUomFromBackend(
+            newFormData.category,
+            newFormData.subCategory || '',
+            value,
+            newFormData.materialName
+          ).then(backendUom => {
+            if (backendUom) {
+              setFormData(prev => ({
+                ...prev,
+                uom: backendUom
+              }))
+            }
+          })
+        }, 100)
       }
 
       return newFormData
@@ -822,6 +905,11 @@ const KR_PlaceOrder = () => {
   }
 
   const handleEditInputChange = (field, value) => {
+    // For quantity field, only allow numeric input
+    if (field === 'quantity' && !validateNumericInput(value)) {
+      return // Don't update if input is not numeric
+    }
+    
     setEditFormData(prev => {
       const newEditFormData = {
         ...prev,
@@ -861,7 +949,7 @@ const KR_PlaceOrder = () => {
           newEditFormData.category,
           value,
           newEditFormData.subCategory,
-          '' // Don't require specifications for UOM lookup
+          newEditFormData.specifications
         )
         if (autoUom) {
           newEditFormData.uom = autoUom
@@ -1561,10 +1649,14 @@ const KR_PlaceOrder = () => {
               id="subCategory"
               value={formData.subCategory}
               onChange={(e) => handleInputChange('subCategory', e.target.value)}
-              className="form-select"
-              disabled={!formData.category || dataLoading}
+              className={`form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'optional-field-red' : formData.subCategory ? 'optional-field-green' : ''}`}
+              disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
             >
-              <option value="">Select Sub Category</option>
+              <option value="">
+                {!formData.category ? 'Select Category first' : 
+                 !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
+                 'No subcategories available' : 'Select Sub Category'}
+              </option>
               {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
                 <option key={subCat} value={subCat}>{subCat}</option>
               ))}
@@ -1600,10 +1692,29 @@ const KR_PlaceOrder = () => {
               id="specifications"
               value={formData.specifications}
               onChange={(e) => handleInputChange('specifications', e.target.value)}
-              className="form-select"
-              disabled={!formData.materialName || dataLoading}
+              className={`form-select ${!formData.specifications && formData.category && formData.materialName && (() => {
+                const categoryData = materialData[formData.category];
+                if (!categoryData) return false;
+                const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
+                return materialSpecs && materialSpecs.length > 0;
+              })() ? 'optional-field-red' : formData.specifications ? 'optional-field-green' : ''}`}
+              disabled={!formData.category || !formData.materialName || dataLoading || (() => {
+                const categoryData = materialData[formData.category];
+                if (!categoryData) return true;
+                const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
+                return !materialSpecs || materialSpecs.length === 0;
+              })()}
             >
-              <option value="">Select Specifications</option>
+              <option value="">
+                {!formData.category ? 'Select Category first' : 
+                 !formData.materialName ? 'Select Material Name first' : 
+                 (() => {
+                   const categoryData = materialData[formData.category];
+                   if (!categoryData) return 'No specifications available';
+                   const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
+                   return !materialSpecs || materialSpecs.length === 0 ? 'No specifications available' : 'Select Specifications';
+                 })()}
+              </option>
               {formData.materialName && (() => {
                 const categoryData = materialData[formData.category];
                 if (!categoryData) return null;

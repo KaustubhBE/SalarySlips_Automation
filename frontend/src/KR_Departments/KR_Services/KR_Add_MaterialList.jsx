@@ -461,7 +461,18 @@ const KR_Add_MaterialList = () => {
     fetchMaterialData()
   }, [])
 
+  // Helper function to validate numeric input
+  const validateNumericInput = (value) => {
+    // Allow empty string, numbers, and decimal point
+    return /^[0-9]*\.?[0-9]*$/.test(value)
+  }
+
   const handleInputChange = (field, value) => {
+    // For quantity field, only allow numeric input
+    if (field === 'quantity' && !validateNumericInput(value)) {
+      return // Don't update if input is not numeric
+    }
+    
     setFormData(prev => {
       const newFormData = {
         ...prev,
