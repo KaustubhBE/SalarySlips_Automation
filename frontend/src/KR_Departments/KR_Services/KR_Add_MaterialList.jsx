@@ -10,8 +10,8 @@ const KR_Add_MaterialList = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
-    particulars: '',
     materialName: '',
+    specifications: '',
     uom: '',
     initialQuantity: ''
   })
@@ -19,8 +19,8 @@ const KR_Add_MaterialList = () => {
   const [inputModes, setInputModes] = useState({
     category: 'dropdown', // 'dropdown' or 'text'
     subCategory: 'dropdown',
-    particulars: 'dropdown',
     materialName: 'dropdown',
+    specifications: 'dropdown',
     uom: 'dropdown'
   })
 
@@ -33,48 +33,284 @@ const KR_Add_MaterialList = () => {
 
   const uomOptions = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 
+  // Helper function to get material name options based on category data structure
+  const getMaterialNameOptions = (categoryData, subCategory) => {
+    if (!categoryData || !categoryData.materialNames) {
+      return []
+    }
+
+    const materialNames = categoryData.materialNames;
+    const materialNameArray = []; // Collect material names first
+
+    // Structure 1: Simple Array (no subcategories, no specifications)
+    if (Array.isArray(materialNames)) {
+      // For simple arrays, only show materials if NO subcategory is selected
+      if (!subCategory) {
+        materialNames.forEach(material => {
+          const name = typeof material === 'string' ? material : material.name;
+          if (name) {
+            materialNameArray.push(name);
+          }
+        });
+      }
+    }
+    // Structure 2 & 3: Object-based (has specifications or subcategories)
+    else if (typeof materialNames === 'object') {
+      // STRICT FILTERING: If subcategory is selected, show ONLY materials from that subcategory
+      if (subCategory && subCategory.trim() !== '' && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory];
+        
+        // If subcategory data is an array (direct materials under subcategory)
+        if (Array.isArray(subCategoryData)) {
+          subCategoryData.forEach(material => {
+            const name = typeof material === 'string' ? material : material.name;
+            if (name) {
+              materialNameArray.push(name);
+            }
+          });
+        }
+        // If subcategory data is an object (has specifications under subcategory)
+        else if (typeof subCategoryData === 'object') {
+          Object.values(subCategoryData).forEach(specMaterials => {
+            if (Array.isArray(specMaterials)) {
+              specMaterials.forEach(material => {
+                const name = typeof material === 'string' ? material : material.name;
+                if (name) {
+                  materialNameArray.push(name);
+                }
+              });
+            }
+          });
+        }
+      } else {
+        // STRICT FILTERING: If no subcategory selected, show ONLY materials NOT under any subcategory
+        if (!subCategory || subCategory.trim() === '') {
+          // Check for materials directly under category (not under any subcategory)
+          const topLevelKeys = ['', 'default', 'others', 'general'];
+          
+          for (const key of topLevelKeys) {
+            if (materialNames[key]) {
+              const topLevelData = materialNames[key];
+              
+              if (Array.isArray(topLevelData)) {
+                topLevelData.forEach(material => {
+                  const name = typeof material === 'string' ? material : material.name;
+                  if (name) {
+                    materialNameArray.push(name);
+                  }
+                });
+              } else if (typeof topLevelData === 'object') {
+                Object.values(topLevelData).forEach(specMaterials => {
+                  if (Array.isArray(specMaterials)) {
+                    specMaterials.forEach(material => {
+                      const name = typeof material === 'string' ? material : material.name;
+                      if (name) {
+                        materialNameArray.push(name);
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          }
+          
+          // If no materials found under top-level keys, check if we have direct specification keys
+          if (materialNameArray.length === 0 && (!categoryData.subCategories || categoryData.subCategories.length === 0)) {
+            Object.keys(materialNames).forEach(key => {
+              // Skip the top-level keys we already checked
+              if (!topLevelKeys.includes(key)) {
+                const materials = materialNames[key];
+                
+                // If this key contains an array of materials (direct specification -> materials)
+                if (Array.isArray(materials)) {
+                  materials.forEach(material => {
+                    const name = typeof material === 'string' ? material : material.name;
+                    if (name) {
+                      materialNameArray.push(name);
+                    }
+                  });
+                }
+                // If this key contains nested objects (specification -> more specifications -> materials)
+                else if (typeof materials === 'object') {
+                  Object.values(materials).forEach(specMaterials => {
+                    if (Array.isArray(specMaterials)) {
+                      specMaterials.forEach(material => {
+                        const name = typeof material === 'string' ? material : material.name;
+                        if (name) {
+                          materialNameArray.push(name);
+                        }
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // Remove duplicates and return unique material names
+    return [...new Set(materialNameArray)];
+  }
+
+  // Helper function to get specifications for a selected material
+  const getSpecificationsForMaterial = (categoryData, materialName, subCategory) => {
+    if (!categoryData || !materialName || !categoryData.materialNames) return [];
+
+    const materialNames = categoryData.materialNames;
+    const specifications = new Set();
+
+    // Structure 1: Simple Array (no specifications)
+    if (Array.isArray(materialNames)) {
+      return [];
+    }
+
+    // Structure 2 & 3: Object-based
+    if (typeof materialNames === 'object') {
+      // If subcategory is selected, search only in that subcategory
+      if (subCategory && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory];
+        
+        // If subcategory has specifications (object)
+        if (typeof subCategoryData === 'object') {
+          Object.keys(subCategoryData).forEach(spec => {
+            const materials = subCategoryData[spec];
+            if (Array.isArray(materials)) {
+              const found = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              );
+              if (found) {
+                specifications.add(spec);
+              }
+            }
+          });
+        }
+      }
+      // If no subcategory selected, search in all subcategories
+      else {
+        Object.entries(materialNames).forEach(([key, subCategoryData]) => {
+          // Handle direct specification -> materials structure (no subcategories)
+          if (Array.isArray(subCategoryData)) {
+            const found = subCategoryData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            );
+            if (found) {
+              specifications.add(key); // The key is the specification name
+            }
+          }
+          // Handle subcategory -> specifications -> materials structure
+          else if (typeof subCategoryData === 'object') {
+            Object.keys(subCategoryData).forEach(spec => {
+              const materials = subCategoryData[spec];
+              if (Array.isArray(materials)) {
+                const found = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                );
+                if (found) {
+                  specifications.add(spec);
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+
+    return Array.from(specifications);
+  };
+
   // Helper function to get UOM for a material
-  const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
+  const getUomForMaterial = (category, materialName, subCategory = '', specifications = '') => {
     if (!category || !materialName || !materialData[category]) {
       return ''
     }
-    
+
     const categoryData = materialData[category]
-    let materialNames = categoryData.materialNames || []
-    
-    // If materialNames is an array (simple structure)
+    const materialNames = categoryData.materialNames
+
+    if (!materialNames) return ''
+
+    // Structure 1: Simple Array
     if (Array.isArray(materialNames)) {
-      // Find the material in the simple array structure
       const material = materialNames.find(mat => 
         (typeof mat === 'string' ? mat : mat.name) === materialName
       )
       return material && typeof material === 'object' ? material.uom : ''
     }
-    
-    // If materialNames is an object (nested structure)
+
+    // Structure 2 & 3: Object-based
     if (typeof materialNames === 'object') {
-      // Handle nested structure: particulars -> materials
-      if (particulars && materialNames[particulars]) {
-        const materials = materialNames[particulars]
-        const material = materials.find(mat => 
-          (typeof mat === 'string' ? mat : mat.name) === materialName
-        )
-        return material && typeof material === 'object' ? material.uom : ''
-      }
-      
-      // Handle nested structure: subCategory -> particulars -> materials
+      // If subcategory is selected, search in that subcategory first
       if (subCategory && materialNames[subCategory]) {
         const subCategoryData = materialNames[subCategory]
-        if (particulars && subCategoryData[particulars]) {
-          const materials = subCategoryData[particulars]
-          const material = materials.find(mat => 
+        
+        // If subcategory has specifications
+        if (typeof subCategoryData === 'object') {
+          // If specific specification is selected, search there first
+          if (specifications && subCategoryData[specifications]) {
+            const materials = subCategoryData[specifications]
+            const material = materials.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
+          
+          // Search in any specification within the subcategory
+          for (const spec of Object.keys(subCategoryData)) {
+            const materials = subCategoryData[spec]
+            if (Array.isArray(materials)) {
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
+              }
+            }
+          }
+        }
+        // If subcategory data is direct array
+        else if (Array.isArray(subCategoryData)) {
+          const material = subCategoryData.find(mat => 
             (typeof mat === 'string' ? mat : mat.name) === materialName
           )
-          return material && typeof material === 'object' ? material.uom : ''
+          if (material && typeof material === 'object') {
+            return material.uom
+          }
+        }
+      }
+      
+      // If no subcategory selected, search in all subcategories
+      for (const subCatData of Object.values(materialNames)) {
+        if (typeof subCatData === 'object') {
+          // If this subcategory has specifications
+          if (Object.keys(subCatData).length > 0 && Array.isArray(Object.values(subCatData)[0])) {
+            for (const materials of Object.values(subCatData)) {
+              if (Array.isArray(materials)) {
+                const material = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                )
+                if (material && typeof material === 'object') {
+                  return material.uom
+                }
+              }
+            }
+          }
+          // If this subcategory data is direct array
+          else if (Array.isArray(subCatData)) {
+            const material = subCatData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
         }
       }
     }
-    
+
     return ''
   }
 
@@ -133,7 +369,7 @@ const KR_Add_MaterialList = () => {
             required={required}
             className="form-select"
             disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
-                     (field === 'particulars' && !formData.category) ||
+                     (field === 'specifications' && !formData.category) ||
                      (field === 'materialName' && !formData.category)}
           >
             <option value="">Select {label}</option>
@@ -195,21 +431,21 @@ const KR_Add_MaterialList = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           initialQuantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           initialQuantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
           uom: '',
           initialQuantity: ''
         })
@@ -221,7 +457,7 @@ const KR_Add_MaterialList = () => {
           newFormData.category,
           value,
           newFormData.subCategory,
-          newFormData.particulars
+          newFormData.specifications
         )
         if (autoUom) {
           newFormData.uom = autoUom
@@ -262,7 +498,7 @@ const KR_Add_MaterialList = () => {
       const payload = {
         category: formData.category,
         subCategory: formData.subCategory || '',
-        particulars: formData.particulars || '',
+        specifications: formData.specifications || '',
         materialName: formData.materialName,
         uom: formData.uom,
         initialQuantity: formData.initialQuantity,
@@ -278,8 +514,8 @@ const KR_Add_MaterialList = () => {
         setFormData({
           category: '',
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           initialQuantity: ''
         })
@@ -384,67 +620,22 @@ const KR_Add_MaterialList = () => {
               </div>
 
               <div className="form-row">
-                {/* Particulars Field */}
-                {renderHybridInput(
-                  'particulars',
-                  'Particulars',
-                  false,
-                  formData.category ? materialData[formData.category]?.particulars || [] : [],
-                  'Enter new particulars'
-                )}
-
                 {/* Material Name Field */}
                 {renderHybridInput(
                   'materialName',
                   'Material Name',
                   true,
-                  (() => {
-                    if (!formData.category) return [];
-                    const categoryData = materialData[formData.category];
-                    if (!categoryData) return [];
-                    
-                    // Handle the same data structure as KR_PlaceOrder.jsx
-                    let materialNames = categoryData.materialNames || [];
-                    
-                    // If materialNames is an array (simple structure)
-                    if (Array.isArray(materialNames)) {
-                      return materialNames.map(mat => typeof mat === 'string' ? mat : mat.name);
-                    }
-                    
-                    // If materialNames is an object (nested structure)
-                    if (typeof materialNames === 'object') {
-                      // Handle nested structure: particulars -> materials
-                      if (formData.particulars && materialNames[formData.particulars]) {
-                        return materialNames[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
-                      }
-                      
-                      // Handle nested structure: subCategory -> particulars -> materials
-                      if (formData.subCategory && materialNames[formData.subCategory]) {
-                        const subCategoryData = materialNames[formData.subCategory];
-                        if (formData.particulars && subCategoryData[formData.particulars]) {
-                          return subCategoryData[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
-                        }
-                      }
-                      
-                      // If no specific filtering, return all materials from the object
-                      const allMaterials = [];
-                      Object.values(materialNames).forEach(value => {
-                        if (Array.isArray(value)) {
-                          allMaterials.push(...value);
-                        } else if (typeof value === 'object') {
-                          Object.values(value).forEach(arr => {
-                            if (Array.isArray(arr)) {
-                              allMaterials.push(...arr);
-                            }
-                          });
-                        }
-                      });
-                      return allMaterials.map(mat => typeof mat === 'string' ? mat : mat.name);
-                    }
-                    
-                    return [];
-                  })(),
+                  formData.category ? getMaterialNameOptions(materialData[formData.category], formData.subCategory) : [],
                   'Enter new material name'
+                )}
+
+                {/* Specifications Field */}
+                {renderHybridInput(
+                  'specifications',
+                  'Specifications',
+                  false,
+                  formData.category && formData.materialName ? getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory) : [],
+                  'Enter new specifications'
                 )}
               </div>
 
@@ -491,8 +682,8 @@ const KR_Add_MaterialList = () => {
                   onClick={() => setFormData({
                     category: '',
                     subCategory: '',
-                    particulars: '',
                     materialName: '',
+                    specifications: '',
                     uom: '',
                     initialQuantity: ''
                   })}

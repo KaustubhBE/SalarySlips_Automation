@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl } from '../../config'
@@ -10,8 +10,8 @@ const KR_Delete_MaterialList = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
-    particulars: '',
     materialName: '',
+    specifications: '',
     uom: '',
     currentQuantity: ''
   })
@@ -26,48 +26,288 @@ const KR_Delete_MaterialList = () => {
   const [dataLoading, setDataLoading] = useState(true)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [materialToDelete, setMaterialToDelete] = useState(null)
+  
+  // Ref to track if component is still mounted and form is active
+  const isFormActive = useRef(true)
+
+  // Helper function to get material name options based on category data structure
+  const getMaterialNameOptions = (categoryData, subCategory) => {
+    if (!categoryData || !categoryData.materialNames) {
+      return []
+    }
+
+    const materialNames = categoryData.materialNames;
+    const materialNameArray = []; // Collect material names first
+
+    // Structure 1: Simple Array (no subcategories, no specifications)
+    if (Array.isArray(materialNames)) {
+      // For simple arrays, only show materials if NO subcategory is selected
+      if (!subCategory) {
+        materialNames.forEach(material => {
+          const name = typeof material === 'string' ? material : material.name;
+          if (name) {
+            materialNameArray.push(name);
+          }
+        });
+      }
+    }
+    // Structure 2 & 3: Object-based (has specifications or subcategories)
+    else if (typeof materialNames === 'object') {
+      // STRICT FILTERING: If subcategory is selected, show ONLY materials from that subcategory
+      if (subCategory && subCategory.trim() !== '' && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory];
+        
+        // If subcategory data is an array (direct materials under subcategory)
+        if (Array.isArray(subCategoryData)) {
+          subCategoryData.forEach(material => {
+            const name = typeof material === 'string' ? material : material.name;
+            if (name) {
+              materialNameArray.push(name);
+            }
+          });
+        }
+        // If subcategory data is an object (has specifications under subcategory)
+        else if (typeof subCategoryData === 'object') {
+          Object.values(subCategoryData).forEach(specMaterials => {
+            if (Array.isArray(specMaterials)) {
+              specMaterials.forEach(material => {
+                const name = typeof material === 'string' ? material : material.name;
+                if (name) {
+                  materialNameArray.push(name);
+                }
+              });
+            }
+          });
+        }
+      } else {
+        // STRICT FILTERING: If no subcategory selected, show ONLY materials NOT under any subcategory
+        if (!subCategory || subCategory.trim() === '') {
+          // Check for materials directly under category (not under any subcategory)
+          const topLevelKeys = ['', 'default', 'others', 'general'];
+          
+          for (const key of topLevelKeys) {
+            if (materialNames[key]) {
+              const topLevelData = materialNames[key];
+              
+              if (Array.isArray(topLevelData)) {
+                topLevelData.forEach(material => {
+                  const name = typeof material === 'string' ? material : material.name;
+                  if (name) {
+                    materialNameArray.push(name);
+                  }
+                });
+              } else if (typeof topLevelData === 'object') {
+                Object.values(topLevelData).forEach(specMaterials => {
+                  if (Array.isArray(specMaterials)) {
+                    specMaterials.forEach(material => {
+                      const name = typeof material === 'string' ? material : material.name;
+                      if (name) {
+                        materialNameArray.push(name);
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          }
+          
+          // If no materials found under top-level keys, check if we have direct specification keys
+          if (materialNameArray.length === 0 && (!categoryData.subCategories || categoryData.subCategories.length === 0)) {
+            Object.keys(materialNames).forEach(key => {
+              // Skip the top-level keys we already checked
+              if (!topLevelKeys.includes(key)) {
+                const materials = materialNames[key];
+                
+                // If this key contains an array of materials (direct specification -> materials)
+                if (Array.isArray(materials)) {
+                  materials.forEach(material => {
+                    const name = typeof material === 'string' ? material : material.name;
+                    if (name) {
+                      materialNameArray.push(name);
+                    }
+                  });
+                }
+                // If this key contains nested objects (specification -> more specifications -> materials)
+                else if (typeof materials === 'object') {
+                  Object.values(materials).forEach(specMaterials => {
+                    if (Array.isArray(specMaterials)) {
+                      specMaterials.forEach(material => {
+                        const name = typeof material === 'string' ? material : material.name;
+                        if (name) {
+                          materialNameArray.push(name);
+                        }
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // Remove duplicates and return unique material names
+    return [...new Set(materialNameArray)];
+  }
+
+  // Helper function to get specifications for a selected material
+  const getSpecificationsForMaterial = (categoryData, materialName, subCategory) => {
+    if (!categoryData || !materialName || !categoryData.materialNames) return [];
+
+    const materialNames = categoryData.materialNames;
+    const specifications = new Set();
+
+    // Structure 1: Simple Array (no specifications)
+    if (Array.isArray(materialNames)) {
+      return [];
+    }
+
+    // Structure 2 & 3: Object-based
+    if (typeof materialNames === 'object') {
+      // If subcategory is selected, search only in that subcategory
+      if (subCategory && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory];
+        
+        // If subcategory has specifications (object)
+        if (typeof subCategoryData === 'object') {
+          Object.keys(subCategoryData).forEach(spec => {
+            const materials = subCategoryData[spec];
+            if (Array.isArray(materials)) {
+              const found = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              );
+              if (found) {
+                specifications.add(spec);
+              }
+            }
+          });
+        }
+      }
+      // If no subcategory selected, search in all subcategories
+      else {
+        Object.entries(materialNames).forEach(([key, subCategoryData]) => {
+          // Handle direct specification -> materials structure (no subcategories)
+          if (Array.isArray(subCategoryData)) {
+            const found = subCategoryData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            );
+            if (found) {
+              specifications.add(key); // The key is the specification name
+            }
+          }
+          // Handle subcategory -> specifications -> materials structure
+          else if (typeof subCategoryData === 'object') {
+            Object.keys(subCategoryData).forEach(spec => {
+              const materials = subCategoryData[spec];
+              if (Array.isArray(materials)) {
+                const found = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                );
+                if (found) {
+                  specifications.add(spec);
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+
+    return Array.from(specifications);
+  };
 
   // Helper function to get UOM for a material
-  const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
+  const getUomForMaterial = (category, materialName, subCategory = '', specifications = '') => {
     if (!category || !materialName || !materialData[category]) {
       return ''
     }
-    
+
     const categoryData = materialData[category]
-    let materialNames = categoryData.materialNames || []
-    
-    // If materialNames is an array (simple structure)
+    const materialNames = categoryData.materialNames
+
+    if (!materialNames) return ''
+
+    // Structure 1: Simple Array
     if (Array.isArray(materialNames)) {
       const material = materialNames.find(mat => 
         (typeof mat === 'string' ? mat : mat.name) === materialName
       )
       return material && typeof material === 'object' ? material.uom : ''
     }
-    
-    // If materialNames is an object (nested structure)
+
+    // Structure 2 & 3: Object-based
     if (typeof materialNames === 'object') {
-      // Handle nested structure: particulars -> materials
-      if (particulars && materialNames[particulars]) {
-        const materials = materialNames[particulars]
-        const material = materials.find(mat => 
-          (typeof mat === 'string' ? mat : mat.name) === materialName
-        )
-        return material && typeof material === 'object' ? material.uom : ''
-      }
-      
-      // Handle nested structure: subCategory -> particulars -> materials
+      // If subcategory is selected, search in that subcategory first
       if (subCategory && materialNames[subCategory]) {
         const subCategoryData = materialNames[subCategory]
-        if (particulars && subCategoryData[particulars]) {
-          const materials = subCategoryData[particulars]
-          const material = materials.find(mat => 
+        
+        // If subcategory has specifications
+        if (typeof subCategoryData === 'object') {
+          // If specific specification is selected, search there first
+          if (specifications && subCategoryData[specifications]) {
+            const materials = subCategoryData[specifications]
+            const material = materials.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
+          
+          // Search in any specification within the subcategory
+          for (const spec of Object.keys(subCategoryData)) {
+            const materials = subCategoryData[spec]
+            if (Array.isArray(materials)) {
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
+              }
+            }
+          }
+        }
+        // If subcategory data is direct array
+        else if (Array.isArray(subCategoryData)) {
+          const material = subCategoryData.find(mat => 
             (typeof mat === 'string' ? mat : mat.name) === materialName
           )
-          return material && typeof material === 'object' ? material.uom : ''
+          if (material && typeof material === 'object') {
+            return material.uom
+          }
+        }
+      }
+      
+      // If no subcategory selected, search in all subcategories
+      for (const subCatData of Object.values(materialNames)) {
+        if (typeof subCatData === 'object') {
+          // If this subcategory has specifications
+          if (Object.keys(subCatData).length > 0 && Array.isArray(Object.values(subCatData)[0])) {
+            for (const materials of Object.values(subCatData)) {
+              if (Array.isArray(materials)) {
+                const material = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                )
+                if (material && typeof material === 'object') {
+                  return material.uom
+                }
+              }
+            }
+          }
+          // If this subcategory data is direct array
+          else if (Array.isArray(subCatData)) {
+            const material = subCatData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
         }
       }
     }
-    
+
     return ''
   }
 
@@ -86,7 +326,7 @@ const KR_Delete_MaterialList = () => {
           required={required}
           className="form-select"
           disabled={dataLoading || (field === 'subCategory' && !formData.category) || 
-                   (field === 'particulars' && !formData.category) ||
+                   (field === 'specifications' && !formData.category) ||
                    (field === 'materialName' && !formData.category)}
         >
           <option value="">Select {label}</option>
@@ -126,6 +366,9 @@ const KR_Delete_MaterialList = () => {
     }
 
     fetchMaterialData()
+    
+    // Reset form active state on mount
+    isFormActive.current = true
   }, [])
 
   const handleInputChange = (field, value) => {
@@ -136,21 +379,21 @@ const KR_Delete_MaterialList = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           currentQuantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           currentQuantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
           uom: '',
           currentQuantity: ''
         })
@@ -162,7 +405,7 @@ const KR_Delete_MaterialList = () => {
           newFormData.category,
           value,
           newFormData.subCategory,
-          newFormData.particulars
+          newFormData.specifications
         )
         if (autoUom) {
           newFormData.uom = autoUom
@@ -170,19 +413,53 @@ const KR_Delete_MaterialList = () => {
 
         // Auto-fetch material details when material name is selected
         if (newFormData.category && value) {
-          console.log('Auto-fetching material details for:', {
-            category: newFormData.category,
-            subCategory: newFormData.subCategory || '',
-            particulars: newFormData.particulars || '',
-            materialName: value
-          })
-          fetchMaterialDetails(
-            newFormData.category,
-            newFormData.subCategory || '',
-            newFormData.particulars || '',
-            value
-          )
+          // Auto-populate specifications if only one option is available
+          const categoryData = materialData[newFormData.category]
+          if (categoryData) {
+            const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
+            if (availableSpecs.length === 1) {
+              newFormData.specifications = availableSpecs[0]
+              // Now fetch material details with the auto-selected specifications
+              setTimeout(() => {
+                // Only fetch if the form is still active and data is valid
+                if (isFormActive.current && newFormData.category && newFormData.specifications && value) {
+                  console.log('Auto-fetching material details for:', {
+                    category: newFormData.category,
+                    subCategory: newFormData.subCategory || '',
+                    specifications: newFormData.specifications || '',
+                    materialName: value
+                  })
+                  fetchMaterialDetails(
+                    newFormData.category,
+                    newFormData.subCategory || '',
+                    newFormData.specifications || '',
+                    value
+                  )
+                }
+              }, 100)
+            }
+          }
         }
+      }
+
+      // Fetch material details when specifications are manually selected
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        setTimeout(() => {
+          if (isFormActive.current) {
+            console.log('Fetching material details for manual specification selection:', {
+              category: newFormData.category,
+              subCategory: newFormData.subCategory || '',
+              specifications: value,
+              materialName: newFormData.materialName
+            })
+            fetchMaterialDetails(
+              newFormData.category,
+              newFormData.subCategory || '',
+              value,
+              newFormData.materialName
+            )
+          }
+        }, 100)
       }
 
       return newFormData
@@ -190,12 +467,12 @@ const KR_Delete_MaterialList = () => {
   }
 
   // Function to fetch material details
-  const fetchMaterialDetails = async (category, subCategory, particulars, materialName) => {
+  const fetchMaterialDetails = async (category, subCategory, specifications, materialName) => {
     try {
       const payload = {
         category: category,
         subCategory: subCategory,
-        particulars: particulars,
+        specifications: specifications,
         materialName: materialName,
         department: 'KR'
       }
@@ -218,6 +495,35 @@ const KR_Delete_MaterialList = () => {
         setMessage(`Material details loaded successfully!\nCurrent Quantity: ${material.currentQuantity || material.initialQuantity || 0}`)
         setMessageType('success')
       } else {
+        console.warn('Material not found in database:', response.data.message)
+        // If material not found, try to find it without specifications
+        if (specifications) {
+          console.log('Retrying without specifications...')
+          const retryPayload = {
+            category: category,
+            subCategory: subCategory || '',
+            specifications: '',
+            materialName: materialName,
+            department: 'KR'
+          }
+          
+          const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+          if (retryResponse.data.success) {
+            const material = retryResponse.data.material
+            setFetchedMaterial(material)
+            
+            // Auto-populate the current quantity
+            setFormData(prev => ({
+              ...prev,
+              uom: material.uom,
+              currentQuantity: material.currentQuantity || material.initialQuantity || 0
+            }))
+            
+            setMessage(`Material details loaded successfully!\nCurrent Quantity: ${material.currentQuantity || material.initialQuantity || 0}`)
+            setMessageType('success')
+            return
+          }
+        }
         setMessage(response.data.message || 'Material not found in database')
         setMessageType('error')
         setFetchedMaterial(null)
@@ -259,7 +565,7 @@ const KR_Delete_MaterialList = () => {
     setMaterialToDelete({
       category: formData.category,
       subCategory: formData.subCategory || 'N/A',
-      particulars: formData.particulars || 'N/A',
+      specifications: formData.specifications || 'N/A',
       materialName: formData.materialName,
       uom: formData.uom || 'N/A',
       currentQuantity: formData.currentQuantity
@@ -277,7 +583,7 @@ const KR_Delete_MaterialList = () => {
       const payload = {
         category: materialToDelete.category,
         subCategory: materialToDelete.subCategory === 'N/A' ? '' : materialToDelete.subCategory,
-        particulars: materialToDelete.particulars === 'N/A' ? '' : materialToDelete.particulars,
+        specifications: materialToDelete.specifications === 'N/A' ? '' : materialToDelete.specifications,
         materialName: materialToDelete.materialName,
         department: 'KR'
       }
@@ -292,7 +598,7 @@ const KR_Delete_MaterialList = () => {
           `Deleted Material Details:\n` +
           `Category: ${deletedMaterial.category}\n` +
           `Sub Category: ${deletedMaterial.subCategory || 'N/A'}\n` +
-          `Particulars: ${deletedMaterial.particulars || 'N/A'}\n` +
+          `Specifications: ${deletedMaterial.specifications || 'N/A'}\n` +
           `Material Name: ${deletedMaterial.materialName}\n` +
           `UOM: ${deletedMaterial.uom}\n` +
           `Current Quantity: ${materialToDelete.currentQuantity}`
@@ -304,11 +610,13 @@ const KR_Delete_MaterialList = () => {
         setFormData({
           category: '',
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           currentQuantity: ''
         })
+        // Mark form as inactive to prevent pending API calls
+        isFormActive.current = false
         setFetchedMaterial(null)
         
         // Refresh the page after successful deletion
@@ -418,64 +726,20 @@ const KR_Delete_MaterialList = () => {
               </div>
 
               <div className="form-row">
-                {/* Particulars Field */}
-                {renderDropdown(
-                  'particulars',
-                  'Particulars',
-                  false,
-                  formData.category ? materialData[formData.category]?.particulars || [] : []
-                )}
-
                 {/* Material Name Field */}
                 {renderDropdown(
                   'materialName',
                   'Material Name',
                   true,
-                  (() => {
-                    if (!formData.category) return [];
-                    const categoryData = materialData[formData.category];
-                    if (!categoryData) return [];
-                    
-                    let materialNames = categoryData.materialNames || [];
-                    
-                    // If materialNames is an array (simple structure)
-                    if (Array.isArray(materialNames)) {
-                      return materialNames.map(mat => typeof mat === 'string' ? mat : mat.name);
-                    }
-                    
-                    // If materialNames is an object (nested structure)
-                    if (typeof materialNames === 'object') {
-                      // Handle nested structure: particulars -> materials
-                      if (formData.particulars && materialNames[formData.particulars]) {
-                        return materialNames[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
-                      }
-                      
-                      // Handle nested structure: subCategory -> particulars -> materials
-                      if (formData.subCategory && materialNames[formData.subCategory]) {
-                        const subCategoryData = materialNames[formData.subCategory];
-                        if (formData.particulars && subCategoryData[formData.particulars]) {
-                          return subCategoryData[formData.particulars].map(mat => typeof mat === 'string' ? mat : mat.name);
-                        }
-                      }
-                      
-                      // If no specific filtering, return all materials from the object
-                      const allMaterials = [];
-                      Object.values(materialNames).forEach(value => {
-                        if (Array.isArray(value)) {
-                          allMaterials.push(...value);
-                        } else if (typeof value === 'object') {
-                          Object.values(value).forEach(arr => {
-                            if (Array.isArray(arr)) {
-                              allMaterials.push(...arr);
-                            }
-                          });
-                        }
-                      });
-                      return allMaterials.map(mat => typeof mat === 'string' ? mat : mat.name);
-                    }
-                    
-                    return [];
-                  })()
+                  formData.category ? getMaterialNameOptions(materialData[formData.category], formData.subCategory) : []
+                )}
+
+                {/* Specifications Field */}
+                {renderDropdown(
+                  'specifications',
+                  'Specifications',
+                  false,
+                  formData.category && formData.materialName ? getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory) : []
                 )}
               </div>
 
@@ -509,14 +773,15 @@ const KR_Delete_MaterialList = () => {
                   <input
                     type="text"
                     id="currentQuantity"
-                    value={formData.currentQuantity}
+                    value={formData.currentQuantity || ''}
                     readOnly
                     className="form-input"
-                    placeholder="Fetched from database"
+                    placeholder={formData.currentQuantity ? '' : 'Select material to see quantity'}
                     style={{
                       backgroundColor: '#f5f5f5',
                       cursor: 'not-allowed',
-                      color: '#333'
+                      color: formData.currentQuantity ? '#333' : '#999',
+                      fontWeight: formData.currentQuantity ? 'bold' : 'normal'
                     }}
                     title="Current quantity is fetched from database"
                   />
@@ -551,13 +816,15 @@ const KR_Delete_MaterialList = () => {
                     setFormData({
                       category: '',
                       subCategory: '',
-                      particulars: '',
                       materialName: '',
+                      specifications: '',
                       uom: '',
                       currentQuantity: ''
                     })
                     setFetchedMaterial(null)
                     setMessage('')
+                    // Mark form as inactive to prevent pending API calls
+                    isFormActive.current = false
                   }}
                   className="btn btn-secondary"
                 >
@@ -615,7 +882,7 @@ const KR_Delete_MaterialList = () => {
                 <strong>Sub Category:</strong> {materialToDelete?.subCategory}
               </p>
               <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                <strong>Particulars:</strong> {materialToDelete?.particulars}
+                <strong>Specifications:</strong> {materialToDelete?.specifications}
               </p>
               <p style={{ margin: '5px 0', fontSize: '14px' }}>
                 <strong>Material Name:</strong> {materialToDelete?.materialName}

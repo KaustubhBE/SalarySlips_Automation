@@ -33,93 +33,312 @@ const generateFallbackOrderId = () => {
   return `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
 }
 
-// Material Name Options Helper
-const getMaterialNameOptions = (categoryData, particulars, subCategory) => {
-  if (!categoryData) return null;
-  
-  // Handle direct material names (array)
-  if (Array.isArray(categoryData.materialNames)) {
-    return categoryData.materialNames.map(material => {
-      const materialName = typeof material === 'string' ? material : material.name;
-      const materialValue = typeof material === 'string' ? material : material.name;
-      return (
-        <option key={materialName} value={materialValue}>{materialName}</option>
-      );
-    });
+// ================================
+// CLEAN CASCADING DROPDOWN HELPERS
+// ================================
+
+/**
+ * Get material name options based on category data structure
+ * Handles all 3 data structures: Simple Array, Spec-Based, Complex Nested
+ * Ensures uniqueness of material names (no duplicates)
+ * Implements STRICT filtering: subcategory selection shows ONLY materials from that subcategory
+ */
+const getMaterialNameOptions = (categoryData, subCategory) => {
+  if (!categoryData || !categoryData.materialNames) {
+    return null;
   }
-  
-  // Handle nested material names (object with particulars)
-  if (particulars && categoryData.materialNames[particulars]) {
-    return categoryData.materialNames[particulars].map(material => {
-      const materialName = typeof material === 'string' ? material : material.name;
-      const materialValue = typeof material === 'string' ? material : material.name;
-      return (
-        <option key={materialName} value={materialValue}>{materialName}</option>
-      );
-    });
-  }
-  
-  // Handle nested material names (object with sub-categories)
-  if (subCategory && categoryData.materialNames[subCategory]) {
-    const subCategoryData = categoryData.materialNames[subCategory];
-    if (particulars && subCategoryData[particulars]) {
-      return subCategoryData[particulars].map(material => {
-        const materialName = typeof material === 'string' ? material : material.name;
-        const materialValue = typeof material === 'string' ? material : material.name;
-        return (
-          <option key={materialName} value={materialValue}>{materialName}</option>
-        );
+
+  const materialNames = categoryData.materialNames;
+  const materialNameArray = []; // Collect material names first
+
+  // Structure 1: Simple Array (no subcategories, no specifications)
+  if (Array.isArray(materialNames)) {
+    // For simple arrays, only show materials if NO subcategory is selected
+    // If subcategory is selected but data is simple array, return empty (invalid subcategory)
+    if (!subCategory) {
+      materialNames.forEach(material => {
+        const name = typeof material === 'string' ? material : material.name;
+        if (name) {
+          materialNameArray.push(name);
+        }
       });
     }
   }
-  
-  return null;
-}
-
-// Helper function to get UOM for a material
-const getUomForMaterial = (materialData, category, materialName, subCategory = '', particulars = '') => {
-  if (!category || !materialName || !materialData[category]) {
-    return ''
-  }
-  
-  const categoryData = materialData[category]
-  let materialNames = categoryData.materialNames || []
-  
-  // If materialNames is an array (simple structure)
-  if (Array.isArray(materialNames)) {
-    // Find the material in the simple array structure
-    const material = materialNames.find(mat => 
-      (typeof mat === 'string' ? mat : mat.name) === materialName
-    )
-    return material && typeof material === 'object' ? material.uom : ''
-  }
-  
-  // If materialNames is an object (nested structure)
-  if (typeof materialNames === 'object') {
-    // Handle nested structure: particulars -> materials
-    if (particulars && materialNames[particulars]) {
-      const materials = materialNames[particulars]
-      const material = materials.find(mat => 
-        (typeof mat === 'string' ? mat : mat.name) === materialName
-      )
-      return material && typeof material === 'object' ? material.uom : ''
-    }
-    
-    // Handle nested structure: subCategory -> particulars -> materials
-    if (subCategory && materialNames[subCategory]) {
-      const subCategoryData = materialNames[subCategory]
-      if (particulars && subCategoryData[particulars]) {
-        const materials = subCategoryData[particulars]
-        const material = materials.find(mat => 
-          (typeof mat === 'string' ? mat : mat.name) === materialName
-        )
-        return material && typeof material === 'object' ? material.uom : ''
+  // Structure 2 & 3: Object-based (has specifications or subcategories)
+  else if (typeof materialNames === 'object') {
+    // STRICT FILTERING: If subcategory is selected, show ONLY materials from that subcategory
+    if (subCategory && subCategory.trim() !== '' && materialNames[subCategory]) {
+      const subCategoryData = materialNames[subCategory];
+      
+      // If subcategory data is an array (direct materials under subcategory)
+      if (Array.isArray(subCategoryData)) {
+        subCategoryData.forEach(material => {
+          const name = typeof material === 'string' ? material : material.name;
+          if (name) {
+            materialNameArray.push(name);
+          }
+        });
+      }
+      // If subcategory data is an object (has specifications under subcategory)
+      else if (typeof subCategoryData === 'object') {
+        Object.values(subCategoryData).forEach(specMaterials => {
+          if (Array.isArray(specMaterials)) {
+            specMaterials.forEach(material => {
+              const name = typeof material === 'string' ? material : material.name;
+              if (name) {
+                materialNameArray.push(name);
+              }
+            });
+          }
+        });
+      }
+    } else {
+      // STRICT FILTERING: If no subcategory selected, show ONLY materials NOT under any subcategory
+      if (!subCategory || subCategory.trim() === '') {
+      // Check for materials directly under category (not under any subcategory)
+      // Look for empty string key or 'default' key that might contain top-level materials
+      const topLevelKeys = ['', 'default', 'others', 'general'];
+      
+      for (const key of topLevelKeys) {
+        if (materialNames[key]) {
+          const topLevelData = materialNames[key];
+          
+          if (Array.isArray(topLevelData)) {
+            topLevelData.forEach(material => {
+              const name = typeof material === 'string' ? material : material.name;
+              if (name) {
+                materialNameArray.push(name);
+              }
+            });
+          } else if (typeof topLevelData === 'object') {
+            Object.values(topLevelData).forEach(specMaterials => {
+              if (Array.isArray(specMaterials)) {
+                specMaterials.forEach(material => {
+                  const name = typeof material === 'string' ? material : material.name;
+                  if (name) {
+                    materialNameArray.push(name);
+                  }
+                });
+              }
+            });
+          }
+        }
+      }
+      
+      // FIXED: If no materials found under top-level keys, check if we have direct specification keys
+      // This handles the case where materials are organized by specifications but no subcategories exist
+      // BUT ONLY if the category has NO subcategories defined
+      
+      if (materialNameArray.length === 0 && (!categoryData.subCategories || categoryData.subCategories.length === 0)) {
+        Object.keys(materialNames).forEach(key => {
+          // Skip the top-level keys we already checked
+          if (!topLevelKeys.includes(key)) {
+            const materials = materialNames[key];
+            
+            // If this key contains an array of materials (direct specification -> materials)
+            if (Array.isArray(materials)) {
+              materials.forEach(material => {
+                const name = typeof material === 'string' ? material : material.name;
+                if (name) {
+                  materialNameArray.push(name);
+                }
+              });
+            }
+            // If this key contains nested objects (specification -> more specifications -> materials)
+            else if (typeof materials === 'object') {
+              Object.values(materials).forEach(specMaterials => {
+                if (Array.isArray(specMaterials)) {
+                  specMaterials.forEach(material => {
+                    const name = typeof material === 'string' ? material : material.name;
+                    if (name) {
+                      materialNameArray.push(name);
+                    }
+                  });
+                }
+              });
+            }
+          }
+        });
+      }
       }
     }
   }
-  
-  return ''
-}
+
+  // Remove duplicates and create unique material names
+  const uniqueMaterialNames = [...new Set(materialNameArray)];
+
+  // Convert to JSX options
+  const options = uniqueMaterialNames.map(name => (
+    <option key={name} value={name}>{name}</option>
+  ));
+  return options.length > 0 ? options : null;
+};
+
+/**
+ * Get specifications for a selected material
+ * Returns array of specification names where the material exists
+ */
+const getSpecificationsForMaterial = (categoryData, materialName, subCategory) => {
+  if (!categoryData || !materialName || !categoryData.materialNames) return [];
+
+  const materialNames = categoryData.materialNames;
+  const specifications = new Set();
+
+  // Structure 1: Simple Array (no specifications)
+  if (Array.isArray(materialNames)) {
+    return [];
+  }
+
+  // Structure 2 & 3: Object-based
+  if (typeof materialNames === 'object') {
+    // If subcategory is selected, search only in that subcategory
+    if (subCategory && materialNames[subCategory]) {
+      const subCategoryData = materialNames[subCategory];
+      
+      // If subcategory has specifications (object)
+      if (typeof subCategoryData === 'object') {
+        Object.keys(subCategoryData).forEach(spec => {
+          const materials = subCategoryData[spec];
+          if (Array.isArray(materials)) {
+            const found = materials.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            );
+            if (found) {
+              specifications.add(spec);
+            }
+          }
+        });
+      }
+    }
+    // If no subcategory selected, search in all subcategories
+    else {
+      Object.entries(materialNames).forEach(([key, subCategoryData]) => {
+        // Handle direct specification -> materials structure (no subcategories)
+        if (Array.isArray(subCategoryData)) {
+          const found = subCategoryData.find(mat => 
+            (typeof mat === 'string' ? mat : mat.name) === materialName
+          );
+          if (found) {
+            specifications.add(key); // The key is the specification name
+          }
+        }
+        // Handle subcategory -> specifications -> materials structure
+        else if (typeof subCategoryData === 'object') {
+          Object.keys(subCategoryData).forEach(spec => {
+            const materials = subCategoryData[spec];
+            if (Array.isArray(materials)) {
+              const found = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              );
+              if (found) {
+                specifications.add(spec);
+              }
+            }
+          });
+        }
+      });
+    }
+  }
+
+  return Array.from(specifications);
+};
+
+/**
+ * Get UOM for a material - works immediately after material selection
+ * No longer requires specifications to be selected first
+ */
+const getUomForMaterial = (materialData, category, materialName, subCategory = '', specifications = '') => {
+  if (!category || !materialName || !materialData[category]) {
+    return '';
+  }
+
+  const categoryData = materialData[category];
+  const materialNames = categoryData.materialNames;
+
+  if (!materialNames) return '';
+
+  // Structure 1: Simple Array
+  if (Array.isArray(materialNames)) {
+    const material = materialNames.find(mat => 
+      (typeof mat === 'string' ? mat : mat.name) === materialName
+    );
+    return material && typeof material === 'object' ? material.uom : '';
+  }
+
+  // Structure 2 & 3: Object-based
+  if (typeof materialNames === 'object') {
+    // If subcategory is selected, search in that subcategory first
+    if (subCategory && materialNames[subCategory]) {
+      const subCategoryData = materialNames[subCategory];
+      
+      // If subcategory has specifications
+      if (typeof subCategoryData === 'object') {
+        // If specific specification is selected, search there first
+        if (specifications && subCategoryData[specifications]) {
+          const materials = subCategoryData[specifications];
+          const material = materials.find(mat => 
+            (typeof mat === 'string' ? mat : mat.name) === materialName
+          );
+          if (material && typeof material === 'object') {
+            return material.uom;
+          }
+        }
+        
+        // Search in any specification within the subcategory
+        for (const spec of Object.keys(subCategoryData)) {
+          const materials = subCategoryData[spec];
+          if (Array.isArray(materials)) {
+            const material = materials.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            );
+            if (material && typeof material === 'object') {
+              return material.uom;
+            }
+          }
+        }
+      }
+      // If subcategory data is direct array
+      else if (Array.isArray(subCategoryData)) {
+        const material = subCategoryData.find(mat => 
+          (typeof mat === 'string' ? mat : mat.name) === materialName
+        );
+        if (material && typeof material === 'object') {
+          return material.uom;
+        }
+      }
+    }
+    
+    // If no subcategory selected, search in all subcategories
+    for (const subCatData of Object.values(materialNames)) {
+      if (typeof subCatData === 'object') {
+        // If this subcategory has specifications
+        if (Object.keys(subCatData).length > 0 && Array.isArray(Object.values(subCatData)[0])) {
+          for (const materials of Object.values(subCatData)) {
+            if (Array.isArray(materials)) {
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              );
+              if (material && typeof material === 'object') {
+                return material.uom;
+              }
+            }
+          }
+        }
+        // If this subcategory data is direct array
+        else if (Array.isArray(subCatData)) {
+          const material = subCatData.find(mat => 
+            (typeof mat === 'string' ? mat : mat.name) === materialName
+          );
+          if (material && typeof material === 'object') {
+            return material.uom;
+          }
+        }
+      }
+    }
+  }
+
+  return '';
+};
 
 // Custom Hook for Material Data
 const useMaterialData = () => {
@@ -204,8 +423,8 @@ const KR_PlaceOrder = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
-    particulars: '',
     materialName: '',
+    specifications: '',
     uom: '',
     quantity: '',
     givenBy: '',
@@ -407,34 +626,53 @@ const KR_PlaceOrder = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when specifications changes
+        ...(field === 'specifications' && {
           uom: '',
           quantity: ''
         })
       }
 
-      // Auto-assign UOM when material name changes
+      // Auto-assign UOM immediately when material name changes
       if (field === 'materialName' && value) {
         const autoUom = getUomForMaterial(
           materialData,
           newFormData.category,
           value,
           newFormData.subCategory,
-          newFormData.particulars
+          '' // Don't require specifications for UOM lookup
+        )
+        if (autoUom) {
+          newFormData.uom = autoUom
+        }
+      }
+
+      // Auto-assign UOM when specifications changes (if different UOM available)
+      if (field === 'specifications' && value && newFormData.materialName) {
+        const autoUom = getUomForMaterial(
+          materialData,
+          newFormData.category,
+          newFormData.materialName,
+          newFormData.subCategory,
+          value
         )
         if (autoUom) {
           newFormData.uom = autoUom
@@ -463,8 +701,8 @@ const KR_PlaceOrder = () => {
       id: Date.now(), // Simple ID generation
       category: formData.category,
       subCategory: formData.subCategory,
-      particulars: formData.particulars,
       materialName: formData.materialName,
+      specifications: formData.specifications,
       uom: formData.uom,
       quantity: formData.quantity
     }
@@ -476,8 +714,8 @@ const KR_PlaceOrder = () => {
       ...prev,
       category: '',
       subCategory: '',
-      particulars: '',
       materialName: '',
+      specifications: '',
       uom: '',
       quantity: ''
       // Keep givenBy, description, and importance unchanged
@@ -493,8 +731,8 @@ const KR_PlaceOrder = () => {
     setEditFormData({
       category: item.category,
       subCategory: item.subCategory,
-      particulars: item.particulars,
       materialName: item.materialName,
+      specifications: item.specifications,
       uom: item.uom,
       quantity: item.quantity
     })
@@ -517,8 +755,8 @@ const KR_PlaceOrder = () => {
     setEditFormData({
       category: item.category,
       subCategory: item.subCategory,
-      particulars: item.particulars,
       materialName: item.materialName,
+      specifications: item.specifications,
       uom: item.uom,
       quantity: item.quantity
     })
@@ -591,34 +829,53 @@ const KR_PlaceOrder = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
+          uom: '',
+          quantity: ''
+        }),
+        // Reset dependent fields when specifications changes
+        ...(field === 'specifications' && {
           uom: '',
           quantity: ''
         })
       }
 
-      // Auto-assign UOM when material name changes in edit mode
+      // Auto-assign UOM immediately when material name changes in edit mode
       if (field === 'materialName' && value) {
         const autoUom = getUomForMaterial(
           materialData,
           newEditFormData.category,
           value,
           newEditFormData.subCategory,
-          newEditFormData.particulars
+          '' // Don't require specifications for UOM lookup
+        )
+        if (autoUom) {
+          newEditFormData.uom = autoUom
+        }
+      }
+
+      // Auto-assign UOM when specifications changes in edit mode (if different UOM available)
+      if (field === 'specifications' && value && newEditFormData.materialName) {
+        const autoUom = getUomForMaterial(
+          materialData,
+          newEditFormData.category,
+          newEditFormData.materialName,
+          newEditFormData.subCategory,
+          value
         )
         if (autoUom) {
           newEditFormData.uom = autoUom
@@ -822,8 +1079,8 @@ const KR_PlaceOrder = () => {
         setFormData({
           category: '',
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: '',
           givenBy: '',
@@ -1053,11 +1310,11 @@ const KR_PlaceOrder = () => {
               <table className="items-table">
                 <thead>
                   <tr>
-                    <th>S.No</th>
+                    <th>SN</th>
                     <th>Category</th>
                     <th>Sub Category</th>
-                    <th>Particulars</th>
                     <th>Material Name</th>
+                    <th>Specifications</th>
                     <th>Quantity</th>
                     <th>UOM</th>
                     <th>Action</th>
@@ -1117,41 +1374,40 @@ const KR_PlaceOrder = () => {
                         )}
                       </td>
                       <td 
-                        data-label="Particulars"
+                        data-label="Specifications"
                         className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                        onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
-                        onTouchStart={(e) => handleTouchStart(e, item, 'particulars')}
-                        onTouchEnd={(e) => handleTouchEnd(e, item, 'particulars')}
+                        onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
+                        onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
+                        onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
                         onTouchMove={handleTouchMove}
                         title={editingItem === item.id ? "" : "Double-click or long press to edit"}
                       >
                         {editingItem === item.id ? (
                           <select
-                            value={editFormData.particulars}
-                            onChange={(e) => handleEditInputChange('particulars', e.target.value)}
+                            value={editFormData.specifications}
+                            onChange={(e) => handleEditInputChange('specifications', e.target.value)}
                             className="edit-select"
-                            disabled={!editFormData.category}
+                            disabled={!editFormData.materialName}
                           >
-                            <option value="">Select Particulars</option>
-                            {editFormData.category && (() => {
+                            <option value="">Select Specifications</option>
+                            {editFormData.materialName && (() => {
                               const categoryData = materialData[editFormData.category];
                               if (!categoryData) return null;
                               
-                              // If subCategory is selected, get particulars from subCategory structure
-                              if (editFormData.subCategory && categoryData.materialNames && typeof categoryData.materialNames === 'object' && categoryData.materialNames[editFormData.subCategory]) {
-                                return Object.keys(categoryData.materialNames[editFormData.subCategory]).map(particular => (
-                                  <option key={particular} value={particular}>{particular}</option>
-                                ));
-                              }
+                              // Get specifications based on selected material name
+                              const materialSpecs = getSpecificationsForMaterial(
+                                categoryData,
+                                editFormData.materialName,
+                                editFormData.subCategory
+                              );
                               
-                              // Otherwise, get particulars from category level
-                              return categoryData.particulars?.map(particular => (
-                                <option key={particular} value={particular}>{particular}</option>
+                              return materialSpecs?.map(specification => (
+                                <option key={specification} value={specification}>{specification}</option>
                               ));
                             })()}
                           </select>
                         ) : (
-                          item.particulars || '-'
+                          item.specifications || '-'
                         )}
                       </td>
                       <td 
@@ -1171,11 +1427,10 @@ const KR_PlaceOrder = () => {
                             disabled={!editFormData.category}
                           >
                             <option value="">Select Material Name</option>
-                                {editFormData.category && getMaterialNameOptions(
-                                  materialData[editFormData.category],
-                                  editFormData.particulars,
-                                  editFormData.subCategory
-                                )}
+                            {editFormData.category && getMaterialNameOptions(
+                              materialData[editFormData.category],
+                              editFormData.subCategory
+                            )}
                           </select>
                         ) : (
                           item.materialName
@@ -1332,35 +1587,6 @@ const KR_PlaceOrder = () => {
             </select>
           </div>
 
-          {/* Particulars - Optional */}
-          <div className="form-group">
-            <label htmlFor="particulars">Particulars</label>
-            <select
-              id="particulars"
-              value={formData.particulars}
-              onChange={(e) => handleInputChange('particulars', e.target.value)}
-              className="form-select"
-              disabled={!formData.category || dataLoading}
-            >
-              <option value="">Select Particulars</option>
-              {formData.category && (() => {
-                const categoryData = materialData[formData.category];
-                if (!categoryData) return null;
-                
-                // If subCategory is selected, get particulars from subCategory structure
-                if (formData.subCategory && categoryData.materialNames && typeof categoryData.materialNames === 'object' && categoryData.materialNames[formData.subCategory]) {
-                  return Object.keys(categoryData.materialNames[formData.subCategory]).map(particular => (
-                    <option key={particular} value={particular}>{particular}</option>
-                  ));
-                }
-                
-                // Otherwise, get particulars from category level
-                return categoryData.particulars?.map(particular => (
-                  <option key={particular} value={particular}>{particular}</option>
-                ));
-              })()}
-            </select>
-          </div>
 
           {/* Material Name - Required only if no items exist */}
           <div className="form-group">
@@ -1378,9 +1604,37 @@ const KR_PlaceOrder = () => {
               <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
               {formData.category && getMaterialNameOptions(
                 materialData[formData.category],
-                formData.particulars,
                 formData.subCategory
               )}
+            </select>
+          </div>
+
+          {/* Specifications - Optional */}
+          <div className="form-group">
+            <label htmlFor="specifications">Specifications</label>
+            <select
+              id="specifications"
+              value={formData.specifications}
+              onChange={(e) => handleInputChange('specifications', e.target.value)}
+              className="form-select"
+              disabled={!formData.materialName || dataLoading}
+            >
+              <option value="">Select Specifications</option>
+              {formData.materialName && (() => {
+                const categoryData = materialData[formData.category];
+                if (!categoryData) return null;
+                
+                // Get specifications based on selected material name
+                const materialSpecs = getSpecificationsForMaterial(
+                  categoryData,
+                  formData.materialName,
+                  formData.subCategory
+                );
+                
+                return materialSpecs?.map(specification => (
+                  <option key={specification} value={specification}>{specification}</option>
+                ));
+              })()}
             </select>
           </div>
 
@@ -1405,7 +1659,7 @@ const KR_PlaceOrder = () => {
           {/* UOM - Auto-selected (Read-only) */}
           <div className="form-group">
             <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
-              UOM (Auto-selected)
+              UOM
             </label>
             <input
               type="text"
@@ -1544,8 +1798,8 @@ const KR_PlaceOrder = () => {
             setFormData({
               category: '',
               subCategory: '',
-              particulars: '',
               materialName: '',
+              specifications: '',
               uom: '',
               quantity: '',
               givenBy: '',

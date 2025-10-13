@@ -182,8 +182,8 @@ def get_material_data():
             factory_name = material_doc.id
             material_data[factory_name] = {
                 'subCategories': [],
-                'particulars': [],
-                'materialNames': []
+                'materialNames': [],
+                'specifications': []
             }
             
             # Get materials subcollection for this factory
@@ -192,8 +192,8 @@ def get_material_data():
             
             categories = set()
             sub_categories = set()
-            particulars = set()
             material_names = []
+            specifications = set()
             
             for mat_doc in materials_docs:
                 mat_data = mat_doc.to_dict()
@@ -206,17 +206,17 @@ def get_material_data():
                 if 'subCategory' in mat_data and mat_data['subCategory']:
                     sub_categories.add(mat_data['subCategory'])
                 
-                # Extract particulars
-                if 'particulars' in mat_data and mat_data['particulars']:
-                    particulars.add(mat_data['particulars'])
+                # Extract specifications
+                if 'specifications' in mat_data and mat_data['specifications']:
+                    specifications.add(mat_data['specifications'])
                 
                 # Extract material name
                 if 'materialName' in mat_data:
                     material_names.append({
-                        'name': mat_data['materialName'],
                         'category': mat_data.get('category', ''),
                         'subCategory': mat_data.get('subCategory', ''),
-                        'particulars': mat_data.get('particulars', ''),
+                        'name': mat_data['materialName'],
+                        'specifications': mat_data.get('specifications', ''),
                         'uom': mat_data.get('uom', '')
                     })
             
@@ -225,25 +225,25 @@ def get_material_data():
             for category in categories:
                 material_data[factory_name][category] = {
                     'subCategories': [],
-                    'particulars': [],
-                    'materialNames': []
+                    'materialNames': [],
+                    'specifications': []
                 }
                 
                 # Get sub-categories for this category
                 category_sub_categories = set()
-                category_particulars = set()
+                category_specifications = set()
                 category_materials = []
                 
                 for mat in material_names:
                     if mat['category'] == category:
                         if mat['subCategory']:
                             category_sub_categories.add(mat['subCategory'])
-                        if mat['particulars']:
-                            category_particulars.add(mat['particulars'])
+                        if mat['specifications']:
+                            category_specifications.add(mat['specifications'])
                         category_materials.append(mat)
                 
                 material_data[factory_name][category]['subCategories'] = list(category_sub_categories)
-                material_data[factory_name][category]['particulars'] = list(category_particulars)
+                material_data[factory_name][category]['specifications'] = list(category_specifications)
                 material_data[factory_name][category]['materialNames'] = category_materials
         
         return material_data
@@ -281,59 +281,81 @@ def get_material_data_by_factory(factory_name):
         for category in categories:
             material_data[category] = {
                 'subCategories': [],
-                'particulars': [],
+                'specifications': [],
                 'materialNames': []  # Will be restructured based on data complexity
             }
             
             # Collect all materials for this category
             category_materials = []
             sub_categories = set()
-            particulars = set()
+            specifications = set()
             
             for material in materials:
                 if material.get('category') == category:
-                    if material.get('subCategory'):
-                        sub_categories.add(material['subCategory'])
-                    if material.get('particulars'):
-                        particulars.add(material['particulars'])
+                    # Handle empty subCategory strings - treat them as None/empty
+                    sub_category = material.get('subCategory', '')
+                    if sub_category and sub_category.strip():
+                        sub_categories.add(sub_category)
                     
-                    category_materials.append({
+                    spec = material.get('specifications', '')
+                    if spec and spec.strip():
+                        specifications.add(spec)
+                    
+                    # Create material object with correct field sequence for frontend
+                    material_obj = {
+                        'subCategory': sub_category,  # Can be empty string
                         'name': material.get('materialName', ''),
-                        'subCategory': material.get('subCategory', ''),
-                        'particulars': material.get('particulars', ''),
+                        'specifications': spec,  # Can be empty string
                         'uom': material.get('uom', '')
-                    })
+                    }
+                    category_materials.append(material_obj)
             
-            # Set subCategories and particulars
-            material_data[category]['subCategories'] = list(sub_categories)
-            material_data[category]['particulars'] = list(particulars)
+            # Set subCategories and specifications (filter out empty strings)
+            material_data[category]['subCategories'] = [sc for sc in sub_categories if sc and sc.strip()]
+            material_data[category]['specifications'] = [spec for spec in specifications if spec and spec.strip()]
             
             # Structure materialNames based on complexity
-            # If we have subCategories and particulars, create nested structure
-            if sub_categories and particulars:
-                # Complex nested structure: subCategory -> particulars -> materials
+            # Check if we have meaningful subcategories (non-empty)
+            has_subcategories = any(sc and sc.strip() for sc in sub_categories)
+            has_specifications = any(spec and spec.strip() for spec in specifications)
+            
+            if has_subcategories:
+                # Category HAS subcategories - organize by subcategory
                 material_data[category]['materialNames'] = {}
+                
+                # Group materials by subcategory
                 for sub_cat in sub_categories:
-                    material_data[category]['materialNames'][sub_cat] = {}
-                    for particular in particulars:
+                    if sub_cat and sub_cat.strip():  # Only process non-empty subcategories
+                        materials_for_subcat = [
+                            mat for mat in category_materials 
+                            if mat['subCategory'] == sub_cat
+                        ]
+                        if materials_for_subcat:
+                            material_data[category]['materialNames'][sub_cat] = materials_for_subcat
+                
+                # Handle materials with empty subcategories (if any)
+                materials_with_empty_subcat = [
+                    mat for mat in category_materials 
+                    if not mat['subCategory'] or not mat['subCategory'].strip()
+                ]
+                if materials_with_empty_subcat:
+                    # If we have materials without subcategories, put them under empty string key
+                    material_data[category]['materialNames'][''] = materials_with_empty_subcat
+                    
+            elif has_specifications and not has_subcategories:
+                # Simple nested structure: specifications -> materials
+                material_data[category]['materialNames'] = {}
+                for particular in specifications:
+                    if particular and particular.strip():
                         materials_for_particular = [
                             mat for mat in category_materials 
-                            if mat['subCategory'] == sub_cat and mat['particulars'] == particular
+                            if mat['specifications'] == particular
                         ]
                         if materials_for_particular:
-                            material_data[category]['materialNames'][sub_cat][particular] = materials_for_particular
-            elif particulars and not sub_categories:
-                # Simple nested structure: particulars -> materials
-                material_data[category]['materialNames'] = {}
-                for particular in particulars:
-                    materials_for_particular = [
-                        mat for mat in category_materials 
-                        if mat['particulars'] == particular
-                    ]
-                    if materials_for_particular:
-                        material_data[category]['materialNames'][particular] = materials_for_particular
+                            material_data[category]['materialNames'][particular] = materials_for_particular
+                            
             else:
-                # Simple array structure: just material objects with UOM
+                # Simple array structure: just material objects with UOM (no subcategories, no specifications)
                 material_data[category]['materialNames'] = category_materials
         
         return material_data
@@ -463,8 +485,8 @@ def add_order(factory, order_data):
             cleaned_item = {
                 'category': item.get('category'),
                 'subCategory': item.get('subCategory'),
-                'particulars': item.get('particulars'),
                 'materialName': item.get('materialName'),
+                'specifications': item.get('specifications'),
                 'uom': item.get('uom'),
                 'quantity': item.get('quantity')
             }
@@ -626,275 +648,183 @@ def get_all_orders():
         logging.error(f"Error fetching all orders: {str(e)}")
         return []
 
-def update_user_oauth_tokens(user_id, access_token, refresh_token, granted_scopes=None):
-    """Update user's Google OAuth tokens and scopes"""
+# OAuth token management functions
+def get_user_oauth_tokens(user_id):
+    """Get user's OAuth tokens for Google services"""
     try:
         user_ref = db.collection('USERS').document(user_id)
-        update_data = {
-            'google_access_token': access_token,
-            'google_refresh_token': refresh_token,
-            'last_token_refresh': datetime.now().isoformat()
+        user_doc = user_ref.get()
+        
+        if not user_doc.exists:
+            return None
+        
+        user_data = user_doc.to_dict()
+        oauth_tokens = user_data.get('oauth_tokens', {})
+        
+        return oauth_tokens if oauth_tokens else None
+    except Exception as e:
+        logging.error(f"Error getting OAuth tokens for user {user_id}: {str(e)}")
+        return None
+
+def update_user_oauth_tokens(user_id, access_token, refresh_token, granted_scopes):
+    """Update user's OAuth tokens"""
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        
+        oauth_tokens = {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'granted_scopes': granted_scopes,
+            'has_sheets_access': 'https://www.googleapis.com/auth/spreadsheets' in granted_scopes if granted_scopes else False,
+            'has_drive_access': 'https://www.googleapis.com/auth/drive' in granted_scopes if granted_scopes else False,
+            'has_gmail_access': 'https://www.googleapis.com/auth/gmail.send' in granted_scopes if granted_scopes else False,
+            'updated_at': firestore.SERVER_TIMESTAMP
         }
         
-        if granted_scopes:
-            update_data['granted_scopes'] = granted_scopes
-            update_data['has_sheets_access'] = 'https://www.googleapis.com/auth/spreadsheets' in granted_scopes
-            update_data['has_drive_access'] = 'https://www.googleapis.com/auth/drive.file' in granted_scopes
-            update_data['has_gmail_access'] = any(scope.startswith('https://www.googleapis.com/auth/gmail') for scope in granted_scopes)
-        
-        user_ref.update(update_data)
+        user_ref.update({'oauth_tokens': oauth_tokens})
         logging.info(f"Updated OAuth tokens for user {user_id}")
         return True
     except Exception as e:
-        logging.error(f"Error updating OAuth tokens for user {user_id}: {e}")
+        logging.error(f"Error updating OAuth tokens for user {user_id}: {str(e)}")
         return False
 
-def get_user_oauth_tokens(user_id):
-    """Get user's Google OAuth tokens"""
+# Material management functions
+def delete_material(factory, category, subCategory, specifications, materialName):
+    """Delete a specific material from Firebase"""
     try:
-        user_doc = db.collection('USERS').document(user_id).get()
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            return {
-                'access_token': user_data.get('google_access_token'),
-                'refresh_token': user_data.get('google_refresh_token'),
-                'granted_scopes': user_data.get('granted_scopes', []),
-                'has_sheets_access': user_data.get('has_sheets_access', False),
-                'has_drive_access': user_data.get('has_drive_access', False),
-                'has_gmail_access': user_data.get('has_gmail_access', False)
-            }
-        return None
-    except Exception as e:
-        logging.error(f"Error getting OAuth tokens for user {user_id}: {e}")
-        return None
-
-def get_user_by_email_with_oauth_tokens(email):
-    """Get user with OAuth tokens included"""
-    try:
-        users_ref = db.collection('USERS')
-        query = users_ref.where('email', '==', email).limit(1)
-        docs = query.stream()
-        
-        for doc in docs:
-            user_data = doc.to_dict()
-            user_data['id'] = doc.id
-            
-            # Include OAuth token information
-            user_data['oauth_tokens'] = {
-                'access_token': user_data.get('google_access_token'),
-                'refresh_token': user_data.get('google_refresh_token'),
-                'granted_scopes': user_data.get('granted_scopes', []),
-                'has_sheets_access': user_data.get('has_sheets_access', False),
-                'has_drive_access': user_data.get('has_drive_access', False),
-                'has_gmail_access': user_data.get('has_gmail_access', False)
-            }
-            
-            return user_data
-        return None
-    except Exception as e:
-        logging.error(f"Error getting user with OAuth tokens by email {email}: {e}")
-        return None
-
-def delete_material(factory, category, subCategory, particulars, materialName):
-    """Delete a material from Firebase with exact match"""
-    try:
-        # Get the factory document
         factory_ref = db.collection('MATERIAL').document(factory)
         factory_doc = factory_ref.get()
         
         if not factory_doc.exists:
             return {
                 'success': False,
-                'message': f'Factory {factory} not found',
-                'deleted_material': None
+                'message': f'Factory {factory} not found'
             }
         
-        # Get existing materials array
-        existing_data = factory_doc.to_dict()
-        materials = existing_data.get('materials', [])
+        factory_data = factory_doc.to_dict()
+        materials = factory_data.get('materials', [])
         
-        # Find the exact match
+        # Find and remove the material
         deleted_material = None
-        updated_materials = []
-        found = False
+        new_materials = []
         
         for material in materials:
-            # Check for exact match on all fields
-            if (material.get('category', '') == category and
+            if (material.get('category') == category and
                 material.get('subCategory', '') == subCategory and
-                material.get('particulars', '') == particulars and
-                material.get('materialName', '') == materialName):
-                deleted_material = material.copy()
-                found = True
-                # Don't add this material to the updated list (effectively deleting it)
+                material.get('specifications', '') == specifications and
+                material.get('materialName') == materialName):
+                deleted_material = material
             else:
-                updated_materials.append(material)
+                new_materials.append(material)
         
-        if not found:
+        if not deleted_material:
             return {
                 'success': False,
-                'message': 'No matching material found to delete',
-                'deleted_material': None
+                'message': 'Material not found'
             }
         
-        # Update the factory document with the filtered materials array
-        factory_ref.set({
-            'materials': updated_materials
-        }, merge=True)
+        # Update the factory document with the new materials array
+        factory_ref.update({'materials': new_materials})
         
-        logging.info(f"Material deleted successfully: {materialName} from factory {factory}")
+        logging.info(f"Deleted material {materialName} from factory {factory}")
         
         return {
             'success': True,
             'message': 'Material deleted successfully',
             'deleted_material': deleted_material
         }
-        
     except Exception as e:
         logging.error(f"Error deleting material: {str(e)}")
         return {
             'success': False,
-            'message': f'Error deleting material: {str(e)}',
-            'deleted_material': None
+            'message': f'Error deleting material: {str(e)}'
         }
 
-def update_material_quantity(factory, category, subCategory, particulars, materialName, quantityChange, operation):
-    """
-    Update material current quantity
-    - operation: 'inward' (add) or 'outward' (subtract)
-    - Returns updated material and new currentQuantity
-    """
+def update_material_quantity(factory, category, subCategory, specifications, materialName, quantityChange, operation='inward'):
+    """Update material quantity (add for inward, subtract for outward)"""
     try:
-        # Get the factory document
         factory_ref = db.collection('MATERIAL').document(factory)
         factory_doc = factory_ref.get()
         
         if not factory_doc.exists:
             return {
                 'success': False,
-                'message': f'Factory {factory} not found',
-                'updated_material': None,
-                'previous_quantity': None,
-                'new_quantity': None
+                'message': f'Factory {factory} not found'
             }
         
-        # Get existing materials array
-        existing_data = factory_doc.to_dict()
-        materials = existing_data.get('materials', [])
+        factory_data = factory_doc.to_dict()
+        materials = factory_data.get('materials', [])
         
-        # Find the exact match and update quantity
-        updated_material = None
-        updated_materials = []
-        found = False
-        previous_quantity = None
-        new_quantity = None
+        # Find and update the material
+        material_found = False
+        previous_quantity = 0
+        new_quantity = 0
         
-        for material in materials:
-            # Check for exact match on all fields first
-            if (material.get('category', '') == category and
+        for i, material in enumerate(materials):
+            if (material.get('category') == category and
                 material.get('subCategory', '') == subCategory and
-                material.get('particulars', '') == particulars and
-                material.get('materialName', '') == materialName):
-                found = True
-            # If exact match not found, try flexible match (same category and materialName)
-            elif (material.get('category', '') == category and
-                  material.get('materialName', '') == materialName):
-                logging.info(f"Using flexible match for quantity update: category='{category}', materialName='{materialName}'")
-                found = True
-            
-            if found:
-                # Get current quantity (default to 0 if not set)
-                current_qty = float(material.get('currentQuantity', material.get('initialQuantity', 0)))
-                previous_quantity = current_qty
+                material.get('specifications', '') == specifications and
+                material.get('materialName') == materialName):
+                
+                material_found = True
+                previous_quantity = float(material.get('currentQuantity', 0))
                 
                 # Calculate new quantity based on operation
                 if operation == 'inward':
-                    new_quantity = current_qty + float(quantityChange)
+                    new_quantity = previous_quantity + float(quantityChange)
                 elif operation == 'outward':
-                    new_quantity = current_qty - float(quantityChange)
-                    # Prevent negative quantity
+                    new_quantity = previous_quantity - float(quantityChange)
                     if new_quantity < 0:
                         return {
                             'success': False,
-                            'message': f'Insufficient quantity. Available: {current_qty}, Requested: {quantityChange}',
-                            'updated_material': None,
-                            'previous_quantity': current_qty,
-                            'new_quantity': None
+                            'message': f'Insufficient quantity. Available: {previous_quantity}, Required: {quantityChange}'
                         }
                 else:
                     return {
                         'success': False,
-                        'message': f'Invalid operation: {operation}. Must be "inward" or "outward"',
-                        'updated_material': None,
-                        'previous_quantity': None,
-                        'new_quantity': None
+                        'message': f'Invalid operation: {operation}'
                     }
                 
-                # Update the material
-                material['currentQuantity'] = new_quantity
-                material['lastUpdated'] = datetime.now().isoformat()
-                updated_material = material.copy()
-                updated_materials.append(material)
-            else:
-                updated_materials.append(material)
+                materials[i]['currentQuantity'] = new_quantity
+                break
         
-        if not found:
+        if not material_found:
             return {
                 'success': False,
-                'message': 'No matching material found to update quantity',
-                'updated_material': None,
-                'previous_quantity': None,
-                'new_quantity': None
+                'message': 'Material not found'
             }
         
         # Update the factory document with the updated materials array
-        factory_ref.set({
-            'materials': updated_materials
-        }, merge=True)
+        factory_ref.update({'materials': materials})
         
-        logging.info(f"Material quantity updated: {materialName} from {previous_quantity} to {new_quantity} (operation: {operation})")
+        logging.info(f"Updated quantity for {materialName} in {factory}: {previous_quantity} -> {new_quantity}")
         
         return {
             'success': True,
-            'message': 'Material quantity updated successfully',
-            'updated_material': updated_material,
+            'message': 'Quantity updated successfully',
             'previous_quantity': previous_quantity,
             'new_quantity': new_quantity
         }
-        
     except Exception as e:
         logging.error(f"Error updating material quantity: {str(e)}")
         return {
             'success': False,
-            'message': f'Error updating material quantity: {str(e)}',
-            'updated_material': None,
-            'previous_quantity': None,
-            'new_quantity': None
+            'message': f'Error updating quantity: {str(e)}'
         }
 
 def save_transaction(factory, transaction_data):
-    """Save inward/outward transaction to TRANSACTIONS collection"""
+    """Save a material transaction (inward/outward) to TRANSACTIONS collection"""
     try:
-        # Get the transactions document for this factory
         transactions_ref = db.collection('TRANSACTIONS').document(factory)
         transactions_doc = transactions_ref.get()
         
         if transactions_doc.exists:
-            # Get existing transactions array
             existing_data = transactions_doc.to_dict()
             transactions = existing_data.get('transactions', [])
         else:
-            # Create new factory document with empty transactions array
             transactions = []
         
-        # Add timestamp if not provided
-        if 'timestamp' not in transaction_data:
-            transaction_data['timestamp'] = datetime.now().isoformat()
-        
-        if 'recordedAt' not in transaction_data:
-            transaction_data['recordedAt'] = datetime.now().isoformat()
-        
-        # Add transaction to the array
+        # Add new transaction
         transactions.append(transaction_data)
         
         # Update the factory document with the new transactions array
@@ -904,75 +834,120 @@ def save_transaction(factory, transaction_data):
             'lastUpdated': firestore.SERVER_TIMESTAMP
         }, merge=True)
         
-        logging.info(f"Transaction saved: {transaction_data.get('type')} for {transaction_data.get('materialName')} in factory {factory}")
+        logging.info(f"Saved transaction for {factory}: {transaction_data.get('type')}")
         
         return {
             'success': True,
-            'message': 'Transaction saved successfully',
-            'transaction_id': len(transactions) - 1
+            'message': 'Transaction saved successfully'
         }
-        
     except Exception as e:
         logging.error(f"Error saving transaction: {str(e)}")
         return {
             'success': False,
-            'message': f'Error saving transaction: {str(e)}',
-            'transaction_id': None
+            'message': f'Error saving transaction: {str(e)}'
         }
 
-def get_material_details(factory, category, subCategory, particulars, materialName):
+def get_material_details(factory, category, subCategory, specifications, materialName):
     """Get complete material details including current quantity"""
     try:
-        # Get the factory document
         factory_ref = db.collection('MATERIAL').document(factory)
         factory_doc = factory_ref.get()
         
         if not factory_doc.exists:
             return {
                 'success': False,
-                'message': f'Factory {factory} not found',
-                'material': None
+                'message': f'Factory {factory} not found'
             }
         
-        # Get existing materials array
-        existing_data = factory_doc.to_dict()
-        materials = existing_data.get('materials', [])
+        factory_data = factory_doc.to_dict()
+        materials = factory_data.get('materials', [])
         
-        # Find the exact match first
+        # Find the material
         for material in materials:
-            if (material.get('category', '') == category and
+            if (material.get('category') == category and
                 material.get('subCategory', '') == subCategory and
-                material.get('particulars', '') == particulars and
-                material.get('materialName', '') == materialName):
+                material.get('specifications', '') == specifications and
+                material.get('materialName') == materialName):
+                
                 return {
                     'success': True,
                     'message': 'Material found',
                     'material': material
                 }
         
-        # If exact match not found, try a more flexible search
-        # Look for materials with same category and materialName, but different subCategory/particulars
-        logging.info(f"Exact match not found, trying flexible search for category='{category}', materialName='{materialName}'")
-        for material in materials:
-            if (material.get('category', '') == category and
-                material.get('materialName', '') == materialName):
-                logging.info(f"Found material with same category and name but different subCategory/particulars: subCategory='{material.get('subCategory', '')}', particulars='{material.get('particulars', '')}'")
-                return {
-                    'success': True,
-                    'message': 'Material found (flexible match)',
-                    'material': material
-                }
-        
         return {
             'success': False,
-            'message': 'No matching material found',
-            'material': None
+            'message': 'Material not found'
         }
-        
     except Exception as e:
         logging.error(f"Error getting material details: {str(e)}")
         return {
             'success': False,
-            'message': f'Error getting material details: {str(e)}',
-            'material': None
+            'message': f'Error getting material details: {str(e)}'
+        }
+
+def get_materials_nested_structure(factory):
+    """Get materials in nested structure for cascading dropdowns (legacy function for backward compatibility)"""
+    try:
+        # This function calls get_material_data_by_factory which already returns the correct structure
+        return get_material_data_by_factory(factory)
+    except Exception as e:
+        logging.error(f"Error getting nested structure for factory {factory}: {str(e)}")
+        return {}
+
+def store_materials_in_nested_structure(factory_name, materials_list, sync_metadata):
+    """Store materials in Firebase with sync metadata"""
+    try:
+        factory_ref = db.collection('MATERIAL').document(factory_name)
+        
+        # Update the factory document with materials array
+        factory_ref.set({
+            'materials': materials_list,
+            'lastSynced': sync_metadata.get('timestamp'),
+            'lastSyncedBy': sync_metadata.get('synced_by'),
+            'lastSyncDescription': sync_metadata.get('description'),
+            'lastUpdated': firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        # Also save sync history to a subcollection
+        sync_history_ref = factory_ref.collection('sync_history').document()
+        sync_history_ref.set({
+            'timestamp': sync_metadata.get('timestamp'),
+            'synced_by': sync_metadata.get('synced_by'),
+            'description': sync_metadata.get('description'),
+            'materials_count': len(materials_list),
+            'created_at': firestore.SERVER_TIMESTAMP
+        })
+        
+        logging.info(f"Stored {len(materials_list)} materials for factory {factory_name}")
+        
+        return {
+            'success': True,
+            'message': f'Successfully stored {len(materials_list)} materials'
+        }
+    except Exception as e:
+        logging.error(f"Error storing materials in nested structure: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error storing materials: {str(e)}'
+        }
+
+def migrate_individual_documents_to_nested_structure():
+    """Migrate old material structure to new nested structure if needed"""
+    try:
+        # This is a placeholder function for backward compatibility
+        # In practice, the new structure is already being used
+        logging.info("Migration check: Using current nested structure")
+        
+        return {
+            'success': True,
+            'message': 'No migration needed - already using nested structure',
+            'migrated_count': 0
+        }
+    except Exception as e:
+        logging.error(f"Error in migration: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Migration error: {str(e)}',
+            'migrated_count': 0
         }

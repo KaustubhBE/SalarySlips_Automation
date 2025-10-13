@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl, PLANT_DATA } from '../../config'
+import LoadingSpinner from '../../LoadingSpinner'
 import '../../MaterialList.css'
 
 const SheetsMaterialList = () => {
@@ -76,6 +77,7 @@ const [showAlert, setShowAlert] = useState(false)
     }
   }
 
+
   // Handle sync button click
   const handleSync = async () => {
     if (!selectedPlant) {
@@ -148,7 +150,7 @@ const [showAlert, setShowAlert] = useState(false)
           alertMessage = 'No material data found to sync for this plant.'
           alertType = 'info'
         } else if (totalSynced === 0 && skippedCount > 0) {
-          // All items were skipped
+          // All items were skipped due to errors
           alertMessage = `Sync completed! No items were synced to Firebase. ${skippedCount} items were skipped due to missing data. Check details below.`
           alertType = 'warning'
         } else if (totalSynced > 0 && skippedCount > 0) {
@@ -169,8 +171,10 @@ const [showAlert, setShowAlert] = useState(false)
         
         // Clear the description after sync completion
         setSyncDescription('')
-        // Refresh the material data after sync
-        handlePlantChange(selectedPlant)
+        // Reset dropdown to default and clear material data to prevent unnecessary loading
+        setSelectedPlant('')
+        setMaterialData({})
+        setMessage('')
       } else {
         const errorMessage = response.data.message || 'Failed to sync material data'
         setMessage(errorMessage)
@@ -178,19 +182,26 @@ const [showAlert, setShowAlert] = useState(false)
         showAlertMessage('Sync Failed', errorMessage, 'error')
       }
     } catch (error) {
-      console.error('Error syncing material data:', error)
-      const errorMessage = error.response?.data?.message || 'Error syncing material data. Please try again.'
-      setMessage(errorMessage)
-      setMessageType('error')
-      showAlertMessage('Sync Error', errorMessage, 'error')
-    } finally {
-      setLoading(false)
-    }
+        console.error('Error syncing material data:', error)
+        const errorMessage = error.response?.data?.message || 'Error syncing material data. Please try again.'
+        setMessage(errorMessage)
+        setMessageType('error')
+        showAlertMessage('Sync Error', errorMessage, 'error')
+        
+        // Reset dropdown to default and clear material data on error as well
+        setSelectedPlant('')
+        setMaterialData({})
+      } finally {
+        setLoading(false)
+      }
   }
 
 
   return (
     <div className="material_list-container">
+      {/* Loading Spinner */}
+      {loading && <LoadingSpinner />}
+      
       {/* Back Button Section - Consistent across all pages */}
       <div style={{ 
         display: 'flex', 
@@ -294,6 +305,7 @@ const [showAlert, setShowAlert] = useState(false)
           </small>
         </div>
 
+
         {/* Sync Button - Centered */}
         <div className="sync-button-container">
           <button 
@@ -313,10 +325,30 @@ const [showAlert, setShowAlert] = useState(false)
               <p><strong>Categories:</strong> {Object.keys(materialData).length}</p>
               <p><strong>Total Materials:</strong> {
                 Object.values(materialData).reduce((total, category) => {
-                  if (Array.isArray(category.materialNames)) {
-                    return total + category.materialNames.length
-                  } else if (typeof category.materialNames === 'object') {
-                    return total + Object.values(category.materialNames).flat().length
+                  if (typeof category === 'object' && category.materialNames) {
+                    // Count materials in nested structure compatible with KR_PlaceOrder.jsx
+                    let count = 0
+                    const materialNames = category.materialNames
+                    
+                    if (Array.isArray(materialNames)) {
+                      // Simple array structure
+                      count = materialNames.length
+                    } else if (typeof materialNames === 'object') {
+                      // Nested structure - count all materials
+                      Object.values(materialNames).forEach(subCatOrSpec => {
+                        if (Array.isArray(subCatOrSpec)) {
+                          count += subCatOrSpec.length
+                        } else if (typeof subCatOrSpec === 'object') {
+                          // Further nested (subCategory -> specifications -> materials)
+                          Object.values(subCatOrSpec).forEach(materials => {
+                            if (Array.isArray(materials)) {
+                              count += materials.length
+                            }
+                          })
+                        }
+                      })
+                    }
+                    return total + count
                   }
                   return total
                 }, 0)
@@ -336,13 +368,13 @@ const [showAlert, setShowAlert] = useState(false)
                   <span className="stat-value">{syncResults.totalProcessed}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Successfully Synced:</span>
+                  <span className="stat-label">New Materials Added:</span>
                   <span className={`stat-value ${syncResults.totalSynced > 0 ? 'success' : 'info'}`}>
                     {syncResults.totalSynced}
                   </span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Skipped:</span>
+                  <span className="stat-label">Skipped (Errors):</span>
                   <span className={`stat-value ${syncResults.skippedCount > 0 ? 'warning' : 'info'}`}>
                     {syncResults.skippedCount}
                   </span>

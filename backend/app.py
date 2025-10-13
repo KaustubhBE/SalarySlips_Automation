@@ -1221,6 +1221,33 @@ def get_logs():
 def home():
     return jsonify({"message": "Welcome to the Salary Slip Automation API!"}), 200
 
+@app.route("/api/auth/status", methods=["GET"])
+def get_auth_status():
+    """Get current user authentication status"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        user_data = session.get('user', {})
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": user_data.get('id'),
+                "email": user_data.get('email'),
+                "name": user_data.get('name'),
+                "role": user_data.get('role'),
+                "permissions": user_data.get('permissions', {}),
+                "permission_metadata": user_data.get('permission_metadata', {})
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting auth status: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/user/oauth-status", methods=["GET"])
 def get_user_oauth_status():
     """Get user's OAuth token status and permissions"""
@@ -2163,6 +2190,34 @@ def get_material_data():
             "error": str(e)
         }), 500
 
+@app.route("/api/test_nested_structure", methods=["GET"])
+def test_nested_structure():
+    """Test endpoint to verify nested structure is working correctly"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        factory = request.args.get('factory', 'KR')
+        
+        from Utils.firebase_utils import get_materials_nested_structure
+        
+        # Get nested structure data
+        nested_data = get_materials_nested_structure(factory)
+        
+        return jsonify({
+            "success": True,
+            "factory": factory,
+            "data": nested_data,
+            "message": f"Nested structure data for {factory}"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error testing nested structure: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/get_authority_list", methods=["GET"])
 def get_authority_list():
     """Get authority list from Google Sheets for dropdown population"""
@@ -2367,12 +2422,12 @@ def material_inward():
         factory = data.get('department', 'KR')
         
         # First, check if material exists with exact match
-        logger.info(f"Checking material existence for: category='{data['category']}', materialName='{data['materialName']}', subCategory='{data.get('subCategory', '')}', particulars='{data.get('particulars', '')}'")
+        logger.info(f"Checking material existence for: category='{data['category']}', materialName='{data['materialName']}', subCategory='{data.get('subCategory', '')}', specifications='{data.get('specifications', '')}'")
         material_check = get_material_details(
             factory=factory,
             category=data['category'],
             subCategory=data.get('subCategory', ''),
-            particulars=data.get('particulars', ''),
+            specifications=data.get('specifications', ''),
             materialName=data['materialName']
         )
         
@@ -2385,7 +2440,7 @@ def material_inward():
             materials = existing_data.get('materials', [])
             logger.info(f"Total materials in database: {len(materials)}")
             for i, mat in enumerate(materials[:5]):  # Log first 5 materials for debugging
-                logger.info(f"Material {i}: category='{mat.get('category', '')}', materialName='{mat.get('materialName', '')}', subCategory='{mat.get('subCategory', '')}', particulars='{mat.get('particulars', '')}'")
+                logger.info(f"Material {i}: category='{mat.get('category', '')}', materialName='{mat.get('materialName', '')}', subCategory='{mat.get('subCategory', '')}', specifications='{mat.get('specifications', '')}'")
         
         # If material doesn't exist, create it with initial quantity 0
         if not material_check['success']:
@@ -2401,12 +2456,12 @@ def material_inward():
             else:
                 materials = []
             
-            # Add new material with initial quantity 0
+            # Add new material with initial quantity 0 (following standard field sequence)
             new_material = {
                 'category': data['category'],
                 'subCategory': data.get('subCategory', ''),
-                'particulars': data.get('particulars', ''),
                 'materialName': data['materialName'],
+                'specifications': data.get('specifications', ''),
                 'uom': data['uom'],
                 'initialQuantity': 0,
                 'currentQuantity': 0,
@@ -2424,12 +2479,12 @@ def material_inward():
             logger.info(f"Found existing material: {data['materialName']}, current quantity: {material_check['material'].get('currentQuantity', 0)}")
         
         # Update material quantity (add for inward)
-        logger.info(f"Updating material quantity for: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        logger.info(f"Updating material quantity for: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('specifications', '')}")
         quantity_result = update_material_quantity(
             factory=factory,
             category=data['category'],
             subCategory=data.get('subCategory', ''),
-            particulars=data.get('particulars', ''),
+            specifications=data.get('specifications', ''),
             materialName=data['materialName'],
             quantityChange=data['quantity'],
             operation='inward'
@@ -2442,12 +2497,12 @@ def material_inward():
                 "message": quantity_result['message']
             }), 400
         
-        # Create material inward transaction record
+        # Create material inward transaction record (following standard field sequence)
         inward_record = {
             'category': data['category'],
             'subCategory': data.get('subCategory', ''),
-            'particulars': data.get('particulars', ''),
             'materialName': data['materialName'],
+            'specifications': data.get('specifications', ''),
             'uom': data['uom'],
             'quantity': float(data['quantity']),
             'partyName': data['partyName'],
@@ -2508,12 +2563,12 @@ def material_outward():
         factory = data.get('department', 'KR')
         
         # First, check if material exists
-        logger.info(f"Checking material existence for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        logger.info(f"Checking material existence for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('specifications', '')}")
         material_check = get_material_details(
             factory=factory,
             category=data['category'],
             subCategory=data.get('subCategory', ''),
-            particulars=data.get('particulars', ''),
+            specifications=data.get('specifications', ''),
             materialName=data['materialName']
         )
         
@@ -2525,12 +2580,12 @@ def material_outward():
             }), 400
         
         # Update material quantity (subtract for outward)
-        logger.info(f"Updating material quantity for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('particulars', '')}")
+        logger.info(f"Updating material quantity for outward: {data['category']}, {data['materialName']}, {data.get('subCategory', '')}, {data.get('specifications', '')}")
         quantity_result = update_material_quantity(
             factory=factory,
             category=data['category'],
             subCategory=data.get('subCategory', ''),
-            particulars=data.get('particulars', ''),
+            specifications=data.get('specifications', ''),
             materialName=data['materialName'],
             quantityChange=data['quantity'],
             operation='outward'
@@ -2543,12 +2598,12 @@ def material_outward():
                 "message": quantity_result['message']
             }), 400
         
-        # Create material outward transaction record
+        # Create material outward transaction record (following standard field sequence)
         outward_record = {
             'category': data['category'],
             'subCategory': data.get('subCategory', ''),
-            'particulars': data.get('particulars', ''),
             'materialName': data['materialName'],
+            'specifications': data.get('specifications', ''),
             'uom': data['uom'],
             'quantity': float(data['quantity']),
             'givenTo': data['givenTo'],
@@ -2618,12 +2673,12 @@ def add_material():
         # Get initial quantity
         initial_qty = float(data.get('initialQuantity', 0))
         
-        # Prepare material data with quantity tracking
+        # Prepare material data with quantity tracking (following standard field sequence)
         material_data = {
             'category': data.get('category'),
             'subCategory': data.get('subCategory', ''),
-            'particulars': data.get('particulars', ''),
             'materialName': data.get('materialName'),
+            'specifications': data.get('specifications', ''),
             'uom': data.get('uom'),
             'initialQuantity': initial_qty,
             'currentQuantity': initial_qty,  # Initially same as initialQuantity
@@ -2694,11 +2749,11 @@ def delete_material_endpoint():
         factory = data.get('department', 'KR')
         category = data.get('category')
         subCategory = data.get('subCategory', '')
-        particulars = data.get('particulars', '')
+        specifications = data.get('specifications', '')
         materialName = data.get('materialName')
         
         # Call the delete_material function
-        result = delete_material(factory, category, subCategory, particulars, materialName)
+        result = delete_material(factory, category, subCategory, specifications, materialName)
         
         if result['success']:
             logger.info(f"Material deleted successfully: {materialName} from factory {factory}")
@@ -2747,11 +2802,11 @@ def get_material_details_endpoint():
         factory = data.get('department', 'KR')
         category = data.get('category')
         subCategory = data.get('subCategory', '')
-        particulars = data.get('particulars', '')
+        specifications = data.get('specifications', '')
         materialName = data.get('materialName')
         
         # Call the get_material_details function
-        result = get_material_details(factory, category, subCategory, particulars, materialName)
+        result = get_material_details(factory, category, subCategory, specifications, materialName)
         
         if result['success']:
             logger.info(f"Material details retrieved: {materialName} from factory {factory}")
@@ -3053,6 +3108,7 @@ def get_plant_material_data():
             "success": False,
             "error": str(e)
         }), 500
+
 
 @app.route("/api/sync_plant_material_data", methods=["POST"])
 def sync_plant_material_data():

@@ -1640,6 +1640,20 @@ def get_plant_document_name_by_id(plant_id, plant_data):
             return plant.get('document_name', 'UNKNOWN')
     return 'UNKNOWN'
 
+def generate_material_key(category, sub_category, material_name, specifications):
+    """
+    Generate unique key for material comparison
+    Uses all 4 fields: category|subCategory|materialName|specifications
+    Empty values are treated as empty strings for consistency
+    """
+    # Normalize empty values to empty strings (not None)
+    sub_cat = str(sub_category).strip() if sub_category else ''
+    specs = str(specifications).strip() if specifications else ''
+    cat = str(category).strip() if category else ''
+    mat_name = str(material_name).strip() if material_name else ''
+    
+    return f"{cat}|{sub_cat}|{mat_name}|{specs}"
+
 def get_sheet_name_by_id(plant_id, plant_data):
     """Get sheet name by plant ID from plant data"""
     for plant in plant_data:
@@ -1711,8 +1725,8 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         headers = [header.strip() for header in all_data[1]]  # Row 2 contains headers
         logging.info(f"Found headers: {headers}")
         
-        # Expected headers: Category, Sub Category, Particulars, Material Name, UOM, Initial\nQuantity
-        expected_headers = ['Category', 'Sub Category', 'Particulars', 'Material Name', 'UOM', 'Initial\nQuantity']
+        # Expected headers: Category, Sub Category, Specifications, Material Name, UOM, Initial\nQuantity
+        expected_headers = ['Category', 'Sub Category', 'Specifications', 'Material Name', 'UOM', 'Initial\nQuantity']
         
         # Find column indices for expected headers
         header_indices = {}
@@ -1756,7 +1770,7 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
             try:
                 category = row[header_indices.get('Category', 0)].strip()
                 sub_category = row[header_indices.get('Sub Category', 1)].strip() if 'Sub Category' in header_indices else ''
-                particulars = row[header_indices.get('Particulars', 2)].strip() if 'Particulars' in header_indices else ''
+                specifications = row[header_indices.get('Specifications', 2)].strip() if 'Specifications' in header_indices else ''
                 material_name = row[header_indices.get('Material Name', 3)].strip()
                 uom = row[header_indices.get('UOM', 4)].strip()
                 initial_quantity = row[header_indices.get('Initial\nQuantity', 5)].strip() if 'Initial\nQuantity' in header_indices else '0'
@@ -1794,7 +1808,7 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 if category not in material_data:
                     material_data[category] = {
                         'subCategories': set(),
-                        'particulars': set(),
+                        'specifications': set(),
                         'materialNames': []
                     }
                 
@@ -1802,15 +1816,15 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 if sub_category:
                     material_data[category]['subCategories'].add(sub_category)
                 
-                # Add particulars
-                if particulars:
-                    material_data[category]['particulars'].add(particulars)
+                # Add specifications
+                if specifications:
+                    material_data[category]['specifications'].add(specifications)
                 
-                # Add material name with details
+                # Add material name with details (following standard field sequence)
                 material_info = {
-                    'name': material_name,
                     'subCategory': sub_category,
-                    'particulars': particulars,
+                    'name': material_name,
+                    'specifications': specifications,
                     'uom': uom,
                     'initialQuantity': initial_quantity
                 }
@@ -1820,13 +1834,61 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 logging.warning(f"Error processing row: {e}")
                 continue
         
-        # Convert sets to lists for JSON serialization
+        # Convert sets to lists and restructure materialNames for KR_PlaceOrder.jsx compatibility
         for category in material_data:
             material_data[category]['subCategories'] = list(material_data[category]['subCategories'])
-            material_data[category]['particulars'] = list(material_data[category]['particulars'])
+            material_data[category]['specifications'] = list(material_data[category]['specifications'])
+            
+            # Restructure materialNames based on complexity for KR_PlaceOrder.jsx compatibility
+            materials_list = material_data[category]['materialNames']
+            sub_categories = material_data[category]['subCategories']
+            specifications = material_data[category]['specifications']
+            
+            if sub_categories and specifications:
+                # Complex nested structure: subCategory -> specifications -> materials
+                nested_materials = {}
+                for sub_cat in sub_categories:
+                    nested_materials[sub_cat] = {}
+                    for specification in specifications:
+                        materials_for_specification = [
+                            mat for mat in materials_list 
+                            if mat['subCategory'] == sub_cat and mat['specifications'] == specification
+                        ]
+                        if materials_for_specification:
+                            nested_materials[sub_cat][specification] = materials_for_specification
+                material_data[category]['materialNames'] = nested_materials
+            elif specifications and not sub_categories:
+                # Simple nested structure: specifications -> materials
+                nested_materials = {}
+                for specification in specifications:
+                    materials_for_specification = [
+                        mat for mat in materials_list 
+                        if mat['specifications'] == specification
+                    ]
+                    if materials_for_specification:
+                        nested_materials[specification] = materials_for_specification
+                material_data[category]['materialNames'] = nested_materials
+            else:
+                # Simple array structure: just material objects (already correct)
+                pass  # materialNames is already an array
         
         # Calculate total materials processed successfully
-        total_materials = sum(len(category_data.get('materialNames', [])) for category_data in material_data.values())
+        total_materials = 0
+        for category_data in material_data.values():
+            material_names = category_data.get('materialNames', [])
+            if isinstance(material_names, list):
+                # Simple array structure
+                total_materials += len(material_names)
+            elif isinstance(material_names, dict):
+                # Nested structure - count all materials in nested objects
+                for sub_cat_or_spec, materials in material_names.items():
+                    if isinstance(materials, list):
+                        total_materials += len(materials)
+                    elif isinstance(materials, dict):
+                        # Further nested (subCategory -> specifications -> materials)
+                        for spec_or_mat, mat_list in materials.items():
+                            if isinstance(mat_list, list):
+                                total_materials += len(mat_list)
         
         logging.info(f"Successfully fetched material data for plant {plant_id}: {len(material_data)} categories, {total_materials} materials processed, {len(skipped_rows)} rows skipped")
         
@@ -1847,9 +1909,18 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         return {}
 
 def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_description, sync_timestamp, synced_by):
-    """Sync material data from Google Sheets to Firebase"""
+    """
+    Smart sync material data from Google Sheets to Firebase
+    Only adds new materials, preserves existing ones based on exact 4-field match
+    """
     try:
-        # First, get the data from Google Sheets
+        # First, run migration to ensure data is in nested structure
+        from Utils.firebase_utils import migrate_individual_documents_to_nested_structure
+        migration_result = migrate_individual_documents_to_nested_structure()
+        if migration_result['success'] and migration_result['migrated_count'] > 0:
+            logging.info(f"Migration completed before sync: {migration_result['message']}")
+        
+        # Then, get the data from Google Sheets
         sheet_result = get_plant_material_data_from_sheets(plant_id, plant_data)
         
         if not sheet_result or not sheet_result.get('material_data'):
@@ -1861,7 +1932,7 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
         # Extract data from the result
         sheet_data = sheet_result['material_data']
         total_processed = sheet_result.get('total_processed', 0)
-        total_materials = sheet_result.get('total_materials', 0)
+        total_materials_in_sheets = sheet_result.get('total_materials', 0)
         skipped_rows = sheet_result.get('skipped_rows', [])
         skipped_count = sheet_result.get('skipped_count', 0)
         skipped_reasons = sheet_result.get('skipped_reasons', {})
@@ -1870,65 +1941,184 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
         document_name = get_plant_document_name_by_id(plant_id, plant_data)
         logging.info(f"Using document name '{document_name}' for plant '{plant_name}' (ID: {plant_id})")
         
-        # Prepare material data for Firebase storage
-        materials = []
+        # Step 1: Fetch existing materials from Firebase
+        plant_ref = db.collection('MATERIAL').document(document_name)
+        plant_doc = plant_ref.get()
+        
+        existing_materials_map = {}
+        existing_materials_list = []
+        
+        if plant_doc.exists:
+            existing_data = plant_doc.to_dict()
+            
+            # Try to get materials from subcollection first (new format)
+            materials_subcollection = plant_ref.collection('materials')
+            materials_docs = materials_subcollection.get()
+            
+            existing_materials_list = []
+            
+            if materials_docs:
+                # New format: materials in subcollection
+                for mat_doc in materials_docs:
+                    mat_data = mat_doc.to_dict()
+                    existing_materials_list.append(mat_data)
+                    
+                    # Build lookup map with unique keys
+                    key = generate_material_key(
+                        mat_data.get('category', ''),
+                        mat_data.get('subCategory', ''),
+                        mat_data.get('materialName', ''),
+                        mat_data.get('specifications', '')
+                    )
+                    existing_materials_map[key] = mat_data
+                
+                logging.info(f"Found {len(existing_materials_list)} existing materials in subcollection for {document_name}")
+            else:
+                # Old format: materials as array in main document
+                existing_materials_list = existing_data.get('materials', [])
+                
+                for material in existing_materials_list:
+                    # Build lookup map with unique keys
+                    key = generate_material_key(
+                        material.get('category', ''),
+                        material.get('subCategory', ''),
+                        material.get('materialName', ''),
+                        material.get('specifications', '')
+                    )
+                    existing_materials_map[key] = material
+                
+                logging.info(f"Found {len(existing_materials_list)} existing materials in main document for {document_name}")
+            
+            logging.info(f"Sample existing material keys: {list(existing_materials_map.keys())[:3]}")
+        else:
+            logging.info(f"No existing materials found in Firebase for {document_name}")
+        
+        # Step 2: Process Google Sheets materials and identify new ones
+        new_materials = []
+        existing_materials_skipped = []
+        successfully_processed_count = 0  # Count of materials that passed validation
         
         for category, category_data in sheet_data.items():
-            for material_info in category_data.get('materialNames', []):
+            # Handle nested materialNames structure
+            material_names = category_data.get('materialNames', [])
+            materials_to_process = []
+            
+            if isinstance(material_names, list):
+                # Simple array structure
+                materials_to_process = material_names
+            elif isinstance(material_names, dict):
+                # Nested structure - flatten all materials
+                for sub_cat_or_spec, materials in material_names.items():
+                    if isinstance(materials, list):
+                        materials_to_process.extend(materials)
+                    elif isinstance(materials, dict):
+                        # Further nested (subCategory -> specifications -> materials)
+                        for spec_or_mat, mat_list in materials.items():
+                            if isinstance(mat_list, list):
+                                materials_to_process.extend(mat_list)
+            
+            for material_info in materials_to_process:
+                # Extract material details
+                category_name = category
+                sub_category = material_info.get('subCategory', '')
+                material_name = material_info.get('name', '')
+                specifications = material_info.get('specifications', '')
+                uom = material_info.get('uom', '')
                 initial_qty = float(material_info.get('initialQuantity', '0') or '0')
                 
-                material_entry = {
-                    'category': category,
-                    'subCategory': material_info.get('subCategory', ''),
-                    'particulars': material_info.get('particulars', ''),
-                    'materialName': material_info.get('name', ''),
-                    'uom': material_info.get('uom', ''),
-                    'initialQuantity': initial_qty,
-                    'currentQuantity': initial_qty,  # Set currentQuantity = initialQuantity during sync
-                    'syncedAt': sync_timestamp,
-                    'syncedBy': synced_by,
-                    'syncDescription': sync_description
-                }
-                materials.append(material_entry)
+                # Count this as successfully processed (passed validation)
+                successfully_processed_count += 1
+                
+                # Generate unique key for this material
+                material_key = generate_material_key(
+                    category_name,
+                    sub_category,
+                    material_name,
+                    specifications
+                )
+                
+                # Debug logging for first few materials
+                if successfully_processed_count <= 3:
+                    logging.info(f"Processing material {successfully_processed_count}: key='{material_key}', exists_in_firebase={material_key in existing_materials_map}")
+                
+                # Check if material already exists in Firebase
+                if material_key in existing_materials_map:
+                    # Material exists - skip it (preserve existing data)
+                    existing_materials_skipped.append({
+                        'category': category_name,
+                        'subCategory': sub_category,
+                        'materialName': material_name,
+                        'specifications': specifications,
+                        'reason': 'Already exists in Firebase (preserved)'
+                    })
+                    logging.info(f"Skipping existing material: {material_key}")
+                else:
+                    # New material - add it (following standard field sequence)
+                    material_entry = {
+                        'category': category_name,
+                        'subCategory': sub_category,
+                        'materialName': material_name,
+                        'specifications': specifications,
+                        'uom': uom,
+                        'initialQuantity': initial_qty,
+                        'currentQuantity': initial_qty,
+                        'syncedAt': sync_timestamp,
+                        'syncedBy': synced_by,
+                        'syncDescription': sync_description,
+                        'createdAt': sync_timestamp
+                    }
+                    new_materials.append(material_entry)
+                    logging.info(f"Adding new material: {material_key}")
         
-        # Store in Firebase under MATERIAL collection using the correct document name
-        plant_ref = db.collection('MATERIAL').document(document_name)
+        # Verify our counts make sense
+        total_successfully_processed = len(new_materials) + len(existing_materials_skipped)
+        logging.info(f"Count verification: {len(new_materials)} new + {len(existing_materials_skipped)} existing = {total_successfully_processed} total processed")
+        logging.info(f"Expected successfully processed: {successfully_processed_count}")
         
-        # Get existing data
-        plant_doc = plant_ref.get()
-        existing_data = plant_doc.to_dict() if plant_doc.exists else {}
+        # Step 3: Combine existing and new materials
+        final_materials_list = existing_materials_list + new_materials
         
-        # Update with new materials
-        plant_ref.set({
-            'materials': materials,
-            'lastSynced': sync_timestamp,
-            'lastSyncedBy': synced_by,
-            'syncDescription': sync_description,
-            'totalMaterials': len(materials)
-        }, merge=True)
+        # Step 4: Update Firebase with new nested structure
+        # Use the new nested structure storage function
+        from Utils.firebase_utils import store_materials_in_nested_structure
         
-        # Store sync history
-        sync_history_ref = plant_ref.collection('sync_history').document()
-        sync_history_ref.set({
+        sync_metadata = {
             'timestamp': sync_timestamp,
-            'syncedBy': synced_by,
-            'description': sync_description,
-            'materialsCount': len(materials),
-            'plantId': plant_id
-        })
+            'synced_by': synced_by,
+            'description': sync_description
+        }
         
-        logging.info(f"Successfully synced {len(materials)} materials for {plant_name} to document {document_name}")
+        # Store materials in the correct nested structure for cascading dropdowns
+        storage_result = store_materials_in_nested_structure(
+            factory_name=document_name,
+            materials_list=final_materials_list,
+            sync_metadata=sync_metadata
+        )
         
+        if not storage_result['success']:
+            return {
+                'success': False,
+                'message': f"Failed to store materials in nested structure: {storage_result['message']}"
+            }
+        
+        # Step 5: Sync history is now handled by store_materials_in_nested_structure function
+        
+        logging.info(f"Smart sync completed for {plant_name}: {len(new_materials)} new materials added, {len(existing_materials_skipped)} existing materials preserved")
+        
+        # Step 6: Prepare detailed response
         return {
             'success': True,
-            'message': f'Successfully synced {len(materials)} materials for {plant_name} to {document_name} document',
-            'total_processed': total_processed,
-            'total_synced': len(materials),
-            'skipped_count': skipped_count,
+            'message': f'Smart sync completed: {len(new_materials)} new materials added, {len(existing_materials_skipped)} existing materials preserved',
+            'total_processed': total_processed,  # Total rows from Google Sheets (including skipped)
+            'total_synced': len(new_materials),  # New materials added to Firebase
+            'existing_materials_preserved': len(existing_materials_skipped),  # Existing materials preserved
+            'skipped_count': skipped_count,  # Materials skipped due to validation errors
             'skipped_rows': skipped_rows,
             'skipped_reasons': skipped_reasons,
             'data': {
-                'materialsCount': len(materials),
+                'materialsCount': len(final_materials_list),
+                'newMaterialsAdded': len(new_materials),
+                'existingMaterialsPreserved': len(existing_materials_skipped),
                 'categories': len(sheet_data),
                 'plantName': plant_name,
                 'documentName': document_name
@@ -2956,7 +3146,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             
             # Add header row
             header_cells = items_table.rows[0].cells
-            headers = ['S.No', 'Category', 'Sub Category', 'Particulars', 'Material Name', 'Quantity', 'UOM']
+            headers = ['S.No', 'Category', 'Sub Category', 'Material Name', 'Particulars', 'Quantity', 'UOM']
             for i, header_text in enumerate(headers):
                 header_cells[i].text = header_text
                 header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
@@ -2974,7 +3164,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 cells[0].text = str(idx)
                 cells[1].text = item.get('category', '')
                 cells[2].text = item.get('subCategory', '-')
-                cells[3].text = item.get('particulars', '-')
+                cells[3].text = item.get('specifications', '-')
                 cells[4].text = item.get('materialName', '')
                 cells[5].text = str(item.get('quantity', ''))
                 cells[6].text = item.get('uom', '')
