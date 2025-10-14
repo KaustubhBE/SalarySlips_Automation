@@ -7,7 +7,6 @@ import {
   FaPowerOff, 
   FaWhatsapp
 } from 'react-icons/fa';
-import ReportsDepartment from './Components/ReportsDepartment';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './Components/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -691,72 +690,18 @@ const Navbar = ({ onLogout }) => {
                     <span className="menu-item-text">Home</span>
                   </div>
                   
-                  {/* Factory Navigation */}
+                  {/* Factory Navigation - Simplified */}
                   {getAccessibleFactoriesForUser().map(factory => {
-                    const accessibleDepartments = getAccessibleDepartmentsForFactory(factory);
-                    if (accessibleDepartments.length === 0) return null;
+                    const factoryDisplayName = FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1);
+                    const factoryRoute = `/${factory}`;
                     
                     return (
-                      <div key={factory} className="menu-section">
-                        <div 
-                          className="menu-section-header" 
-                          onClick={() => toggleDropdown(`factory-${factory}`)}
-                        >
-                          <span className="menu-section-title">
-                            {FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1)}
-                          </span>
-                          <span className={`menu-section-arrow ${openDropdowns[`factory-${factory}`] ? 'open' : ''}`}>
-                            ›
-                          </span>
-                        </div>
-                        
-                        {openDropdowns[`factory-${factory}`] && (
-                          <div className="menu-section-content">
-                            {accessibleDepartments.map(dept => {
-                              const accessibleServices = getAccessibleServicesForDepartment(factory, dept.key);
-                              if (accessibleServices.length === 0) return null;
-                              
-                              return (
-                                <div key={dept.key} className="menu-subsection">
-                                  <div 
-                                    className="menu-subsection-header"
-                                    onClick={() => toggleDropdown(`dept-${factory}-${dept.key}`)}
-                                  >
-                                    <span className="menu-subsection-title">{dept.name}</span>
-                                    <span className={`menu-subsection-arrow ${openDropdowns[`dept-${factory}-${dept.key}`] ? 'open' : ''}`}>
-                                      ›
-                                    </span>
-                                  </div>
-                                  
-                                  {openDropdowns[`dept-${factory}-${dept.key}`] && (
-                                    <div className="menu-subsection-content">
-                                      {accessibleServices.map(service => (
-                                        <div 
-                                          key={service.key} 
-                                          className="menu-service-item"
-                                          onClick={() => closeMenu(service.route)}
-                                          title={service.description}
-                                        >
-                                          {service.name}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                      <div key={factory} className="menu-item" onClick={() => closeMenu(factoryRoute)}>
+                        <span className="menu-item-text">{factoryDisplayName}</span>
                       </div>
                     );
                   })}
                   
-                  {/* Reports Department */}
-                  {hasUserPermission('reports') && (
-                    <div className="menu-item" onClick={() => closeMenu('/reports-department')}>
-                      <span className="menu-item-text">Reports</span>
-                    </div>
-                  )}
                   
                   {/* User Management */}
                   {user?.role === 'admin' && (

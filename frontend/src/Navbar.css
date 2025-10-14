@@ -152,7 +152,6 @@
 
 .menu-close:hover {
   background: rgba(255, 255, 255, 0.8);
-  transform: rotate(90deg);
 }
 
 /* ==================== MENU BODY ==================== */
@@ -197,8 +196,20 @@
 
 .menu-item:hover {
   background: linear-gradient(135deg, rgba(152, 115, 73, 0.1), rgba(152, 115, 73, 0.05));
-  transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(152, 115, 73, 0.1);
+}
+
+/* Factory and User Management Items - Use dropdown styling */
+.menu-item:not(:first-child) {
+  color: #987349;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(152, 115, 73, 0.08), rgba(152, 115, 73, 0.04));
+  border: 1px solid rgba(152, 115, 73, 0.1);
+  letter-spacing: 0.3px;
+}
+
+.menu-item:not(:first-child):hover {
+  background: linear-gradient(135deg, rgba(152, 115, 73, 0.15), rgba(152, 115, 73, 0.08));
+  border-color: rgba(152, 115, 73, 0.2);
 }
 
 .menu-item-icon {
