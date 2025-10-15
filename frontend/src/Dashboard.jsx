@@ -28,6 +28,8 @@ function Dashboard() {
   const [editingWebsitePasswordUserId, setEditingWebsitePasswordUserId] = useState(null);
   const [showWebsitePassword, setShowWebsitePassword] = useState(false);
   const [showMailKey, setShowMailKey] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -151,7 +153,10 @@ function Dashboard() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
+  const handleDeleteUser = (userId) => {
+    // Find the user to get their details for the confirmation message
+    const user = users.find(user => user.id === userId);
+    
     // Close any open actions first
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -164,9 +169,17 @@ function Dashboard() {
     setShowWebsitePassword(false);
     setSelectedUserIdForActions(null);
     
+    // Show custom confirmation modal
+    setUserToDelete(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    
     try {
       const response = await axios.post(getApiUrl(ENDPOINTS.DELETE_USER), 
-        { user_id: userId },
+        { user_id: userToDelete.id },
         {
           withCredentials: true,
           headers: {
@@ -176,16 +189,27 @@ function Dashboard() {
       );
       if (response.data.message) {
         setSuccess(response.data.message);
+        setShowDeleteConfirm(false);
+        setUserToDelete(null);
         // Refresh users list after successful deletion
         setTimeout(() => {
           fetchUsers();
         }, 500);
       } else {
         setError(response.data.error);
+        setShowDeleteConfirm(false);
+        setUserToDelete(null);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error deleting user');
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setUserToDelete(null);
   };
 
   const handleRoleChange = async (userId, newRole) => {
@@ -882,6 +906,63 @@ function Dashboard() {
               <button
                 className="action-button delete-button"
                 onClick={handleCancelEdit}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && userToDelete && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelDelete()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Confirm User Deletion</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelDelete}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Are you sure you want to delete <strong>{userToDelete.username}</strong>'s account?
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{userToDelete.email}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Role:</span>
+                    <span className="detail-value">{userToDelete.role}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>This action cannot be undone!</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleConfirmDelete}
+                title="Permanently delete this user account"
+              >
+                Yes, I Confirm
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelDelete}
+                title="Cancel deletion"
               >
                 Cancel
               </button>
