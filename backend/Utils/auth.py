@@ -21,19 +21,34 @@ def change_password():
         data = request.get_json()
 
         email = data.get('email')
+        current_password = data.get('currentPassword') or data.get('current_password')
         new_password = data.get('newPassword') or data.get('new_password')
 
-        if not email or not new_password:
-            return jsonify({'error': 'Email and new password are required.'}), 400
+        if not email or not current_password or not new_password:
+            return jsonify({'error': 'Email, current password, and new password are required.'}), 400
 
+        # Get user from database
         user = get_user_by_email(email)
         if not user:
             return jsonify({'error': 'User not found.'}), 404
 
-        user_id = user.get('id')
-        password_hash = generate_password_hash(new_password)
+        # Verify current password
+        stored_password_hash = user.get('password_hash')
+        if not stored_password_hash:
+            return jsonify({'error': 'No password set for this user.'}), 400
 
-        db.collection('USERS').document(user_id).update({'password_hash': password_hash})
+        if not check_password_hash(stored_password_hash, current_password):
+            return jsonify({'error': 'Current password is incorrect.'}), 401
+
+        # Check if new password is different from current password
+        if check_password_hash(stored_password_hash, new_password):
+            return jsonify({'error': 'New password must be different from current password.'}), 400
+
+        # Update password
+        user_id = user.get('id')
+        new_password_hash = generate_password_hash(new_password)
+
+        db.collection('USERS').document(user_id).update({'password_hash': new_password_hash})
         logger.info(f"Password updated for user: {email}")
         return jsonify({'message': 'Password updated successfully.'}), 200
 

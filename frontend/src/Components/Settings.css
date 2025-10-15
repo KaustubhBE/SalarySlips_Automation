@@ -1,401 +1,447 @@
+/* ==================== SETTINGS CONTAINER ==================== */
 .settings-container {
-  max-width: 420px;
-  margin: 48px auto 0 auto;
-  padding: 32px 24px 28px 24px;
-  border-radius: 16px;
+  max-width: 480px;
+  margin: 40px auto;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border: 1px solid #ddd;
-  box-sizing: border-box;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 
-.settings-container h2 {
-  text-align: center;
-  margin-bottom: 18px;
-  color: #987349;
-  font-weight: 800;
-  letter-spacing: 1px;
+/* ==================== HEADER ==================== */
+.settings-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 24px 32px;
 }
 
-.user-info {
-  margin-bottom: 22px;
-  padding: 16px 14px 10px 14px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(152,115,73,0.07);
-}
-
-.user-info h3 {
-  color: #987349;
-  margin: 0 0 12px 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.user-info p {
-  font-size: 15px;
-  color: #444;
-  margin: 8px 0 6px 0;
-}
-
-.user-info p strong {
-  color: #666;
+.settings-header h1 {
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
-  margin-right: 8px;
+  color: #1f2937;
+  letter-spacing: -0.025em;
 }
 
-.update-password {
-  margin-top: 25px;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(152,115,73,0.07);
+/* ==================== CONTENT ==================== */
+.settings-content {
+  padding: 32px;
 }
 
-/* Improved button styling */
-.update-password-button, 
-.save-password-button,
-.cancel-password-button,
-.logout-button {
-  width: 160px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
+/* ==================== SECTIONS ==================== */
+.account-section,
+.password-section,
+.actions-section {
+  margin-bottom: 32px;
+}
+
+.account-section:last-child,
+.password-section:last-child,
+.actions-section:last-child {
+  margin-bottom: 0;
+}
+
+/* ==================== SECTION HEADERS ==================== */
+h2 {
+  margin: 0 0 16px 0;
   font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.password-buttons {
+/* ==================== ACCOUNT DETAILS ==================== */
+.account-details {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.detail-row {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 16px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.update-password-button {
-  background: #987349;
-  color: white;
-  margin: 20px auto;
-  display: block;
+.detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.save-password-button {
-  background: #29a644;
-  color: white;
+.detail-row:first-child {
+  padding-top: 0;
 }
 
-.cancel-password-button {
-  background: #6c757d;
-  color: white;
+.detail-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  min-width: 60px;
 }
 
-.logout-button {
-  background: #dc3545;
-  color: white;
-  margin: 30px auto 0;
-  display: block;
+.detail-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+  text-align: right;
+  word-break: break-all;
+}
+
+/* ==================== FORM STYLES ==================== */
+.password-form {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  color: #555;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.form-group input {
+.form-input {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.error-message {
-  color: #dc3545;
-  margin: 10px 0;
-  padding: 10px;
-  background-color: #f8d7da;
-  border-radius: 4px;
-}
-
-.password-message {
-  margin-top: 14px;
-  color: #987349;
-  font-weight: 600;
-  text-align: center;
-  padding: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
   border-radius: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #1f2937;
+  background: #ffffff;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
-/* Media Queries */
-@media (max-width: 600px) {
+.form-input:focus {
+  outline: none;
+  border-color: #987349;
+  box-shadow: 0 0 0 3px rgba(152, 115, 73, 0.1);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* ==================== PASSWORD INPUT CONTAINER ==================== */
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container .form-input {
+  padding-right: 40px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+  color: #9ca3af;
+  transition: all 0.15s ease;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.password-toggle-btn:hover {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  color: #987349;
+  background: #f3f4f6;
+}
+
+/* ==================== BUTTONS ==================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(152, 115, 73, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Primary Button */
+.btn-primary {
+  background: #987349;
+  color: #ffffff;
+  border-color: #987349;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #7a5c3a;
+  border-color: #7a5c3a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(152, 115, 73, 0.2);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: #ffffff;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+/* Outline Button */
+.btn-outline {
+  background: transparent;
+  color: #987349;
+  border-color: #987349;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #987349;
+  color: #ffffff;
+}
+
+/* Danger Button */
+.btn.btn-danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+}
+
+.btn.btn-danger:hover:not(:disabled) {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ==================== FORM ACTIONS ==================== */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.form-actions .btn {
+  flex: 1;
+}
+
+/* ==================== MESSAGES ==================== */
+.message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.message:contains("✅") {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.message:contains("⚠️") {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fed7aa;
+}
+
+/* ==================== ACTIONS SECTION ==================== */
+.actions-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 24px;
+  margin-top: 24px;
+}
+
+.actions-section .btn {
+  width: 100%;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 640px) {
   .settings-container {
-    margin: 20px 15px;
-    padding: 20px 16px;
-    max-width: none;
-    border-radius: 12px;
+    margin: 20px 16px;
+    border-radius: 8px;
   }
 
-  .update-password-button,
-  .logout-button {
-    width: 100%;
-    padding: 10px 0;
+  .settings-header {
+    padding: 20px 24px;
   }
 
-  .password-buttons {
+  .settings-header h1 {
+    font-size: 18px;
+  }
+
+  .settings-content {
+    padding: 24px;
+  }
+
+  .account-section,
+  .password-section,
+  .actions-section {
+    margin-bottom: 24px;
+  }
+
+  .password-form {
+    padding: 16px;
+  }
+
+  .form-actions {
     flex-direction: column;
     gap: 8px;
   }
 
-  .save-password-button,
-  .cancel-password-button {
-    width: 100%;
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .detail-value {
+    text-align: left;
   }
 }
 
-.change-password-button {
-  background-color: #007bff;
+@media (max-width: 480px) {
+  .settings-container {
+    margin: 16px 12px;
+  }
+
+  .settings-header {
+    padding: 16px 20px;
+  }
+
+  .settings-content {
+    padding: 20px;
+  }
+
+  .password-form {
+    padding: 12px;
+  }
 }
 
-.change-password-button:hover {
-  background-color: #0056b3;
-}
-
-.change-password-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.logout-button {
-  background-color: #dc3545;
-}
-
-.logout-button:hover {
-  background-color: #c82333;
-}
-
-
-.update-password-form {
-  margin-top: 20px;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.update-password label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #444;
-}
-
-.password-input {
-  width: 100%;
-  padding: 12px;
-  border: 1.5px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  margin-bottom: 16px;
-  background: #f8f9fa;
-  transition: all 0.2s ease;
-}
-
-.password-input:focus {
-  border-color: #987349;
-  outline: none;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(152,115,73,0.1);
-}
-
-.password-buttons {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.save-password-button,
-.cancel-password-button {
-  flex: 1;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.save-password-button {
-  background: #987349;
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.save-password-button:hover {
-  background: linear-gradient(90deg, #bfa074 60%, #987349 100%);
-  box-shadow: 0 4px 16px rgba(152,115,73,0.13);
-  transform: translateY(-1px);
-}
-
-.cancel-password-button {
-  background: #f0f0f0;
-  color: #666;
-}
-
-.cancel-password-button:hover {
-  background: #e4e4e4;
-  color: #444;
-}
-
-.update-password-button {
-  width: 70%;
-  margin: 20px auto 0 auto;
-  padding: 12px 0;
-  border: none;
-  border-radius: 5px;
-  background: #987349;
-  color: #fff;
-  font-weight: 600;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: block;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.update-password-button:hover {
-  background: #7d5f3c;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.update-password-form label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #222;
-  align-self: flex-start;
-}
-
-.password-input {
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #bdbdbd;
-  margin-bottom: 18px;
-  width: 95%;
-  font-size: 1.1rem;
-  background: #f5f7fa;
-  color: #222;
-  transition: border-color 0.2s;
-}
-.password-input:focus {
-  border-color: #2d8f5a;
-  outline: none;
-}
-
-.update-password-form .button {
-  width: 100%;
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 1rem;
-  padding: 12px 0;
-}
-
-.save-password-button {
-  background: #2d8f5a;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-bottom: 10px;
-  transition: background 0.2s;
-}
-.save-password-button:hover {
-  background: #237346;
-}
-
-.cancel-password-button {
-  background: #e0e0e0;
-  color: #333;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.cancel-password-button:hover {
-  background: #bdbdbd;
-}
-
-.password-message {
-  margin-top: 12px;
-  color: #2d8f5a;
-  font-weight: 600;
-  text-align: center;
-}
-
-.save-password-button {
-  background: #2d8f5a;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  padding: 10px 20px;
-  font-weight: bold;
-  cursor: pointer;
-  flex: 1;
-}
-
-.cancel-password-button {
-  background: #e0e0e0;
-  color: #333;
-  border: none;
-  border-radius: 5px;
-  padding: 10px 20px;
-  font-weight: bold;
-  cursor: pointer;
-  flex: 1;
-}
-
-.password-message {
-  margin-top: 10px;
-  color: #2d8f5a;
-  font-weight: bold;
-}
-
-/* Dark mode support */
+/* ==================== DARK MODE SUPPORT ==================== */
 @media (prefers-color-scheme: dark) {
   .settings-container {
-    background-color: #1a1a1a;
-    border-color: #333;
+    background: #1f2937;
+    border-color: #374151;
   }
 
-  .user-info,
+  .settings-header {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    border-color: #374151;
+  }
+
+  .settings-header h1 {
+    color: #f9fafb;
+  }
+
+  h2 {
+    color: #d1d5db;
+  }
+
+  .account-details,
   .password-form {
-    background-color: #262626;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    background: #111827;
+    border-color: #374151;
   }
 
-  .user-info p,
+  .detail-row {
+    border-color: #374151;
+  }
+
+  .detail-label {
+    color: #9ca3af;
+  }
+
+  .detail-value {
+    color: #f9fafb;
+  }
+
   .form-group label {
-    color: #e5e5e5;
+    color: #d1d5db;
   }
 
-  .form-group input {
-    background-color: #333;
-    border-color: #444;
-    color: #e5e5e5;
+  .form-input {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
   }
 
-  .form-group input:focus {
-    border-color: #007bff;
+  .form-input:focus {
+    border-color: #987349;
+    box-shadow: 0 0 0 3px rgba(152, 115, 73, 0.2);
   }
-} 
+
+  .form-input::placeholder {
+    color: #6b7280;
+  }
+
+  .btn-secondary {
+    background: #1f2937;
+    color: #d1d5db;
+    border-color: #374151;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .actions-section {
+    border-color: #374151;
+  }
+}
