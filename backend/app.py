@@ -674,6 +674,7 @@ def update_role():
             # or if changing FROM admin (preserve existing permissions for regular users)
             if new_role == 'admin':
                 # Admin role gets all permissions automatically
+                from Utils.firebase_utils import update_user_comprehensive_permissions
                 update_user_comprehensive_permissions(user_id, {
                     'permissions': {
                         'inventory': True,

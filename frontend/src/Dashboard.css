@@ -203,7 +203,7 @@ table th {
   padding: 16px 12px;
   border-bottom: 1px solid #e2e8f0;
   border-right: 1px solid #f1f5f9;
-  text-align: left;
+  text-align: center;
 }
 
 table th:last-child {

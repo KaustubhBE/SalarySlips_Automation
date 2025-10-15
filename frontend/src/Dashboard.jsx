@@ -30,6 +30,7 @@ function Dashboard() {
   const [showMailKey, setShowMailKey] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [userRoles, setUserRoles] = useState({});
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -123,6 +124,13 @@ function Dashboard() {
         setUsers(usersWithIds);
         setError('');
         
+        // Update user roles state for immediate UI updates
+        const rolesState = {};
+        usersWithIds.forEach(user => {
+          rolesState[user.id] = user.role;
+        });
+        setUserRoles(rolesState);
+        
         // Verify all users were loaded
         if (usersWithIds.length === 0) {
           console.warn('No users found in response');
@@ -191,10 +199,8 @@ function Dashboard() {
         setSuccess(response.data.message);
         setShowDeleteConfirm(false);
         setUserToDelete(null);
-        // Refresh users list after successful deletion
-        setTimeout(() => {
-          fetchUsers();
-        }, 500);
+        // Refresh users list immediately after successful deletion
+        fetchUsers();
       } else {
         setError(response.data.error);
         setShowDeleteConfirm(false);
@@ -213,6 +219,25 @@ function Dashboard() {
   };
 
   const handleRoleChange = async (userId, newRole) => {
+    // Find the user to get their details for the confirmation message
+    const user = users.find(user => user.id === userId);
+    const userName = user ? user.username : 'this user';
+    const userEmail = user ? user.email : '';
+    const currentRole = user ? user.role : '';
+    
+    // Show confirmation dialog
+    const confirmMessage = `Are you sure you want to change ${userName}'s role?\n\nCurrent Role: ${currentRole}\nNew Role: ${newRole}\n\nEmail: ${userEmail}`;
+    const confirmed = window.confirm(confirmMessage);
+    
+    if (!confirmed) {
+      // If user cancels, reset the dropdown to current role
+      setUserRoles(prev => ({
+        ...prev,
+        [userId]: currentRole
+      }));
+      return;
+    }
+    
     try {
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_ROLE), 
         { 
@@ -227,11 +252,8 @@ function Dashboard() {
         }
       );
       if (response.data.message) {
-        setSuccess(response.data.message);
-        // Refresh users list after successful role update
-        setTimeout(() => {
-          fetchUsers();
-        }, 500);
+        // Refresh the entire page instantly after successful role change
+        window.location.reload();
       } else {
         setError(response.data.error);
       }
@@ -316,10 +338,8 @@ function Dashboard() {
         setShowPermissionsModal(false);
         setEditingPermissions({});
         setSelectedUser(null);
-        // Refresh users list after successful permission update
-        setTimeout(() => {
-          fetchUsers();
-        }, 500);
+        // Refresh users list immediately after successful permission update
+        fetchUsers();
       } else {
         setError(response.data.error);
       }
@@ -454,6 +474,10 @@ function Dashboard() {
 
   const handleSaveAppPassword = async (userId) => {
     try {
+      // Find user to get their name for success message
+      const user = users.find(user => user.id === userId);
+      const userName = user ? user.username : 'user';
+      
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_APP_PASSWORD), {
         user_id: userId,
         appPassword: editingAppPassword
@@ -462,14 +486,12 @@ function Dashboard() {
         headers: { 'Content-Type': 'application/json' }
       });
       if (response.data.message) {
-        setSuccess(response.data.message);
+        alert(`✅ Mail key for user "${userName}" has been changed successfully!`);
         setError("");
         setEditingUserId(null);
         setEditingAppPassword("");
-        // Refresh users list after successful password update
-        setTimeout(() => {
-          fetchUsers();
-        }, 500);
+        // Refresh users list immediately after successful password update
+        fetchUsers();
       } else {
         setError(response.data.error);
       }
@@ -480,6 +502,10 @@ function Dashboard() {
 
   const handleSaveWebsitePassword = async (userId) => {
     try {
+      // Find user to get their name for success message
+      const user = users.find(user => user.id === userId);
+      const userName = user ? user.username : 'user';
+      
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_WEBSITE_PASSWORD), {
         user_id: userId,
         new_password: editingWebsitePassword
@@ -488,14 +514,12 @@ function Dashboard() {
         headers: { 'Content-Type': 'application/json' }
       });
       if (response.data.message) {
-        setSuccess(response.data.message);
+        alert(`✅ Website password for user "${userName}" has been changed successfully!`);
         setError("");
         setEditingWebsitePasswordUserId(null);
         setEditingWebsitePassword("");
-        // Refresh users list after successful password update
-        setTimeout(() => {
-          fetchUsers();
-        }, 500);
+        // Refresh users list immediately after successful password update
+        fetchUsers();
       } else {
         setError(response.data.error);
       }
@@ -612,7 +636,7 @@ function Dashboard() {
                     <td onClick={(e) => e.stopPropagation()}>
                       <select
                         className="role-select"
-                        value={user.role}
+                        value={userRoles[user.id] || user.role}
                         onChange={(e) => {
                           const newRole = e.target.value;
                           console.log('Role change for user:', user.email, 'from', user.role, 'to', newRole);
