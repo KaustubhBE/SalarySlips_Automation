@@ -531,6 +531,396 @@ table tr:hover {
   cursor: not-allowed;
 }
 
+/* Professional Website Password Form Styling */
+.edit-website-password-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 25px;
+  margin: 15px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-website-password-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.password-form-header {
+  text-align: center;
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.password-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 50%;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.password-icon {
+  font-size: 20px;
+  color: white;
+}
+
+.password-form-title {
+  margin: 0 0 8px 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.025em;
+}
+
+.password-form-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.password-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.password-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.password-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.website-password-input {
+  width: 100%;
+  padding: 14px 50px 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-btn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.website-password-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  background: #fefefe;
+}
+
+.website-password-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.password-strength-indicator {
+  margin-top: 8px;
+}
+
+.strength-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.strength-meter.weak {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.strength-meter.medium {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fed7aa;
+}
+
+.strength-meter.strong {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.strength-bar {
+  width: 60px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.strength-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.strength-meter.weak .strength-bar::after {
+  width: 33%;
+  background: #dc2626;
+}
+
+.strength-meter.medium .strength-bar::after {
+  width: 66%;
+  background: #d97706;
+}
+
+.strength-meter.strong .strength-bar::after {
+  width: 100%;
+  background: #16a34a;
+}
+
+.password-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.password-save-btn,
+.password-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  min-width: 140px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.password-save-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.password-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.password-save-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.password-save-btn:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  opacity: 0.7;
+}
+
+.password-cancel-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.password-cancel-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.password-cancel-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.btn-icon {
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+/* Professional Mail Key Form Styling */
+.edit-mail-key-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 25px;
+  margin: 15px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-mail-key-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #17a2b8 0%, #138496 100%);
+}
+
+.mail-key-input {
+  width: 100%;
+  padding: 14px 50px 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+.mail-key-input:focus {
+  outline: none;
+  border-color: #17a2b8;
+  box-shadow: 0 0 0 4px rgba(23, 162, 184, 0.1);
+  background: #fefefe;
+}
+
+.mail-key-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.mail-key-save-btn,
+.mail-key-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  min-width: 140px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mail-key-save-btn {
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.mail-key-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(23, 162, 184, 0.4);
+}
+
+.mail-key-save-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+.mail-key-save-btn:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  opacity: 0.7;
+}
+
+.mail-key-cancel-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.mail-key-cancel-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.mail-key-cancel-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
 /* Messages */
 .error, .success {
   padding: 12px 20px;
@@ -1461,6 +1851,45 @@ table tr:hover {
   .edit-app-password-inline .action-button {
     width: 100%;
     margin: 0;
+  }
+  
+  /* Mobile styles for website password form */
+  .edit-website-password-container {
+    padding: 20px 15px;
+    margin: 10px 0;
+  }
+  
+  .password-form-title {
+    font-size: 1.2rem;
+  }
+  
+  .password-form-subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .password-form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .password-save-btn,
+  .password-cancel-btn {
+    width: 100%;
+    min-width: auto;
+    padding: 14px 20px;
+  }
+  
+  /* Mobile styles for mail key form */
+  .edit-mail-key-container {
+    padding: 20px 15px;
+    margin: 10px 0;
+  }
+  
+  .mail-key-save-btn,
+  .mail-key-cancel-btn {
+    width: 100%;
+    min-width: auto;
+    padding: 14px 20px;
   }
   
   .permissions-modal {

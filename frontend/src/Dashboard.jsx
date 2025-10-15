@@ -20,10 +20,14 @@ function Dashboard() {
   const [success, setSuccess] = useState('');
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingAppPassword, setEditingAppPassword] = useState("");
+  const [editingWebsitePassword, setEditingWebsitePassword] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserIdForActions, setSelectedUserIdForActions] = useState(null);
+  const [editingWebsitePasswordUserId, setEditingWebsitePasswordUserId] = useState(null);
+  const [showWebsitePassword, setShowWebsitePassword] = useState(false);
+  const [showMailKey, setShowMailKey] = useState(false);
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -148,6 +152,18 @@ function Dashboard() {
   };
 
   const handleDeleteUser = async (userId) => {
+    // Close any open actions first
+    setShowPermissionsModal(false);
+    setEditingPermissions({});
+    setSelectedUser(null);
+    setEditingUserId(null);
+    setEditingAppPassword("");
+    setShowMailKey(false);
+    setEditingWebsitePasswordUserId(null);
+    setEditingWebsitePassword("");
+    setShowWebsitePassword(false);
+    setSelectedUserIdForActions(null);
+    
     try {
       const response = await axios.post(getApiUrl(ENDPOINTS.DELETE_USER), 
         { user_id: userId },
@@ -318,8 +334,34 @@ function Dashboard() {
   };
 
   const handleEditAppPassword = (user) => {
+    // Close any other open actions first
+    setShowPermissionsModal(false);
+    setEditingPermissions({});
+    setSelectedUser(null);
+    setEditingWebsitePasswordUserId(null);
+    setEditingWebsitePassword("");
+    setShowWebsitePassword(false);
+    
+    // Open mail key editing
     setEditingUserId(user.id);
     setEditingAppPassword("");
+    setShowMailKey(false);
+    setSelectedUserIdForActions(null); // Clear mobile selection
+  };
+
+  const handleEditWebsitePassword = (user) => {
+    // Close any other open actions first
+    setShowPermissionsModal(false);
+    setEditingPermissions({});
+    setSelectedUser(null);
+    setEditingUserId(null);
+    setEditingAppPassword("");
+    setShowMailKey(false);
+    
+    // Open website password editing
+    setEditingWebsitePasswordUserId(user.id);
+    setEditingWebsitePassword("");
+    setShowWebsitePassword(false);
     setSelectedUserIdForActions(null); // Clear mobile selection
   };
 
@@ -344,7 +386,15 @@ function Dashboard() {
   };
 
   const handleEditPermissions = (user) => {
-    setEditingUserId(user.id);
+    // Close any other open actions first
+    setEditingUserId(null);
+    setEditingAppPassword("");
+    setShowMailKey(false);
+    setEditingWebsitePasswordUserId(null);
+    setEditingWebsitePassword("");
+    setShowWebsitePassword(false);
+    
+    // Open permissions modal
     setSelectedUser(user);
     setSelectedUserIdForActions(null); // Clear mobile selection
     
@@ -404,9 +454,39 @@ function Dashboard() {
     }
   };
 
+  const handleSaveWebsitePassword = async (userId) => {
+    try {
+      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_WEBSITE_PASSWORD), {
+        user_id: userId,
+        new_password: editingWebsitePassword
+      }, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.data.message) {
+        setSuccess(response.data.message);
+        setError("");
+        setEditingWebsitePasswordUserId(null);
+        setEditingWebsitePassword("");
+        // Refresh users list after successful password update
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
+      } else {
+        setError(response.data.error);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error updating website password');
+    }
+  };
+
   const handleCancelEdit = () => {
     setEditingUserId(null);
     setEditingAppPassword("");
+    setShowMailKey(false);
+    setEditingWebsitePasswordUserId(null);
+    setEditingWebsitePassword("");
+    setShowWebsitePassword(false);
     setShowPermissionsModal(false);
     setEditingPermissions({});
     setSelectedUser(null);
@@ -525,10 +605,19 @@ function Dashboard() {
                         {canEditPassword(user.role) && (
                           <button
                             className="action-button edit-button"
-                            onClick={() => handleEditAppPassword(user)}
-                            title="Edit Password"
+                            onClick={() => handleEditWebsitePassword(user)}
+                            title="Edit Website Password"
                           >
                             Password
+                          </button>
+                        )}
+                        {canEditPassword(user.role) && (
+                          <button
+                            className="action-button edit-button"
+                            onClick={() => handleEditAppPassword(user)}
+                            title="Edit Mail Key"
+                          >
+                            Mail Key
                           </button>
                         )}
                         {canEditPermissions(user.role) && (
@@ -562,11 +651,23 @@ function Dashboard() {
                               className="action-button edit-button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditAppPassword(user);
+                                handleEditWebsitePassword(user);
                               }}
-                              title="Edit Password"
+                              title="Edit Website Password"
                             >
                               Password
+                            </button>
+                          )}
+                          {canEditPassword(user.role) && (
+                            <button
+                              className="action-button edit-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditAppPassword(user);
+                              }}
+                              title="Edit Mail Key"
+                            >
+                              Mail Key
                             </button>
                           )}
                           {canEditPermissions(user.role) && (
@@ -600,26 +701,131 @@ function Dashboard() {
                   {editingUserId === user.id && !showPermissionsModal && (
                     <tr>
                       <td colSpan={4} className="user-actions-row">
-                        <div className="edit-app-password-inline">
-                          <input
-                            type="password"
-                            placeholder="New App Password"
-                            value={editingAppPassword}
-                            onChange={e => setEditingAppPassword(e.target.value)}
-                          />
-                          <button
-                            className="action-button edit-button"
-                            onClick={() => handleSaveAppPassword(user.id)}
-                            disabled={!editingAppPassword}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="action-button delete-button"
-                            onClick={handleCancelEdit}
-                          >
-                            Cancel
-                          </button>
+                        <div className="edit-mail-key-container">
+                          <div className="password-form-body">
+                            <div className="password-input-group">
+                              <label htmlFor={`mail-key-${user.id}`} className="password-label">
+                                New Mail Key
+                              </label>
+                              <div className="password-input-container">
+                                <input
+                                  id={`mail-key-${user.id}`}
+                                  type={showMailKey ? "text" : "password"}
+                                  placeholder="Enter new mail key"
+                                  value={editingAppPassword}
+                                  onChange={e => setEditingAppPassword(e.target.value)}
+                                  className="mail-key-input"
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  className="password-toggle-btn"
+                                  onClick={() => setShowMailKey(!showMailKey)}
+                                  title={showMailKey ? "Hide mail key" : "Show mail key"}
+                                >
+                                  {showMailKey ? (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="password-form-actions">
+                              <button
+                                className="mail-key-save-btn"
+                                onClick={() => handleSaveAppPassword(user.id)}
+                                disabled={!editingAppPassword}
+                                title="Save new mail key"
+                              >
+                                Save Mail Key
+                              </button>
+                              <button
+                                className="mail-key-cancel-btn"
+                                onClick={handleCancelEdit}
+                                title="Cancel mail key change"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingWebsitePasswordUserId === user.id && !showPermissionsModal && (
+                    <tr>
+                      <td colSpan={4} className="user-actions-row">
+                        <div className="edit-website-password-container">
+                          <div className="password-form-body">
+                            <div className="password-input-group">
+                              <label htmlFor={`website-password-${user.id}`} className="password-label">
+                                New Website Password
+                              </label>
+                              <div className="password-input-container">
+                                <input
+                                  id={`website-password-${user.id}`}
+                                  type={showWebsitePassword ? "text" : "password"}
+                                  placeholder="Enter new password"
+                                  value={editingWebsitePassword}
+                                  onChange={e => setEditingWebsitePassword(e.target.value)}
+                                  className="website-password-input"
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  className="password-toggle-btn"
+                                  onClick={() => setShowWebsitePassword(!showWebsitePassword)}
+                                  title={showWebsitePassword ? "Hide password" : "Show password"}
+                                >
+                                  {showWebsitePassword ? (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="password-strength-indicator">
+                                {editingWebsitePassword && (
+                                  <div className={`strength-meter ${editingWebsitePassword.length >= 8 ? 'strong' : editingWebsitePassword.length >= 6 ? 'medium' : 'weak'}`}>
+                                    <div className="strength-bar"></div>
+                                    <span className="strength-text">
+                                      {editingWebsitePassword.length >= 8 ? 'Strong' : editingWebsitePassword.length >= 6 ? 'Medium' : 'Weak'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="password-form-actions">
+                              <button
+                                className="password-save-btn"
+                                onClick={() => handleSaveWebsitePassword(user.id)}
+                                disabled={!editingWebsitePassword || editingWebsitePassword.length < 6}
+                                title="Save new website password"
+                              >
+                                Save Password
+                              </button>
+                              <button
+                                className="password-cancel-btn"
+                                onClick={handleCancelEdit}
+                                title="Cancel password change"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>

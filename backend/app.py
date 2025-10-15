@@ -33,6 +33,7 @@ from Utils.firebase_utils import (
     add_salary_slip,
     get_salary_slips_by_user,
     update_user_app_password,
+    update_user_password,
     update_user,
     db,
     add_order,
@@ -1822,6 +1823,43 @@ def update_app_password():
 
     except Exception as e:
         logger.error("Error updating app password: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/update_website_password", methods=["POST"])
+def update_website_password():
+    try:
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            return jsonify({"error": "User not authenticated"}), 401
+
+        data = request.json
+        user_id = data.get('user_id')
+        new_password = data.get('new_password')
+        
+        if not user_id or not new_password:
+            return jsonify({"error": "User ID and new password are required"}), 400
+
+        # Get target user
+        target_user = get_user_by_id(user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+
+        current_user_role = current_user.get('role')
+        target_user_role = target_user.get('role')
+
+        # Admin can update any user's website password
+        if current_user_role == 'admin':
+            new_password_hash = generate_password_hash(new_password)
+            update_user_password(user_id, new_password_hash)
+            return jsonify({"message": "Website password updated successfully"}), 200
+        
+        # Regular users cannot update other users' website passwords
+        else:
+            return jsonify({"error": "Insufficient permissions to update website passwords"}), 403
+
+    except Exception as e:
+        logger.error("Error updating website password: {}".format(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/update_user", methods=["POST"])
