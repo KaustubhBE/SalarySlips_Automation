@@ -188,11 +188,14 @@ function AddUser() {
   const [password, setPassword] = useState('');
   const [appPassword, setAppPassword] = useState("");
   const [showAppPassword, setShowAppPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('user');
 
   const [permissions, setPermissions] = useState({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [addedUserInfo, setAddedUserInfo] = useState(null);
 
   // Clear form data when component mounts
   useEffect(() => {
@@ -300,6 +303,16 @@ function AddUser() {
     setAppPassword('');
     setRole('user');
     setPermissions({});
+    setError('');
+    setSuccess('');
+    setShowPassword(false);
+    setShowAppPassword(false);
+  };
+
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    setAddedUserInfo(null);
+    resetForm();
   };
 
   const handleAddUser = async (e) => {
@@ -337,8 +350,17 @@ function AddUser() {
       if (response.data.message) {
         setSuccess(response.data.message);
         setError('');
-        // Clear form completely
-        resetForm();
+        
+        // Store user info for success modal
+        setAddedUserInfo({
+          username,
+          email,
+          role,
+          permissionsCount: Object.keys(permissions).length
+        });
+        
+        // Show success modal
+        setShowSuccessModal(true);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error adding user');
@@ -377,7 +399,7 @@ function AddUser() {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="add-user-page-container">
       <div className="page-header">
         <button 
           className="back-btn"
@@ -432,17 +454,38 @@ function AddUser() {
             
             <div className="form-group">
               <label htmlFor="password">Password:</label>
-              <input
-                type="password"
-                id="password"
-                name="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                autoFill="off"
-                data-form-type="other"
-                required
-              />
+              <div className="password-input-container">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  autoFill="off"
+                  data-form-type="other"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
@@ -461,11 +504,22 @@ function AddUser() {
                 />
                 <button
                   type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowAppPassword((prev) => !prev)}
+                  className="password-toggle-btn"
+                  onClick={() => setShowAppPassword(!showAppPassword)}
+                  title={showAppPassword ? "Hide password" : "Show password"}
                   tabIndex={-1}
                 >
-                  {showAppPassword ? "Hide" : "Show"}
+                  {showAppPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
@@ -487,7 +541,7 @@ function AddUser() {
 
             <div className="form-group permissions-section">
               <label>Permissions:</label>
-              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
+              <div className="permissions-count">
                 Selected: {Object.keys(permissions).length} permission(s)
               </div>
               <TreeBasedPermissions
@@ -510,6 +564,60 @@ function AddUser() {
           <button onClick={() => window.history.back()} className="back-btn">
             Go Back
           </button>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal-overlay">
+          <div className="success-modal">
+            <div className="success-modal-header">
+              <div className="success-icon">✓</div>
+              <h3>User Added Successfully!</h3>
+            </div>
+            
+            <div className="success-modal-body">
+              <p className="success-message">
+                The user has been successfully added to the system.
+              </p>
+              
+              {addedUserInfo && (
+                <div className="user-details-summary">
+                  <div className="detail-row">
+                    <span className="detail-label">Username:</span>
+                    <span className="detail-value">{addedUserInfo.username}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{addedUserInfo.email}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Role:</span>
+                    <span className="detail-value role-badge">{addedUserInfo.role.charAt(0).toUpperCase() + addedUserInfo.role.slice(1)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Permissions:</span>
+                    <span className="detail-value">{addedUserInfo.permissionsCount} permission(s) assigned</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="success-modal-actions">
+              <button 
+                onClick={closeSuccessModal} 
+                className="success-ok-btn"
+              >
+                Continue
+              </button>
+              <button 
+                onClick={() => window.location.href = '/dashboard'} 
+                className="success-dashboard-btn"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
