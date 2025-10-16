@@ -138,12 +138,23 @@
   position: relative;
 }
 
+/* Admin Users List */
+.admin-users-list {
+  margin-bottom: 20px;
+}
+
+/* Regular Users List */
+.regular-users-list {
+  /* Additional styling can be added here if needed */
+}
+
 .users-list h2 {
   margin: 0;
   padding: 20px 20px 0 20px;
   font-size: 1.5rem;
   color: #374151;
   font-weight: 600;
+  text-align: center;
 }
 
 /* Table Container */

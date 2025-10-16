@@ -560,6 +560,16 @@ function Dashboard() {
       return users;
   };
 
+  // Get admin users
+  const getAdminUsers = () => {
+    return users.filter(user => user.role === 'admin');
+  };
+
+  // Get regular users
+  const getRegularUsers = () => {
+    return users.filter(user => user.role === 'user');
+  };
+
   const canEditPermissions = (targetUserRole) => {
     // Use the new RBAC system - only admin can edit permissions
     return getCurrentUserRole() === 'admin';
@@ -596,7 +606,7 @@ function Dashboard() {
         <div className="header-left">
           <h1>User Management Dashboard</h1>
           <div className="user-count">
-            {getFilteredUsers().length} user{getFilteredUsers().length !== 1 ? 's' : ''} loaded
+            {getAdminUsers().length} admin{getAdminUsers().length !== 1 ? 's' : ''} • {getRegularUsers().length} user{getRegularUsers().length !== 1 ? 's' : ''} loaded
           </div>
         </div>
         <div className="dashboard-actions">
@@ -612,8 +622,9 @@ function Dashboard() {
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
       
-      <div className="users-list">
-        <h2>Current Users</h2>
+      {/* Admin Users Table */}
+      <div className="users-list admin-users-list">
+        <h2>Admin</h2>
         <div className="users-table-container">
           <table>
             <thead>
@@ -625,7 +636,281 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {getFilteredUsers().map(user => (
+              {getAdminUsers().map(user => (
+                <React.Fragment key={user.id}>
+                  <tr 
+                    className={`user-row ${selectedUserIdForActions === user.id ? 'user-row-selected' : ''}`}
+                    onClick={() => handleUserRowClick(user.id)}
+                  >
+                    <td title={user.username}>{user.username}</td>
+                    <td title={user.email}>{user.email}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <select
+                        className="role-select"
+                        value={userRoles[user.id] || user.role}
+                        onChange={(e) => {
+                          const newRole = e.target.value;
+                          console.log('Role change for user:', user.email, 'from', user.role, 'to', newRole);
+                          handleRoleChange(user.id, newRole);
+                        }}
+                        disabled={!canEditRole(user.role)}
+                      >
+                        <option value="user">User</option>
+                        {getCurrentUserRole() === 'admin' && <option value="admin">Admin</option>}
+                      </select>
+                    </td>
+                    <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
+                      <div className={`user-actions-buttons ${selectedUserIdForActions === user.id ? 'show-actions' : ''}`}>
+                        {canEditPassword(user.role) && (
+                          <button
+                            className="action-button edit-button"
+                            onClick={() => handleEditWebsitePassword(user)}
+                            title="Edit Website Password"
+                          >
+                            Password
+                          </button>
+                        )}
+                        {canEditPassword(user.role) && (
+                          <button
+                            className="action-button edit-button"
+                            onClick={() => handleEditAppPassword(user)}
+                            title="Edit Mail Key"
+                          >
+                            Mail Key
+                          </button>
+                        )}
+                        {canEditPermissions(user.role) && (
+                          <button
+                            className="action-button permissions-button"
+                            onClick={() => handleEditPermissions(user)}
+                            title="Edit Permissions"
+                          >
+                            Permissions
+                          </button>
+                        )}
+                        {canDeleteUser(user.role) && (
+                          <button 
+                            className="action-button delete-button"
+                            onClick={() => handleDeleteUser(user.id)}
+                            title="Delete User"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {/* Mobile actions row - shown when user is selected on mobile */}
+                  {selectedUserIdForActions === user.id && (
+                    <tr className="mobile-actions-row">
+                      <td colSpan={4}>
+                        <div className="mobile-user-actions-buttons">
+                          {canEditPassword(user.role) && (
+                            <button
+                              className="action-button edit-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditWebsitePassword(user);
+                              }}
+                              title="Edit Website Password"
+                            >
+                              Password
+                            </button>
+                          )}
+                          {canEditPassword(user.role) && (
+                            <button
+                              className="action-button edit-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditAppPassword(user);
+                              }}
+                              title="Edit Mail Key"
+                            >
+                              Mail Key
+                            </button>
+                          )}
+                          {canEditPermissions(user.role) && (
+                            <button
+                              className="action-button permissions-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditPermissions(user);
+                              }}
+                              title="Edit Permissions"
+                            >
+                              Permissions
+                            </button>
+                          )}
+                          {canDeleteUser(user.role) && (
+                            <button 
+                              className="action-button delete-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteUser(user.id);
+                              }}
+                              title="Delete User"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingUserId === user.id && !showPermissionsModal && (
+                    <tr>
+                      <td colSpan={4} className="user-actions-row">
+                        <div className="edit-mail-key-container">
+                          <div className="password-form-body">
+                            <div className="password-input-group">
+                              <label htmlFor={`mail-key-${user.id}`} className="password-label">
+                                New Mail Key
+                              </label>
+                              <div className="password-input-container">
+                                <input
+                                  id={`mail-key-${user.id}`}
+                                  type={showMailKey ? "text" : "password"}
+                                  placeholder="Enter new mail key"
+                                  value={editingAppPassword}
+                                  onChange={e => setEditingAppPassword(e.target.value)}
+                                  className="mail-key-input"
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  className="password-toggle-btn"
+                                  onClick={() => setShowMailKey(!showMailKey)}
+                                  title={showMailKey ? "Hide mail key" : "Show mail key"}
+                                >
+                                  {showMailKey ? (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="password-form-actions">
+                              <button
+                                className="mail-key-save-btn"
+                                onClick={() => handleSaveAppPassword(user.id)}
+                                disabled={!editingAppPassword}
+                                title="Save new mail key"
+                              >
+                                Save Mail Key
+                              </button>
+                              <button
+                                className="mail-key-cancel-btn"
+                                onClick={handleCancelEdit}
+                                title="Cancel mail key change"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingWebsitePasswordUserId === user.id && !showPermissionsModal && (
+                    <tr>
+                      <td colSpan={4} className="user-actions-row">
+                        <div className="edit-website-password-container">
+                          <div className="password-form-body">
+                            <div className="password-input-group">
+                              <label htmlFor={`website-password-${user.id}`} className="password-label">
+                                New Website Password
+                              </label>
+                              <div className="password-input-container">
+                                <input
+                                  id={`website-password-${user.id}`}
+                                  type={showWebsitePassword ? "text" : "password"}
+                                  placeholder="Enter new password"
+                                  value={editingWebsitePassword}
+                                  onChange={e => setEditingWebsitePassword(e.target.value)}
+                                  className="website-password-input"
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  className="password-toggle-btn"
+                                  onClick={() => setShowWebsitePassword(!showWebsitePassword)}
+                                  title={showWebsitePassword ? "Hide password" : "Show password"}
+                                >
+                                  {showWebsitePassword ? (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="password-strength-indicator">
+                                {editingWebsitePassword && (
+                                  <div className={`strength-meter ${editingWebsitePassword.length >= 8 ? 'strong' : editingWebsitePassword.length >= 6 ? 'medium' : 'weak'}`}>
+                                    <div className="strength-bar"></div>
+                                    <span className="strength-text">
+                                      {editingWebsitePassword.length >= 8 ? 'Strong' : editingWebsitePassword.length >= 6 ? 'Medium' : 'Weak'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="password-form-actions">
+                              <button
+                                className="password-save-btn"
+                                onClick={() => handleSaveWebsitePassword(user.id)}
+                                disabled={!editingWebsitePassword || editingWebsitePassword.length < 6}
+                                title="Save new website password"
+                              >
+                                Save Password
+                              </button>
+                              <button
+                                className="password-cancel-btn"
+                                onClick={handleCancelEdit}
+                                title="Cancel password change"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Regular Users Table */}
+      <div className="users-list regular-users-list">
+        <h2>User</h2>
+        <div className="users-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getRegularUsers().map(user => (
                 <React.Fragment key={user.id}>
                   <tr 
                     className={`user-row ${selectedUserIdForActions === user.id ? 'user-row-selected' : ''}`}
