@@ -512,6 +512,8 @@
 .add-month-btn {
   background-color: #4CAF50;
   color: white;
+  margin: 10px auto;
+  display: block;
 }
 
 .remove-month-btn {
