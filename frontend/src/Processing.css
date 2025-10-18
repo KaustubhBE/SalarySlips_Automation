@@ -230,7 +230,7 @@
   }
 
   .months-container {
-    overflow-x: visible;
+    overflow-x: hidden;
   }
 
   .option-select {
@@ -251,11 +251,11 @@
     min-height: 40px;
   }
 
-  /* Month and year selection for tablets - stack vertically */
+  /* Month and year selection for tablets - keep side by side */
   .month-group {
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 15px;
     padding: 12px 10px;
   }
 
@@ -282,12 +282,12 @@
   }
 }
 
-/* Tablet/Medium screens (481px to 768px) - Stack vertically */
+/* Tablet/Medium screens (481px to 768px) - Keep side by side */
 @media (min-width: 481px) and (max-width: 768px) {
   .month-group {
-    flex-direction: column !important;
-    align-items: center;
-    gap: 10px;
+    flex-direction: row !important;
+    align-items: flex-end;
+    gap: 15px;
     padding: 12px 10px;
   }
 
@@ -422,30 +422,36 @@
   padding: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  overflow-x: auto;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .month-group {
   display: flex;
-  justify-content: center;
-  gap: 15px;
+  justify-content: space-between;
+  gap: 20px;
   align-items: flex-end;
   margin-bottom: 15px;
   padding: 10px;
   background-color: #f9f9f9;
   border-radius: 4px;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .month-group .form-group {
-  flex: 0 1 auto;
+  flex: 1;
   margin-bottom: 0;
   text-align: center;
+  min-width: 200px;
 }
 
 /* Make both month and year inputs equal width */
 .month-group .form-group select,
 .month-group .form-group input {
-  width: 180px;
+  width: 100%;
   height: 38px;
   padding: 8px;
   border: 1px solid #ddd;
@@ -453,6 +459,7 @@
   font-size: 14px;
   background-color: white;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .month-group .form-group label {
