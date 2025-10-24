@@ -203,15 +203,21 @@
 }
 
 .btn {
-  padding: 12px 24px;
+  padding: 12px 20px;
   border: none;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 120px;
-  flex-shrink: 0;
+  width: auto !important; /* Allow buttons to size based on content */
+  min-width: auto !important; /* Remove fixed minimum width */
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+  white-space: nowrap !important; /* Prevent text wrapping */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .btn-primary {
@@ -567,13 +573,19 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: 100%;
+  width: auto !important; /* Allow button to size based on content */
+  min-width: auto !important; /* Remove fixed minimum width */
   min-height: 48px;
   position: relative;
   overflow: hidden;
   font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .btn-sync::before {

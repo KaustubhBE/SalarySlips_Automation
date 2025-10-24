@@ -1365,7 +1365,7 @@ const KR_MaterialInward = () => {
             {/* Party Name - Required */}
             <div className="form-group">
               <label htmlFor="generalPartyName" className="required">
-                Party Name *
+                Party Name
               </label>
               <select
                 id="generalPartyName"
@@ -1385,7 +1385,7 @@ const KR_MaterialInward = () => {
             {/* Place - Required */}
             <div className="form-group">
               <label htmlFor="generalPlace" className="required">
-                Place *
+                Place
               </label>
               <select
                 id="generalPlace"

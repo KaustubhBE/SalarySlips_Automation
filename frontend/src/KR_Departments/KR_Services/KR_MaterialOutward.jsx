@@ -1543,7 +1543,7 @@ const KR_MaterialOutward = () => {
             {/* Given To - Required */}
             <div className="form-group">
               <label htmlFor="generalGivenTo" className="required">
-                Given To *
+                Given To
               </label>
               <select
                 id="generalGivenTo"
@@ -1565,7 +1565,7 @@ const KR_MaterialOutward = () => {
             {/* Description - Required */}
             <div className="form-group">
               <label htmlFor="generalDescription" className="required">
-                Description *
+                Description
               </label>
               <textarea
                 id="generalDescription"

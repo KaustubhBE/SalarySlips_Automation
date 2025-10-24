@@ -269,6 +269,12 @@
 .add-item-group {
   display: flex;
   align-items: flex-end;
+  justify-content: flex-start; /* Align button to the left */
+}
+
+.add-item-group .add-item-btn {
+  flex-shrink: 0 !important; /* Prevent button from shrinking */
+  flex-grow: 0 !important; /* Prevent button from growing */
 }
 
 .add-item-btn {
@@ -282,6 +288,13 @@
   background-color: #27ae60;
   color: white;
   height: 45px;
+  width: auto !important; /* Allow button to size based on content */
+  min-width: auto !important; /* Remove fixed minimum width */
+  max-width: fit-content !important; /* Prevent button from stretching */
+  white-space: nowrap !important; /* Prevent text wrapping */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
 }
 
@@ -385,14 +398,20 @@
 }
 
 .submit-btn, .reset-btn {
-  padding: 12px 30px;
+  padding: 12px 20px;
   border: none;
   border-radius: 6px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 120px;
+  width: auto !important; /* Allow buttons to size based on content */
+  min-width: auto !important; /* Remove fixed minimum width */
+  white-space: nowrap !important; /* Prevent text wrapping */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .submit-btn {
@@ -466,6 +485,12 @@
   
   .submit-btn, .reset-btn {
     width: 100%;
+    min-width: auto;
+  }
+  
+  .add-item-btn {
+    width: 100% !important;
+    min-width: auto !important;
   }
 }
 
@@ -564,9 +589,15 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 160px;
+  width: auto !important; /* Allow button to size based on content */
+  min-width: auto !important; /* Remove fixed minimum width */
+  white-space: nowrap !important; /* Prevent text wrapping */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .generate-order-id-btn:hover:not(:disabled) {
