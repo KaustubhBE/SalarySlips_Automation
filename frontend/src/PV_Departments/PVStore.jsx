@@ -14,7 +14,8 @@ const PVStore = () => {
   // Static services for PV Store department (only existing services)
   const pvStoreServices = [
     { key: 'pv_place_order', name: 'Place Order', route: '/padmavati/pv_store/pv_place_order' },
-    { key: 'pv_material_list', name: 'Add Material', route: '/padmavati/pv_store/pv_material_list' },
+    { key: 'pv_add_material_list', name: 'Add Material', route: '/padmavati/pv_store/pv_add_material_list' },
+    { key: 'pv_delete_material_list', name: 'Delete Material', route: '/padmavati/pv_store/pv_delete_material_list' },
     { key: 'pv_material_inward', name: 'Material Inward', route: '/padmavati/pv_store/pv_material_inward' },
     { key: 'pv_material_outward', name: 'Material Outward', route: '/padmavati/pv_store/pv_material_outward' }
   ];

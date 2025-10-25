@@ -8,34 +8,39 @@ import Dashboard from './Dashboard';
 import AddUser from './AddUser';
 import Processing from './Processing';
 import Reports from './Reports';
-// Import add material components
+
+// Import KR Store Services components
 import KR_PlaceOrder from './KR_Departments/KR_Services/KR_PlaceOrder';
 import KR_Add_MaterialList from './KR_Departments/KR_Services/KR_Add_MaterialList';
 import KR_Delete_MaterialList from './KR_Departments/KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
 
-// Import OM department components
+// Import OM Store Services components
 import OM_PlaceOrder from './OM_Departments/OM_Services/OM_PlaceOrder';
-import OM_MaterialList from './OM_Departments/OM_Services/OM_MaterialList';
+import OM_Add_MaterialList from './OM_Departments/OM_Services/OM_Add_MaterialList';
+import OM_Delete_MaterialList from './OM_Departments/OM_Services/OM_Delete_MaterialList';
 import OM_MaterialInward from './OM_Departments/OM_Services/OM_MaterialInward';
 import OM_MaterialOutward from './OM_Departments/OM_Services/OM_MaterialOutward';
 
-// Import PV department components
+// Import PV Store Services components
 import PV_PlaceOrder from './PV_Departments/PV_Services/PV_PlaceOrder';
-import PV_MaterialList from './PV_Departments/PV_Services/PV_MaterialList';
+import PV_Add_MaterialList from './PV_Departments/PV_Services/PV_Add_MaterialList';
+import PV_Delete_MaterialList from './PV_Departments/PV_Services/PV_Delete_MaterialList';
 import PV_MaterialInward from './PV_Departments/PV_Services/PV_MaterialInward';
 import PV_MaterialOutward from './PV_Departments/PV_Services/PV_MaterialOutward';
 
-// Import HB department components
+// Import HB Store Services components
 import HB_PlaceOrder from './HB_Departments/HB_Services/HB_PlaceOrder';
-import HB_MaterialList from './HB_Departments/HB_Services/HB_MaterialList';
+import HB_Add_MaterialList from './HB_Departments/HB_Services/HB_Add_MaterialList';
+import HB_Delete_MaterialList from './HB_Departments/HB_Services/HB_Delete_MaterialList';
 import HB_MaterialInward from './HB_Departments/HB_Services/HB_MaterialInward';
 import HB_MaterialOutward from './HB_Departments/HB_Services/HB_MaterialOutward';
 
 // Import GB department components
 import GB_PlaceOrder from './GB_Departments/GB_Services/GB_PlaceOrder';
-import GB_MaterialList from './GB_Departments/GB_Services/GB_MaterialList';
+import GB_Add_MaterialList from './GB_Departments/GB_Services/GB_Add_MaterialList';
+import GB_Delete_MaterialList from './GB_Departments/GB_Services/GB_Delete_MaterialList';
 import GB_MaterialInward from './GB_Departments/GB_Services/GB_MaterialInward';
 import GB_MaterialOutward from './GB_Departments/GB_Services/GB_MaterialOutward';
 import SheetsMaterialList from './HO_Departments/HO_Services/HO_Sheets-MaterialList';
@@ -47,6 +52,7 @@ import PVProcessing from './PV_Departments/PV_Services/PV_Processing';
 import OMProcessing from './OM_Departments/OM_Services/OM_Processing';
 import HOProcessing from './HO_Departments/HO_Services/HO_Processing';
 import HBProcessing from './HB_Departments/HB_Services/HB_Processing';
+
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
 import Inventory from './Inventory';
@@ -942,9 +948,14 @@ function App() {
         } />
 
         {/* GB Store Routes */}
-        <Route path="/gulbarga/gb_store/gb_material_list" element={
+        <Route path="/gulbarga/gb_store/gb_add_material_list" element={
           isAuthenticated ? 
-            <GB_MaterialList /> : 
+            <GB_Add_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/gulbarga/gb_store/gb_delete_material_list" element={
+          isAuthenticated ? 
+            <GB_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/gulbarga/gb_store/gb_material_inward" element={
@@ -959,9 +970,14 @@ function App() {
         } />
 
         {/* OM Store Routes */}
-        <Route path="/omkar/om_store/om_material_list" element={
+        <Route path="/omkar/om_store/om_add_material_list" element={
           isAuthenticated ? 
-            <OM_MaterialList /> : 
+            <OM_Add_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/omkar/om_store/om_delete_material_list" element={
+          isAuthenticated ? 
+            <OM_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/omkar/om_store/om_material_inward" element={
@@ -976,9 +992,14 @@ function App() {
         } />
 
         {/* PV Store Routes */}
-        <Route path="/padmavati/pv_store/pv_material_list" element={
+        <Route path="/padmavati/pv_store/pv_add_material_list" element={
           isAuthenticated ? 
-            <PV_MaterialList /> : 
+            <PV_Add_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/padmavati/pv_store/pv_delete_material_list" element={
+          isAuthenticated ? 
+            <PV_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/padmavati/pv_store/pv_material_inward" element={
@@ -993,9 +1014,14 @@ function App() {
         } />
 
         {/* HB Store Routes */}
-        <Route path="/humnabad/hb_store/hb_material_list" element={
+        <Route path="/humnabad/hb_store/hb_add_material_list" element={
           isAuthenticated ? 
-            <HB_MaterialList /> : 
+            <HB_Add_MaterialList /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/humnabad/hb_store/hb_delete_material_list" element={
+          isAuthenticated ? 
+            <HB_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/humnabad/hb_store/hb_material_inward" element={

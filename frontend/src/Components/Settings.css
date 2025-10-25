@@ -44,6 +44,7 @@
 
 /* ==================== SECTION HEADERS ==================== */
 h2 {
+  text-align: center;
   margin: 0 0 16px 0;
   font-size: 14px;
   font-weight: 600;
@@ -78,6 +79,7 @@ h2 {
 }
 
 .detail-label {
+  text-align: center;
   font-size: 13px;
   font-weight: 500;
   color: #6b7280;
@@ -88,7 +90,7 @@ h2 {
   font-size: 13px;
   font-weight: 500;
   color: #1f2937;
-  text-align: right;
+  text-align: left !important;
   word-break: break-all;
 }
 
@@ -308,6 +310,14 @@ h2 {
 
 .actions-section .btn {
   width: 100%;
+}
+
+/* ==================== CENTERED BUTTONS ==================== */
+.password-section .btn,
+.actions-section .btn {
+  display: block;
+  margin: 0 auto;
+  max-width: 200px;
 }
 
 /* ==================== RESPONSIVE DESIGN ==================== */
