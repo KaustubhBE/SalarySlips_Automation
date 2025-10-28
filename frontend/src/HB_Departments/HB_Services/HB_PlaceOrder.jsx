@@ -120,6 +120,50 @@ const getUomForMaterial = (materialData, category, materialName, subCategory = '
   return ''
 }
 
+// Function to fetch UOM from backend for exact material match
+const fetchMaterialUomFromBackend = async (category, subCategory, particulars, materialName) => {
+  try {
+    const payload = {
+      category: category,
+      subCategory: subCategory || '',
+      specifications: particulars || '',
+      materialName: materialName,
+      department: 'HB'
+    }
+
+    console.log('Fetching UOM from backend with payload:', payload)
+    const response = await axios.post(getApiUrl('get_material_details'), payload)
+    console.log('UOM fetch response:', response.data)
+    
+    if (response.data.success) {
+      const material = response.data.material
+      return material.uom
+    } else {
+      console.warn('Material not found in database for UOM fetch:', response.data.message)
+      // If material not found, try to find it without particulars
+      if (particulars) {
+        console.log('Retrying UOM fetch without particulars...')
+        const retryPayload = {
+          category: category,
+          subCategory: subCategory || '',
+          specifications: '',
+          materialName: materialName,
+          department: 'HB'
+        }
+        
+        const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+        if (retryResponse.data.success) {
+          const material = retryResponse.data.material
+          return material.uom
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching UOM from backend:', error)
+  }
+  return null
+}
+
 // Custom Hook for Material Data
 const useMaterialData = () => {
   const [materialData, setMaterialData] = useState({})
@@ -273,7 +317,7 @@ const HB_PlaceOrder = () => {
     try {
       console.log('Generating order ID from backend...')
       const response = await axios.post(getApiUrl('get_next_order_id'), {
-        factory: 'KR'
+        factory: 'HB'
       })
       
       if (response.data.success) {
@@ -379,18 +423,60 @@ const HB_PlaceOrder = () => {
         })
       }
 
-      // Auto-assign UOM when material name changes
+      // Auto-assign UOM immediately when material name changes
       if (field === 'materialName' && value) {
-        const autoUom = getUomForMaterial(
-          materialData,
-          newFormData.category,
-          value,
-          newFormData.subCategory,
-          newFormData.particulars
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
+        // First try to get UOM from local data (works even without particulars)
+        if (newFormData.category && value) {
+          const localUom = getUomForMaterial(
+            materialData,
+            newFormData.category,
+            value,
+            newFormData.subCategory,
+            newFormData.particulars
+          )
+          if (localUom) {
+            newFormData.uom = localUom
+          }
+          
+          // If we have particulars, also fetch from backend for exact match
+          if (newFormData.particulars) {
+            setTimeout(() => {
+              fetchMaterialUomFromBackend(
+                newFormData.category,
+                newFormData.subCategory || '',
+                newFormData.particulars,
+                value
+              ).then(backendUom => {
+                if (backendUom) {
+                  setFormData(prev => ({
+                    ...prev,
+                    uom: backendUom
+                  }))
+                }
+              })
+            }, 100)
+          }
         }
+      }
+
+      // Auto-assign UOM when particulars change (if we have complete material details)
+      if (field === 'particulars' && value && newFormData.category && newFormData.materialName) {
+        // Fetch UOM from backend for exact match
+        setTimeout(() => {
+          fetchMaterialUomFromBackend(
+            newFormData.category,
+            newFormData.subCategory || '',
+            value,
+            newFormData.materialName
+          ).then(backendUom => {
+            if (backendUom) {
+              setFormData(prev => ({
+                ...prev,
+                uom: backendUom
+              }))
+            }
+          })
+        }, 100)
       }
 
       return newFormData
@@ -638,7 +724,7 @@ const HB_PlaceOrder = () => {
         givenBy: formData.givenBy,
         description: formData.description,
         importance: formData.importance,
-        factory: 'KR'
+        factory: 'HB'
       }
       
       console.log('Submitting order data:', orderData)
@@ -647,7 +733,7 @@ const HB_PlaceOrder = () => {
       if (response.data.success) {
         // Mark order as completed in localStorage for backup
         try {
-          const completedOrders = JSON.parse(localStorage.getItem('kr_completed_orders') || '[]')
+          const completedOrders = JSON.parse(localStorage.getItem('hb_completed_orders') || '[]')
           completedOrders.push({
             orderId,
             timestamp: Date.now(),
@@ -659,7 +745,7 @@ const HB_PlaceOrder = () => {
               importance: formData.importance
             }
           })
-          localStorage.setItem('kr_completed_orders', JSON.stringify(completedOrders))
+          localStorage.setItem('hb_completed_orders', JSON.stringify(completedOrders))
         } catch (error) {
           console.error('Error saving completed order to localStorage:', error)
         }

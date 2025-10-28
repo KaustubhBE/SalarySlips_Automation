@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl, PLANT_DATA } from '../../config'
@@ -15,8 +15,8 @@ const GB_MaterialOutward = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
-    particulars: '',
     materialName: '',
+    specifications: '',
     uom: '',
     quantity: ''
   })
@@ -43,57 +43,417 @@ const GB_MaterialOutward = () => {
   const [editingItem, setEditingItem] = useState(null)
   const [editFormData, setEditFormData] = useState({})
   
+  // Quantity validation
+  const [currentQuantity, setCurrentQuantity] = useState(null)
+  const [quantityLoading, setQuantityLoading] = useState(false)
+  
   // Touch functionality for mobile
   const [touchStartTime, setTouchStartTime] = useState(null)
   const [touchStartPosition, setTouchStartPosition] = useState(null)
+  
+  // Ref to track if component is still mounted and form is active
+  const isFormActive = useRef(true)
+
+  // Function to fetch current quantity from database
+  const fetchCurrentQuantity = async (category, subCategory, specifications, materialName) => {
+    try {
+      setQuantityLoading(true)
+      const payload = {
+        category: category,
+        subCategory: subCategory || '',
+        specifications: specifications || '',
+        materialName: materialName,
+        department: 'GB'
+      }
+
+      console.log('Fetching current quantity with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('Current quantity response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        const currentQty = material.currentQuantity || material.initialQuantity || 0
+        setCurrentQuantity(currentQty)
+        return currentQty
+      } else {
+        console.warn('Material not found in database:', response.data.message)
+        // If material not found, try to find it without specifications
+        if (specifications) {
+          console.log('Retrying without specifications...')
+          const retryPayload = {
+            category: category,
+            subCategory: subCategory || '',
+            specifications: '',
+            materialName: materialName,
+            department: 'GB'
+          }
+          
+          const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+          if (retryResponse.data.success) {
+            const material = retryResponse.data.material
+            const currentQty = material.currentQuantity || material.initialQuantity || 0
+            setCurrentQuantity(currentQty)
+            return currentQty
+          }
+        }
+        setCurrentQuantity(null)
+        return null
+      }
+    } catch (error) {
+      console.error('Error fetching current quantity:', error)
+      setCurrentQuantity(null)
+      return null
+    } finally {
+      setQuantityLoading(false)
+    }
+  }
+
+  // Helper function to get material name options based on category data structure
+  const getMaterialNameOptions = (categoryData, subCategory) => {
+    if (!categoryData || !categoryData.materialNames) {
+      return []
+    }
+
+    const materialNames = categoryData.materialNames;
+    const materialNameArray = []; // Collect material names first
+
+    // Structure 1: Simple Array (no subcategories, no specifications)
+    if (Array.isArray(materialNames)) {
+      // For simple arrays, only show materials if NO subcategory is selected
+      if (!subCategory) {
+        materialNames.forEach(material => {
+          const name = typeof material === 'string' ? material : material.name;
+          if (name) {
+            materialNameArray.push(name);
+          }
+        });
+      }
+    }
+    // Structure 2 & 3: Object-based (has specifications or subcategories)
+    else if (typeof materialNames === 'object') {
+      // STRICT FILTERING: If subcategory is selected, show ONLY materials from that subcategory
+      if (subCategory && subCategory.trim() !== '') {
+        if (materialNames[subCategory]) {
+          const subCategoryData = materialNames[subCategory];
+          
+          // If subcategory data is an array (direct materials under subcategory)
+          if (Array.isArray(subCategoryData)) {
+            subCategoryData.forEach(material => {
+              const name = typeof material === 'string' ? material : material.name;
+              if (name) {
+                materialNameArray.push(name);
+              }
+            });
+          }
+          // If subcategory data is an object (has specifications under subcategory)
+          else if (typeof subCategoryData === 'object') {
+            Object.values(subCategoryData).forEach(specMaterials => {
+              if (Array.isArray(specMaterials)) {
+                specMaterials.forEach(material => {
+                  const name = typeof material === 'string' ? material : material.name;
+                  if (name) {
+                    materialNameArray.push(name);
+                  }
+                });
+              }
+            });
+          }
+        }
+      } else {
+        // STRICT FILTERING: If no subcategory selected, show ONLY materials NOT under any subcategory
+        // Check for materials directly under category (not under any subcategory)
+        const topLevelKeys = ['', 'default', 'others', 'general'];
+        
+        for (const key of topLevelKeys) {
+          if (materialNames[key]) {
+            const topLevelData = materialNames[key];
+            
+            if (Array.isArray(topLevelData)) {
+              topLevelData.forEach(material => {
+                const name = typeof material === 'string' ? material : material.name;
+                if (name) {
+                  materialNameArray.push(name);
+                }
+              });
+            } else if (typeof topLevelData === 'object') {
+              Object.values(topLevelData).forEach(specMaterials => {
+                if (Array.isArray(specMaterials)) {
+                  specMaterials.forEach(material => {
+                    const name = typeof material === 'string' ? material : material.name;
+                    if (name) {
+                      materialNameArray.push(name);
+                    }
+                  });
+                }
+              });
+            }
+          }
+        }
+        
+        // If no materials found under top-level keys, check if we have direct specification keys
+        if (materialNameArray.length === 0 && (!categoryData.subCategories || categoryData.subCategories.length === 0)) {
+          Object.keys(materialNames).forEach(key => {
+            // Skip the top-level keys we already checked
+            if (!topLevelKeys.includes(key)) {
+              const materials = materialNames[key];
+              
+              // If this key contains an array of materials (direct specification -> materials)
+              if (Array.isArray(materials)) {
+                materials.forEach(material => {
+                  const name = typeof material === 'string' ? material : material.name;
+                  if (name) {
+                    materialNameArray.push(name);
+                  }
+                });
+              }
+              // If this key contains nested objects (specification -> more specifications -> materials)
+              else if (typeof materials === 'object') {
+                Object.values(materials).forEach(specMaterials => {
+                  if (Array.isArray(specMaterials)) {
+                    specMaterials.forEach(material => {
+                      const name = typeof material === 'string' ? material : material.name;
+                      if (name) {
+                        materialNameArray.push(name);
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // Remove duplicates and return unique material names
+    return [...new Set(materialNameArray)];
+  }
+
+  // Helper function to get specifications for a selected material
+  const getSpecificationsForMaterial = (categoryData, materialName, subCategory) => {
+    if (!categoryData || !materialName || !categoryData.materialNames) return [];
+
+    const materialNames = categoryData.materialNames;
+    const specifications = new Set();
+
+    // Structure 1: Simple Array (no specifications)
+    if (Array.isArray(materialNames)) {
+      return [];
+    }
+
+    // Structure 2 & 3: Object-based
+    if (typeof materialNames === 'object') {
+      // If subcategory is selected, search only in that subcategory
+      if (subCategory && materialNames[subCategory]) {
+        const subCategoryData = materialNames[subCategory];
+        
+        // If subcategory has specifications (object)
+        if (typeof subCategoryData === 'object') {
+          Object.keys(subCategoryData).forEach(spec => {
+            const materials = subCategoryData[spec];
+            if (Array.isArray(materials)) {
+              const found = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              );
+              if (found) {
+                specifications.add(spec);
+              }
+            }
+          });
+        }
+      }
+      // If no subcategory selected, search in all subcategories
+      else {
+        Object.entries(materialNames).forEach(([key, subCategoryData]) => {
+          // Handle direct specification -> materials structure (no subcategories)
+          if (Array.isArray(subCategoryData)) {
+            const found = subCategoryData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            );
+            if (found) {
+              specifications.add(key); // The key is the specification name
+            }
+          }
+          // Handle subcategory -> specifications -> materials structure
+          else if (typeof subCategoryData === 'object') {
+            Object.keys(subCategoryData).forEach(spec => {
+              const materials = subCategoryData[spec];
+              if (Array.isArray(materials)) {
+                const found = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                );
+                if (found) {
+                  specifications.add(spec);
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+
+    return Array.from(specifications);
+  };
 
   // Helper function to get UOM for a material
-  const getUomForMaterial = (category, materialName, subCategory = '', particulars = '') => {
+  const getUomForMaterial = (category, materialName, subCategory = '', specifications = '') => {
     if (!category || !materialName || !materialData[category]) {
       return ''
     }
-    
+
     const categoryData = materialData[category]
-    let materialNames = categoryData.materialNames || []
-    
-    // If materialNames is an array (simple structure)
+    const materialNames = categoryData.materialNames
+
+    if (!materialNames) return ''
+
+    // Structure 1: Simple Array
     if (Array.isArray(materialNames)) {
-      // Find the material in the simple array structure
       const material = materialNames.find(mat => 
         (typeof mat === 'string' ? mat : mat.name) === materialName
       )
       return material && typeof material === 'object' ? material.uom : ''
     }
-    
-    // If materialNames is an object (nested structure)
+
+    // Structure 2 & 3: Object-based
     if (typeof materialNames === 'object') {
-      // Handle nested structure: particulars -> materials
-      if (particulars && materialNames[particulars]) {
-        const materials = materialNames[particulars]
-        const material = materials.find(mat => 
-          (typeof mat === 'string' ? mat : mat.name) === materialName
-        )
-        return material && typeof material === 'object' ? material.uom : ''
-      }
-      
-      // Handle nested structure: subCategory -> particulars -> materials
+      // If subcategory is selected, search in that subcategory first
       if (subCategory && materialNames[subCategory]) {
         const subCategoryData = materialNames[subCategory]
-        if (particulars && subCategoryData[particulars]) {
-          const materials = subCategoryData[particulars]
-          const material = materials.find(mat => 
+        
+        // If subcategory has specifications
+        if (typeof subCategoryData === 'object') {
+          // If specific specification is selected, search ONLY there (exact match)
+          if (specifications && subCategoryData[specifications]) {
+            const materials = subCategoryData[specifications]
+            const material = materials.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
+          // If no specifications provided, search in any specification within the subcategory
+          for (const spec of Object.keys(subCategoryData)) {
+            const materials = subCategoryData[spec]
+            if (Array.isArray(materials)) {
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
+              }
+            }
+          }
+        }
+        // If subcategory data is direct array
+        else if (Array.isArray(subCategoryData)) {
+          const material = subCategoryData.find(mat => 
             (typeof mat === 'string' ? mat : mat.name) === materialName
           )
-          return material && typeof material === 'object' ? material.uom : ''
+          if (material && typeof material === 'object') {
+            return material.uom
+          }
+        }
+      }
+      
+      // If no subcategory selected, search in all subcategories
+      for (const [subCatKey, subCatData] of Object.entries(materialNames)) {
+        if (typeof subCatData === 'object') {
+          // If this subcategory has specifications
+          if (Object.keys(subCatData).length > 0 && Array.isArray(Object.values(subCatData)[0])) {
+            // If specific specification is provided, search ONLY in that specification
+            if (specifications && subCatData[specifications]) {
+              const materials = subCatData[specifications]
+              const material = materials.find(mat => 
+                (typeof mat === 'string' ? mat : mat.name) === materialName
+              )
+              if (material && typeof material === 'object') {
+                return material.uom
+              }
+            }
+            // If no specifications provided, search in any specification within this subcategory
+            for (const spec of Object.keys(subCatData)) {
+              const materials = subCatData[spec]
+              if (Array.isArray(materials)) {
+                const material = materials.find(mat => 
+                  (typeof mat === 'string' ? mat : mat.name) === materialName
+                )
+                if (material && typeof material === 'object') {
+                  return material.uom
+                }
+              }
+            }
+          }
+          // If this subcategory data is direct array
+          else if (Array.isArray(subCatData)) {
+            const material = subCatData.find(mat => 
+              (typeof mat === 'string' ? mat : mat.name) === materialName
+            )
+            if (material && typeof material === 'object') {
+              return material.uom
+            }
+          }
         }
       }
     }
-    
+
     return ''
   }
 
+  // Function to fetch UOM from backend for exact material match
+  const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
+    try {
+      const payload = {
+        category: category,
+        subCategory: subCategory || '',
+        specifications: specifications || '',
+        materialName: materialName,
+        department: 'GB'
+      }
+
+      console.log('Fetching UOM from backend with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('UOM fetch response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        // Update UOM in form data
+        setFormData(prev => ({
+          ...prev,
+          uom: material.uom
+        }))
+        console.log('UOM updated to:', material.uom)
+      } else {
+        console.warn('Material not found in database for UOM fetch:', response.data.message)
+        // If material not found, try to find it without specifications
+        if (specifications) {
+          console.log('Retrying UOM fetch without specifications...')
+          const retryPayload = {
+            category: category,
+            subCategory: subCategory || '',
+            specifications: '',
+            materialName: materialName,
+            department: 'GB'
+          }
+          
+          const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+          if (retryResponse.data.success) {
+            const material = retryResponse.data.material
+            setFormData(prev => ({
+              ...prev,
+              uom: material.uom
+            }))
+            console.log('UOM updated to (without specs):', material.uom)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching UOM from backend:', error)
+    }
+  }
+
   // Multi-item management functions
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     // If no fields are filled, don't add anything
     if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity) {
       return
@@ -107,11 +467,37 @@ const GB_MaterialOutward = () => {
       }
     }
 
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(formData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      formData.category,
+      formData.subCategory,
+      formData.specifications,
+      formData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
+      return
+    }
+
     const newItem = {
       id: Date.now(),
       category: formData.category,
       subCategory: formData.subCategory,
-      particulars: formData.particulars,
+      specifications: formData.specifications,
       materialName: formData.materialName,
       uom: formData.uom,
       quantity: formData.quantity
@@ -124,11 +510,14 @@ const GB_MaterialOutward = () => {
       ...prev,
       category: '',
       subCategory: '',
-      particulars: '',
       materialName: '',
+      specifications: '',
       uom: '',
       quantity: ''
     }))
+    
+    // Reset current quantity
+    setCurrentQuantity(null)
   }
 
   const handleRemoveItem = (itemId) => {
@@ -140,7 +529,7 @@ const GB_MaterialOutward = () => {
     setEditFormData({
       category: item.category,
       subCategory: item.subCategory,
-      particulars: item.particulars,
+      specifications: item.specifications,
       materialName: item.materialName,
       uom: item.uom,
       quantity: item.quantity
@@ -161,7 +550,7 @@ const GB_MaterialOutward = () => {
     setEditFormData({
       category: item.category,
       subCategory: item.subCategory,
-      particulars: item.particulars,
+      specifications: item.specifications,
       materialName: item.materialName,
       uom: item.uom,
       quantity: item.quantity
@@ -222,6 +611,11 @@ const GB_MaterialOutward = () => {
   }
 
   const handleEditInputChange = (field, value) => {
+    // For quantity field, only allow numeric input
+    if (field === 'quantity' && !validateNumericInput(value)) {
+      return // Don't update if input is not numeric
+    }
+    
     setEditFormData(prev => {
       const newEditFormData = {
         ...prev,
@@ -229,21 +623,21 @@ const GB_MaterialOutward = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
           uom: '',
           quantity: ''
         })
@@ -255,7 +649,7 @@ const GB_MaterialOutward = () => {
           newEditFormData.category,
           value,
           newEditFormData.subCategory,
-          newEditFormData.particulars
+          newEditFormData.specifications
         )
         if (autoUom) {
           newEditFormData.uom = autoUom
@@ -266,9 +660,35 @@ const GB_MaterialOutward = () => {
     })
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity) {
       alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before saving.')
+      return
+    }
+
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(editFormData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      editFormData.category,
+      editFormData.subCategory,
+      editFormData.specifications,
+      editFormData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
       return
     }
 
@@ -280,6 +700,7 @@ const GB_MaterialOutward = () => {
     
     setEditingItem(null)
     setEditFormData({})
+    setCurrentQuantity(null)
   }
 
   const handleCancelEdit = () => {
@@ -304,7 +725,7 @@ const GB_MaterialOutward = () => {
           className="form-select"
           disabled={dataLoading || authorityLoading || 
                    (field === 'subCategory' && !formData.category) || 
-                   (field === 'particulars' && !formData.category) ||
+                   (field === 'specifications' && !formData.category) ||
                    (field === 'materialName' && !formData.category) ||
                    (field === 'uom' && !formData.category) ||
                    (field === 'givenTo' && authorityLoading)}
@@ -326,20 +747,20 @@ const GB_MaterialOutward = () => {
   const fetchAuthorityList = async () => {
     try {
       setAuthorityLoading(true)
-      // Find the GB plant data to get the sheet ID
-      const gbPlant = PLANT_DATA.find(plant => plant.document_name === 'GB')
-      const sheetId = gbPlant?.material_sheet_id
+      // Find the gulbarga plant data to get the sheet ID
+      const gulbargaPlant = PLANT_DATA.find(plant => plant.document_name === 'GB')
+      const sheetId = gulbargaPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for GB plant')
-        setMessage('No Google Sheet configuration found for Kerur plant')
+        console.error('No sheet ID found for gulbarga plant')
+        setMessage('No Google Sheet configuration found for gulbarga plant')
         setMessageType('error')
         return
       }
       
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'GB',
           sheet_name: 'Authority List',
           sheet_id: sheetId
         }
@@ -388,9 +809,23 @@ const GB_MaterialOutward = () => {
 
     fetchMaterialData()
     fetchAuthorityList()
+    
+    // Reset form active state on mount
+    isFormActive.current = true
   }, [])
 
+  // Helper function to validate numeric input
+  const validateNumericInput = (value) => {
+    // Allow empty string, numbers, and decimal point
+    return /^[0-9]*\.?[0-9]*$/.test(value)
+  }
+
   const handleInputChange = (field, value) => {
+    // For quantity field, only allow numeric input
+    if (field === 'quantity' && !validateNumericInput(value)) {
+      return // Don't update if input is not numeric
+    }
+    
     setFormData(prev => {
       const newFormData = {
         ...prev,
@@ -398,37 +833,115 @@ const GB_MaterialOutward = () => {
         // Reset dependent fields when category changes
         ...(field === 'category' && {
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
         // Reset dependent fields when subCategory changes
         ...(field === 'subCategory' && {
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         }),
-        // Reset dependent fields when particulars changes
-        ...(field === 'particulars' && {
-          materialName: '',
+        // Reset dependent fields when materialName changes
+        ...(field === 'materialName' && {
+          specifications: '',
           uom: '',
           quantity: ''
         })
       }
 
-      // Auto-assign UOM when material name changes
+      // Auto-assign UOM when material name changes (only if we have complete material details)
       if (field === 'materialName' && value) {
-        const autoUom = getUomForMaterial(
-          newFormData.category,
-          value,
-          newFormData.subCategory,
-          newFormData.particulars
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
+        // Auto-populate specifications if only one option is available
+        if (newFormData.category && value) {
+          const categoryData = materialData[newFormData.category]
+          if (categoryData) {
+            const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
+            if (availableSpecs.length === 1) {
+              newFormData.specifications = availableSpecs[0]
+              // Now fetch UOM from backend with the auto-selected specifications
+              setTimeout(() => {
+                fetchMaterialUomFromBackend(
+                  newFormData.category,
+                  newFormData.subCategory || '',
+                  newFormData.specifications,
+                  value
+                )
+              }, 200)
+              // Now fetch current quantity with the auto-selected specifications
+              setTimeout(() => {
+                // Only fetch if the form is still active and data is valid
+                if (isFormActive.current && newFormData.category && newFormData.specifications && value) {
+                  fetchCurrentQuantity(
+                    newFormData.category,
+                    newFormData.subCategory,
+                    newFormData.specifications,
+                    value
+                  )
+                }
+              }, 100)
+            } else {
+              // Try to get UOM from local data (works even without specifications)
+              const localUom = getUomForMaterial(
+                newFormData.category,
+                value,
+                newFormData.subCategory,
+                newFormData.specifications
+              )
+              if (localUom) {
+                newFormData.uom = localUom
+              }
+              
+              // If we have specifications, also fetch from backend for exact match
+              if (newFormData.specifications) {
+                setTimeout(() => {
+                  fetchMaterialUomFromBackend(
+                    newFormData.category,
+                    newFormData.subCategory || '',
+                    newFormData.specifications,
+                    value
+                  )
+                }, 100)
+              }
+            }
+          }
         }
+      }
+
+      // Auto-assign UOM when specifications change (if we have complete material details)
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        // Fetch UOM from backend for exact match
+        setTimeout(() => {
+          fetchMaterialUomFromBackend(
+            newFormData.category,
+            newFormData.subCategory || '',
+            value,
+            newFormData.materialName
+          )
+        }, 100)
+      }
+
+      // Clear current quantity when dependent fields change
+      if (field === 'category' || field === 'subCategory') {
+        setCurrentQuantity(null)
+      }
+
+      // Fetch current quantity when specifications are manually selected
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        setCurrentQuantity(null) // Clear first
+        setTimeout(() => {
+          if (isFormActive.current) {
+            fetchCurrentQuantity(
+              newFormData.category,
+              newFormData.subCategory || '',
+              value,
+              newFormData.materialName
+            )
+          }
+        }, 100)
       }
 
       return newFormData
@@ -468,13 +981,14 @@ const GB_MaterialOutward = () => {
       // Process each item individually using the existing endpoint
       let successCount = 0
       let errorCount = 0
+      let quantityUpdates = []
       
       for (const item of outwardItems) {
         try {
           const payload = {
             category: item.category,
             subCategory: item.subCategory || '',
-            particulars: item.particulars || '',
+            specifications: item.specifications || '',
             materialName: item.materialName,
             uom: item.uom,
             quantity: item.quantity,
@@ -489,6 +1003,15 @@ const GB_MaterialOutward = () => {
           
           if (response.data.success) {
             successCount++
+            // Store quantity update info
+            if (response.data.previousQuantity !== undefined && response.data.newQuantity !== undefined) {
+              quantityUpdates.push({
+                material: item.materialName,
+                previous: response.data.previousQuantity,
+                new: response.data.newQuantity,
+                removed: item.quantity
+              })
+            }
           } else {
             errorCount++
             console.error('Failed to record item:', item, response.data.message)
@@ -500,14 +1023,24 @@ const GB_MaterialOutward = () => {
       }
       
       if (successCount > 0) {
-        setMessage(`Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}`)
+        let successMsg = `Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}\n\n`
+        
+        // Add quantity update details
+        if (quantityUpdates.length > 0) {
+          successMsg += 'Quantity Updates:\n'
+          quantityUpdates.forEach(update => {
+            successMsg += `• ${update.material}: ${update.previous} → ${update.new} (Removed: ${update.removed})\n`
+          })
+        }
+        
+        setMessage(successMsg)
         setMessageType('success')
         setOutwardItems([])
         setFormData({
           category: '',
           subCategory: '',
-          particulars: '',
           materialName: '',
+          specifications: '',
           uom: '',
           quantity: ''
         })
@@ -515,6 +1048,9 @@ const GB_MaterialOutward = () => {
           givenTo: '',
           description: ''
         })
+        // Clear any pending quantity fetching and mark form as inactive
+        setCurrentQuantity(null)
+        isFormActive.current = false
       } else {
         setMessage('Failed to record any material outward items. Please try again.')
         setMessageType('error')
@@ -600,20 +1136,6 @@ const GB_MaterialOutward = () => {
         )}
 
         <form onSubmit={handleSubmit} className="material-form">
-          {/* Form Status Indicator */}
-          <div className="form-status">
-            <div className={`status-indicator ${outwardItems.length > 0 ? 'ready' : 'incomplete'}`}>
-              <span className="status-icon">
-                {outwardItems.length > 0 ? '✓' : '⚠'}
-              </span>
-              <span className="status-text">
-                {outwardItems.length === 0 
-                  ? 'Add at least one item to record material outward' 
-                  : `Ready to record outward! (${outwardItems.length} item${outwardItems.length > 1 ? 's' : ''} added)`
-                }
-              </span>
-            </div>
-          </div>
 
           {/* Added Items Table - Moved to top */}
           {outwardItems.length > 0 && (
@@ -626,8 +1148,8 @@ const GB_MaterialOutward = () => {
                       <th>S.No</th>
                       <th>Category</th>
                       <th>Sub Category</th>
-                      <th>Particulars</th>
                       <th>Material Name</th>
+                      <th>Specifications</th>
                       <th>Quantity</th>
                       <th>UOM</th>
                       <th>Action</th>
@@ -687,31 +1209,6 @@ const GB_MaterialOutward = () => {
                           )}
                         </td>
                         <td 
-                          data-label="Particulars"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'particulars')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'particulars')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'particulars')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.particulars}
-                              onChange={(e) => handleEditInputChange('particulars', e.target.value)}
-                              className="edit-select"
-                              disabled={!editFormData.category}
-                            >
-                              <option value="">Select Particulars</option>
-                              {editFormData.category && materialData[editFormData.category]?.particulars?.map(particular => (
-                                <option key={particular} value={particular}>{particular}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.particulars || '-'
-                          )}
-                        </td>
-                        <td 
                           data-label="Material Name"
                           className={editingItem === item.id ? "editing-cell" : "editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
@@ -728,46 +1225,39 @@ const GB_MaterialOutward = () => {
                               disabled={!editFormData.category}
                             >
                               <option value="">Select Material Name</option>
-                              {editFormData.category && (() => {
-                                const categoryData = materialData[editFormData.category];
-                                if (!categoryData) return null;
-                                
-                                let materialNames = categoryData.materialNames || [];
-                                
-                                if (Array.isArray(materialNames)) {
-                                  return materialNames.map(mat => (
-                                    <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                                      {typeof mat === 'string' ? mat : mat.name}
-                                    </option>
-                                  ));
-                                }
-                                
-                                if (typeof materialNames === 'object') {
-                                  if (editFormData.particulars && materialNames[editFormData.particulars]) {
-                                    return materialNames[editFormData.particulars].map(mat => (
-                                      <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                                        {typeof mat === 'string' ? mat : mat.name}
-                                      </option>
-                                    ));
-                                  }
-                                  
-                                  if (editFormData.subCategory && materialNames[editFormData.subCategory]) {
-                                    const subCategoryData = materialNames[editFormData.subCategory];
-                                    if (editFormData.particulars && subCategoryData[editFormData.particulars]) {
-                                      return subCategoryData[editFormData.particulars].map(mat => (
-                                        <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                                          {typeof mat === 'string' ? mat : mat.name}
-                                        </option>
-                                      ));
-                                    }
-                                  }
-                                }
-                                
-                                return null;
-                              })()}
+                              {editFormData.category && getMaterialNameOptions(materialData[editFormData.category], editFormData.subCategory).map(name => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
                             </select>
                           ) : (
                             item.materialName
+                          )}
+                        </td>
+                        <td 
+                          data-label="Specifications"
+                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
+                          onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
+                          onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
+                          onTouchMove={handleTouchMove}
+                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+                        >
+                          {editingItem === item.id ? (
+                            <select
+                              value={editFormData.specifications}
+                              onChange={(e) => handleEditInputChange('specifications', e.target.value)}
+                              className="edit-select"
+                              disabled={!editFormData.category}
+                            >
+                              <option value="">Select Specifications</option>
+                              {editFormData.category && editFormData.materialName && getSpecificationsForMaterial(materialData[editFormData.category], editFormData.materialName, editFormData.subCategory).map(spec => (
+                                <option key={spec} value={spec}>{spec}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            item.specifications || '-'
                           )}
                         </td>
                         <td 
@@ -909,32 +1399,20 @@ const GB_MaterialOutward = () => {
                     id="subCategory"
                     value={formData.subCategory}
                     onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                    className="form-select"
-                    disabled={!formData.category || dataLoading}
+                    className={`form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'optional-field-red' : formData.subCategory ? 'optional-field-green' : ''}`}
+                    disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
                   >
-                    <option value="">Select Sub Category</option>
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
+                       'No subcategories available' : 'Select Sub Category'}
+                    </option>
                     {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
                       <option key={subCat} value={subCat}>{subCat}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Particulars - Optional */}
-                <div className="form-group">
-                  <label htmlFor="particulars">Particulars</label>
-                  <select
-                    id="particulars"
-                    value={formData.particulars}
-                    onChange={(e) => handleInputChange('particulars', e.target.value)}
-                    className="form-select"
-                    disabled={!formData.category || dataLoading}
-                  >
-                    <option value="">Select Particulars</option>
-                    {formData.category && materialData[formData.category]?.particulars?.map(particular => (
-                      <option key={particular} value={particular}>{particular}</option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Material Name - Required only if no items exist */}
                 <div className="form-group">
@@ -950,43 +1428,33 @@ const GB_MaterialOutward = () => {
                     disabled={!formData.category || dataLoading}
                   >
                     <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
-                    {formData.category && (() => {
-                      const categoryData = materialData[formData.category];
-                      if (!categoryData) return null;
-                      
-                      let materialNames = categoryData.materialNames || [];
-                      
-                      if (Array.isArray(materialNames)) {
-                        return materialNames.map(mat => (
-                          <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                            {typeof mat === 'string' ? mat : mat.name}
-                          </option>
-                        ));
-                      }
-                      
-                      if (typeof materialNames === 'object') {
-                        if (formData.particulars && materialNames[formData.particulars]) {
-                          return materialNames[formData.particulars].map(mat => (
-                            <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                              {typeof mat === 'string' ? mat : mat.name}
-                            </option>
-                          ));
-                        }
-                        
-                        if (formData.subCategory && materialNames[formData.subCategory]) {
-                          const subCategoryData = materialNames[formData.subCategory];
-                          if (formData.particulars && subCategoryData[formData.particulars]) {
-                            return subCategoryData[formData.particulars].map(mat => (
-                              <option key={typeof mat === 'string' ? mat : mat.name} value={typeof mat === 'string' ? mat : mat.name}>
-                                {typeof mat === 'string' ? mat : mat.name}
-                              </option>
-                            ));
-                          }
-                        }
-                      }
-                      
-                      return null;
-                    })()}
+                    {formData.category && getMaterialNameOptions(materialData[formData.category], formData.subCategory).map(name => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Specifications - Optional */}
+                <div className="form-group">
+                  <label htmlFor="specifications">Specifications</label>
+                  <select
+                    id="specifications"
+                    value={formData.specifications}
+                    onChange={(e) => handleInputChange('specifications', e.target.value)}
+                    className={`form-select ${!formData.specifications && formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length > 0 ? 'optional-field-red' : formData.specifications ? 'optional-field-green' : ''}`}
+                    disabled={!formData.category || !formData.materialName || dataLoading || getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0}
+                  >
+                    <option value="">
+                      {!formData.category ? 'Select Category first' : 
+                       !formData.materialName ? 'Select Material Name first' : 
+                       getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0 ? 
+                       'No specifications available' : 'Select Specifications'}
+                    </option>
+                    {formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).map(spec => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -1031,6 +1499,29 @@ const GB_MaterialOutward = () => {
                   />
                 </div>
 
+                {/* Current Quantity - Read-only, shows available quantity */}
+                <div className="form-group">
+                  <label htmlFor="currentQuantity">
+                    Current Quantity Available
+                  </label>
+                  <input
+                    type="text"
+                    id="currentQuantity"
+                    value={currentQuantity !== null ? currentQuantity : ''}
+                    readOnly
+                    className="form-input"
+                    placeholder={quantityLoading ? 'Loading...' : 'Select material to see quantity'}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: currentQuantity !== null ? '#333' : '#999',
+                      fontWeight: currentQuantity !== null ? 'bold' : 'normal'
+                    }}
+                    title="Current quantity available in database"
+                  />
+                </div>
+
+
 
                 {/* Add Item Button */}
                 <div className="form-group add-item-group">
@@ -1052,7 +1543,7 @@ const GB_MaterialOutward = () => {
             {/* Given To - Required */}
             <div className="form-group">
               <label htmlFor="generalGivenTo" className="required">
-                Given To *
+                Given To
               </label>
               <select
                 id="generalGivenTo"
@@ -1074,7 +1565,7 @@ const GB_MaterialOutward = () => {
             {/* Description - Required */}
             <div className="form-group">
               <label htmlFor="generalDescription" className="required">
-                Description *
+                Description
               </label>
               <textarea
                 id="generalDescription"
@@ -1094,7 +1585,7 @@ const GB_MaterialOutward = () => {
               type="submit" 
               className={`submit-btn ${outwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
               disabled={outwardItems.length === 0}
-              title={outwardItems.length === 0 ? 'Add at least one item' : 'Ready to record outward'}
+              title={outwardItems.length === 0 ? 'Add at least one item to record outward' : 'Ready to record outward'}
             >
               Record Outward {outwardItems.length > 0 ? '✓' : ''}
             </button>
@@ -1103,8 +1594,8 @@ const GB_MaterialOutward = () => {
               setFormData({
                 category: '',
                 subCategory: '',
-                particulars: '',
                 materialName: '',
+                specifications: '',
                 uom: '',
                 quantity: ''
               })
@@ -1112,6 +1603,8 @@ const GB_MaterialOutward = () => {
                 givenTo: '',
                 description: ''
               })
+              setCurrentQuantity(null)
+              isFormActive.current = false
               alert('Form reset!')
             }}>Reset</button>
           </div>

@@ -313,7 +313,7 @@ const GB_Add_MaterialList = () => {
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'KR'
+        department: 'GB'
       }
 
       console.log('Fetching UOM from backend with payload:', payload)
@@ -338,7 +338,7 @@ const GB_Add_MaterialList = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'KR'
+            department: 'GB'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -439,7 +439,7 @@ const GB_Add_MaterialList = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'KR' }
+          params: { factory: 'GB' }
         })
         
         if (response.data.success) {
@@ -568,7 +568,7 @@ const GB_Add_MaterialList = () => {
         uom: formData.uom,
         initialQuantity: formData.initialQuantity,
         timestamp: new Date().toISOString(),
-        department: 'KR'
+        department: 'GB'
       }
 
       const response = await axios.post(getApiUrl('add_material'), payload)
@@ -622,7 +622,7 @@ const GB_Add_MaterialList = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/kerur/kr_store')} 
+          onClick={() => navigate('/gulbarga/gb_store')} 
           className="back-button"
           style={{
             background: '#6c757d',

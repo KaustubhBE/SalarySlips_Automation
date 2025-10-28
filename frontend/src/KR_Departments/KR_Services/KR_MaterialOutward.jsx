@@ -853,67 +853,45 @@ const KR_MaterialOutward = () => {
         })
       }
 
-      // Auto-assign UOM when material name changes (only if we have complete material details)
-      if (field === 'materialName' && value) {
-        // Auto-populate specifications if only one option is available
-        if (newFormData.category && value) {
-          const categoryData = materialData[newFormData.category]
-          if (categoryData) {
-            const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
-            if (availableSpecs.length === 1) {
-              newFormData.specifications = availableSpecs[0]
-              // Now fetch UOM from backend with the auto-selected specifications
-              setTimeout(() => {
-                fetchMaterialUomFromBackend(
+      // NEW UOM LOGIC:
+      // 1. When material name is selected, check if specifications exist
+      //    - If NO specifications: Fetch UOM immediately (without specifications)
+      //    - If specifications exist: Wait for user to select specification
+      // 2. When specification is manually selected: Fetch UOM with the selected specification
+      
+      if (field === 'materialName' && value && newFormData.category) {
+        const categoryData = materialData[newFormData.category]
+        if (categoryData) {
+          const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
+          
+          // If NO specifications available, fetch UOM immediately (without specifications)
+          if (availableSpecs.length === 0) {
+            setTimeout(() => {
+              fetchMaterialUomFromBackend(
+                newFormData.category,
+                newFormData.subCategory || '',
+                '',
+                value
+              )
+            }, 100)
+            // Also fetch current quantity for materials without specifications
+            setTimeout(() => {
+              if (isFormActive.current) {
+                fetchCurrentQuantity(
                   newFormData.category,
                   newFormData.subCategory || '',
-                  newFormData.specifications,
+                  '',
                   value
                 )
-              }, 200)
-              // Now fetch current quantity with the auto-selected specifications
-              setTimeout(() => {
-                // Only fetch if the form is still active and data is valid
-                if (isFormActive.current && newFormData.category && newFormData.specifications && value) {
-                  fetchCurrentQuantity(
-                    newFormData.category,
-                    newFormData.subCategory,
-                    newFormData.specifications,
-                    value
-                  )
-                }
-              }, 100)
-            } else {
-              // Try to get UOM from local data (works even without specifications)
-              const localUom = getUomForMaterial(
-                newFormData.category,
-                value,
-                newFormData.subCategory,
-                newFormData.specifications
-              )
-              if (localUom) {
-                newFormData.uom = localUom
               }
-              
-              // If we have specifications, also fetch from backend for exact match
-              if (newFormData.specifications) {
-                setTimeout(() => {
-                  fetchMaterialUomFromBackend(
-                    newFormData.category,
-                    newFormData.subCategory || '',
-                    newFormData.specifications,
-                    value
-                  )
-                }, 100)
-              }
-            }
+            }, 200)
           }
+          // If specifications exist, don't fetch yet - wait for user to select specification
         }
       }
-
-      // Auto-assign UOM when specifications change (if we have complete material details)
+      
+      // When specifications are manually selected, fetch UOM from backend
       if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
-        // Fetch UOM from backend for exact match
         setTimeout(() => {
           fetchMaterialUomFromBackend(
             newFormData.category,

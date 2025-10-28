@@ -1208,7 +1208,7 @@ function Dashboard() {
             <div className="modal-actions">
               <button
                 className="action-button edit-button"
-                onClick={() => handleUpdatePermissions(editingUserId, editingPermissions)}
+                onClick={() => handleUpdatePermissions(selectedUser.id, editingPermissions)}
               >
                 Save Permissions
               </button>

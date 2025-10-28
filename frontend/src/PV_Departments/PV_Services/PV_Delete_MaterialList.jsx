@@ -4,7 +4,7 @@ import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 
-const KR_Delete_MaterialList = () => {
+const PV_Delete_MaterialList = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -448,6 +448,24 @@ const KR_Delete_MaterialList = () => {
               if (autoUom) {
                 newFormData.uom = autoUom
               }
+              
+              // Fetch material details even if no specifications or multiple specifications
+              setTimeout(() => {
+                if (isFormActive.current && newFormData.category && value) {
+                  console.log('Auto-fetching material details (no/multiple specs):', {
+                    category: newFormData.category,
+                    subCategory: newFormData.subCategory || '',
+                    specifications: newFormData.specifications || '',
+                    materialName: value
+                  })
+                  fetchMaterialDetails(
+                    newFormData.category,
+                    newFormData.subCategory || '',
+                    newFormData.specifications || '',
+                    value
+                  )
+                }
+              }, 100)
             }
           }
         }
@@ -1023,4 +1041,4 @@ const KR_Delete_MaterialList = () => {
   )
 }
 
-export default KR_Delete_MaterialList
+export default PV_Delete_MaterialList

@@ -622,7 +622,7 @@ const HB_Add_MaterialList = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/kerur/kr_store')} 
+          onClick={() => navigate('/humnabad/hb_store')} 
           className="back-button"
           style={{
             background: '#6c757d',

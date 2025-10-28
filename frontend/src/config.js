@@ -213,7 +213,7 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           gb_place_order: { name: 'Place Order', permission: 'gb_place_order' },
           gb_add_material_list: { name: 'Add Material', permission: 'gb_add_material_list' },
-          gb_delete_material_list: { name: 'Delete from Material List', permission: 'gb_delete_material_list' },
+          gb_delete_material_list: { name: 'Delete Material', permission: 'gb_delete_material_list' },
           gb_material_inward: { name: 'Material Inward', permission: 'gb_material_inward' },
           gb_material_outward: { name: 'Material Outward', permission: 'gb_material_outward' }
         }
@@ -242,7 +242,7 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           kr_place_order: { name: 'Place Order', permission: 'kr_place_order' },
           kr_add_material_list: { name: 'Add to Material List', permission: 'kr_add_material_list' },
-          kr_delete_material_list: { name: 'Delete from Material List', permission: 'kr_delete_material_list' },
+          kr_delete_material_list: { name: 'Delete Material', permission: 'kr_delete_material_list' },
           kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
           kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
           kr_order_status: { name: 'Order Status', permission: 'kr_order_status' }
@@ -273,7 +273,7 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           hb_place_order: { name: 'Place Order', permission: 'hb_place_order' },
           hb_add_material_list: { name: 'Add Material', permission: 'hb_add_material_list' },
-          hb_delete_material_list: { name: 'Delete from Material List', permission: 'hb_delete_material_list' },
+          hb_delete_material_list: { name: 'Delete Material', permission: 'hb_delete_material_list' },
           hb_material_inward: { name: 'Material Inward', permission: 'hb_material_inward' },
           hb_material_outward: { name: 'Material Outward', permission: 'hb_material_outward' }
         }
@@ -302,7 +302,7 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           om_place_order: { name: 'Place Order', permission: 'om_place_order' },
           om_add_material_list: { name: 'Add Material', permission: 'om_add_material_list' },
-          om_delete_material_list: { name: 'Delete from Material List', permission: 'om_delete_material_list' },
+          om_delete_material_list: { name: 'Delete Material', permission: 'om_delete_material_list' },
           om_material_inward: { name: 'Material Inward', permission: 'om_material_inward' },
           om_material_outward: { name: 'Material Outward', permission: 'om_material_outward' }
         }
@@ -331,7 +331,7 @@ export const FACTORY_RBAC_CONFIG = {
         services: {
           pv_place_order: { name: 'Place Order', permission: 'pv_place_order' },
           pv_add_material_list: { name: 'Add Material', permission: 'pv_add_material_list' },
-          pv_delete_material_list: { name: 'Delete from Material List', permission: 'pv_delete_material_list' },
+          pv_delete_material_list: { name: 'Delete Material', permission: 'pv_delete_material_list' },
           pv_material_inward: { name: 'Material Inward', permission: 'pv_material_inward' },
           pv_material_outward: { name: 'Material Outward', permission: 'pv_material_outward' }
         }

@@ -399,76 +399,46 @@ const KR_Delete_MaterialList = () => {
         })
       }
 
-      // Auto-assign UOM and fetch material details when material name changes
-      if (field === 'materialName' && value) {
-        // Auto-fetch material details when material name is selected
-        if (newFormData.category && value) {
-          // Auto-populate specifications if only one option is available
-          const categoryData = materialData[newFormData.category]
-          if (categoryData) {
-            const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
-            if (availableSpecs.length === 1) {
-              newFormData.specifications = availableSpecs[0]
-              // Now auto-assign UOM with the auto-selected specifications
-              const autoUom = getUomForMaterial(
-                newFormData.category,
-                value,
-                newFormData.subCategory,
-                newFormData.specifications
-              )
-              if (autoUom) {
-                newFormData.uom = autoUom
+      // NEW UOM LOGIC:
+      // 1. When material name is selected, check if specifications exist
+      //    - If NO specifications: Fetch UOM immediately (without specifications)
+      //    - If specifications exist: Wait for user to select specification
+      // 2. When specification is manually selected: Fetch UOM with the selected specification
+      
+      if (field === 'materialName' && value && newFormData.category) {
+        const categoryData = materialData[newFormData.category]
+        if (categoryData) {
+          const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
+          
+          // If NO specifications available, fetch UOM immediately (without specifications)
+          if (availableSpecs.length === 0) {
+            setTimeout(() => {
+              if (isFormActive.current) {
+                console.log('No specifications available, fetching material details without specifications:', {
+                  category: newFormData.category,
+                  subCategory: newFormData.subCategory || '',
+                  specifications: '',
+                  materialName: value
+                })
+                fetchMaterialDetails(
+                  newFormData.category,
+                  newFormData.subCategory || '',
+                  '',
+                  value
+                )
               }
-              // Now fetch material details with the auto-selected specifications
-              setTimeout(() => {
-                // Only fetch if the form is still active and data is valid
-                if (isFormActive.current && newFormData.category && newFormData.specifications && value) {
-                  console.log('Auto-fetching material details for:', {
-                    category: newFormData.category,
-                    subCategory: newFormData.subCategory || '',
-                    specifications: newFormData.specifications || '',
-                    materialName: value
-                  })
-                  fetchMaterialDetails(
-                    newFormData.category,
-                    newFormData.subCategory || '',
-                    newFormData.specifications || '',
-                    value
-                  )
-                }
-              }, 100)
-            } else {
-              // Try to get UOM from local data (works even without specifications)
-              const autoUom = getUomForMaterial(
-                newFormData.category,
-                value,
-                newFormData.subCategory,
-                newFormData.specifications
-              )
-              if (autoUom) {
-                newFormData.uom = autoUom
-              }
-            }
+            }, 100)
           }
+          // If specifications exist, don't fetch yet - wait for user to select specification
         }
       }
-
-      // Auto-assign UOM and fetch material details when specifications are manually selected
+      
+      // When specifications are manually selected, fetch UOM from backend
       if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
-        // Auto-assign UOM when specifications change (if we have complete material details)
-        const autoUom = getUomForMaterial(
-          newFormData.category,
-          newFormData.materialName,
-          newFormData.subCategory,
-          value
-        )
-        if (autoUom) {
-          newFormData.uom = autoUom
-        }
-
+        // Fetch material details (which includes UOM) from backend when specification is selected
         setTimeout(() => {
           if (isFormActive.current) {
-            console.log('Fetching material details for manual specification selection:', {
+            console.log('Fetching material details when specification is selected:', {
               category: newFormData.category,
               subCategory: newFormData.subCategory || '',
               specifications: value,
@@ -483,6 +453,9 @@ const KR_Delete_MaterialList = () => {
           }
         }, 100)
       }
+      
+      // Handle case where material name is changed but specifications field is cleared (UOM goes blank)
+      // This is already handled by line 395-398 which resets uom: '' when materialName changes
 
       return newFormData
     })

@@ -448,6 +448,24 @@ const HB_Delete_MaterialList = () => {
               if (autoUom) {
                 newFormData.uom = autoUom
               }
+              
+              // Fetch material details even if no specifications or multiple specifications
+              setTimeout(() => {
+                if (isFormActive.current && newFormData.category && value) {
+                  console.log('Auto-fetching material details (no/multiple specs):', {
+                    category: newFormData.category,
+                    subCategory: newFormData.subCategory || '',
+                    specifications: newFormData.specifications || '',
+                    materialName: value
+                  })
+                  fetchMaterialDetails(
+                    newFormData.category,
+                    newFormData.subCategory || '',
+                    newFormData.specifications || '',
+                    value
+                  )
+                }
+              }, 100)
             }
           }
         }

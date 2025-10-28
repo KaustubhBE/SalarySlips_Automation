@@ -750,37 +750,34 @@ const KR_MaterialInward = () => {
         })
       }
 
-      // Auto-assign UOM when material name changes
-      if (field === 'materialName' && value) {
-        // First try to get UOM from local data (works even without specifications)
-        if (newFormData.category && value) {
-          const localUom = getUomForMaterial(
-            newFormData.category,
-            value,
-            newFormData.subCategory,
-            newFormData.specifications
-          )
-          if (localUom) {
-            newFormData.uom = localUom
-          }
+      // NEW UOM LOGIC:
+      // 1. When material name is selected, check if specifications exist
+      //    - If NO specifications: Fetch UOM immediately (without specifications)
+      //    - If specifications exist: Wait for user to select specification
+      // 2. When specification is manually selected: Fetch UOM with the selected specification
+      
+      if (field === 'materialName' && value && newFormData.category) {
+        const categoryData = materialData[newFormData.category]
+        if (categoryData) {
+          const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
           
-          // If we have specifications, also fetch from backend for exact match
-          if (newFormData.specifications) {
+          // If NO specifications available, fetch UOM immediately (without specifications)
+          if (availableSpecs.length === 0) {
             setTimeout(() => {
               fetchMaterialUomFromBackend(
                 newFormData.category,
                 newFormData.subCategory || '',
-                newFormData.specifications,
+                '',
                 value
               )
             }, 100)
           }
+          // If specifications exist, don't fetch yet - wait for user to select specification
         }
       }
-
-      // Auto-assign UOM when specifications change (if we have complete material details)
+      
+      // When specifications are manually selected, fetch UOM from backend
       if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
-        // Fetch UOM from backend for exact match
         setTimeout(() => {
           fetchMaterialUomFromBackend(
             newFormData.category,
