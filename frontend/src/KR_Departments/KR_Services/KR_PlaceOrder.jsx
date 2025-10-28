@@ -1822,6 +1822,22 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
+        {/* Description - Full Width */}
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label htmlFor="description" className="required">Description</label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              required
+              className="form-textarea"
+              placeholder="Enter detailed description of the order requirements"
+              rows="4"
+            />
+          </div>
+        </div>
+
         {/* Notification Settings */}
         <div className="notification-section">
           <h2>Notification Methods</h2>
@@ -1856,22 +1872,6 @@ const KR_PlaceOrder = () => {
               No notification method selected. Order will be placed without sending notifications.
             </div>
           )}
-        </div>
-
-        {/* Description - Full Width */}
-        <div className="form-row">
-          <div className="form-group full-width">
-            <label htmlFor="description" className="required">Description</label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              required
-              className="form-textarea"
-              placeholder="Enter detailed description of the order requirements"
-              rows="4"
-            />
-          </div>
         </div>
 
         {/* Action Buttons */}

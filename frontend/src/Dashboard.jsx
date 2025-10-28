@@ -9,6 +9,7 @@ import {
 import { useAuth } from './Components/AuthContext';
 import TreePermissions from './Components/TreePermissions';
 import './Dashboard.css';
+import PasswordToggle from './Components/Password-Toggle';
 
 
 
@@ -21,6 +22,7 @@ function Dashboard() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingAppPassword, setEditingAppPassword] = useState("");
   const [editingWebsitePassword, setEditingWebsitePassword] = useState("");
+  const [editingWebsitePasswordConfirm, setEditingWebsitePasswordConfirm] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -30,6 +32,8 @@ function Dashboard() {
   const [showMailKey, setShowMailKey] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [showRoleChangeConfirm, setShowRoleChangeConfirm] = useState(false);
+  const [roleChangeRequest, setRoleChangeRequest] = useState(null); // { userId, userName, userEmail, currentRole, newRole }
   const [userRoles, setUserRoles] = useState({});
 
   useEffect(() => {
@@ -218,30 +222,26 @@ function Dashboard() {
     setUserToDelete(null);
   };
 
-  const handleRoleChange = async (userId, newRole) => {
-    // Find the user to get their details for the confirmation message
-    const user = users.find(user => user.id === userId);
-    const userName = user ? user.username : 'this user';
-    const userEmail = user ? user.email : '';
-    const currentRole = user ? user.role : '';
-    
-    // Show confirmation dialog
-    const confirmMessage = `Are you sure you want to change ${userName}'s role?\n\nCurrent Role: ${currentRole}\nNew Role: ${newRole}\n\nEmail: ${userEmail}`;
-    const confirmed = window.confirm(confirmMessage);
-    
-    if (!confirmed) {
-      // If user cancels, reset the dropdown to current role
-      setUserRoles(prev => ({
-        ...prev,
-        [userId]: currentRole
-      }));
-      return;
-    }
-    
+  const handleRoleChange = (userId, newRole) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    setRoleChangeRequest({
+      userId,
+      userName: user.username,
+      userEmail: user.email,
+      currentRole: user.role,
+      newRole
+    });
+    setShowRoleChangeConfirm(true);
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!roleChangeRequest) return;
+    const { userId, newRole } = roleChangeRequest;
     try {
-      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_ROLE), 
-        { 
-          user_id: userId, 
+      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_ROLE),
+        {
+          user_id: userId,
           role: newRole
         },
         {
@@ -252,14 +252,27 @@ function Dashboard() {
         }
       );
       if (response.data.message) {
-        // Refresh the entire page instantly after successful role change
         window.location.reload();
       } else {
         setError(response.data.error);
+        // revert UI select to original role on failure
+        setUserRoles(prev => ({ ...prev, [roleChangeRequest.userId]: roleChangeRequest.currentRole }));
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error updating role');
+      setUserRoles(prev => ({ ...prev, [roleChangeRequest.userId]: roleChangeRequest.currentRole }));
+    } finally {
+      setShowRoleChangeConfirm(false);
+      setRoleChangeRequest(null);
     }
+  };
+
+  const handleCancelRoleChange = () => {
+    if (roleChangeRequest) {
+      setUserRoles(prev => ({ ...prev, [roleChangeRequest.userId]: roleChangeRequest.currentRole }));
+    }
+    setShowRoleChangeConfirm(false);
+    setRoleChangeRequest(null);
   };
 
   // Convert tree permissions to permission_metadata format
@@ -405,6 +418,7 @@ function Dashboard() {
     // Open website password editing
     setEditingWebsitePasswordUserId(user.id);
     setEditingWebsitePassword("");
+    setEditingWebsitePasswordConfirm("");
     setShowWebsitePassword(false);
     setSelectedUserIdForActions(null); // Clear mobile selection
   };
@@ -505,6 +519,10 @@ function Dashboard() {
       // Find user to get their name for success message
       const user = users.find(user => user.id === userId);
       const userName = user ? user.username : 'user';
+      if (editingWebsitePassword !== editingWebsitePasswordConfirm) {
+        setError('Passwords do not match');
+        return;
+      }
       
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_WEBSITE_PASSWORD), {
         user_id: userId,
@@ -518,6 +536,7 @@ function Dashboard() {
         setError("");
         setEditingWebsitePasswordUserId(null);
         setEditingWebsitePassword("");
+        setEditingWebsitePasswordConfirm("");
         // Refresh users list immediately after successful password update
         fetchUsers();
       } else {
@@ -534,6 +553,7 @@ function Dashboard() {
     setShowMailKey(false);
     setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
+    setEditingWebsitePasswordConfirm("");
     setShowWebsitePassword(false);
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -562,12 +582,18 @@ function Dashboard() {
 
   // Get admin users
   const getAdminUsers = () => {
-    return users.filter(user => user.role === 'admin');
+    return users
+      .filter(user => user.role === 'admin')
+      .slice()
+      .sort((a, b) => (a.username || '').localeCompare(b.username || '', 'en', { sensitivity: 'base' }));
   };
 
   // Get regular users
   const getRegularUsers = () => {
-    return users.filter(user => user.role === 'user');
+    return users
+      .filter(user => user.role === 'user')
+      .slice()
+      .sort((a, b) => (a.username || '').localeCompare(b.username || '', 'en', { sensitivity: 'base' }));
   };
 
   const canEditPermissions = (targetUserRole) => {
@@ -766,35 +792,15 @@ function Dashboard() {
                               <label htmlFor={`mail-key-${user.id}`} className="password-label">
                                 New Mail Key
                               </label>
-                              <div className="password-input-container">
-                                <input
-                                  id={`mail-key-${user.id}`}
-                                  type={showMailKey ? "text" : "password"}
-                                  placeholder="Enter new mail key"
-                                  value={editingAppPassword}
-                                  onChange={e => setEditingAppPassword(e.target.value)}
-                                  className="mail-key-input"
-                                  autoComplete="new-password"
-                                />
-                                <button
-                                  type="button"
-                                  className="password-toggle-btn"
-                                  onClick={() => setShowMailKey(!showMailKey)}
-                                  title={showMailKey ? "Hide mail key" : "Show mail key"}
-                                >
-                                  {showMailKey ? (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                      <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                      <line x1="1" y1="1" x2="23" y2="23"/>
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
+                              <PasswordToggle
+                                id={`mail-key-${user.id}`}
+                                name={`mail-key-${user.id}`}
+                                value={editingAppPassword}
+                                onChange={e => setEditingAppPassword(e.target.value)}
+                                placeholder="Enter new mail key"
+                                className="mail-key-input"
+                                autoComplete="new-password"
+                              />
                             </div>
                             <div className="password-form-actions">
                               <button
@@ -827,34 +833,25 @@ function Dashboard() {
                               <label htmlFor={`website-password-${user.id}`} className="password-label">
                                 New Website Password
                               </label>
-                              <div className="password-input-container">
-                                <input
-                                  id={`website-password-${user.id}`}
-                                  type={showWebsitePassword ? "text" : "password"}
-                                  placeholder="Enter new password"
-                                  value={editingWebsitePassword}
-                                  onChange={e => setEditingWebsitePassword(e.target.value)}
+                              <PasswordToggle
+                                id={`website-password-${user.id}`}
+                                name={`website-password-${user.id}`}
+                                value={editingWebsitePassword}
+                                onChange={e => setEditingWebsitePassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="website-password-input"
+                                autoComplete="new-password"
+                              />
+                              <div style={{ marginTop: '8px' }}>
+                                <PasswordToggle
+                                  id={`website-password-confirm-${user.id}`}
+                                  name={`website-password-confirm-${user.id}`}
+                                  value={editingWebsitePasswordConfirm}
+                                  onChange={e => setEditingWebsitePasswordConfirm(e.target.value)}
+                                  placeholder="Confirm new password"
                                   className="website-password-input"
                                   autoComplete="new-password"
                                 />
-                                <button
-                                  type="button"
-                                  className="password-toggle-btn"
-                                  onClick={() => setShowWebsitePassword(!showWebsitePassword)}
-                                  title={showWebsitePassword ? "Hide password" : "Show password"}
-                                >
-                                  {showWebsitePassword ? (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                      <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                      <line x1="1" y1="1" x2="23" y2="23"/>
-                                    </svg>
-                                  )}
-                                </button>
                               </div>
                               <div className="password-strength-indicator">
                                 {editingWebsitePassword && (
@@ -871,7 +868,7 @@ function Dashboard() {
                               <button
                                 className="password-save-btn"
                                 onClick={() => handleSaveWebsitePassword(user.id)}
-                                disabled={!editingWebsitePassword || editingWebsitePassword.length < 6}
+                                  disabled={!editingWebsitePassword || editingWebsitePassword.length < 6 || editingWebsitePassword !== editingWebsitePasswordConfirm}
                                 title="Save new website password"
                               >
                                 Save Password
@@ -1130,6 +1127,17 @@ function Dashboard() {
                                   )}
                                 </button>
                               </div>
+                              <div style={{ marginTop: '8px' }}>
+                                <PasswordToggle
+                                  id={`website-password-confirm-${user.id}`}
+                                  name={`website-password-confirm-${user.id}`}
+                                  value={editingWebsitePasswordConfirm}
+                                  onChange={e => setEditingWebsitePasswordConfirm(e.target.value)}
+                                  placeholder="Confirm new password"
+                                  className="website-password-input"
+                                  autoComplete="new-password"
+                                />
+                              </div>
                               <div className="password-strength-indicator">
                                 {editingWebsitePassword && (
                                   <div className={`strength-meter ${editingWebsitePassword.length >= 8 ? 'strong' : editingWebsitePassword.length >= 6 ? 'medium' : 'weak'}`}>
@@ -1145,7 +1153,7 @@ function Dashboard() {
                               <button
                                 className="password-save-btn"
                                 onClick={() => handleSaveWebsitePassword(user.id)}
-                                disabled={!editingWebsitePassword || editingWebsitePassword.length < 6}
+                                disabled={!editingWebsitePassword || editingWebsitePassword.length < 6 || editingWebsitePassword !== editingWebsitePasswordConfirm}
                                 title="Save new website password"
                               >
                                 Save Password
@@ -1272,6 +1280,67 @@ function Dashboard() {
                 className="cancel-delete-btn"
                 onClick={handleCancelDelete}
                 title="Cancel deletion"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Confirmation Modal */}
+      {showRoleChangeConfirm && roleChangeRequest && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelRoleChange()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Confirm Role Change</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelRoleChange}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Are you sure you want to change <strong>{roleChangeRequest.userName}</strong>'s role?
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{roleChangeRequest.userEmail}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Current Role:</span>
+                    <span className="detail-value">{roleChangeRequest.currentRole}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">New Role:</span>
+                    <span className="detail-value">{roleChangeRequest.newRole}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>This change affects the user's access immediately.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleConfirmRoleChange}
+                title="Confirm role change"
+              >
+                Yes, Change Role
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelRoleChange}
+                title="Cancel role change"
               >
                 Cancel
               </button>

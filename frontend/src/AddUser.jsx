@@ -9,6 +9,7 @@ import {
 } from './config';
 import { useAuth } from './Components/AuthContext';
 import './Dashboard.css'; // Import the CSS file
+import PasswordToggle from './Components/Password-Toggle';
 
 // Tree-based Permissions Component for dynamic factory.department.service combinations
 const TreeBasedPermissions = ({ 
@@ -189,6 +190,7 @@ function AddUser() {
   const [appPassword, setAppPassword] = useState("");
   const [showAppPassword, setShowAppPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
 
   const [permissions, setPermissions] = useState({});
@@ -202,6 +204,7 @@ function AddUser() {
     setUsername('');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setAppPassword('');
     setRole('user');
     setPermissions({});
@@ -300,6 +303,7 @@ function AddUser() {
     setUsername('');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setAppPassword('');
     setRole('user');
     setPermissions({});
@@ -321,6 +325,10 @@ function AddUser() {
     // Check if user has selected any permissions
     if (Object.keys(permissions).length === 0) {
       setError('Please select at least one permission for the user.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
     
@@ -454,74 +462,37 @@ function AddUser() {
             
             <div className="form-group">
               <label htmlFor="password">Password:</label>
-              <div className="password-input-container">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                  autoFill="off"
-                  data-form-type="other"
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <PasswordToggle
+                id="password"
+                name="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirm-password">Confirm Password:</label>
+              <PasswordToggle
+                id="confirm-password"
+                name="confirm-new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
             </div>
 
             <div className="form-group">
               <label htmlFor="appPassword">App Password:</label>
-              <div className="password-input-container">
-                <input
-                  type={showAppPassword ? "text" : "password"}
-                  id="appPassword"
-                  name="new-app-password"
-                  value={appPassword}
-                  onChange={(e) => setAppPassword(e.target.value)}
-                  autoComplete="new-password"
-                  autoFill="off"
-                  data-form-type="other"
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowAppPassword(!showAppPassword)}
-                  title={showAppPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showAppPassword ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <PasswordToggle
+                id="appPassword"
+                name="new-app-password"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
             </div>
             
             <div className="form-group">
@@ -541,9 +512,6 @@ function AddUser() {
 
             <div className="form-group permissions-section">
               <label>Permissions:</label>
-              <div className="permissions-count">
-                Selected: {Object.keys(permissions).length} permission(s)
-              </div>
               <TreeBasedPermissions
                 permissions={permissions}
                 onPermissionChange={handlePermissionChange}
@@ -554,7 +522,7 @@ function AddUser() {
             </div>
             
             <div className="form-actions">
-              <button type="submit" className="submit-btn">Add User</button>
+              <button type="submit" className="submit-btn" disabled={!password || password.length < 6 || password !== confirmPassword}>Add User</button>
             </div>
           </form>
         </div>

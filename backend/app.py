@@ -2289,12 +2289,36 @@ def get_authority_list():
                 "message": f"No authority data found in sheet {sheet_name}"
             }), 200
         
-        # Extract authority names from the data (assuming first column contains names)
-        # Skip header row
+        # Simpler approach (same style as salary processing):
+        # - First row is blank
+        # - Second row (index 1) is headers
+        # - Data starts from third row (index 2)
+        headers = authority_data[1] if len(authority_data) > 1 else []
+        data_rows = authority_data[2:] if len(authority_data) > 2 else []
+
+        # Find the column index for "Authority Name" (case-insensitive), fallback to first non-empty
+        header_search_term = "authority name"
+        authority_col_idx = None
+        for idx, h in enumerate(headers or []):
+            if str(h).strip().lower() == header_search_term:
+                authority_col_idx = idx
+                break
+        if authority_col_idx is None:
+            for idx, h in enumerate(headers or []):
+                if str(h).strip():
+                    authority_col_idx = idx
+                    break
+        if authority_col_idx is None:
+            authority_col_idx = 0
+
+        # Extract values from the identified column
         authority_names = []
-        for row in authority_data[1:]:
-            if row and row[0].strip():  # Check if first column has data
-                authority_names.append(row[0].strip())
+        for row in data_rows:
+            if not row or authority_col_idx >= len(row):
+                continue
+            value = str(row[authority_col_idx]).strip()
+            if value:
+                authority_names.append(value)
         
         return jsonify({
             "success": True,
