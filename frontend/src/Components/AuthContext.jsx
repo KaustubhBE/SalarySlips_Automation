@@ -211,21 +211,24 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, [logout]);
 
-  const contextValue = React.useMemo(() => ({
-    user,
-    isAuthenticated,
-    login,
-    loginWithGoogle,
-    logout,
-    hasPermission,
-    canAccessDepartment,
-    canAccessService,
-    canAccessFactory,
-    canAccessFactoryDepartment,
-    getUserFactories,
-    getUserDepartments,
-    getUserServices
-  }), [user, isAuthenticated, login, loginWithGoogle, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment, getUserFactories, getUserDepartments, getUserServices]);
+  const contextValue = React.useMemo(() => {
+    // Ensure all functions are defined, providing safe defaults if they're not
+    return {
+      user,
+      isAuthenticated,
+      login: login || (() => {}),
+      loginWithGoogle: loginWithGoogle || (() => {}),
+      logout: logout || (() => {}),
+      hasPermission: hasPermission || (() => false),
+      canAccessDepartment: canAccessDepartment || (() => false),
+      canAccessService: canAccessService || (() => false),
+      canAccessFactory: canAccessFactory || (() => false),
+      canAccessFactoryDepartment: canAccessFactoryDepartment || (() => false),
+      getUserFactories: getUserFactories || (() => []),
+      getUserDepartments: getUserDepartments || (() => []),
+      getUserServices: getUserServices || (() => [])
+    };
+  }, [user, isAuthenticated, login, loginWithGoogle, logout, hasPermission, canAccessDepartment, canAccessService, canAccessFactory, canAccessFactoryDepartment, getUserFactories, getUserDepartments, getUserServices]);
 
   if (loading) {
     return <div>Loading...</div>;

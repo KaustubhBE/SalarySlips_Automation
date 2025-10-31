@@ -434,9 +434,9 @@ def google_oauth_callback():
             logger.error("Google OAuth credentials not configured")
             return jsonify({'success': False, 'error': 'Google OAuth not configured'}), 500
         
-        # Exchange authorization code for tokens
+        # First, exchange code just to get user identity (email)
+        # We'll get a temporary access token to identify the user
         token_url = 'https://oauth2.googleapis.com/token'
-        # Handle both root and oauth-callback redirect URIs
         token_data = {
             'code': code,
             'client_id': google_client_id,
@@ -445,7 +445,7 @@ def google_oauth_callback():
             'grant_type': 'authorization_code'
         }
         
-        logger.info(f"Exchanging authorization code for tokens...")
+        logger.info(f"Exchanging authorization code to identify user...")
         token_response = requests.post(token_url, data=token_data)
         
         if token_response.status_code != 200:
@@ -453,37 +453,21 @@ def google_oauth_callback():
             return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         tokens = token_response.json()
-        access_token = tokens.get('access_token')
-        refresh_token = tokens.get('refresh_token')
+        temp_access_token = tokens.get('access_token')
+        new_refresh_token = tokens.get('refresh_token')  # May or may not be present
         granted_scopes = tokens.get('scope', '').split()
         
-        if not access_token:
+        if not temp_access_token:
             return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
-        
-        # Validate that we received the expected scopes
-        expected_scopes = [
-            'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/gmail.compose',
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive.file'
-        ]
         
         logger.info(f"Granted scopes: {granted_scopes}")
         
-        # Check if we have the minimum required scopes
-        missing_scopes = [scope for scope in expected_scopes if scope not in granted_scopes]
-        if missing_scopes:
-            logger.warning(f"Missing expected scopes: {missing_scopes}")
-            # Continue anyway, but log the warning
-        
-        # Get user info from Google
+        # Get user info from Google to identify the user
         user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo'
-        headers = {'Authorization': f'Bearer {access_token}'}
+        headers = {'Authorization': f'Bearer {temp_access_token}'}
         
-        logger.info(f"Getting user info from Google with access token: {access_token[:20]}...")
+        logger.info(f"Getting user info from Google...")
         user_info_response = requests.get(user_info_url, headers=headers)
-        
-        logger.info(f"User info response status: {user_info_response.status_code}")
         
         if user_info_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_info_response.text}")
@@ -498,15 +482,64 @@ def google_oauth_callback():
         
         logger.info(f"Extracted email: {email}, name: {name}")
         
+        # NOW CHECK: Does this user already have valid credentials in our database?
+        logger.info(f"🔍 Checking if user {email} has existing valid credentials...")
+        existing_user = get_user_by_email_with_metadata(email)
+        
+        # Determine which tokens to use
+        access_token = temp_access_token
+        refresh_token = new_refresh_token
+        
+        if existing_user:
+            existing_access_token = existing_user.get('google_access_token')
+            existing_refresh_token = existing_user.get('google_refresh_token')
+            
+            # If user has existing refresh token, prefer to keep it (more valuable)
+            if existing_refresh_token and not new_refresh_token:
+                logger.info(f"✅ User has existing refresh token, will keep using it")
+                refresh_token = existing_refresh_token
+            
+            # Check if we got all required scopes
+            expected_scopes = [
+                'https://www.googleapis.com/auth/gmail.send',
+                'https://www.googleapis.com/auth/gmail.compose',
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive.file'
+            ]
+            
+            has_all_scopes = all(scope in granted_scopes for scope in expected_scopes)
+            
+            # Check if existing user has all required scopes stored
+            existing_has_refresh = bool(existing_refresh_token)
+            existing_has_access = bool(existing_access_token)
+            
+            # If user has existing tokens AND we didn't get new refresh token (meaning no consent was shown)
+            # AND user has valid existing credentials, use the existing credentials
+            if existing_has_refresh and not new_refresh_token:
+                logger.info(f"✅ User has existing valid credentials, using stored tokens (no consent needed)")
+                # Don't update tokens, keep existing ones
+                access_token = existing_access_token
+                refresh_token = existing_refresh_token
+            elif not has_all_scopes:
+                logger.warning(f"⚠️ Missing required scopes. Requesting full consent...")
+                # Return a special response telling frontend to request full consent
+                return jsonify({
+                    'success': False, 
+                    'needs_consent': True,
+                    'email': email,
+                    'message': 'Additional permissions required. Please grant access.'
+                }), 200
+        else:
+            logger.info(f"ℹ️ New user, will create account with provided tokens")
+        
         if not email:
             logger.error("No email found in user info")
             return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
         logger.info(f"Google OAuth successful for email: {email}")
         
-        # Check if user exists in database
-        logger.info(f"Looking up user in database for email: {email}")
-        user = get_user_by_email_with_metadata(email)
+        # Use the existing_user we already fetched above
+        user = existing_user
         
         if not user:
             logger.info(f"User not found in database for email: {email}")
@@ -652,3 +685,153 @@ def google_config():
     except Exception as e:
         logger.error(f"Google config check error: {e}")
         return jsonify({'success': False, 'error': 'Configuration check failed'}), 500
+
+@auth_bp.route('/google/check-credentials', methods=['POST'])
+def check_google_credentials():
+    """Check if user has valid Google OAuth credentials stored in database"""
+    try:
+        logger.info("=== CHECK GOOGLE CREDENTIALS REQUEST ===")
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            logger.warning("No email provided for credential check")
+            return jsonify({'valid': False, 'needsAuth': True, 'error': 'Email is required'}), 400
+        
+        logger.info(f"Checking credentials for email: {email}")
+        
+        # Get user from database
+        user = get_user_by_email_with_metadata(email)
+        
+        if not user:
+            logger.info(f"User not found in database: {email}")
+            return jsonify({'valid': False, 'needsAuth': True, 'error': 'User not found'}), 200
+        
+        # Check if user has Google OAuth tokens
+        access_token = user.get('google_access_token')
+        refresh_token = user.get('google_refresh_token')
+        
+        if not access_token and not refresh_token:
+            logger.info(f"No Google OAuth tokens found for user: {email}")
+            return jsonify({'valid': False, 'needsAuth': True, 'message': 'No OAuth tokens found'}), 200
+        
+        # If refresh token exists, credentials are valid (we can always get new access token)
+        if refresh_token:
+            logger.info(f"Valid refresh token found for user: {email}")
+            return jsonify({
+                'valid': True, 
+                'needsAuth': False,
+                'user': {
+                    'email': email,
+                    'username': user.get('username'),
+                    'has_refresh_token': True
+                }
+            }), 200
+        
+        # If only access token exists, check if it's expired
+        # Note: We'll assume it's valid if it exists, actual validation happens during use
+        if access_token:
+            logger.info(f"Access token found for user: {email}")
+            return jsonify({
+                'valid': True, 
+                'needsAuth': False,
+                'user': {
+                    'email': email,
+                    'username': user.get('username'),
+                    'has_access_token': True
+                }
+            }), 200
+        
+        # No valid tokens found
+        logger.info(f"No valid credentials for user: {email}")
+        return jsonify({'valid': False, 'needsAuth': True, 'message': 'Credentials expired or invalid'}), 200
+        
+    except Exception as e:
+        logger.error(f"Error checking Google credentials: {e}", exc_info=True)
+        return jsonify({'valid': False, 'needsAuth': True, 'error': 'Internal server error'}), 500
+
+@auth_bp.route('/google/login-stored', methods=['POST'])
+def login_with_stored_credentials():
+    """Login user using stored Google OAuth credentials without requiring OAuth consent"""
+    try:
+        logger.info("=== LOGIN WITH STORED CREDENTIALS REQUEST ===")
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            logger.warning("No email provided for login")
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+        
+        logger.info(f"Attempting login with stored credentials for: {email}")
+        
+        # Get user from database with full metadata
+        user = get_user_by_email_with_metadata(email)
+        
+        if not user:
+            logger.warning(f"User not found: {email}")
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Verify user has valid Google OAuth tokens
+        access_token = user.get('google_access_token')
+        refresh_token = user.get('google_refresh_token')
+        
+        if not access_token and not refresh_token:
+            logger.warning(f"No valid OAuth tokens for user: {email}")
+            return jsonify({'success': False, 'error': 'No valid OAuth credentials found. Please sign in with Google.'}), 401
+        
+        # Get user permissions and metadata
+        role = user.get('role', 'user')
+        permissions = user.get('permissions', {})
+        tree_permissions = user.get('tree_permissions', {})
+        permission_metadata = user.get('permission_metadata', {})
+        
+        # For admins, use centralized RBAC configuration
+        if role == 'admin':
+            try:
+                from app import generate_permission_metadata
+                permission_metadata = generate_permission_metadata('admin')
+                
+                # Generate permissions from the centralized configuration
+                permissions = {}
+                for factory, factory_data in permission_metadata.get('services', {}).items():
+                    for service in factory_data:
+                        permissions[service] = True
+            except Exception as e:
+                logger.error(f"Error generating admin permissions: {e}")
+        
+        # Prepare user data for response
+        user_response = {
+            'id': user.get('id'),
+            'email': user['email'],
+            'role': role,
+            'username': user['username'],
+            'permissions': permissions,
+            'permission_metadata': permission_metadata,
+            'tree_permissions': tree_permissions,
+            'google_picture': user.get('google_picture', ''),
+            'has_gmail_access': bool(access_token or refresh_token),
+            'has_sheets_access': bool(access_token or refresh_token),
+            'has_drive_access': bool(access_token or refresh_token)
+        }
+        
+        # Update last login timestamp
+        try:
+            user_ref = db.collection('USERS').document(user.get('id'))
+            user_ref.update({
+                'last_google_login': datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Failed to update last login timestamp: {e}")
+        
+        # Set session
+        session['user'] = user_response
+        session.permanent = True
+        
+        logger.info(f"Login with stored credentials successful: {email}")
+        logger.info(f"User has Gmail access: {user_response['has_gmail_access']}")
+        
+        return jsonify({'success': True, 'user': user_response}), 200
+        
+    except Exception as e:
+        logger.error(f"Login with stored credentials error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500

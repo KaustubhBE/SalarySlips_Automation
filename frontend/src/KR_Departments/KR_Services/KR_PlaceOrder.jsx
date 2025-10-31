@@ -7,7 +7,7 @@ import LoadingSpinner from '../../LoadingSpinner'
 
 // Constants
 const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
-const IMPORTANCE_OPTIONS = ['Normal', 'Urgent', 'Very-Urgent']
+const IMPORTANCE_OPTIONS = ['Normal', 'Urgent', 'VeryUrgent']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes

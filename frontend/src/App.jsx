@@ -259,7 +259,19 @@ const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
 
 function App() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, login, logout, canAccessService, canAccessDepartment, canAccessFactory } = useAuth();
+  const authContext = useAuth();
+  const { 
+    user, 
+    isAuthenticated, 
+    login, 
+    logout, 
+    canAccessService, 
+    canAccessDepartment, 
+    canAccessFactory 
+  } = authContext;
+  
+  // Provide a safe fallback for canAccessFactory to prevent undefined errors
+  const safeCanAccessFactory = canAccessFactory || (() => false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -304,7 +316,7 @@ function App() {
     const permissionMetadata = user.permission_metadata || {};
     const userFactories = permissionMetadata.factories || [];
     
-    // If we have permission_metadata, use it
+    // If we have permission_metadata with factories, use it
     if (userFactories.length > 0) {
       // Debug logging (remove in production)
       if (process.env.NODE_ENV === 'development') {
@@ -313,15 +325,28 @@ function App() {
       return userFactories;
     }
     
-    // Fallback to old logic for regular users
+    // Fallback to old logic for regular users (only if canAccessFactory is available)
+    // Use safe fallback to prevent errors
     const allFactories = ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'];
-    const accessibleFactories = allFactories.filter(factory => canAccessFactory(factory));
-    
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('App.jsx - Accessible factories from fallback logic:', accessibleFactories);
+    try {
+      const accessibleFactories = allFactories.filter(factory => {
+        try {
+          return safeCanAccessFactory(factory);
+        } catch (err) {
+          console.warn(`Error checking access for factory ${factory}:`, err);
+          return false;
+        }
+      });
+      
+      // Debug logging (remove in production)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('App.jsx - Accessible factories from fallback logic:', accessibleFactories);
+      }
+      return accessibleFactories;
+    } catch (err) {
+      console.error('Error in getAccessibleFactoriesForUser fallback:', err);
+      return [];
     }
-    return accessibleFactories;
   };
 
   return (
@@ -346,63 +371,80 @@ function App() {
           isAuthenticated ? (
             <div className="splash-page">
               <h1>Welcome to Bajaj Earths</h1>
-              <h3>Please choose an option below:</h3>
-              {/* Debug information - remove in production */}
-              {process.env.NODE_ENV === 'development' && (
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
-                  <strong>Debug Info:</strong><br/>
-                  User Role: {user?.role}<br/>
-                  Accessible Factories: {JSON.stringify(getAccessibleFactoriesForUser())}<br/>
-                  User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-                  Has Reports Permission: {canAccessService('reports') ? 'Yes' : 'No'}<br/>
-                  Can Access Store: {canAccessDepartment('store') ? 'Yes' : 'No'}<br/>
-                  Can Access Human Resource: {canAccessDepartment('humanresource') ? 'Yes' : 'No'}
-                </div>
-              )}
-              <div className="navigation-links">
-                {/* Factory Buttons - Show factory navigation buttons */}
-                {getAccessibleFactoriesForUser().map(factory => (
-                  <span 
-                    key={factory}
-                    onClick={() => navigate(`/${factory}`)} 
-                    className="nav-link"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    {FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1)}
-                  </span>
-                ))}
-                
-                
-                {/* User Management - Show for admins only */}
-                {isAdmin && (
-                  <span 
-                    onClick={() => navigate('/dashboard')} 
-                    className="nav-link admin-link"
-                    role="button"
-                    tabIndex={0}
-                    aria-label="User Management (Admin Only)"
-                  >
-                    User Management
-                  </span>
-                )}
-                
-                {/* Show message if user has no permissions */}
-                {!isAdmin && getAccessibleFactoriesForUser().length === 0 && !canAccessService('reports') && (
+              
+              {/* Check if user has no permissions at all */}
+              {!isAdmin && getAccessibleFactoriesForUser().length === 0 && !canAccessService('reports') ? (
+                <div style={{ 
+                  textAlign: 'center',
+                  marginTop: '40px'
+                }}>
                   <div style={{ 
                     color: '#ff6b6b', 
-                    fontSize: '16px', 
-                    marginTop: '20px',
-                    padding: '15px',
+                    fontSize: '18px', 
+                    marginBottom: '20px',
+                    padding: '30px',
                     backgroundColor: '#fff5f5',
-                    borderRadius: '8px',
-                    border: '1px solid #ff6b6b'
+                    borderRadius: '12px',
+                    border: '2px solid #ff6b6b',
+                    maxWidth: '600px',
+                    margin: '40px auto',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                   }}>
-                    ⚠️ <strong>No Access Granted</strong><br/>
-                    You currently don't have any permissions assigned. Please contact your administrator to get access to the system.
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>⚠️</div>
+                    <h2 style={{ color: '#ff6b6b', marginBottom: '15px' }}>No Access Granted</h2>
+                    <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#333' }}>
+                      Your account has been created successfully, but you don't have any permissions assigned yet.
+                    </p>
+                    <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#333', marginTop: '15px', fontWeight: 'bold' }}>
+                      Please contact your administrator to get access to the system.
+                    </p>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <h3>Please choose an option below:</h3>
+                  {/* Debug information - remove in production */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
+                      <strong>Debug Info:</strong><br/>
+                      User Role: {user?.role}<br/>
+                      Accessible Factories: {JSON.stringify(getAccessibleFactoriesForUser())}<br/>
+                      User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+                      Has Reports Permission: {canAccessService('reports') ? 'Yes' : 'No'}<br/>
+                      Can Access Store: {canAccessDepartment('store') ? 'Yes' : 'No'}<br/>
+                      Can Access Human Resource: {canAccessDepartment('humanresource') ? 'Yes' : 'No'}
+                    </div>
+                  )}
+                  <div className="navigation-links">
+                    {/* Factory Buttons - Show factory navigation buttons */}
+                    {getAccessibleFactoriesForUser().map(factory => (
+                      <span 
+                        key={factory}
+                        onClick={() => navigate(`/${factory}`)} 
+                        className="nav-link"
+                        role="button"
+                        tabIndex={0}
+                      >
+                        {FACTORY_NAMES[factory] || factory.charAt(0).toUpperCase() + factory.slice(1)}
+                      </span>
+                    ))}
+                    
+                    
+                    {/* User Management - Show for admins only */}
+                    {isAdmin && (
+                      <span 
+                        onClick={() => navigate('/dashboard')} 
+                        className="nav-link admin-link"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="User Management (Admin Only)"
+                      >
+                        User Management
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           ) : <Navigate to="/login" replace />
         } />

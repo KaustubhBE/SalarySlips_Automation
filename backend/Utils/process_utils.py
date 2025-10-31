@@ -1427,39 +1427,23 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                     for recipient in recipients_to:
                         try:
                             if process_name == "kr_reactor-report":
-                                # Import OAuth email function
-                                from Utils.email_utils import send_email_oauth, send_email_gmail_api
                                 
-                                # If Google tokens are provided, try Gmail API directly
-                                if google_access_token and google_refresh_token:
-                                    logger.info(f"Using provided Google tokens for Gmail API")
-                                    logger.info(f"Email attachment path: {result['output_file']}")
-                                    logger.info(f"Attachment file exists: {os.path.exists(result['output_file'])}")
-                                    success = send_email_gmail_api(
-                                        user_email=user_id,
-                                        recipient_email=recipient,
-                                        subject=email_subject,
-                                        body=email_body,
-                                        attachment_paths=[result["output_file"]],
-                                        cc=','.join(recipients_cc) if recipients_cc else None,
-                                        bcc=','.join(recipients_bcc) if recipients_bcc else None,
-                                        access_token=google_access_token,
-                                        refresh_token=google_refresh_token
-                                    )
-                                else:
-                                    # Use OAuth email function with fallback
-                                    logger.info(f"Using OAuth email function with fallback")
-                                    logger.info(f"Email attachment path: {result['output_file']}")
-                                    logger.info(f"Attachment file exists: {os.path.exists(result['output_file'])}")
-                                    success = send_email_oauth(
-                                        user_email=user_id,
-                                        recipient_email=recipient,
-                                        subject=email_subject,
-                                        body=email_body,
-                                        attachment_paths=[result["output_file"]],
-                                        cc=','.join(recipients_cc) if recipients_cc else None,
-                                        bcc=','.join(recipients_bcc) if recipients_bcc else None
-                                    )
+                                
+                                # If Google tokens are provided, use them; otherwise, function will attempt DB/session tokens
+                                logger.info(f"KR reactor: Sending via Gmail API only (no SMTP fallback)")
+                                logger.info(f"Email attachment path: {result['output_file']}")
+                                logger.info(f"Attachment file exists: {os.path.exists(result['output_file'])}")
+                                success = send_email_gmail_api(
+                                    user_email=user_id,
+                                    recipient_email=recipient,
+                                    subject=email_subject,
+                                    body=email_body,
+                                    attachment_paths=[result["output_file"]],
+                                    cc=','.join(recipients_cc) if recipients_cc else None,
+                                    bcc=','.join(recipients_bcc) if recipients_bcc else None,
+                                    access_token=google_access_token,
+                                    refresh_token=google_refresh_token
+                                )
                             else:
                                 success = send_email_smtp(
                                     user_email=user_id,
@@ -2132,7 +2116,7 @@ def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_descr
             'message': f'Error syncing material data: {str(e)}'
         }
 
-def process_general_reports(template_files, attachment_files, file_sequence, sheet_id, sheet_name, send_whatsapp, send_email, mail_subject, use_template_as_caption, user_id, output_dir, logger, send_email_smtp, send_whatsapp_message, validate_sheet_id_func, prepare_file_paths_func, fetch_google_sheet_data_func, process_template_func, send_log_report_to_user_func):
+def process_general_reports(template_files, attachment_files, file_sequence, sheet_id, sheet_name, send_whatsapp, send_email, mail_subject, use_template_as_caption, user_id, output_dir, logger, send_email_func, send_whatsapp_message, validate_sheet_id_func, prepare_file_paths_func, fetch_google_sheet_data_func, process_template_func, send_log_report_to_user_func):
     """
     Process general reports using reactor report template logic with table and column processing
     This function moves the heavy functionality from app.py to process_utils.py
@@ -2390,7 +2374,7 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
                     success, failure_reason = handle_email_sending(
                         recipient_name, recipient_email, cc_email, bcc_email,
                         processed_mail_subject, email_content, attachment_paths,
-                        user_id, send_email_smtp, logger
+                        user_id, send_email_func, logger
                     )
                     
                     if not success:
@@ -2738,7 +2722,7 @@ def handle_whatsapp_validation_and_sending_v2(recipient_name, country_code, phon
         logger.error("Error in WhatsApp sending to {}: {}".format(recipient_phone, e))
         return False, f"Exception: {str(e)}"
 
-def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, mail_subject, email_content, attachment_paths, user_id, send_email_smtp, logger):
+def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, mail_subject, email_content, attachment_paths, user_id, send_email_func, logger):
     """
     Handle email sending with proper error tracking
     """
@@ -2755,7 +2739,7 @@ def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, m
         </html>
         """
         
-        success = send_email_smtp(
+        success = send_email_func(
             recipient_email=recipient_email,
             subject=email_subject_formatted,
             body=email_body,
@@ -2781,6 +2765,19 @@ def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, m
             return False, "Email service error"
         elif success == "EMAIL_SEND_ERROR":
             return False, "Failed to send email"
+        # Gmail API specific error codes
+        elif success == "NO_GMAIL_ACCESS":
+            return False, "You do not have Gmail access"
+        elif success == "NO_GOOGLE_ACCESS_TOKEN":
+            return False, "No Google access token found"
+        elif success == "GMAIL_AUTH_FAILED":
+            return False, "Gmail authentication failed"
+        elif success == "GMAIL_PERMISSION_DENIED":
+            return False, "Gmail permission denied"
+        elif success == "GMAIL_API_ERROR":
+            return False, "Gmail API error"
+        elif success == "GMAIL_SEND_ERROR":
+            return False, "Gmail send error"
         elif not success:
             return False, "Failed to send email"
         else:

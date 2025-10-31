@@ -417,6 +417,26 @@ export const RBAC_HELPERS = {
     return factoryConfig.departments[department].services[service].permission;
   },
   
+  // Check if user can access any services in a specific factory
+  canAccessFactory: (user, factory) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+
+    const permissionMetadata = user.permission_metadata || {};
+    const userFactories = permissionMetadata.factories || [];
+    
+    // Check if factory is in user's accessible factories list
+    if (userFactories.includes(factory)) {
+      return true;
+    }
+    
+    // Also check if user has access to any department in this factory
+    const departments = permissionMetadata.departments || {};
+    const factoryDepartments = departments[factory] || [];
+    
+    return factoryDepartments.length > 0;
+  },
+  
   // Check if user can access a factory-department combination
   canAccessFactoryDepartment: (user, factory, department) => {
     if (!user) return false;

@@ -238,3 +238,82 @@ export const logOAuthDebug = (context, data) => {
   console.log('User Agent:', navigator.userAgent);
   console.log('=== END DEBUG ===');
 };
+
+/**
+ * Check if a token is expired based on expiry timestamp
+ * @param {string|number} expiryTime - Token expiry time (ISO string or Unix timestamp)
+ * @returns {boolean} - True if token is expired or invalid, false otherwise
+ */
+export const isTokenExpired = (expiryTime) => {
+  if (!expiryTime) {
+    return true; // No expiry time means no valid token
+  }
+  
+  try {
+    let expiryDate;
+    
+    // Handle ISO string format
+    if (typeof expiryTime === 'string') {
+      expiryDate = new Date(expiryTime);
+    } 
+    // Handle Unix timestamp (seconds or milliseconds)
+    else if (typeof expiryTime === 'number') {
+      // If timestamp is in seconds (< 10000000000), convert to milliseconds
+      expiryDate = new Date(expiryTime < 10000000000 ? expiryTime * 1000 : expiryTime);
+    } else {
+      return true; // Invalid format
+    }
+    
+    // Add a 5-minute buffer to refresh tokens before they expire
+    const bufferMs = 5 * 60 * 1000;
+    const now = new Date().getTime();
+    const expiryWithBuffer = expiryDate.getTime() - bufferMs;
+    
+    return now >= expiryWithBuffer;
+  } catch (error) {
+    console.error('Error checking token expiry:', error);
+    return true; // If error, assume expired
+  }
+};
+
+/**
+ * Validate if user has valid Google credentials
+ * @param {object} credentialData - Object containing token and expiry information
+ * @returns {object} - { valid: boolean, reason: string }
+ */
+export const validateGoogleCredentials = (credentialData) => {
+  if (!credentialData) {
+    return { valid: false, reason: 'No credential data provided' };
+  }
+  
+  const { access_token, refresh_token, token_expiry, email } = credentialData;
+  
+  if (!email) {
+    return { valid: false, reason: 'No email found in credentials' };
+  }
+  
+  if (!access_token && !refresh_token) {
+    return { valid: false, reason: 'No tokens found' };
+  }
+  
+  // If we have a refresh token, we can always get a new access token
+  if (refresh_token) {
+    return { valid: true, reason: 'Valid refresh token available' };
+  }
+  
+  // Check if access token is expired
+  if (access_token && token_expiry) {
+    const expired = isTokenExpired(token_expiry);
+    if (expired) {
+      return { valid: false, reason: 'Access token expired and no refresh token' };
+    }
+    return { valid: true, reason: 'Valid access token available' };
+  }
+  
+  // If we have access token but no expiry, assume it might be valid
+  if (access_token) {
+    return { valid: true, reason: 'Access token available (no expiry data)' };
+  }
+  
+  return { valid: false, reason: 'Insufficient credential data' };
+};

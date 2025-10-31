@@ -34,9 +34,71 @@ class OAuthService {
   }
 
   /**
-   * Generate OAuth authorization URL
+   * Check if user has valid Google credentials in database
+   * @param {string} email - User's email address
+   * @returns {Promise<object>} - { valid: boolean, user: object, needsAuth: boolean }
    */
-  generateAuthUrl(state) {
+  async checkGoogleCredentials(email) {
+    try {
+      console.log(`🔍 Checking Google credentials for: ${email}`);
+      const response = await fetch(getApiUrl('auth/google/check-credentials'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      
+      if (!response.ok) {
+        console.error(`❌ Credentials check failed with status: ${response.status}`);
+        return { valid: false, needsAuth: true, error: 'Failed to check credentials' };
+      }
+      
+      const data = await response.json();
+      console.log(`✅ Credentials check result:`, data);
+      return data;
+    } catch (err) {
+      console.error('Error checking Google credentials:', err);
+      return { valid: false, needsAuth: true, error: err.message };
+    }
+  }
+
+  /**
+   * Login user with existing valid credentials (no OAuth consent needed)
+   * @param {string} email - User's email address
+   * @returns {Promise<object>} - { success: boolean, user: object }
+   */
+  async loginWithStoredCredentials(email) {
+    try {
+      console.log(`🔐 Logging in with stored credentials for: ${email}`);
+      const response = await fetch(getApiUrl('auth/google/login-stored'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      
+      if (!response.ok) {
+        console.error(`❌ Login with stored credentials failed: ${response.status}`);
+        return { success: false, error: 'Failed to login with stored credentials' };
+      }
+      
+      const data = await response.json();
+      console.log(`✅ Login with stored credentials successful`);
+      return data;
+    } catch (err) {
+      console.error('Error logging in with stored credentials:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Generate OAuth authorization URL
+   * @param {string} state - CSRF protection state
+   * @param {string} prompt - OAuth prompt parameter ('select_account' or 'consent')
+   * Uses 'select_account' by default to show account picker
+   * If user needs to grant permissions, use 'consent' to force consent screen
+   */
+  generateAuthUrl(state, prompt = 'select_account') {
     if (!this.clientId || this.clientId === 'your-google-client-id') {
       throw new Error('Google OAuth not configured. Please contact administrator.');
     }
@@ -47,7 +109,7 @@ class OAuthService {
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('scope', this.scopes.join(' '));
     authUrl.searchParams.set('access_type', 'offline');
-    authUrl.searchParams.set('prompt', 'consent'); // Force consent screen
+    authUrl.searchParams.set('prompt', prompt);
     authUrl.searchParams.set('state', state);
 
     return authUrl.toString();
@@ -136,16 +198,41 @@ class OAuthService {
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Backend error:', response.status, errorText);
-      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    // Try to parse response as JSON
+    let data;
+    try {
+      const responseText = await response.text();
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (parseError) {
+      console.error('❌ Failed to parse response:', parseError);
+      throw new Error(`Server error: ${response.status} - Invalid response format`);
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      console.error('❌ Backend error:', response.status, data);
+      const errorMessage = data.error || data.message || `Server error: ${response.status}`;
+      throw new Error(errorMessage);
+    }
 
     if (!data.success || !data.user) {
-      throw new Error(data.error || 'OAuth callback failed');
+      const errorMessage = data.error || data.message || 'OAuth callback failed';
+      console.error('❌ OAuth callback failed:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Ensure user object has required structure
+    if (data.user) {
+      data.user = {
+        ...data.user,
+        permissions: data.user.permissions || {},
+        permission_metadata: data.user.permission_metadata || {
+          factories: [],
+          departments: {},
+          services: {}
+        },
+        tree_permissions: data.user.tree_permissions || {},
+        role: data.user.role || 'user'
+      };
     }
 
     return data;
@@ -193,6 +280,25 @@ class OAuthService {
       
       // Exchange code for tokens
       const result = await this.exchangeCodeForTokens(code, state);
+      
+      // Check if backend says we need full consent
+      if (!result.success && result.needs_consent) {
+        console.log('⚠️ Additional permissions required, requesting full consent...');
+        
+        // Generate new state and redirect to OAuth with consent prompt
+        const newState = this.generateState();
+        const authUrl = this.generateAuthUrl(newState, 'consent'); // Force consent screen
+        
+        localStorage.setItem('oauth_state', newState);
+        this.redirectToOAuth(authUrl);
+        
+        // Return pending status (will complete after consent)
+        return { success: false, pending: true, message: result.message };
+      }
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Authentication failed');
+      }
       
       console.log('✅ Google OAuth successful');
       

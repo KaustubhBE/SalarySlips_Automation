@@ -15,7 +15,7 @@ from Utils.config import CLIENT_SECRETS_FILE, drive, creds
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
-from Utils.email_utils import send_email_smtp
+from Utils.email_utils import send_email_smtp, send_email_oauth
 from Utils.whatsapp_utils import (
     send_whatsapp_message,
     get_employee_contact,
@@ -1365,7 +1365,7 @@ def generate_report():
             user_id=user_id,
             output_dir=OUTPUT_DIR,
             logger=logger,
-            send_email_smtp=send_email_smtp,
+            send_email_func=send_email_oauth,
             send_whatsapp_message=send_whatsapp_message,
             validate_sheet_id_func=validate_sheet_id,
             prepare_file_paths_func=prepare_file_paths,
@@ -1606,7 +1606,7 @@ def retry_reports():
                                 </html>
                                 """.format(email_content.replace('\n', '<br>'))
                                 user_email = session.get('user', {}).get('email')
-                                success = send_email_smtp(
+                                success = send_email_oauth(
                                     recipient_email=recipient_email,
                                     subject=email_subject,
                                     body=email_body,

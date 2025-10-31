@@ -80,6 +80,8 @@ function Login() {
   // Handle Google Sign-In button click
   const handleGoogleLogin = async () => {
     try {
+      // Initiate Google OAuth flow
+      // User will select their Google account, then backend checks if credentials exist
       await initiateGoogleAuth();
     } catch (error) {
       console.error('Google OAuth error:', error);
