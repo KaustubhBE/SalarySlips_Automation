@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
 import '../App.css';
+import BackButton from '../Components/BackButton';
 
 const OmkarFactory = () => {
   const navigate = useNavigate();
@@ -44,63 +45,67 @@ const OmkarFactory = () => {
 
   if (accessibleDepartments.length === 0) {
     return (
-      <div className="splash-page">
-        <h1>No Department Access</h1>
-        <p>You don't have access to any departments. Please contact your administrator.</p>
-        <div style={{ 
-          color: '#ff6b6b', 
-          fontSize: '14px', 
-          marginTop: '15px',
-          padding: '10px',
-          backgroundColor: '#fff5f5',
-          borderRadius: '5px',
-          border: '1px solid #ff6b6b'
-        }}>
-          ⚠️ <strong>No Permissions Assigned</strong><br/>
-          You currently don't have any permissions assigned. Please contact your administrator to get access to departments and services.
+      <div>
+        <BackButton 
+          label="Back to Main Menu" 
+          to="/app"
+        />
+        
+        <div className="splash-page">
+          <h1>No Department Access</h1>
+          <p>You don't have access to any departments. Please contact your administrator.</p>
+          <div style={{ 
+            color: '#ff6b6b', 
+            fontSize: '14px', 
+            marginTop: '15px',
+            padding: '10px',
+            backgroundColor: '#fff5f5',
+            borderRadius: '5px',
+            border: '1px solid #ff6b6b'
+          }}>
+            ⚠️ <strong>No Permissions Assigned</strong><br/>
+            You currently don't have any permissions assigned. Please contact your administrator to get access to departments and services.
+          </div>
         </div>
-        <button onClick={() => navigate('/app')} className="nav-link" style={{ marginTop: '15px' }}>
-          Back to Main Menu
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="splash-page">
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
-          <strong>Debug Info:</strong><br/>
-          Factory: Omkar<br/>
-          User Role: {user?.role}<br/>
-          User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-          Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
+    <div>
+      <BackButton 
+        label="Back to Main Menu" 
+        to="/app"
+      />
+      
+      <div className="splash-page">
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
+            <strong>Debug Info:</strong><br/>
+            Factory: Omkar<br/>
+            User Role: {user?.role}<br/>
+            User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+            Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
+          </div>
+        )}
+        
+        <h2>Available Departments - Omkar</h2>
+        <h3>Select a department to access its services:</h3>
+        
+        {/* Department Navigation Buttons */}
+        <div className="navigation-links">
+          {accessibleDepartments.map(dept => (
+            <span 
+              key={dept.key}
+              onClick={() => handleDepartmentNavigation(dept)} 
+              className="nav-link"
+              role="button"
+              tabIndex={0}
+            >
+              {dept.name}
+            </span>
+          ))}
         </div>
-      )}
-      
-      <h2>Available Departments - Omkar</h2>
-      <h3>Select a department to access its services:</h3>
-      
-      {/* Department Navigation Buttons */}
-      <div className="navigation-links">
-        {accessibleDepartments.map(dept => (
-          <span 
-            key={dept.key}
-            onClick={() => handleDepartmentNavigation(dept)} 
-            className="nav-link"
-            role="button"
-            tabIndex={0}
-          >
-            {dept.name}
-          </span>
-        ))}
-      </div>
-      
-      {/* Back to Main Menu Button - Bottom Left */}
-      <div className="back-button-container">
-        <button onClick={() => navigate('/app')} className="nav-link back-button">
-          ← Back to Main Menu
-        </button>
       </div>
     </div>
   );

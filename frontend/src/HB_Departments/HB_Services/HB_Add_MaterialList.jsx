@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
+import BackButton from '../../Components/BackButton'
 
 const HB_Add_MaterialList = () => {
   const navigate = useNavigate()
@@ -612,45 +613,8 @@ const HB_Add_MaterialList = () => {
 
   return (
     <div className="material_list-container">
-      {/* Back Button Section - Consistent across all pages */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'flex-start', 
-        alignItems: 'center', 
-        marginBottom: '20px',
-        padding: '10px 0',
-        borderBottom: '1px solid #e0e0e0'
-      }}>
-        <button 
-          onClick={() => navigate('/humnabad/hb_store')} 
-          className="back-button"
-          style={{
-            background: '#6c757d',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            e.target.style.background = '#5a6268'
-            e.target.style.transform = 'translateY(-1px)'
-          }}
-          onMouseOut={(e) => {
-            e.target.style.background = '#6c757d'
-            e.target.style.transform = 'translateY(0)'
-          }}
-        >
-          ← Back to Store
-        </button>
-      </div>
+      {/* Back Button Section - Always at top-left */}
+      <BackButton label="Back to Store" to="/humnabad/hb_store" />
       
       <div className="material-form-wrapper">
         <h2>Add New Material</h2>

@@ -10,6 +10,7 @@ import {
 import { useAuth } from './Components/AuthContext';
 import './Dashboard.css'; // Import the CSS file
 import PasswordToggle from './Components/Password-Toggle';
+import BackButton from './Components/BackButton';
 
 // Tree-based Permissions Component for dynamic factory.department.service combinations
 const TreeBasedPermissions = ({ 
@@ -409,12 +410,7 @@ function AddUser() {
   return (
     <div className="add-user-page-container">
       <div className="page-header">
-        <button 
-          className="back-btn"
-          onClick={() => window.location.href = '/dashboard'}
-        >
-          ← Back to Dashboard
-        </button>
+        <BackButton label="Back to Dashboard" to="/dashboard" />
         <h1>Add New User</h1>
       </div>
       

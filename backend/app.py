@@ -3480,15 +3480,18 @@ def send_log_report_to_user(user_email, delivery_stats, send_email_enabled, send
                 </html>
                 """
                 
-                # Send email with PDF attachment
-                send_email_smtp(
+                # Send email with PDF attachment (try Gmail API first, fallback to SMTP)
+                email_result = send_email_oauth(
+                    user_email=user_email,
                     recipient_email=user_email,
                     subject=email_subject,
                     body=email_body,
-                    attachment_paths=[pdf_path],
-                    user_email=user_email
+                    attachment_paths=[pdf_path]
                 )
-                logger.info(f"Log report email with PDF attachment sent successfully to {user_email}")
+                if email_result is True:
+                    logger.info(f"Log report email with PDF attachment sent successfully to {user_email}")
+                else:
+                    logger.warning(f"Log report email sending returned: {email_result}")
                 
             except Exception as e:
                 logger.error(f"Failed to send log report email to {user_email}: {e}")
@@ -3595,13 +3598,17 @@ def send_log_report_text_fallback(user_email, delivery_stats, send_email_enabled
                 </html>
                 """
                 
-                send_email_smtp(
+                # Send email (try Gmail API first, fallback to SMTP)
+                email_result = send_email_oauth(
+                    user_email=user_email,
                     recipient_email=user_email,
                     subject=email_subject,
-                    body=email_body,
-                    user_email=user_email
+                    body=email_body
                 )
-                logger.info(f"Log report email sent successfully to {user_email}")
+                if email_result is True:
+                    logger.info(f"Log report email sent successfully to {user_email}")
+                else:
+                    logger.warning(f"Log report email sending returned: {email_result}")
                 
             except Exception as e:
                 logger.error(f"Failed to send log report email to {user_email}: {e}")

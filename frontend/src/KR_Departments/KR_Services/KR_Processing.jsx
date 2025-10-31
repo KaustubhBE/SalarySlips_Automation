@@ -11,6 +11,7 @@ import { getApiUrl, makeApiCall, ENDPOINTS } from '../../config.js';
 import { useAuth } from '../../Components/AuthContext';
 import axios from 'axios';
 import AttachmentSequence from '../../Components/AttachmentSequence';
+import BackButton from '../../Components/BackButton';
 
 const plantData = [
   { 
@@ -378,45 +379,8 @@ function Processing({ mode = 'single' }) {
         <Route path="settings" element={<Settings />} />
         <Route path="" element={
           <div className="input-elements">
-            {/* Back Button Section - Consistent across all pages */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'flex-start', 
-              alignItems: 'center', 
-              marginBottom: '20px',
-              padding: '10px 0',
-              borderBottom: '1px solid #e0e0e0'
-            }}>
-              <button 
-                onClick={() => navigate('/kerur/kr_humanresource')} 
-                className="back-button"
-                style={{
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.target.style.background = '#5a6268'
-                  e.target.style.transform = 'translateY(-1px)'
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.background = '#6c757d'
-                  e.target.style.transform = 'translateY(0)'
-                }}
-              >
-                ← Back to Department
-              </button>
-            </div>
+            {/* Back Button Section - Always at top-left */}
+            <BackButton label="Back to Department" to="/kerur/kr_humanresource" />
             {mode === 'single' && (
               <>
                 <label htmlFor="employeeDetails">Enter Employee Code:</label>

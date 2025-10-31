@@ -4,6 +4,7 @@ import { useAuth } from '../Components/AuthContext';
 import SheetsMaterialList from './HO_Services/HO_Sheets-MaterialList';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
+import BackButton from '../Components/BackButton';
 
 const HOStore = () => {
   const navigate = useNavigate();
@@ -62,12 +63,16 @@ const HOStore = () => {
   // If user has no accessible services, show message
   if (accessibleServices.length === 0) {
     return (
-      <div className="splash-page">
-        <h2>Store - Head Office</h2>
-        <p>You don't have access to any services in this department.</p>
-        <button onClick={handleBackToFactory} className="nav-link back-button">
-          ← Back to Factory
-        </button>
+      <div>
+        <BackButton 
+          label="Back to Factory" 
+          onClick={handleBackToFactory}
+        />
+        
+        <div className="splash-page">
+          <h2>Store - Head Office</h2>
+          <p>You don't have access to any services in this department.</p>
+        </div>
       </div>
     );
   }
@@ -79,41 +84,41 @@ const HOStore = () => {
       
       {/* Default Department View */}
       <Route path="" element={
-        <div className="splash-page">
-          {process.env.NODE_ENV === 'development' && (
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
-              <strong>Debug Info:</strong><br/>
-              User Role: {user?.role}<br/>
-              Factory: Head Office<br/>
-              Department: Store<br/>
-              Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
-              User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
-              Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
+        <div>
+          <BackButton 
+            label="Back to Factory" 
+            onClick={handleBackToFactory}
+          />
+          
+          <div className="splash-page">
+            {process.env.NODE_ENV === 'development' && (
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
+                <strong>Debug Info:</strong><br/>
+                User Role: {user?.role}<br/>
+                Factory: Head Office<br/>
+                Department: Store<br/>
+                Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
+                User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
+                Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
+              </div>
+            )}
+            <h2>Store - Head Office</h2>
+            <h3>Available Services ({accessibleServices.length}):</h3>
+            
+            {/* Service Navigation Buttons */}
+            <div className="navigation-links">
+              {accessibleServices.map(service => (
+                <span 
+                  key={service.key}
+                  onClick={() => handleServiceNavigation(service)} 
+                  className="nav-link"
+                  role="button"
+                  tabIndex={0}
+                >
+                  {service.name}
+                </span>
+              ))}
             </div>
-          )}
-          <h2>Store - Head Office</h2>
-          <h3>Available Services ({accessibleServices.length}):</h3>
-          
-          {/* Service Navigation Buttons */}
-          <div className="navigation-links">
-            {accessibleServices.map(service => (
-              <span 
-                key={service.key}
-                onClick={() => handleServiceNavigation(service)} 
-                className="nav-link"
-                role="button"
-                tabIndex={0}
-              >
-                {service.name}
-              </span>
-            ))}
-          </div>
-          
-          {/* Back to Factory Button - Bottom Left */}
-          <div className="back-button-container">
-            <button onClick={handleBackToFactory} className="nav-link back-button">
-              ← Back to Factory
-            </button>
           </div>
         </div>
       } />

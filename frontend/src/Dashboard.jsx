@@ -10,6 +10,7 @@ import { useAuth } from './Components/AuthContext';
 import TreePermissions from './Components/TreePermissions';
 import './Dashboard.css';
 import PasswordToggle from './Components/Password-Toggle';
+import BackButton from './Components/BackButton';
 
 
 
@@ -628,6 +629,9 @@ function Dashboard() {
 
   return (
     <div className="dashboard-container centered">
+      {/* Back Button Section - Always at top-left */}
+      <BackButton label="Back to Main Menu" to="/app" />
+      
       <div className="dashboard-header">
         <div className="header-left">
           <h1>User Management Dashboard</h1>
