@@ -654,7 +654,7 @@ function Dashboard() {
       
       {/* Admin Users Table */}
       <div className="users-list admin-users-list">
-        <h2>Admin</h2>
+        <h2>Admins</h2>
         <div className="users-table-container">
           <table>
             <thead>
@@ -899,7 +899,7 @@ function Dashboard() {
 
       {/* Regular Users Table */}
       <div className="users-list regular-users-list">
-        <h2>User</h2>
+        <h2>Users</h2>
         <div className="users-table-container">
           <table>
             <thead>

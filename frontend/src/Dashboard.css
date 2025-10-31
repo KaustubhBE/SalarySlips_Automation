@@ -1000,7 +1000,7 @@
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #d1d5db;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: visible;
@@ -1041,6 +1041,9 @@ table {
   border-spacing: 0;
   background-color: white;
   table-layout: fixed;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 /* Column Widths */
@@ -1081,8 +1084,8 @@ table th {
   color: #4b5563;
   white-space: nowrap;
   padding: 16px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #f1f5f9;
+  border-bottom: 2px solid #9ca3af;
+  border-right: 1px solid #d1d5db;
   text-align: center;
 }
 
@@ -1093,8 +1096,8 @@ table th:last-child {
 /* Table Cells */
 table td {
   padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #f1f5f9;
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
   overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
