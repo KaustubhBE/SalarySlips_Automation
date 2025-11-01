@@ -13,7 +13,7 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash, client_id=None, client_secret=None, app_password=None, permission_metadata=None):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None, permission_metadata=None):
     """Add a new user to Firestore"""
     user_data = {
         'username': username,
@@ -25,8 +25,6 @@ def add_user(username, email, role, password_hash, client_id=None, client_secret
         user_data['client_id'] = client_id
     if client_secret:
         user_data['client_secret'] = client_secret
-    if app_password:
-        user_data['app_password'] = app_password
     if permission_metadata:
         user_data['permission_metadata'] = permission_metadata
     user_ref = db.collection('USERS').document()
@@ -142,18 +140,6 @@ def update_user_complete_rbac(user_id, permission_metadata):
     # Single atomic update that completely overwrites existing permission_metadata
     user_ref.update({'permission_metadata': permission_metadata})
     logging.info(f"Successfully updated RBAC for user {user_id}")
-
-def update_user_app_password(user_id, app_password):
-    """Update a user's app password"""
-    user_ref = db.collection('USERS').document(user_id)
-    user_ref.update({'app_password': app_password})
-
-def get_smtp_credentials_by_email(email):
-    """Get the sender email and app password for SMTP for a user by their email."""
-    user = get_user_by_email(email)
-    if user:
-        return user.get('email'), user.get('app_password')
-    return None, None
 
 def update_user_password(user_id, password_hash):
     """Update a user's password hash"""

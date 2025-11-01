@@ -20,8 +20,6 @@ function Dashboard() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [editingAppPassword, setEditingAppPassword] = useState("");
   const [editingWebsitePassword, setEditingWebsitePassword] = useState("");
   const [editingWebsitePasswordConfirm, setEditingWebsitePasswordConfirm] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
@@ -30,12 +28,15 @@ function Dashboard() {
   const [selectedUserIdForActions, setSelectedUserIdForActions] = useState(null);
   const [editingWebsitePasswordUserId, setEditingWebsitePasswordUserId] = useState(null);
   const [showWebsitePassword, setShowWebsitePassword] = useState(false);
-  const [showMailKey, setShowMailKey] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [showRoleChangeConfirm, setShowRoleChangeConfirm] = useState(false);
   const [roleChangeRequest, setRoleChangeRequest] = useState(null); // { userId, userName, userEmail, currentRole, newRole }
   const [userRoles, setUserRoles] = useState({});
+  const [showPasswordChangeConfirm, setShowPasswordChangeConfirm] = useState(false);
+  const [passwordChangeRequest, setPasswordChangeRequest] = useState(null); // { userId, userName, userEmail }
+  const [showPermissionChangeConfirm, setShowPermissionChangeConfirm] = useState(false);
+  const [permissionChangeRequest, setPermissionChangeRequest] = useState(null); // { userId, userName, userEmail, permissionCount }
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -174,9 +175,6 @@ function Dashboard() {
     setShowPermissionsModal(false);
     setEditingPermissions({});
     setSelectedUser(null);
-    setEditingUserId(null);
-    setEditingAppPassword("");
-    setShowMailKey(false);
     setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
     setShowWebsitePassword(false);
@@ -327,7 +325,34 @@ function Dashboard() {
     return permissionMetadata;
   };
 
-  const handleUpdatePermissions = async (userId, updatedPermissions) => {
+  const handleUpdatePermissions = (userId, updatedPermissions) => {
+    // Find user to get their details for confirmation
+    const user = users.find(user => user.id === userId);
+    if (!user) return;
+    
+    // Count permissions
+    const permissionCount = Object.keys(updatedPermissions).filter(key => updatedPermissions[key] === true).length;
+    
+    // Close permissions modal first
+    setShowPermissionsModal(false);
+    setEditingPermissions({});
+    setSelectedUser(null);
+    
+    // Show confirmation modal
+    setPermissionChangeRequest({
+      userId,
+      userName: user.username,
+      userEmail: user.email,
+      permissionCount,
+      updatedPermissions
+    });
+    setShowPermissionChangeConfirm(true);
+  };
+
+  const handleConfirmPermissionChange = async () => {
+    if (!permissionChangeRequest) return;
+    const { userId, updatedPermissions } = permissionChangeRequest;
+    
     try {
       // Convert tree permissions to permission_metadata format
       const permissionMetadata = convertTreePermissionsToMetadata(updatedPermissions);
@@ -349,17 +374,23 @@ function Dashboard() {
       );
       if (response.data.message) {
         setSuccess(response.data.message);
-        setShowPermissionsModal(false);
-        setEditingPermissions({});
-        setSelectedUser(null);
-        // Refresh users list immediately after successful permission update
-        fetchUsers();
+        // Refresh the page after successful permission update
+        window.location.reload();
       } else {
         setError(response.data.error);
+        setShowPermissionChangeConfirm(false);
+        setPermissionChangeRequest(null);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error updating permissions');
+      setShowPermissionChangeConfirm(false);
+      setPermissionChangeRequest(null);
     }
+  };
+
+  const handleCancelPermissionChange = () => {
+    setShowPermissionChangeConfirm(false);
+    setPermissionChangeRequest(null);
   };
 
   const handleEditPermissionChange = (permissionKey, value) => {
@@ -391,30 +422,11 @@ function Dashboard() {
     });
   };
 
-  const handleEditAppPassword = (user) => {
-    // Close any other open actions first
-    setShowPermissionsModal(false);
-    setEditingPermissions({});
-    setSelectedUser(null);
-    setEditingWebsitePasswordUserId(null);
-    setEditingWebsitePassword("");
-    setShowWebsitePassword(false);
-    
-    // Open mail key editing
-    setEditingUserId(user.id);
-    setEditingAppPassword("");
-    setShowMailKey(false);
-    setSelectedUserIdForActions(null); // Clear mobile selection
-  };
-
   const handleEditWebsitePassword = (user) => {
     // Close any other open actions first
     setShowPermissionsModal(false);
     setEditingPermissions({});
     setSelectedUser(null);
-    setEditingUserId(null);
-    setEditingAppPassword("");
-    setShowMailKey(false);
     
     // Open website password editing
     setEditingWebsitePasswordUserId(user.id);
@@ -446,9 +458,6 @@ function Dashboard() {
 
   const handleEditPermissions = (user) => {
     // Close any other open actions first
-    setEditingUserId(null);
-    setEditingAppPassword("");
-    setShowMailKey(false);
     setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
     setShowWebsitePassword(false);
@@ -487,44 +496,35 @@ function Dashboard() {
     }
   };
 
-  const handleSaveAppPassword = async (userId) => {
-    try {
-      // Find user to get their name for success message
-      const user = users.find(user => user.id === userId);
-      const userName = user ? user.username : 'user';
-      
-      const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_APP_PASSWORD), {
-        user_id: userId,
-        appPassword: editingAppPassword
-      }, {
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (response.data.message) {
-        alert(`✅ Mail key for user "${userName}" has been changed successfully!`);
-        setError("");
-        setEditingUserId(null);
-        setEditingAppPassword("");
-        // Refresh users list immediately after successful password update
-        fetchUsers();
-      } else {
-        setError(response.data.error);
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error updating app password');
+  const handleSaveWebsitePassword = (userId) => {
+    // Find user to get their details for confirmation
+    const user = users.find(user => user.id === userId);
+    if (!user) return;
+    
+    if (editingWebsitePassword !== editingWebsitePasswordConfirm) {
+      setError('Passwords do not match');
+      return;
     }
+    
+    if (!editingWebsitePassword || editingWebsitePassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    
+    // Show confirmation modal
+    setPasswordChangeRequest({
+      userId,
+      userName: user.username,
+      userEmail: user.email
+    });
+    setShowPasswordChangeConfirm(true);
   };
 
-  const handleSaveWebsitePassword = async (userId) => {
+  const handleConfirmPasswordChange = async () => {
+    if (!passwordChangeRequest) return;
+    const { userId } = passwordChangeRequest;
+    
     try {
-      // Find user to get their name for success message
-      const user = users.find(user => user.id === userId);
-      const userName = user ? user.username : 'user';
-      if (editingWebsitePassword !== editingWebsitePasswordConfirm) {
-        setError('Passwords do not match');
-        return;
-      }
-      
       const response = await axios.post(getApiUrl(ENDPOINTS.UPDATE_WEBSITE_PASSWORD), {
         user_id: userId,
         new_password: editingWebsitePassword
@@ -533,7 +533,7 @@ function Dashboard() {
         headers: { 'Content-Type': 'application/json' }
       });
       if (response.data.message) {
-        alert(`✅ Website password for user "${userName}" has been changed successfully!`);
+        setSuccess(`✅ Website password for user "${passwordChangeRequest.userName}" has been changed successfully!`);
         setError("");
         setEditingWebsitePasswordUserId(null);
         setEditingWebsitePassword("");
@@ -545,13 +545,18 @@ function Dashboard() {
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error updating website password');
+    } finally {
+      setShowPasswordChangeConfirm(false);
+      setPasswordChangeRequest(null);
     }
   };
 
+  const handleCancelPasswordChange = () => {
+    setShowPasswordChangeConfirm(false);
+    setPasswordChangeRequest(null);
+  };
+
   const handleCancelEdit = () => {
-    setEditingUserId(null);
-    setEditingAppPassword("");
-    setShowMailKey(false);
     setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
     setEditingWebsitePasswordConfirm("");
@@ -700,15 +705,6 @@ function Dashboard() {
                             Password
                           </button>
                         )}
-                        {canEditPassword(user.role) && (
-                          <button
-                            className="action-button edit-button"
-                            onClick={() => handleEditAppPassword(user)}
-                            title="Edit Mail Key"
-                          >
-                            Mail Key
-                          </button>
-                        )}
                         {canEditPermissions(user.role) && (
                           <button
                             className="action-button permissions-button"
@@ -747,18 +743,6 @@ function Dashboard() {
                               Password
                             </button>
                           )}
-                          {canEditPassword(user.role) && (
-                            <button
-                              className="action-button edit-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditAppPassword(user);
-                              }}
-                              title="Edit Mail Key"
-                            >
-                              Mail Key
-                            </button>
-                          )}
                           {canEditPermissions(user.role) && (
                             <button
                               className="action-button permissions-button"
@@ -783,47 +767,6 @@ function Dashboard() {
                               Delete
                             </button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {editingUserId === user.id && !showPermissionsModal && (
-                    <tr>
-                      <td colSpan={4} className="user-actions-row">
-                        <div className="edit-mail-key-container">
-                          <div className="password-form-body">
-                            <div className="password-input-group">
-                              <label htmlFor={`mail-key-${user.id}`} className="password-label">
-                                New Mail Key
-                              </label>
-                              <PasswordToggle
-                                id={`mail-key-${user.id}`}
-                                name={`mail-key-${user.id}`}
-                                value={editingAppPassword}
-                                onChange={e => setEditingAppPassword(e.target.value)}
-                                placeholder="Enter new mail key"
-                                className="mail-key-input"
-                                autoComplete="new-password"
-                              />
-                            </div>
-                            <div className="password-form-actions">
-                              <button
-                                className="mail-key-save-btn"
-                                onClick={() => handleSaveAppPassword(user.id)}
-                                disabled={!editingAppPassword}
-                                title="Save new mail key"
-                              >
-                                Save Mail Key
-                              </button>
-                              <button
-                                className="mail-key-cancel-btn"
-                                onClick={handleCancelEdit}
-                                title="Cancel mail key change"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
                         </div>
                       </td>
                     </tr>
@@ -945,15 +888,6 @@ function Dashboard() {
                             Password
                           </button>
                         )}
-                        {canEditPassword(user.role) && (
-                          <button
-                            className="action-button edit-button"
-                            onClick={() => handleEditAppPassword(user)}
-                            title="Edit Mail Key"
-                          >
-                            Mail Key
-                          </button>
-                        )}
                         {canEditPermissions(user.role) && (
                           <button
                             className="action-button permissions-button"
@@ -992,18 +926,6 @@ function Dashboard() {
                               Password
                             </button>
                           )}
-                          {canEditPassword(user.role) && (
-                            <button
-                              className="action-button edit-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditAppPassword(user);
-                              }}
-                              title="Edit Mail Key"
-                            >
-                              Mail Key
-                            </button>
-                          )}
                           {canEditPermissions(user.role) && (
                             <button
                               className="action-button permissions-button"
@@ -1032,67 +954,6 @@ function Dashboard() {
                       </td>
                     </tr>
                   )}
-                  {editingUserId === user.id && !showPermissionsModal && (
-                    <tr>
-                      <td colSpan={4} className="user-actions-row">
-                        <div className="edit-mail-key-container">
-                          <div className="password-form-body">
-                            <div className="password-input-group">
-                              <label htmlFor={`mail-key-${user.id}`} className="password-label">
-                                New Mail Key
-                              </label>
-                              <div className="password-input-container">
-                                <input
-                                  id={`mail-key-${user.id}`}
-                                  type={showMailKey ? "text" : "password"}
-                                  placeholder="Enter new mail key"
-                                  value={editingAppPassword}
-                                  onChange={e => setEditingAppPassword(e.target.value)}
-                                  className="mail-key-input"
-                                  autoComplete="new-password"
-                                />
-                                <button
-                                  type="button"
-                                  className="password-toggle-btn"
-                                  onClick={() => setShowMailKey(!showMailKey)}
-                                  title={showMailKey ? "Hide mail key" : "Show mail key"}
-                                >
-                                  {showMailKey ? (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                      <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                      <line x1="1" y1="1" x2="23" y2="23"/>
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="password-form-actions">
-                              <button
-                                className="mail-key-save-btn"
-                                onClick={() => handleSaveAppPassword(user.id)}
-                                disabled={!editingAppPassword}
-                                title="Save new mail key"
-                              >
-                                Save Mail Key
-                              </button>
-                              <button
-                                className="mail-key-cancel-btn"
-                                onClick={handleCancelEdit}
-                                title="Cancel mail key change"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                   {editingWebsitePasswordUserId === user.id && !showPermissionsModal && (
                     <tr>
                       <td colSpan={4} className="user-actions-row">
@@ -1102,35 +963,15 @@ function Dashboard() {
                               <label htmlFor={`website-password-${user.id}`} className="password-label">
                                 New Website Password
                               </label>
-                              <div className="password-input-container">
-                                <input
-                                  id={`website-password-${user.id}`}
-                                  type={showWebsitePassword ? "text" : "password"}
-                                  placeholder="Enter new password"
-                                  value={editingWebsitePassword}
-                                  onChange={e => setEditingWebsitePassword(e.target.value)}
-                                  className="website-password-input"
-                                  autoComplete="new-password"
-                                />
-                                <button
-                                  type="button"
-                                  className="password-toggle-btn"
-                                  onClick={() => setShowWebsitePassword(!showWebsitePassword)}
-                                  title={showWebsitePassword ? "Hide password" : "Show password"}
-                                >
-                                  {showWebsitePassword ? (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                      <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                      <line x1="1" y1="1" x2="23" y2="23"/>
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
+                              <PasswordToggle
+                                id={`website-password-${user.id}`}
+                                name={`website-password-${user.id}`}
+                                value={editingWebsitePassword}
+                                onChange={e => setEditingWebsitePassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="website-password-input"
+                                autoComplete="new-password"
+                              />
                               <div style={{ marginTop: '8px' }}>
                                 <PasswordToggle
                                   id={`website-password-confirm-${user.id}`}
@@ -1352,8 +1193,119 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Password Change Confirmation Modal */}
+      {showPasswordChangeConfirm && passwordChangeRequest && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPasswordChange()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Confirm Password Change</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelPasswordChange}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Are you sure you want to change <strong>{passwordChangeRequest.userName}</strong>'s password?
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{passwordChangeRequest.userEmail}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>This change affects the user's login access immediately.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleConfirmPasswordChange}
+                title="Confirm password change"
+              >
+                Yes, Change Password
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelPasswordChange}
+                title="Cancel password change"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permission Change Confirmation Modal */}
+      {showPermissionChangeConfirm && permissionChangeRequest && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPermissionChange()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Confirm Permission Change</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelPermissionChange}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Are you sure you want to change <strong>{permissionChangeRequest.userName}</strong>'s permissions?
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{permissionChangeRequest.userEmail}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Permissions Count:</span>
+                    <span className="detail-value">{permissionChangeRequest.permissionCount} permission{permissionChangeRequest.permissionCount !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>This change affects the user's access immediately.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleConfirmPermissionChange}
+                title="Confirm permission change"
+              >
+                Yes, Change Permissions
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelPermissionChange}
+                title="Cancel permission change"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default Dashboard;
+

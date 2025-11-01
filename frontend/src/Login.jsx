@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Components/AuthContext';
 import { getApiUrl } from './config.js';
 import { useGoogleAuth } from './Gauth/useGoogleAuth.js';
 import oauthService from './Gauth/oauthService.js';
+import PasswordToggle from './Components/Password-Toggle';
 import "./Login.css"
 
 function Login() {
@@ -14,6 +15,16 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  
+  // Check for OAuth error in localStorage on mount
+  useEffect(() => {
+    const oauthError = localStorage.getItem('oauth_error');
+    if (oauthError) {
+      setError(oauthError);
+      // Clear the stored error after displaying it
+      localStorage.removeItem('oauth_error');
+    }
+  }, []);
   
   // Use the Google Auth hook
   const { 
@@ -138,14 +149,17 @@ function Login() {
         </div>
         <div className="form-group">
           <label htmlFor="password">Password:</label>
-          <input
+          <PasswordToggle
             id="password"
-            type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={loading || googleLoading}
-            required
             placeholder="Enter your password"
+            autoComplete="current-password"
+            required
+            inputProps={{
+              disabled: loading || googleLoading
+            }}
           />
         </div>
         <button type="submit" disabled={loading || googleLoading} className="login-button">

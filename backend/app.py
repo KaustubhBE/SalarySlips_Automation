@@ -15,7 +15,7 @@ from Utils.config import CLIENT_SECRETS_FILE, drive, creds
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from Utils.auth import auth_bp
-from Utils.email_utils import send_email_smtp, send_email_oauth
+from Utils.email_utils import send_email_gmail_api, send_email_oauth
 from Utils.whatsapp_utils import (
     send_whatsapp_message,
     get_employee_contact,
@@ -32,7 +32,6 @@ from Utils.firebase_utils import (
     delete_user as firebase_delete_user,
     add_salary_slip,
     get_salary_slips_by_user,
-    update_user_app_password,
     update_user_password,
     update_user,
     db,
@@ -581,7 +580,6 @@ def add_user():
         email = data.get('email')
         role = data.get('role')
         password = generate_password_hash(data.get('password'))
-        app_password = data.get('appPassword') or data.get('app_password')
         permission_metadata = data.get('permission_metadata', {})
 
         # Debug logging
@@ -602,7 +600,6 @@ def add_user():
             email=email, 
             role=role, 
             password_hash=password, 
-            app_password=app_password,
             permission_metadata=permission_metadata
         )
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
@@ -923,29 +920,29 @@ def generate_salary_slip_single():
                         """.format(employee.get("Name"), full_month, full_year)
                         logging.info("Sending email to {}".format(recipient_email))
                         user_email = session.get('user', {}).get('email')
-                        success = send_email_smtp(
+                        success = send_email_gmail_api(
+                            user_email=user_email,
                             recipient_email=recipient_email,
                             subject=email_subject,
                             body=email_body,
-                            attachment_paths=collected_pdfs,
-                            user_email=user_email
+                            attachment_paths=collected_pdfs
                         )
                         if success == "TOKEN_EXPIRED":
                             return jsonify({"error": "TOKEN_EXPIRED"}), 401
                         elif success == "USER_NOT_LOGGED_IN":
                             return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
-                        elif success == "NO_SMTP_CREDENTIALS":
-                            return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                        elif success == "NO_GMAIL_ACCESS":
+                            return jsonify({"error": "NO_GMAIL_ACCESS", "message": "Gmail access not configured for this user."}), 400
                         elif success == "INVALID_RECIPIENT":
                             return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
-                        elif success == "NO_VALID_RECIPIENTS":
-                            return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
-                        elif success == "SMTP_AUTH_FAILED":
-                            return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
-                        elif success == "SMTP_ERROR":
-                            return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
-                        elif success == "EMAIL_SEND_ERROR":
-                            return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                        elif success == "GMAIL_AUTH_FAILED":
+                            return jsonify({"error": "GMAIL_AUTH_FAILED", "message": "Gmail authentication failed. Please check your credentials."}), 400
+                        elif success == "GMAIL_PERMISSION_DENIED":
+                            return jsonify({"error": "GMAIL_PERMISSION_DENIED", "message": "Gmail permission denied. Please authorize the application."}), 403
+                        elif success == "GMAIL_API_ERROR":
+                            return jsonify({"error": "GMAIL_API_ERROR", "message": "Gmail API error. Please try again later."}), 500
+                        elif success == "GMAIL_SEND_ERROR":
+                            return jsonify({"error": "GMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
                         elif not success:
                             logging.error("Failed to send email to {}".format(recipient_email))
                             return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
@@ -1122,30 +1119,30 @@ def generate_salary_slips_batch():
                         </html>
                         """
                         
-                        success = send_email_smtp(
+                        success = send_email_gmail_api(
+                            user_email=user_email,
                             recipient_email=recipient_email,
                             subject=email_subject,
                             body=email_body,
-                            attachment_paths=[output_pdf] if 'output_pdf' in locals() else [],
-                            user_email=user_email
+                            attachment_paths=[output_pdf] if 'output_pdf' in locals() else []
                         )
                         
                         if success == "TOKEN_EXPIRED":
                             return jsonify({"error": "TOKEN_EXPIRED"}), 401
                         elif success == "USER_NOT_LOGGED_IN":
                             return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
-                        elif success == "NO_SMTP_CREDENTIALS":
-                            return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                        elif success == "NO_GMAIL_ACCESS":
+                            return jsonify({"error": "NO_GMAIL_ACCESS", "message": "Gmail access not configured for this user."}), 400
                         elif success == "INVALID_RECIPIENT":
                             return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
-                        elif success == "NO_VALID_RECIPIENTS":
-                            return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
-                        elif success == "SMTP_AUTH_FAILED":
-                            return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
-                        elif success == "SMTP_ERROR":
-                            return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
-                        elif success == "EMAIL_SEND_ERROR":
-                            return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                        elif success == "GMAIL_AUTH_FAILED":
+                            return jsonify({"error": "GMAIL_AUTH_FAILED", "message": "Gmail authentication failed. Please check your credentials."}), 400
+                        elif success == "GMAIL_PERMISSION_DENIED":
+                            return jsonify({"error": "GMAIL_PERMISSION_DENIED", "message": "Gmail permission denied. Please authorize the application."}), 403
+                        elif success == "GMAIL_API_ERROR":
+                            return jsonify({"error": "GMAIL_API_ERROR", "message": "Gmail API error. Please try again later."}), 500
+                        elif success == "GMAIL_SEND_ERROR":
+                            return jsonify({"error": "GMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
                         elif not success:
                             app.logger.error("Failed to send email to {}".format(recipient_email))
                             return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
@@ -1607,11 +1604,11 @@ def retry_reports():
                                 """.format(email_content.replace('\n', '<br>'))
                                 user_email = session.get('user', {}).get('email')
                                 success = send_email_oauth(
+                                    user_email=user_email,
                                     recipient_email=recipient_email,
                                     subject=email_subject,
                                     body=email_body,
                                     attachment_paths=attachment_paths,
-                                    user_email=user_email,
                                     cc=cc_email,
                                     bcc=bcc_email
                                 )
@@ -1619,18 +1616,18 @@ def retry_reports():
                                     return jsonify({"error": "TOKEN_EXPIRED"}), 401
                                 elif success == "USER_NOT_LOGGED_IN":
                                     return jsonify({"error": "USER_NOT_LOGGED_IN", "message": "User session expired. Please log in again."}), 401
-                                elif success == "NO_SMTP_CREDENTIALS":
-                                    return jsonify({"error": "NO_SMTP_CREDENTIALS", "message": "Email credentials not found. Please check your settings."}), 400
+                                elif success == "NO_GMAIL_ACCESS":
+                                    return jsonify({"error": "NO_GMAIL_ACCESS", "message": "Gmail access not configured for this user."}), 400
                                 elif success == "INVALID_RECIPIENT":
                                     return jsonify({"error": "INVALID_RECIPIENT", "message": "Invalid recipient email address."}), 400
-                                elif success == "NO_VALID_RECIPIENTS":
-                                    return jsonify({"error": "NO_VALID_RECIPIENTS", "message": "No valid recipient emails found."}), 400
-                                elif success == "SMTP_AUTH_FAILED":
-                                    return jsonify({"error": "SMTP_AUTH_FAILED", "message": "Email authentication failed. Please check your credentials."}), 400
-                                elif success == "SMTP_ERROR":
-                                    return jsonify({"error": "SMTP_ERROR", "message": "Email service error. Please try again later."}), 500
-                                elif success == "EMAIL_SEND_ERROR":
-                                    return jsonify({"error": "EMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
+                                elif success == "GMAIL_AUTH_FAILED":
+                                    return jsonify({"error": "GMAIL_AUTH_FAILED", "message": "Gmail authentication failed. Please check your credentials."}), 400
+                                elif success == "GMAIL_PERMISSION_DENIED":
+                                    return jsonify({"error": "GMAIL_PERMISSION_DENIED", "message": "Gmail permission denied. Please authorize the application."}), 403
+                                elif success == "GMAIL_API_ERROR":
+                                    return jsonify({"error": "GMAIL_API_ERROR", "message": "Gmail API error. Please try again later."}), 500
+                                elif success == "GMAIL_SEND_ERROR":
+                                    return jsonify({"error": "GMAIL_SEND_ERROR", "message": "Failed to send email. Please try again."}), 500
                                 elif not success:
                                     logger.error("Failed to send email to {}".format(recipient_email))
                                     return jsonify({"error": "EMAIL_SEND_FAILED", "message": "Failed to send email. Please try again."}), 500
@@ -1703,8 +1700,7 @@ def reactor_report():
             template_path=template_path,
             output_dir=temp_dir,
             gspread_client=gspread_client,
-            logger=logger,
-            send_email_smtp=send_email_smtp
+            logger=logger
         )
         # Clean up user-specific temporary directory
         from Utils.temp_manager import cleanup_user_temp_dir
@@ -1773,7 +1769,6 @@ def kr_reactor_report():
             output_dir=temp_dir,
             gspread_client=gspread_client,
             logger=logger,
-            send_email_smtp=send_email_smtp,  # This will use OAuth email function
             process_name=process_name,  # Pass the process name for OAuth email selection
             google_access_token=google_access_token,  # Pass Google tokens if available
             google_refresh_token=google_refresh_token
@@ -1793,42 +1788,6 @@ def kr_reactor_report():
         return jsonify({"error": str(e)}), 500
     finally:
         pass
-
-@app.route("/api/update_app_password", methods=["POST"])
-def update_app_password():
-    try:
-        # Check if user is logged in
-        current_user = session.get('user')
-        if not current_user:
-            return jsonify({"error": "User not authenticated"}), 401
-
-        data = request.json
-        user_id = data.get('user_id')
-        app_password = data.get('appPassword') or data.get('app_password')
-        
-        if not user_id or not app_password:
-            return jsonify({"error": "User ID and app password are required"}), 400
-
-        # Get target user
-        target_user = get_user_by_id(user_id)
-        if not target_user:
-            return jsonify({"error": "User not found"}), 404
-
-        current_user_role = current_user.get('role')
-        target_user_role = target_user.get('role')
-
-        # Admin can update any user's app password
-        if current_user_role == 'admin':
-            update_user_app_password(user_id, app_password)
-            return jsonify({"message": "App password updated successfully"}), 200
-        
-        # Regular users cannot update other users' app passwords
-        else:
-            return jsonify({"error": "Insufficient permissions to update app passwords"}), 403
-
-    except Exception as e:
-        logger.error("Error updating app password: {}".format(e))
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/update_website_password", methods=["POST"])
 def update_website_password():
@@ -3400,7 +3359,6 @@ def send_order_notification():
             output_dir=temp_dir,
             user_email=user_email,
             logger=logger,
-            send_email_smtp=send_email_smtp,
             send_whatsapp_message=send_whatsapp_message
         )
         

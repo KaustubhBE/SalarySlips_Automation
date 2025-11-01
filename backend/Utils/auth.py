@@ -530,83 +530,49 @@ def google_oauth_callback():
                     'message': 'Additional permissions required. Please grant access.'
                 }), 200
         else:
-            logger.info(f"ℹ️ New user, will create account with provided tokens")
+            logger.info(f"ℹ️ User not found - will check if account exists before proceeding")
         
         if not email:
             logger.error("No email found in user info")
             return jsonify({'success': False, 'error': 'Authentication failed. Please try again.'}), 400
         
-        logger.info(f"Google OAuth successful for email: {email}")
-        
         # Use the existing_user we already fetched above
         user = existing_user
         
         if not user:
-            logger.info(f"User not found in database for email: {email}")
-            # Create new user with Google OAuth data
-            logger.info(f"Creating new user for Google OAuth: {email}")
-            
-            # Generate a random password for the user
-            import secrets
-            random_password = secrets.token_urlsafe(32)
-            password_hash = generate_password_hash(random_password)
-            
-            # Create user with default permissions
-            user_data = {
-                'username': name or email.split('@')[0],
-                'email': email,
-                'role': 'user',
-                'password_hash': password_hash,
+            logger.warning(f"❌ OAuth login attempted for unregistered email: {email}")
+            logger.info(f"User not found in database for email: {email} - rejecting authentication")
+            return jsonify({
+                'success': False, 
+                'error': 'Your email address is not registered. Please contact your administrator to create an account.',
+                'email_not_registered': True
+            }), 403  # 403 Forbidden - user exists but account doesn't
+        
+        # User exists - update with Google OAuth data
+        logger.info(f"Google OAuth successful for email: {email}")
+        logger.info(f"Found existing user for Google OAuth: {email}")
+        logger.info(f"User details: {user}")
+        try:
+            user_ref = db.collection('USERS').document(user.get('id'))
+            update_data = {
                 'google_id': user_info.get('id'),
                 'google_picture': picture,
                 'google_access_token': access_token,
                 'google_refresh_token': refresh_token,
-                'permissions': {},
-                'permission_metadata': {
-                    'factories': [],
-                    'departments': {},
-                    'services': {}
-                },
-                'tree_permissions': {},
-                'created_via_google': True,
-                'created_at': datetime.now().isoformat()
+                'last_google_login': datetime.now().isoformat()
             }
+            user_ref.update(update_data)
             
-            # Add user to Firebase
-            try:
-                user_ref = db.collection('USERS').add(user_data)
-                user_id = user_ref[1].id
-                user_data['id'] = user_id
-                user = user_data
-                logger.info(f"Created new user with ID: {user_id} for email: {email}")
-            except Exception as e:
-                logger.error(f"Failed to create user: {e}")
-                return jsonify({'success': False, 'error': 'Failed to create user account'}), 500
-        else:
-            # Update existing user with Google OAuth data
-            logger.info(f"Found existing user for Google OAuth: {email}")
-            logger.info(f"User details: {user}")
-            try:
-                user_ref = db.collection('USERS').document(user.get('id'))
-                update_data = {
-                    'google_id': user_info.get('id'),
-                    'google_picture': picture,
-                    'google_access_token': access_token,
-                    'google_refresh_token': refresh_token,
-                    'last_google_login': datetime.now().isoformat()
-                }
-                user_ref.update(update_data)
-                
-                # Update local user object
-                user['google_id'] = user_info.get('id')
-                user['google_picture'] = picture
-                user['google_access_token'] = access_token
-                user['google_refresh_token'] = refresh_token
-                user['last_google_login'] = update_data['last_google_login']
-                
-                logger.info(f"Updated existing user with Google OAuth data: {email}")
-            except Exception as e:
-                logger.error(f"Failed to update user with Google data: {e}")
+            # Update local user object
+            user['google_id'] = user_info.get('id')
+            user['google_picture'] = picture
+            user['google_access_token'] = access_token
+            user['google_refresh_token'] = refresh_token
+            user['last_google_login'] = update_data['last_google_login']
+            
+            logger.info(f"Updated existing user with Google OAuth data: {email}")
+        except Exception as e:
+            logger.error(f"Failed to update user with Google data: {e}")
         
         # Get user permissions and metadata
         role = user.get('role', 'user')

@@ -61,11 +61,42 @@ export const useGoogleAuth = () => {
         
         setError('');
       } else {
-        setError(result.error || 'Authentication failed. Please try again.');
+        // Show more specific error message for unregistered emails
+        const errorMsg = result.error || 'Authentication failed. Please try again.';
+        setError(errorMsg);
+        console.error('❌ OAuth authentication failed:', errorMsg);
+        
+        // Store error in localStorage so it persists after navigation
+        localStorage.setItem('oauth_error', errorMsg);
+        
+        // Clean up URL parameters to prevent re-processing
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('state');
+        url.searchParams.delete('scope');
+        window.history.replaceState({}, '', url.pathname + url.search);
+        
+        // Redirect to login page with error message
+        navigate('/login', { replace: true });
       }
     } catch (error) {
       console.error('OAuth callback processing error:', error);
-      setError(error.message || 'Authentication failed. Please try again.');
+      // Preserve the specific error message (especially for unregistered emails)
+      const errorMsg = error.message || 'Authentication failed. Please try again.';
+      setError(errorMsg);
+      
+      // Store error in localStorage so it persists after navigation
+      localStorage.setItem('oauth_error', errorMsg);
+      
+      // Clean up URL parameters to prevent re-processing
+      const url = new URL(window.location.href);
+      url.searchParams.delete('code');
+      url.searchParams.delete('state');
+      url.searchParams.delete('scope');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      
+      // Redirect to login page with error message
+      navigate('/login', { replace: true });
     } finally {
       setIsProcessing(false);
       processingRef.current = false;

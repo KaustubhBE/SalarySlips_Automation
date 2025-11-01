@@ -132,6 +132,18 @@ function Settings({ onLogout }) {
             {showPasswordInput ? (
               <form className="password-form" onSubmit={handlePasswordSubmit}>
                 <div className="form-group">
+                  <label htmlFor="current-password">Old Password</label>
+                  <PasswordToggle
+                    id="current-password"
+                    name="current-password"
+                    value={currentPassword}
+                    onChange={handleCurrentPasswordChange}
+                    required
+                    className="form-input"
+                    placeholder="Enter Old password"
+                  />
+                </div>
+                <div className="form-group">
                   <label htmlFor="new-password">New Password</label>
                   <PasswordToggle
                     id="new-password"
@@ -155,18 +167,6 @@ function Settings({ onLogout }) {
                     minLength={6}
                     className="form-input"
                     placeholder="Re-enter new password"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="current-password">Old Password</label>
-                  <PasswordToggle
-                    id="current-password"
-                    name="current-password"
-                    value={currentPassword}
-                    onChange={handleCurrentPasswordChange}
-                    required
-                    className="form-input"
-                    placeholder="Enter Old password"
                   />
                 </div>
                 <div className="form-actions">

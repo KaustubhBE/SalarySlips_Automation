@@ -697,22 +697,22 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                                 errors.append("User session expired. Please log in again.")
                                 logging.error("No user ID found in session for email")
                             else:
-                                email_success = send_email_smtp(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
+                                email_success = send_email_gmail_api(user_id, recipient_email, email_subject, email_body, attachment_paths=output_pdf)
                                 if email_success == "TOKEN_EXPIRED":
                                     errors.append("Email token expired. Please refresh your credentials.")
                                 elif email_success == "USER_NOT_LOGGED_IN":
                                     errors.append("User session expired. Please log in again.")
-                                elif email_success == "NO_SMTP_CREDENTIALS":
-                                    errors.append("Email credentials not found. Please check your settings.")
+                                elif email_success == "NO_GMAIL_ACCESS":
+                                    errors.append("Gmail access not configured for this user.")
                                 elif email_success == "INVALID_RECIPIENT":
                                     errors.append(f"Invalid recipient email address: {recipient_email}")
-                                elif email_success == "NO_VALID_RECIPIENTS":
-                                    errors.append("No valid recipient emails found.")
-                                elif email_success == "SMTP_AUTH_FAILED":
-                                    errors.append("Email authentication failed. Please check your credentials.")
-                                elif email_success == "SMTP_ERROR":
-                                    errors.append("Email service error. Please try again later.")
-                                elif email_success == "EMAIL_SEND_ERROR":
+                                elif email_success == "GMAIL_AUTH_FAILED":
+                                    errors.append("Gmail authentication failed. Please check your credentials.")
+                                elif email_success == "GMAIL_PERMISSION_DENIED":
+                                    errors.append("Gmail permission denied. Please authorize the application.")
+                                elif email_success == "GMAIL_API_ERROR":
+                                    errors.append("Gmail API error. Please try again later.")
+                                elif email_success == "GMAIL_SEND_ERROR":
                                     errors.append(f"Failed to send email to {recipient_email}")
                                 elif not email_success:
                                     errors.append(f"Failed to send email to {recipient_email}")
@@ -928,7 +928,7 @@ def process_reports(file_path_template):
         logging.error(f"Error reading file {file_path_template}: {e}")
         return f"Error reading file: {str(e)}"
 
-def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, send_email_smtp, process_name='reactor-report', google_access_token=None, google_refresh_token=None):
+def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_range_data, input_date, user_id, send_email, send_whatsapp, template_path, output_dir, gspread_client, logger, process_name='reactor-report', google_access_token=None, google_refresh_token=None):
     
     
     
@@ -1445,7 +1445,7 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                     refresh_token=google_refresh_token
                                 )
                             else:
-                                success = send_email_smtp(
+                                success = send_email_gmail_api(
                                     user_email=user_id,
                                     recipient_email=recipient,
                                     subject=email_subject,
@@ -1468,27 +1468,27 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                                     failure_reason = "User session expired"
                                     result["errors"].append(f"User session expired for {recipient}. Please log in again.")
                                     logger.error(f"User session expired for {recipient}")
-                                elif success == "NO_SMTP_CREDENTIALS":
-                                    failure_reason = "Email credentials not found"
-                                    result["errors"].append(f"Email credentials not found for {recipient}. Please check your settings.")
-                                    logger.error(f"Email credentials not found for {recipient}")
+                                elif success == "NO_GMAIL_ACCESS":
+                                    failure_reason = "Gmail access not configured"
+                                    result["errors"].append(f"Gmail access not configured for {recipient}. Please configure Google OAuth.")
+                                    logger.error(f"Gmail access not configured for {recipient}")
                                 elif success == "INVALID_RECIPIENT":
                                     failure_reason = "Invalid recipient email address"
                                     result["errors"].append(f"Invalid recipient email address: {recipient}")
                                     logger.error(f"Invalid recipient email address: {recipient}")
-                                elif success == "NO_VALID_RECIPIENTS":
-                                    failure_reason = "No valid recipient emails found"
-                                    result["errors"].append(f"No valid recipient emails found for {recipient}")
-                                    logger.error(f"No valid recipient emails found for {recipient}")
-                                elif success == "SMTP_AUTH_FAILED":
-                                    failure_reason = "Email authentication failed"
-                                    result["errors"].append(f"Email authentication failed for {recipient}. Please check your credentials.")
-                                    logger.error(f"Email authentication failed for {recipient}")
-                                elif success == "SMTP_ERROR":
-                                    failure_reason = "Email service error"
-                                    result["errors"].append(f"Email service error for {recipient}. Please try again later.")
-                                    logger.error(f"Email service error for {recipient}")
-                                elif success == "EMAIL_SEND_ERROR":
+                                elif success == "GMAIL_AUTH_FAILED":
+                                    failure_reason = "Gmail authentication failed"
+                                    result["errors"].append(f"Gmail authentication failed for {recipient}. Please check your credentials.")
+                                    logger.error(f"Gmail authentication failed for {recipient}")
+                                elif success == "GMAIL_PERMISSION_DENIED":
+                                    failure_reason = "Gmail permission denied"
+                                    result["errors"].append(f"Gmail permission denied for {recipient}. Please authorize the application.")
+                                    logger.error(f"Gmail permission denied for {recipient}")
+                                elif success == "GMAIL_API_ERROR":
+                                    failure_reason = "Gmail API error"
+                                    result["errors"].append(f"Gmail API error for {recipient}. Please try again later.")
+                                    logger.error(f"Gmail API error for {recipient}")
+                                elif success == "GMAIL_SEND_ERROR":
                                     failure_reason = "Email send error"
                                     result["errors"].append(f"Failed to send email to {recipient}")
                                     logger.error(f"Failed to send email to {recipient}")
@@ -2740,11 +2740,11 @@ def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, m
         """
         
         success = send_email_func(
+            user_email=user_id,
             recipient_email=recipient_email,
             subject=email_subject_formatted,
             body=email_body,
             attachment_paths=attachment_paths,
-            user_email=user_id,
             cc=cc_email,
             bcc=bcc_email
         )
@@ -2753,23 +2753,12 @@ def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, m
             return False, "Email token expired"
         elif success == "USER_NOT_LOGGED_IN":
             return False, "User session expired"
-        elif success == "NO_SMTP_CREDENTIALS":
-            return False, "Email credentials not found"
-        elif success == "INVALID_RECIPIENT":
-            return False, "Invalid recipient email address"
-        elif success == "NO_VALID_RECIPIENTS":
-            return False, "No valid recipient emails found"
-        elif success == "SMTP_AUTH_FAILED":
-            return False, "Email authentication failed"
-        elif success == "SMTP_ERROR":
-            return False, "Email service error"
-        elif success == "EMAIL_SEND_ERROR":
-            return False, "Failed to send email"
-        # Gmail API specific error codes
         elif success == "NO_GMAIL_ACCESS":
-            return False, "You do not have Gmail access"
+            return False, "Gmail access not configured for this user"
         elif success == "NO_GOOGLE_ACCESS_TOKEN":
             return False, "No Google access token found"
+        elif success == "INVALID_RECIPIENT":
+            return False, "Invalid recipient email address"
         elif success == "GMAIL_AUTH_FAILED":
             return False, "Gmail authentication failed"
         elif success == "GMAIL_PERMISSION_DENIED":
@@ -2777,7 +2766,7 @@ def handle_email_sending(recipient_name, recipient_email, cc_email, bcc_email, m
         elif success == "GMAIL_API_ERROR":
             return False, "Gmail API error"
         elif success == "GMAIL_SEND_ERROR":
-            return False, "Gmail send error"
+            return False, "Failed to send email"
         elif not success:
             return False, "Failed to send email"
         else:
@@ -2932,7 +2921,7 @@ def generate_log_report_pdf(delivery_stats, output_dir, logger):
         logger.error(f"Error generating log report PDF: {e}")
         return None
 
-def process_order_notification(order_id, order_data, recipients, method, factory, template_path, output_dir, user_email, logger, send_email_smtp, send_whatsapp_message):
+def process_order_notification(order_id, order_data, recipients, method, factory, template_path, output_dir, user_email, logger, send_whatsapp_message):
     """
     Process order notification by creating a formatted document and sending via email/WhatsApp
     """
@@ -3297,12 +3286,12 @@ Please find the detailed order document attached."""
                     </html>
                     """
                     
-                    success = send_email_smtp(
+                    success = send_email_gmail_api(
+                        user_email=user_email,
                         recipient_email=recipient_email,
                         subject=email_subject,
                         body=email_body,
-                        attachment_paths=[notification_file],
-                        user_email=user_email
+                        attachment_paths=[notification_file]
                     )
                     
                     if success is True:

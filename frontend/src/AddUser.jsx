@@ -188,8 +188,6 @@ function AddUser() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [appPassword, setAppPassword] = useState("");
-  const [showAppPassword, setShowAppPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
@@ -206,7 +204,6 @@ function AddUser() {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setAppPassword('');
     setRole('user');
     setPermissions({});
   }, []);
@@ -305,13 +302,11 @@ function AddUser() {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setAppPassword('');
     setRole('user');
     setPermissions({});
     setError('');
     setSuccess('');
     setShowPassword(false);
-    setShowAppPassword(false);
   };
 
   const closeSuccessModal = () => {
@@ -341,7 +336,6 @@ function AddUser() {
         username, 
         email, 
         password, 
-        appPassword,
         role,
         permission_metadata: permissionMetadata // Use permission_metadata format
       };
@@ -474,18 +468,6 @@ function AddUser() {
                 name="confirm-new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="appPassword">App Password:</label>
-              <PasswordToggle
-                id="appPassword"
-                name="new-app-password"
-                value={appPassword}
-                onChange={(e) => setAppPassword(e.target.value)}
                 autoComplete="new-password"
                 required
               />

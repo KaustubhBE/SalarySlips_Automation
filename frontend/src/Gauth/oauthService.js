@@ -210,6 +210,10 @@ class OAuthService {
 
     if (!response.ok) {
       console.error('❌ Backend error:', response.status, data);
+      // Check for specific unregistered email error
+      if (response.status === 403 && data.email_not_registered) {
+        throw new Error(data.error || 'Your email address is not registered. Please contact your administrator to create an account.');
+      }
       const errorMessage = data.error || data.message || `Server error: ${response.status}`;
       throw new Error(errorMessage);
     }
@@ -309,7 +313,8 @@ class OAuthService {
       
     } catch (error) {
       console.error('❌ OAuth callback error:', error.message);
-      const errorMessage = 'Authentication failed. Please try again.';
+      // Preserve the specific error message (especially for unregistered emails)
+      const errorMessage = error.message || 'Authentication failed. Please try again.';
       this.storeOAuthResult(false, { error: errorMessage });
       return { success: false, error: errorMessage };
     }
