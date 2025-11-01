@@ -45,6 +45,7 @@ logs/
 .env.production.local
 
 # Credentials and sensitive files
+backend/Utils/.password_encryption_key
 backend/Utils/client_secrets.json
 backend/Utils/service_account_credentials.json
 backend/Utils/Oauth2.json

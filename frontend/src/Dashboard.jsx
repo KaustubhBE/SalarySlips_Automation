@@ -24,6 +24,7 @@ function Dashboard() {
   const [editingWebsitePasswordConfirm, setEditingWebsitePasswordConfirm] = useState("");
   const [currentPasswordDisplay, setCurrentPasswordDisplay] = useState("");
   const [loadingCurrentPassword, setLoadingCurrentPassword] = useState(false);
+  const [passwordMismatchError, setPasswordMismatchError] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -434,6 +435,7 @@ function Dashboard() {
     setEditingWebsitePasswordUserId(user.id);
     setEditingWebsitePassword("");
     setEditingWebsitePasswordConfirm("");
+    setPasswordMismatchError("");
     setShowWebsitePassword(false);
     setSelectedUserIdForActions(null); // Clear mobile selection
     
@@ -557,9 +559,16 @@ function Dashboard() {
     const user = users.find(user => user.id === userId);
     if (!user) return;
     
+    // Validate passwords match
     if (editingWebsitePassword !== editingWebsitePasswordConfirm) {
+      setPasswordMismatchError("⚠️ Passwords do not match");
       setError('Passwords do not match');
       return;
+    }
+    
+    // Clear mismatch error if passwords match
+    if (passwordMismatchError) {
+      setPasswordMismatchError("");
     }
     
     if (!editingWebsitePassword || editingWebsitePassword.length < 6) {
@@ -595,6 +604,7 @@ function Dashboard() {
         setEditingWebsitePassword("");
         setEditingWebsitePasswordConfirm("");
         setCurrentPasswordDisplay("");
+        setPasswordMismatchError("");
         // Refresh users list immediately after successful password update
         fetchUsers();
       } else {
@@ -619,6 +629,7 @@ function Dashboard() {
     setEditingWebsitePasswordConfirm("");
     setCurrentPasswordDisplay("");
     setLoadingCurrentPassword(false);
+    setPasswordMismatchError("");
     setShowWebsitePassword(false);
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -875,7 +886,18 @@ function Dashboard() {
                                 id={`website-password-${user.id}`}
                                 name={`website-password-${user.id}`}
                                 value={editingWebsitePassword}
-                                onChange={e => setEditingWebsitePassword(e.target.value)}
+                                onChange={e => {
+                                  setEditingWebsitePassword(e.target.value);
+                                  // Clear mismatch error when new password changes
+                                  if (passwordMismatchError) {
+                                    // Re-validate immediately
+                                    if (e.target.value === editingWebsitePasswordConfirm) {
+                                      setPasswordMismatchError("");
+                                    } else if (editingWebsitePasswordConfirm) {
+                                      setPasswordMismatchError("⚠️ Passwords do not match");
+                                    }
+                                  }
+                                }}
                                 placeholder="Enter new password"
                                 className="website-password-input"
                                 autoComplete="new-password"
@@ -885,11 +907,40 @@ function Dashboard() {
                                   id={`website-password-confirm-${user.id}`}
                                   name={`website-password-confirm-${user.id}`}
                                   value={editingWebsitePasswordConfirm}
-                                  onChange={e => setEditingWebsitePasswordConfirm(e.target.value)}
+                                  onChange={e => {
+                                    setEditingWebsitePasswordConfirm(e.target.value);
+                                    // Real-time validation
+                                    if (e.target.value && editingWebsitePassword) {
+                                      if (e.target.value !== editingWebsitePassword) {
+                                        setPasswordMismatchError("⚠️ Passwords do not match");
+                                      } else {
+                                        setPasswordMismatchError("");
+                                      }
+                                    } else {
+                                      setPasswordMismatchError("");
+                                    }
+                                  }}
                                   placeholder="Confirm new password"
                                   className="website-password-input"
                                   autoComplete="new-password"
                                 />
+                                {passwordMismatchError && (
+                                  <div style={{
+                                    marginTop: '8px',
+                                    padding: '8px 12px',
+                                    backgroundColor: '#ffebee',
+                                    border: '1px solid #ffcdd2',
+                                    borderRadius: '4px',
+                                    color: '#c62828',
+                                    fontSize: '14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                  }}>
+                                    <span style={{ fontSize: '16px' }}>⚠️</span>
+                                    <span>{passwordMismatchError}</span>
+                                  </div>
+                                )}
                               </div>
                               <div className="password-strength-indicator">
                                 {editingWebsitePassword && (
@@ -1090,7 +1141,18 @@ function Dashboard() {
                                 id={`website-password-${user.id}`}
                                 name={`website-password-${user.id}`}
                                 value={editingWebsitePassword}
-                                onChange={e => setEditingWebsitePassword(e.target.value)}
+                                onChange={e => {
+                                  setEditingWebsitePassword(e.target.value);
+                                  // Clear mismatch error when new password changes
+                                  if (passwordMismatchError) {
+                                    // Re-validate immediately
+                                    if (e.target.value === editingWebsitePasswordConfirm) {
+                                      setPasswordMismatchError("");
+                                    } else if (editingWebsitePasswordConfirm) {
+                                      setPasswordMismatchError("⚠️ Passwords do not match");
+                                    }
+                                  }
+                                }}
                                 placeholder="Enter new password"
                                 className="website-password-input"
                                 autoComplete="new-password"
@@ -1100,11 +1162,40 @@ function Dashboard() {
                                   id={`website-password-confirm-${user.id}`}
                                   name={`website-password-confirm-${user.id}`}
                                   value={editingWebsitePasswordConfirm}
-                                  onChange={e => setEditingWebsitePasswordConfirm(e.target.value)}
+                                  onChange={e => {
+                                    setEditingWebsitePasswordConfirm(e.target.value);
+                                    // Real-time validation
+                                    if (e.target.value && editingWebsitePassword) {
+                                      if (e.target.value !== editingWebsitePassword) {
+                                        setPasswordMismatchError("⚠️ Passwords do not match");
+                                      } else {
+                                        setPasswordMismatchError("");
+                                      }
+                                    } else {
+                                      setPasswordMismatchError("");
+                                    }
+                                  }}
                                   placeholder="Confirm new password"
                                   className="website-password-input"
                                   autoComplete="new-password"
                                 />
+                                {passwordMismatchError && (
+                                  <div style={{
+                                    marginTop: '8px',
+                                    padding: '8px 12px',
+                                    backgroundColor: '#ffebee',
+                                    border: '1px solid #ffcdd2',
+                                    borderRadius: '4px',
+                                    color: '#c62828',
+                                    fontSize: '14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                  }}>
+                                    <span style={{ fontSize: '16px' }}>⚠️</span>
+                                    <span>{passwordMismatchError}</span>
+                                  </div>
+                                )}
                               </div>
                               <div className="password-strength-indicator">
                                 {editingWebsitePassword && (
