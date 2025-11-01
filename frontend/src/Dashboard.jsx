@@ -22,6 +22,8 @@ function Dashboard() {
   const [success, setSuccess] = useState('');
   const [editingWebsitePassword, setEditingWebsitePassword] = useState("");
   const [editingWebsitePasswordConfirm, setEditingWebsitePasswordConfirm] = useState("");
+  const [currentPasswordDisplay, setCurrentPasswordDisplay] = useState("");
+  const [loadingCurrentPassword, setLoadingCurrentPassword] = useState(false);
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -422,7 +424,7 @@ function Dashboard() {
     });
   };
 
-  const handleEditWebsitePassword = (user) => {
+  const handleEditWebsitePassword = async (user) => {
     // Close any other open actions first
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -434,6 +436,60 @@ function Dashboard() {
     setEditingWebsitePasswordConfirm("");
     setShowWebsitePassword(false);
     setSelectedUserIdForActions(null); // Clear mobile selection
+    
+    // Fetch current password
+    setLoadingCurrentPassword(true);
+    setCurrentPasswordDisplay("");
+    try {
+      const response = await axios.post(getApiUrl(ENDPOINTS.GET_USER_PASSWORD), 
+        { user_id: user.id },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      // Check if password is returned
+      if (response.data.password) {
+        setCurrentPasswordDisplay(response.data.password);
+        console.log('Current password retrieved and displayed');
+      } else if (response.data.error) {
+        // Backend returned an error message (e.g., no encrypted password stored)
+        setCurrentPasswordDisplay("");
+        console.info(`Password retrieval info: ${response.data.message || response.data.error}`);
+      } else {
+        // No password in response
+        setCurrentPasswordDisplay("");
+        console.warn('No password data in response');
+      }
+    } catch (err) {
+      console.error('Error fetching current password:', err);
+      // Handle different error cases
+      if (err.response?.status === 404) {
+        const errorMessage = err.response?.data?.error || '';
+        
+        if (errorMessage.includes('No encrypted password stored')) {
+          // User doesn't have encrypted password yet - this is expected for older users
+          setCurrentPasswordDisplay("");
+          console.info('This user does not have an encrypted password stored yet. The encrypted password will be created when the password is next updated.');
+        } else {
+          // Endpoint not found - server may need restart
+          setCurrentPasswordDisplay("");
+          console.warn('Password endpoint not available. This may indicate the backend needs to be restarted.');
+        }
+      } else if (err.response?.status === 200 && err.response?.data?.error) {
+        // Backend returned 200 but with error message (no encrypted password)
+        setCurrentPasswordDisplay("");
+        console.info(err.response.data.message || err.response.data.error);
+      } else {
+        // Other errors
+        setCurrentPasswordDisplay("");
+        console.error('Unexpected error fetching password:', err);
+      }
+    } finally {
+      setLoadingCurrentPassword(false);
+    }
   };
 
   // Convert permission_metadata back to tree permissions format for editing
@@ -538,6 +594,7 @@ function Dashboard() {
         setEditingWebsitePasswordUserId(null);
         setEditingWebsitePassword("");
         setEditingWebsitePasswordConfirm("");
+        setCurrentPasswordDisplay("");
         // Refresh users list immediately after successful password update
         fetchUsers();
       } else {
@@ -560,6 +617,8 @@ function Dashboard() {
     setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
     setEditingWebsitePasswordConfirm("");
+    setCurrentPasswordDisplay("");
+    setLoadingCurrentPassword(false);
     setShowWebsitePassword(false);
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -777,7 +836,39 @@ function Dashboard() {
                         <div className="edit-website-password-container">
                           <div className="password-form-body">
                             <div className="password-input-group">
-                              <label htmlFor={`website-password-${user.id}`} className="password-label">
+                              <label htmlFor={`current-password-${user.id}`} className="password-label">
+                                Current Password
+                              </label>
+                              {loadingCurrentPassword ? (
+                                <input
+                                  type="text"
+                                  value="Loading..."
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.6 }}
+                                />
+                              ) : currentPasswordDisplay ? (
+                                <PasswordToggle
+                                  id={`current-password-${user.id}`}
+                                  name={`current-password-${user.id}`}
+                                  value={currentPasswordDisplay}
+                                  onChange={() => {}} // Read-only
+                                  placeholder=""
+                                  className="website-password-input"
+                                  disabled={true}
+                                  readOnly={true}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value="Not available - Update password to enable display"
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.7, fontStyle: 'italic', color: '#666' }}
+                                  title="Encrypted password not stored for this user. Update the password once to enable this feature."
+                                />
+                              )}
+                              <label htmlFor={`website-password-${user.id}`} className="password-label" style={{ marginTop: '16px' }}>
                                 New Website Password
                               </label>
                               <PasswordToggle
@@ -960,7 +1051,39 @@ function Dashboard() {
                         <div className="edit-website-password-container">
                           <div className="password-form-body">
                             <div className="password-input-group">
-                              <label htmlFor={`website-password-${user.id}`} className="password-label">
+                              <label htmlFor={`current-password-${user.id}`} className="password-label">
+                                Current Password
+                              </label>
+                              {loadingCurrentPassword ? (
+                                <input
+                                  type="text"
+                                  value="Loading..."
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.6 }}
+                                />
+                              ) : currentPasswordDisplay ? (
+                                <PasswordToggle
+                                  id={`current-password-${user.id}`}
+                                  name={`current-password-${user.id}`}
+                                  value={currentPasswordDisplay}
+                                  onChange={() => {}} // Read-only
+                                  placeholder=""
+                                  className="website-password-input"
+                                  disabled={true}
+                                  readOnly={true}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value="Not available - Update password to enable display"
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.7, fontStyle: 'italic', color: '#666' }}
+                                  title="Encrypted password not stored for this user. Update the password once to enable this feature."
+                                />
+                              )}
+                              <label htmlFor={`website-password-${user.id}`} className="password-label" style={{ marginTop: '16px' }}>
                                 New Website Password
                               </label>
                               <PasswordToggle

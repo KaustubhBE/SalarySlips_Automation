@@ -46,10 +46,17 @@ def change_password():
 
         # Update password
         user_id = user.get('id')
+        logger.info(f"[change_password] Updating password for user_id: {user_id}, email: {email}")
+        
+        logger.info(f"[change_password] Step 1: Generating password hash...")
         new_password_hash = generate_password_hash(new_password)
-
+        logger.info(f"[change_password] ✅ Password hash generated (length: {len(new_password_hash)})")
+        
+        logger.info(f"[change_password] Step 2: Updating password_hash in Firestore...")
         db.collection('USERS').document(user_id).update({'password_hash': new_password_hash})
-        logger.info(f"Password updated for user: {email}")
+        logger.info(f"[change_password] ✅ Password updated in Firestore")
+        logger.info(f"[change_password] Note: This endpoint only updates password_hash, not encrypted_password")
+        logger.info(f"[change_password] Password updated for user: {email}")
         return jsonify({'message': 'Password updated successfully.'}), 200
 
     except Exception as e:

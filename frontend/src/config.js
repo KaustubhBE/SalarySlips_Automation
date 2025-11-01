@@ -115,6 +115,7 @@ export const ENDPOINTS = {
     UPDATE_USER: 'update_user',
     UPDATE_PERMISSIONS: 'update_permissions',
     UPDATE_WEBSITE_PASSWORD: 'update_website_password',
+    GET_USER_PASSWORD: 'get_user_password',
 
     // WhatsApp Authentication
     WHATSAPP_LOGIN: 'whatsapp-login',

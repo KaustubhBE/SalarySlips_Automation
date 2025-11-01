@@ -48,6 +48,7 @@ from Utils.firebase_utils import (
     delete_material,
     update_material_quantity,
     save_transaction,
+    get_user_encrypted_password,
     get_material_details
 )
 import json
@@ -1814,8 +1815,26 @@ def update_website_password():
 
         # Admin can update any user's website password
         if current_user_role == 'admin':
+            logger.info("=" * 80)
+            logger.info("[update_website_password] ===== PASSWORD UPDATE REQUEST STARTED =====")
+            logger.info("=" * 80)
+            logger.info(f"[update_website_password] Updating password for user_id: {user_id}")
+            logger.info(f"[update_website_password] New password length: {len(new_password)}")
+            
+            from Utils.password_encryption import encrypt_password
+            logger.info(f"[update_website_password] Step 1: Generating password hash...")
             new_password_hash = generate_password_hash(new_password)
-            update_user_password(user_id, new_password_hash)
+            logger.info(f"[update_website_password] ✅ Password hash generated (length: {len(new_password_hash)})")
+            
+            logger.info(f"[update_website_password] Step 2: Encrypting password for storage...")
+            encrypted_password = encrypt_password(new_password)
+            logger.info(f"[update_website_password] ✅ Password encrypted (length: {len(encrypted_password)})")
+            
+            logger.info(f"[update_website_password] Step 3: Updating user in Firestore...")
+            update_user_password(user_id, new_password_hash, encrypted_password)
+            logger.info(f"[update_website_password] ✅ Password update successful")
+            logger.info(f"[update_website_password] ===== PASSWORD UPDATE COMPLETED =====")
+            logger.info("=" * 80)
             return jsonify({"message": "Website password updated successfully"}), 200
         
         # Regular users cannot update other users' website passwords
@@ -1824,6 +1843,85 @@ def update_website_password():
 
     except Exception as e:
         logger.error("Error updating website password: {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/get_user_password", methods=["POST"])
+def get_user_password():
+    """Get user's decrypted password (admin only)"""
+    try:
+        logger.info("=" * 80)
+        logger.info("[get_user_password] ===== PASSWORD RETRIEVAL REQUEST STARTED =====")
+        logger.info("=" * 80)
+        
+        # Check if user is logged in
+        current_user = session.get('user')
+        if not current_user:
+            logger.error("[get_user_password] ❌ User not authenticated")
+            return jsonify({"error": "User not authenticated"}), 401
+
+        logger.info(f"[get_user_password] ✅ User authenticated: {current_user.get('email', 'Unknown')}")
+        logger.info(f"[get_user_password] Current user role: {current_user.get('role', 'Unknown')}")
+
+        data = request.json
+        user_id = data.get('user_id')
+        
+        logger.info(f"[get_user_password] Request data received: user_id={user_id}")
+        
+        if not user_id:
+            logger.error("[get_user_password] ❌ User ID is required")
+            return jsonify({"error": "User ID is required"}), 400
+
+        current_user_role = current_user.get('role')
+
+        # Only admin can retrieve passwords
+        if current_user_role == 'admin':
+            logger.info(f"[get_user_password] ✅ Admin permission verified, proceeding with password retrieval")
+            
+            logger.info(f"[get_user_password] Step 1: Retrieving encrypted password from Firestore for user_id: {user_id}")
+            encrypted_password = get_user_encrypted_password(user_id)
+            
+            if encrypted_password:
+                logger.info(f"[get_user_password] ✅ Encrypted password retrieved from Firestore")
+                logger.info(f"[get_user_password] Step 2: Decrypting password...")
+                
+                from Utils.password_encryption import decrypt_password
+                decrypted_password = decrypt_password(encrypted_password)
+                
+                if decrypted_password:
+                    logger.info(f"[get_user_password] ✅ Password decrypted successfully")
+                    logger.info(f"[get_user_password] Step 3: Returning decrypted password to frontend")
+                    logger.info(f"[get_user_password] ===== PASSWORD RETRIEVAL SUCCESSFUL =====")
+                    logger.info("=" * 80)
+                    return jsonify({"password": decrypted_password}), 200
+                else:
+                    logger.error("[get_user_password] ❌ Failed to decrypt password")
+                    logger.info(f"[get_user_password] ===== PASSWORD RETRIEVAL FAILED (DECRYPTION ERROR) =====")
+                    logger.info("=" * 80)
+                    return jsonify({"error": "Failed to decrypt password"}), 500
+            else:
+                logger.warning(f"[get_user_password] ⚠️ No encrypted password stored for user_id: {user_id}")
+                logger.info(f"[get_user_password] This may indicate:")
+                logger.info(f"[get_user_password]   1. User was created before encrypted password feature was added")
+                logger.info(f"[get_user_password]   2. Password was updated without encryption")
+                logger.info(f"[get_user_password]   3. encrypted_password field doesn't exist in Firestore")
+                logger.info(f"[get_user_password] ===== PASSWORD RETRIEVAL FAILED (NO ENCRYPTED PASSWORD) =====")
+                logger.info("=" * 80)
+                # Return 200 with a clear message instead of 404, so frontend can handle it gracefully
+                return jsonify({
+                    "error": "No encrypted password stored for this user",
+                    "message": "This user's password was created before the encrypted password feature was added. Update the password once to enable password display.",
+                    "password": None
+                }), 200
+        else:
+            logger.warning(f"[get_user_password] ❌ Insufficient permissions - User role: {current_user_role}, Required: admin")
+            logger.info(f"[get_user_password] ===== PASSWORD RETRIEVAL FAILED (PERMISSION DENIED) =====")
+            logger.info("=" * 80)
+            return jsonify({"error": "Insufficient permissions to retrieve passwords"}), 403
+
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error(f"[get_user_password] ❌ ERROR retrieving user password: {e}", exc_info=True)
+        logger.error("=" * 80)
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/update_user", methods=["POST"])

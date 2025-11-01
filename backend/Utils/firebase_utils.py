@@ -141,10 +141,63 @@ def update_user_complete_rbac(user_id, permission_metadata):
     user_ref.update({'permission_metadata': permission_metadata})
     logging.info(f"Successfully updated RBAC for user {user_id}")
 
-def update_user_password(user_id, password_hash):
-    """Update a user's password hash"""
-    user_ref = db.collection('USERS').document(user_id)
-    user_ref.update({'password_hash': password_hash})
+def update_user_password(user_id, password_hash, encrypted_password=None):
+    """Update a user's password hash and optionally encrypted password"""
+    logging.info(f"[update_user_password] Starting password update for user_id: {user_id}")
+    logging.info(f"[update_user_password] password_hash provided: {bool(password_hash)}")
+    logging.info(f"[update_user_password] encrypted_password provided: {bool(encrypted_password)}")
+    
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        update_data = {'password_hash': password_hash}
+        
+        if encrypted_password:
+            update_data['encrypted_password'] = encrypted_password
+            logging.info(f"[update_user_password] Encrypted password length: {len(encrypted_password)}")
+            logging.info(f"[update_user_password] Encrypted password preview: {encrypted_password[:50]}...")
+        else:
+            logging.warning(f"[update_user_password] No encrypted_password provided - only password_hash will be updated")
+        
+        user_ref.update(update_data)
+        logging.info(f"[update_user_password] Successfully updated password for user_id: {user_id}")
+        logging.info(f"[update_user_password] Updated fields: {list(update_data.keys())}")
+    except Exception as e:
+        logging.error(f"[update_user_password] Error updating password for user_id {user_id}: {e}", exc_info=True)
+        raise
+
+def get_user_encrypted_password(user_id):
+    """Get user's encrypted password"""
+    logging.info(f"[get_user_encrypted_password] Starting retrieval for user_id: {user_id}")
+    try:
+        user_ref = db.collection('USERS').document(user_id)
+        user_doc = user_ref.get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            logging.info(f"[get_user_encrypted_password] User document exists for user_id: {user_id}")
+            logging.info(f"[get_user_encrypted_password] Available fields in user document: {list(user_data.keys())}")
+            
+            # Check for encrypted_password field
+            encrypted_password = user_data.get('encrypted_password')
+            password_hash = user_data.get('password_hash')
+            
+            logging.info(f"[get_user_encrypted_password] encrypted_password field present: {bool(encrypted_password)}")
+            logging.info(f"[get_user_encrypted_password] password_hash field present: {bool(password_hash)}")
+            
+            if encrypted_password:
+                logging.info(f"[get_user_encrypted_password] Found encrypted_password (length: {len(encrypted_password) if encrypted_password else 0})")
+                logging.info(f"[get_user_encrypted_password] Encrypted password preview: {encrypted_password[:50] if encrypted_password and len(encrypted_password) > 50 else encrypted_password}...")
+                return encrypted_password
+            else:
+                logging.warning(f"[get_user_encrypted_password] No encrypted_password field found for user_id: {user_id}")
+                logging.info(f"[get_user_encrypted_password] User may not have encrypted password stored yet")
+                return None
+        else:
+            logging.error(f"[get_user_encrypted_password] User document does not exist for user_id: {user_id}")
+            return None
+    except Exception as e:
+        logging.error(f"[get_user_encrypted_password] Error retrieving encrypted password for user_id {user_id}: {e}", exc_info=True)
+        return None
 
 # Removed update_user_departments - no longer needed with tree_permissions only
 
