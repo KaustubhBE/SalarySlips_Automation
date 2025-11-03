@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash, generate_password_hash
-from Utils.firebase_utils import db, get_user_by_email, get_user_by_email_with_metadata, update_user_oauth_tokens
+from Utils.firebase_utils import db, get_user_by_email, get_user_by_email_with_metadata, update_user_oauth_tokens, update_user_password
 import logging
 import os
 import requests
@@ -52,10 +52,14 @@ def change_password():
         new_password_hash = generate_password_hash(new_password)
         logger.info(f"[change_password] ✅ Password hash generated (length: {len(new_password_hash)})")
 
-        logger.info(f"[change_password] Step 2: Updating password_hash in Firestore...")
-        db.collection('USERS').document(user_id).update({'password_hash': new_password_hash})
-        logger.info(f"[change_password] ✅ Password updated in Firestore")
-        logger.info(f"[change_password] Note: This endpoint only updates password_hash, not encrypted_password")
+        logger.info(f"[change_password] Step 2: Encrypting password for storage...")
+        from Utils.password_encryption import encrypt_password
+        encrypted_password = encrypt_password(new_password)
+        logger.info(f"[change_password] ✅ Password encrypted (length: {len(encrypted_password)})")
+
+        logger.info(f"[change_password] Step 3: Updating user in Firestore...")
+        update_user_password(user_id, new_password_hash, encrypted_password)
+        logger.info(f"[change_password] ✅ Password update successful")
         logger.info(f"[change_password] Password updated for user: {email}")
         return jsonify({'message': 'Password updated successfully.'}), 200
 

@@ -148,7 +148,7 @@ def update_user_password(user_id, password_hash, encrypted_password=None):
     logging.info(f"[update_user_password] encrypted_password provided: {bool(encrypted_password)}")
     
     try:
-    user_ref = db.collection('USERS').document(user_id)
+        user_ref = db.collection('USERS').document(user_id)
         update_data = {'password_hash': password_hash}
         
         if encrypted_password:

@@ -15,6 +15,9 @@ function Settings({ onLogout }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [passwordMismatchError, setPasswordMismatchError] = useState("");
+  const [showPasswordChangeConfirm, setShowPasswordChangeConfirm] = useState(false);
+  const [passwordChangeRequest, setPasswordChangeRequest] = useState(null);
 
   if (!user) {
     return <div className="settings-container"><p>Loading...</p></div>;
@@ -28,6 +31,7 @@ function Settings({ onLogout }) {
     setShowNewPassword(false);
     setShowConfirmPassword(false);
     setShowCurrentPassword(false);
+    setPasswordMismatchError("");
   };
 
   const handleCurrentPasswordChange = (e) => {
@@ -36,10 +40,30 @@ function Settings({ onLogout }) {
 
   const handleNewPasswordChange = (e) => {
     setNewPassword(e.target.value);
+    // Real-time validation
+    if (e.target.value && confirmPassword) {
+      if (e.target.value !== confirmPassword) {
+        setPasswordMismatchError("Passwords do not match");
+      } else {
+        setPasswordMismatchError("");
+      }
+    } else {
+      setPasswordMismatchError("");
+    }
   };
 
-  const handleConfirmPasswordChange = (e) => {
+  const handleConfirmPasswordInputChange = (e) => {
     setConfirmPassword(e.target.value);
+    // Real-time validation
+    if (e.target.value && newPassword) {
+      if (e.target.value !== newPassword) {
+        setPasswordMismatchError("Passwords do not match");
+      } else {
+        setPasswordMismatchError("");
+      }
+    } else {
+      setPasswordMismatchError("");
+    }
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -66,11 +90,29 @@ function Settings({ onLogout }) {
       return;
     }
 
+    // Validate passwords match
     if (newPassword !== confirmPassword) {
+      setPasswordMismatchError("Passwords do not match");
       alert('⚠️ New password and confirm password do not match.');
       return;
     }
 
+    // Clear mismatch error if passwords match
+    if (passwordMismatchError) {
+      setPasswordMismatchError("");
+    }
+
+    // Show confirmation modal
+    setPasswordChangeRequest({
+      userName: user.username,
+      userEmail: user.email
+    });
+    setShowPasswordChangeConfirm(true);
+  };
+
+  const handleConfirmPasswordChange = async () => {
+    if (!passwordChangeRequest) return;
+    
     try {
       const response = await axios.post(
         getApiUrl(ENDPOINTS.CHANGE_PASSWORD),
@@ -97,12 +139,21 @@ function Settings({ onLogout }) {
         setShowNewPassword(false);
         setShowConfirmPassword(false);
         setShowCurrentPassword(false);
+        setPasswordMismatchError("");
       } else {
         alert(response.data?.error || '⚠️ Failed to update password.');
       }
     } catch (err) {
       alert(err.response?.data?.error || 'Error updating password.');
+    } finally {
+      setShowPasswordChangeConfirm(false);
+      setPasswordChangeRequest(null);
     }
+  };
+
+  const handleCancelPasswordChange = () => {
+    setShowPasswordChangeConfirm(false);
+    setPasswordChangeRequest(null);
   };
 
   return (
@@ -162,15 +213,38 @@ function Settings({ onLogout }) {
                     id="confirm-password"
                     name="confirm-password"
                     value={confirmPassword}
-                    onChange={handleConfirmPasswordChange}
+                    onChange={handleConfirmPasswordInputChange}
                     required
                     minLength={6}
                     className="form-input"
                     placeholder="Re-enter new password"
                   />
+                  {passwordMismatchError && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      backgroundColor: '#ffebee',
+                      border: '1px solid #ffcdd2',
+                      borderRadius: '4px',
+                      color: '#c62828',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span style={{ fontSize: '16px' }}>⚠️</span>
+                      <span>{passwordMismatchError}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="form-actions">
-                  <button type="submit" className="btn btn-primary">Update Password</button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={!newPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+                  >
+                    Update Password
+                  </button>
                   <button type="button" className="btn btn-secondary" onClick={() => {
                     setShowPasswordInput(false);
                     setCurrentPassword('');
@@ -179,6 +253,7 @@ function Settings({ onLogout }) {
                     setShowNewPassword(false);
                     setShowConfirmPassword(false);
                     setShowCurrentPassword(false);
+                    setPasswordMismatchError("");
                   }}>
                     Cancel
                   </button>
@@ -199,6 +274,59 @@ function Settings({ onLogout }) {
 
         </div>
       </div>
+
+      {/* Password Change Confirmation Modal */}
+      {showPasswordChangeConfirm && passwordChangeRequest && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPasswordChange()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Confirm Password Change</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCancelPasswordChange}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Are you sure you want to change your password?
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{passwordChangeRequest.userEmail}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>This change affects your login access immediately.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleConfirmPasswordChange}
+                title="Confirm password change"
+              >
+                Yes, Change Password
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelPasswordChange}
+                title="Cancel password change"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ClientOnly>
   );
 }
