@@ -30,7 +30,7 @@ import gspread
 from Utils.config import creds
 from Utils.firebase_utils import db
 from datetime import datetime, timedelta
-from Utils.whatsapp_utils import handle_reactor_report_notification
+from Utils.whatsapp_utils import handle_reactor_report_notification, handle_reactor_report_notification_with_stats
 import traceback
 
 # Configure logging
