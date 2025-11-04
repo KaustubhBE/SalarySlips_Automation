@@ -712,6 +712,20 @@ const KR_MaterialInward = () => {
     fetchPartyPlaceData()
   }, [])
 
+  // Show alert popup when message is set
+  useEffect(() => {
+    if (message) {
+      if (messageType === 'success') {
+        alert(message)
+      } else if (messageType === 'error') {
+        alert(message)
+      }
+      // Clear message after showing alert
+      setMessage('')
+      setMessageType('')
+    }
+  }, [message, messageType])
+
   // Helper function to validate numeric input
   const validateNumericInput = (value) => {
     // Allow empty string, numbers, and decimal point
@@ -937,12 +951,6 @@ const KR_MaterialInward = () => {
       </div>
       
       <div className="form-section">
-        {message && (
-          <div className={`message ${messageType}`}>
-            {message}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="material-form">
 
           {/* Added Items Table - Moved to top */}
