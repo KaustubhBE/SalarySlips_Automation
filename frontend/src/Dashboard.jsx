@@ -561,7 +561,7 @@ function Dashboard() {
     
     // Validate passwords match
     if (editingWebsitePassword !== editingWebsitePasswordConfirm) {
-      setPasswordMismatchError("⚠️ Passwords do not match");
+      setPasswordMismatchError("Passwords do not match");
       setError('Passwords do not match');
       return;
     }
@@ -1149,7 +1149,7 @@ function Dashboard() {
                                     if (e.target.value === editingWebsitePasswordConfirm) {
                                       setPasswordMismatchError("");
                                     } else if (editingWebsitePasswordConfirm) {
-                                      setPasswordMismatchError("⚠️ Passwords do not match");
+                                      setPasswordMismatchError("Passwords do not match");
                                     }
                                   }
                                 }}
@@ -1167,7 +1167,7 @@ function Dashboard() {
                                     // Real-time validation
                                     if (e.target.value && editingWebsitePassword) {
                                       if (e.target.value !== editingWebsitePassword) {
-                                        setPasswordMismatchError("⚠️ Passwords do not match");
+                                        setPasswordMismatchError("Passwords do not match");
                                       } else {
                                         setPasswordMismatchError("");
                                       }

@@ -1047,6 +1047,8 @@ const KR_PlaceOrder = () => {
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
 
       if (response.data.success) {
+        // Show detailed log report
+        showDetailedLogReport(response.data)
         alert('Notifications sent successfully!')
         setShowNotificationModal(false)
         setSelectedRecipients([])
@@ -1075,6 +1077,25 @@ const KR_PlaceOrder = () => {
     // Reset order ID for next order
     setOrderIdGenerated(false)
     setOrderId('')
+  }
+
+  // Show detailed log report similar to KR_ReactorReports
+  const showDetailedLogReport = (result) => {
+    const stats = result.delivery_stats || {};
+    
+    // Create simple alert message with basic stats
+    const totalRecipients = stats.total_recipients || 0;
+    const successfulDeliveries = stats.successful_deliveries || 0;
+    const failedDeliveries = stats.failed_deliveries || 0;
+    
+    const alertMessage = `📊 Delivery Summary:
+    
+📋 Total contacts: ${totalRecipients}
+✅ Successful messages: ${successfulDeliveries}
+❌ Failed messages: ${failedDeliveries}
+📊 Success rate: ${totalRecipients > 0 ? ((successfulDeliveries / totalRecipients) * 100).toFixed(1) : 0}%`;
+    
+    alert(alertMessage);
   }
 
   const handleSubmit = async (e) => {
@@ -1211,8 +1232,9 @@ const KR_PlaceOrder = () => {
             const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
             
             if (notifResponse.data.success) {
-              const stats = notifResponse.data.delivery_stats
-              alert(`✅ Order ${orderId} Submitted Successfully!\n\n📊 Notification Summary:\n✅ Sent: ${stats.successful_deliveries}/${stats.total_recipients} recipients\n❌ Failed: ${stats.failed_deliveries}\n\nThe order has been placed and all recipients have been notified.`)
+              // Show detailed log report
+              showDetailedLogReport(notifResponse.data)
+              alert(`✅ Order ${orderId} Submitted Successfully!\n\nThe order has been placed and all recipients have been notified.`)
             } else {
               alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, notifications failed:\n${notifResponse.data.message}`)
             }

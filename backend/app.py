@@ -3464,6 +3464,24 @@ def send_order_notification():
         from Utils.temp_manager import cleanup_user_temp_dir
         cleanup_user_temp_dir(user_email, OUTPUT_DIR)
         
+        # Determine which notification methods were enabled
+        send_email_enabled = method in ['email', 'both']
+        send_whatsapp_enabled = method in ['whatsapp', 'both']
+        
+        # Send log report to the user who generated the order notification (only if notifications were sent successfully)
+        if result.get('success') and result.get('delivery_stats', {}).get('successful_deliveries', 0) > 0:
+            try:
+                send_log_report_to_user(
+                    user_email, 
+                    result.get('delivery_stats', {}), 
+                    send_email_enabled, 
+                    send_whatsapp_enabled, 
+                    logger
+                )
+                logger.info("Log report sent successfully to user for order notification")
+            except Exception as e:
+                logger.error(f"Error sending log report to user: {e}")
+        
         if result.get('success'):
             return jsonify({
                 "success": True,
