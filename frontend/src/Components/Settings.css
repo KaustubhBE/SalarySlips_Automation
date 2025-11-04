@@ -228,6 +228,16 @@ h2 {
   box-shadow: 0 4px 12px rgba(152, 115, 73, 0.2);
 }
 
+/* Remove loading spinner from disabled primary buttons */
+.settings-container .btn-primary:disabled {
+  position: relative;
+}
+
+.settings-container .btn-primary:disabled::after {
+  content: none !important;
+  display: none !important;
+}
+
 /* Secondary Button */
 .btn-secondary {
   background: #ffffff;
