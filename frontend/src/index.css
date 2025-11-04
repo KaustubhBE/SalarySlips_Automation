@@ -33,6 +33,40 @@ body {
   flex-direction: column;
 }
 
+/* Main content area - padding-top to prevent overlap with fixed navbar */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: 64px !important; /* Default padding for desktop navbar height (64px) - !important to override any conflicting styles */
+}
+
+/* Responsive padding-top to match navbar heights */
+@media (max-width: 1024px) {
+  .main-content {
+    padding-top: 60px !important; /* Navbar height at 1024px */
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding-top: 56px !important; /* Navbar height at 768px */
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding-top: 52px !important; /* Navbar height at 480px */
+  }
+}
+
+@media (max-width: 360px) {
+  .main-content {
+    padding-top: 48px !important; /* Navbar height at 360px */
+  }
+}
+
 /* Dashboard styles are now handled in Dashboard.css */
 
 h1 {

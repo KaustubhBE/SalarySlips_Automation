@@ -580,14 +580,15 @@ def add_user():
         username = data.get('username')
         email = data.get('email')
         role = data.get('role')
-        password = generate_password_hash(data.get('password'))
+        raw_password = data.get('password')
+        password = generate_password_hash(raw_password)
         permission_metadata = data.get('permission_metadata', {})
 
         # Debug logging
         logger.info(f"Add user request - Role: {role}")
         logger.info(f"Add user request - Original permission_metadata: {permission_metadata}")
 
-        if not all([username, email, role, password]):
+        if not all([username, email, role, raw_password]):
             return jsonify({"error": "Missing required fields"}), 400
 
         # Generate permission metadata using centralized configuration
@@ -596,12 +597,19 @@ def add_user():
         # Debug logging
         logger.info(f"Add user request - Generated permission_metadata: {permission_metadata}")
 
+        # Encrypt password for display (same as when updating password)
+        from Utils.password_encryption import encrypt_password
+        logger.info(f"[add_user] Encrypting password for storage...")
+        encrypted_password = encrypt_password(raw_password)
+        logger.info(f"[add_user] ✅ Password encrypted (length: {len(encrypted_password)})")
+
         user_id = firebase_add_user(
             username=username, 
             email=email, 
             role=role, 
             password_hash=password, 
-            permission_metadata=permission_metadata
+            permission_metadata=permission_metadata,
+            encrypted_password=encrypted_password
         )
         return jsonify({"message": "User added successfully", "user_id": user_id}), 201
 
@@ -3547,7 +3555,6 @@ def send_log_report_to_user(user_email, delivery_stats, send_email_enabled, send
                 <p><strong>📊 Success Rate:</strong> {(successful_deliveries/total_recipients*100):.1f}%</p>
                 
                 <p>A detailed PDF report with complete delivery statistics and failed contacts table is attached to this email.</p>
-                <p><strong>Note:</strong> If you have WhatsApp authenticated in your account, you will also receive a summary via WhatsApp automatically.</p>
                 <br>
                 <p>Best regards,<br>Bajaj Earths Automation System</p>
                 </body>

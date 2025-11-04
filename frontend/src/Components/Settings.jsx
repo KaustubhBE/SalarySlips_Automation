@@ -183,7 +183,7 @@ function Settings({ onLogout }) {
             {showPasswordInput ? (
               <form className="password-form" onSubmit={handlePasswordSubmit}>
                 <div className="form-group">
-                  <label htmlFor="current-password">Old Password</label>
+                  <label htmlFor="current-password">Current Password</label>
                   <PasswordToggle
                     id="current-password"
                     name="current-password"
@@ -191,7 +191,7 @@ function Settings({ onLogout }) {
                     onChange={handleCurrentPasswordChange}
                     required
                     className="form-input"
-                    placeholder="Enter Old password"
+                    placeholder="Enter Current password"
                   />
                 </div>
                 <div className="form-group">

@@ -45,6 +45,8 @@ logs/
 .env.production.local
 
 # Credentials and sensitive files
+backend/__pycache__/**
+backend/Utils/__pycache__/**
 backend/Utils/.password_encryption_key
 backend/Utils/client_secrets.json
 backend/Utils/service_account_credentials.json

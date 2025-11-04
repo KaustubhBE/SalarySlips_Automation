@@ -13,7 +13,7 @@ firebase_admin.initialize_app(cred)
 # Get Firestore client
 db = firestore.client()
 
-def add_user(username, email, role, password_hash, client_id=None, client_secret=None, permission_metadata=None):
+def add_user(username, email, role, password_hash, client_id=None, client_secret=None, permission_metadata=None, encrypted_password=None):
     """Add a new user to Firestore"""
     user_data = {
         'username': username,
@@ -27,6 +27,8 @@ def add_user(username, email, role, password_hash, client_id=None, client_secret
         user_data['client_secret'] = client_secret
     if permission_metadata:
         user_data['permission_metadata'] = permission_metadata
+    if encrypted_password:
+        user_data['encrypted_password'] = encrypted_password
     user_ref = db.collection('USERS').document()
     user_ref.set(user_data)
     return user_ref.id

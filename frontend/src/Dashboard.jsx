@@ -880,7 +880,7 @@ function Dashboard() {
                                 />
                               )}
                               <label htmlFor={`website-password-${user.id}`} className="password-label" style={{ marginTop: '16px' }}>
-                                New Website Password
+                                New Password
                               </label>
                               <PasswordToggle
                                 id={`website-password-${user.id}`}
@@ -1135,7 +1135,7 @@ function Dashboard() {
                                 />
                               )}
                               <label htmlFor={`website-password-${user.id}`} className="password-label" style={{ marginTop: '16px' }}>
-                                New Website Password
+                                New Password
                               </label>
                               <PasswordToggle
                                 id={`website-password-${user.id}`}
