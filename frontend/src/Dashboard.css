@@ -63,12 +63,10 @@
 
 .back-btn:hover {
   background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(107, 114, 128, 0.4);
 }
 
 .back-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
 }
 
@@ -141,7 +139,6 @@
   border-color: #3b82f6;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   background: #fefefe;
-  transform: translateY(-1px);
 }
 
 .form-group input:hover {
@@ -192,7 +189,7 @@
 }
 
 .password-toggle-btn:active {
-  transform: translateY(-50%) scale(0.95);
+  opacity: 0.8;
 }
 
 .password-toggle-btn svg {
@@ -237,7 +234,6 @@
   border-color: #3b82f6;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   background-color: #fefefe;
-  transform: translateY(-1px);
   z-index: 1000;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%233b82f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
@@ -474,12 +470,10 @@
 
 .submit-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
 }
 
 .submit-btn:active:not(:disabled) {
-  transform: translateY(0);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
@@ -666,7 +660,6 @@
 
 .success-ok-btn:hover {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
@@ -678,13 +671,11 @@
 
 .success-dashboard-btn:hover {
   background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
 .success-ok-btn:active,
 .success-dashboard-btn:active {
-  transform: translateY(0);
 }
 
 /* Animations */
@@ -946,11 +937,9 @@
 
 .refresh-btn:hover {
   background-color: #2563eb;
-  transform: translateY(-1px);
 }
 
 .refresh-btn:active {
-  transform: translateY(0);
 }
 
 /* Add User Button */
@@ -969,7 +958,6 @@
 
 .add-user-btn:hover {
   background-color: #059669;
-  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -990,7 +978,6 @@
 
 .refresh-rbac-btn:hover {
   background-color: #2563eb;
-  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -1617,12 +1604,10 @@ table tr:hover {
 
 .password-save-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
 .password-save-btn:active:not(:disabled) {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
@@ -1642,12 +1627,10 @@ table tr:hover {
 
 .password-cancel-btn:hover {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
 }
 
 .password-cancel-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
@@ -1782,12 +1765,10 @@ table tr:hover {
 
 .confirm-delete-btn:hover {
   background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
 }
 
 .confirm-delete-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
@@ -1799,12 +1780,10 @@ table tr:hover {
 
 .cancel-delete-btn:hover {
   background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
 }
 
 .cancel-delete-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
 }
 
@@ -1931,7 +1910,6 @@ table tr:hover {
 
 .modal-close-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
 }
 
 /* Permissions Content */
@@ -2033,7 +2011,6 @@ table tr:hover {
 
 .expand-button:hover {
   background: #2563eb;
-  transform: scale(1.05);
 }
 
 .expand-button:disabled {

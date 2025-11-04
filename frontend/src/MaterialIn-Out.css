@@ -268,6 +268,238 @@
   }
 }
 
+/* ==================== MOBILE (360px) ==================== */
+@media (max-width: 360px) {
+  .material_list-container {
+    padding: 8px;
+  }
+
+  .material-form-wrapper {
+    padding: 16px;
+  }
+
+  .material-form-wrapper h2 {
+    font-size: 18px;
+  }
+
+  .material-form {
+    padding: 16px;
+  }
+
+  .form-row {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    min-width: 100%;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 10px;
+    font-size: 13px;
+    min-height: 42px;
+    height: 42px;
+  }
+
+  .form-textarea {
+    min-height: 80px;
+    height: auto;
+  }
+
+  .add-item-btn,
+  .submit-btn,
+  .reset-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .items-table-container {
+    padding: 12px;
+  }
+
+  .items-table-container h3 {
+    font-size: 16px;
+  }
+}
+
+/* ==================== MOBILE (300px) ==================== */
+@media (max-width: 300px) {
+  .material_list-container {
+    padding: 6px;
+  }
+
+  .material-form-wrapper {
+    padding: 12px;
+  }
+
+  .material-form-wrapper h2 {
+    font-size: 16px;
+  }
+
+  .material-form {
+    padding: 12px;
+  }
+
+  .form-group label {
+    font-size: 11px;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 8px;
+    font-size: 12px;
+    min-height: 38px;
+    height: 38px;
+  }
+
+  .form-textarea {
+    min-height: 70px;
+    height: auto;
+  }
+
+  .add-item-btn,
+  .submit-btn,
+  .reset-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .items-table-container {
+    padding: 10px;
+  }
+
+  .items-table-container h3 {
+    font-size: 14px;
+  }
+
+  .toggle-mode-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+}
+
+/* ==================== MOBILE (250px) ==================== */
+@media (max-width: 250px) {
+  .material_list-container {
+    padding: 4px;
+  }
+
+  .material-form-wrapper {
+    padding: 10px;
+  }
+
+  .material-form-wrapper h2 {
+    font-size: 14px;
+  }
+
+  .material-form {
+    padding: 10px;
+  }
+
+  .form-group label {
+    font-size: 10px;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 6px;
+    font-size: 11px;
+    min-height: 36px;
+    height: 36px;
+  }
+
+  .form-textarea {
+    min-height: 60px;
+    height: auto;
+  }
+
+  .add-item-btn,
+  .submit-btn,
+  .reset-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .items-table-container {
+    padding: 8px;
+  }
+
+  .items-table-container h3 {
+    font-size: 13px;
+  }
+
+  .toggle-mode-btn {
+    padding: 3px 5px;
+    font-size: 10px;
+  }
+}
+
+/* ==================== MOBILE (200px) ==================== */
+@media (max-width: 200px) {
+  .material_list-container {
+    padding: 2px;
+  }
+
+  .material-form-wrapper {
+    padding: 8px;
+  }
+
+  .material-form-wrapper h2 {
+    font-size: 12px;
+  }
+
+  .material-form {
+    padding: 8px;
+  }
+
+  .form-group label {
+    font-size: 9px;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 5px;
+    font-size: 10px;
+    min-height: 32px;
+    height: 32px;
+  }
+
+  .form-textarea {
+    min-height: 50px;
+    height: auto;
+  }
+
+  .add-item-btn,
+  .submit-btn,
+  .reset-btn {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .items-table-container {
+    padding: 6px;
+  }
+
+  .items-table-container h3 {
+    font-size: 12px;
+  }
+
+  .toggle-mode-btn {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+}
+
 
 /* Loading state */
 .btn-primary:disabled {

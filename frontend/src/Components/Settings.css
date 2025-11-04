@@ -7,6 +7,8 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #e5e7eb;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ==================== HEADER ==================== */
@@ -27,6 +29,10 @@
 /* ==================== CONTENT ==================== */
 .settings-content {
   padding: 32px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ==================== SECTIONS ==================== */
@@ -100,10 +106,18 @@ h2 {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .form-group {
   margin-bottom: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .form-group:last-child {
@@ -149,10 +163,17 @@ h2 {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .password-input-container .form-input {
   padding-right: 40px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .password-toggle-btn {
@@ -224,7 +245,6 @@ h2 {
 .btn-primary:hover:not(:disabled) {
   background: #7a5c3a;
   border-color: #7a5c3a;
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(152, 115, 73, 0.2);
 }
 
@@ -393,6 +413,484 @@ h2 {
   }
 }
 
+/* ==================== SMALL MOBILE (under 350px) ==================== */
+@media (max-width: 350px) {
+  .settings-container {
+    margin: 8px 4px;
+    border-radius: 6px;
+  }
+
+  .settings-header {
+    padding: 12px 6px;
+  }
+
+  .settings-header h1 {
+    font-size: 14px;
+  }
+
+  .settings-content {
+    padding: 12px 6px;
+  }
+
+  .password-form {
+    padding: 8px 6px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-group label {
+    font-size: 10px;
+  }
+
+  .form-input {
+    padding: 8px 28px 8px 8px;
+    font-size: 11px;
+  }
+
+  .form-input::placeholder {
+    font-size: 10px;
+  }
+
+  .password-input-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 28px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .password-toggle-btn {
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    font-size: 11px;
+  }
+
+  .account-details {
+    padding: 8px 6px;
+  }
+
+  h2 {
+    font-size: 11px;
+  }
+}
+
+/* ==================== VERY SMALL MOBILE (under 390px) ==================== */
+@media (max-width: 390px) {
+  .settings-container {
+    margin: 8px 4px;
+    border-radius: 6px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .settings-header {
+    padding: 12px 8px;
+  }
+
+  .settings-header h1 {
+    font-size: 14px;
+    letter-spacing: -0.02em;
+  }
+
+  .settings-content {
+    padding: 12px 8px;
+    overflow-x: hidden;
+  }
+
+  .account-section,
+  .password-section,
+  .actions-section {
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  h2 {
+    font-size: 11px;
+    margin: 0 0 10px 0;
+    letter-spacing: 0.03em;
+  }
+
+  .account-details {
+    padding: 10px 8px;
+    border-radius: 6px;
+  }
+
+  .detail-row {
+    padding: 6px 0;
+    gap: 4px;
+  }
+
+  .detail-label {
+    font-size: 10px;
+    min-width: 50px;
+  }
+
+  .detail-value {
+    font-size: 10px;
+  }
+
+  .password-form {
+    padding: 10px 8px;
+    border-radius: 6px;
+    overflow-x: hidden;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+    overflow-x: hidden;
+  }
+
+  .form-group label {
+    font-size: 10px;
+    margin-bottom: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .form-input {
+    padding: 8px 10px;
+    font-size: 11px;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .form-input::placeholder {
+    font-size: 10px;
+  }
+
+  .password-input-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 30px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .password-toggle-btn {
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    min-height: 32px;
+    border-radius: 4px;
+  }
+
+  .form-actions {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .password-section .btn,
+  .actions-section .btn {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+  }
+
+  .actions-section {
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+
+  .message {
+    padding: 8px 10px;
+    font-size: 11px;
+    margin-top: 12px;
+  }
+}
+
+/* ==================== MOBILE (360px) ==================== */
+@media (max-width: 360px) {
+  .settings-container {
+    margin: 8px 4px;
+    border-radius: 6px;
+    overflow-x: hidden;
+  }
+
+  .settings-header {
+    padding: 12px 8px;
+  }
+
+  .settings-header h1 {
+    font-size: 14px;
+  }
+
+  .settings-content {
+    padding: 12px 8px;
+    overflow-x: hidden;
+  }
+
+  .password-form {
+    padding: 10px 8px;
+  }
+
+  .form-group label {
+    font-size: 10px;
+  }
+
+  .form-input {
+    padding: 8px 30px 8px 8px;
+    font-size: 11px;
+  }
+
+  .form-input::placeholder {
+    font-size: 10px;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 30px;
+  }
+
+  .password-toggle-btn {
+    right: 6px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  h2 {
+    font-size: 11px;
+  }
+}
+
+/* ==================== MOBILE (300px) ==================== */
+@media (max-width: 300px) {
+  .settings-container {
+    margin: 6px 3px;
+  }
+
+  .settings-header {
+    padding: 10px 6px;
+  }
+
+  .settings-header h1 {
+    font-size: 13px;
+  }
+
+  .settings-content {
+    padding: 10px 6px;
+  }
+
+  .password-form {
+    padding: 8px 6px;
+  }
+
+  .form-input {
+    padding: 7px 28px 7px 7px;
+    font-size: 10px;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 28px;
+  }
+
+  .password-toggle-btn {
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+  }
+
+  .btn {
+    padding: 7px 10px;
+    font-size: 10px;
+    min-height: 30px;
+  }
+
+  h2 {
+    font-size: 10px;
+  }
+
+  .account-details {
+    padding: 8px 6px;
+  }
+}
+
+/* ==================== MOBILE (250px) ==================== */
+@media (max-width: 250px) {
+  .settings-container {
+    margin: 4px 2px;
+  }
+
+  .settings-header {
+    padding: 8px 5px;
+  }
+
+  .settings-header h1 {
+    font-size: 12px;
+  }
+
+  .settings-content {
+    padding: 8px 5px;
+  }
+
+  .password-form {
+    padding: 6px 5px;
+  }
+
+  .form-input {
+    padding: 6px 26px 6px 6px;
+    font-size: 10px;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 26px;
+  }
+
+  .password-toggle-btn {
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+
+  .btn {
+    padding: 6px 8px;
+    font-size: 9px;
+    min-height: 28px;
+  }
+
+  h2 {
+    font-size: 9px;
+  }
+
+  .form-group label {
+    font-size: 9px;
+  }
+}
+
+/* ==================== EXTREMELY SMALL MOBILE (under 200px) ==================== */
+@media (max-width: 200px) {
+  .settings-container {
+    margin: 4px 2px;
+    border-radius: 4px;
+  }
+
+  .settings-header {
+    padding: 8px 6px;
+  }
+
+  .settings-header h1 {
+    font-size: 12px;
+  }
+
+  .settings-content {
+    padding: 8px 6px;
+  }
+
+  .account-section,
+  .password-section,
+  .actions-section {
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-size: 10px;
+    margin: 0 0 8px 0;
+  }
+
+  .account-details {
+    padding: 8px 6px;
+  }
+
+  .detail-row {
+    padding: 4px 0;
+    gap: 2px;
+  }
+
+  .detail-label {
+    font-size: 9px;
+    min-width: 40px;
+  }
+
+  .detail-value {
+    font-size: 9px;
+  }
+
+  .password-form {
+    padding: 8px 6px;
+  }
+
+  .form-group {
+    margin-bottom: 10px;
+  }
+
+  .form-group label {
+    font-size: 9px;
+    margin-bottom: 3px;
+  }
+
+  .form-input {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .form-input::placeholder {
+    font-size: 9px;
+  }
+
+  .password-input-container .form-input {
+    padding-right: 28px;
+  }
+
+  .password-toggle-btn {
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    min-height: 28px;
+  }
+
+  .form-actions {
+    gap: 4px;
+    margin-top: 10px;
+  }
+
+  .actions-section {
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+
+  .message {
+    padding: 6px 8px;
+    font-size: 10px;
+    margin-top: 10px;
+  }
+}
+
 /* ==================== MODAL STYLES ==================== */
 .modal-overlay {
   position: fixed;
@@ -486,7 +984,6 @@ h2 {
 
 .modal-close-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
 }
 
 .delete-modal-body {
@@ -588,12 +1085,10 @@ h2 {
 
 .confirm-delete-btn:hover {
   background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
 }
 
 .confirm-delete-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
@@ -605,12 +1100,10 @@ h2 {
 
 .cancel-delete-btn:hover {
   background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
 }
 
 .cancel-delete-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
 }
 
