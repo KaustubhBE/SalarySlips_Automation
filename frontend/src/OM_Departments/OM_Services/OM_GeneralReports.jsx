@@ -363,11 +363,22 @@ const Reports = () => {
     const droppedFiles = Array.from(e.dataTransfer.files);
     const validFiles = droppedFiles.filter(file => {
       const fileType = file.type;
-      const isValidType = 
-        fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      const isTemplateDrop = type === 'template';
+      const isValidType = isTemplateDrop
+        ? fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : (
+            fileType === 'text/plain' || 
+            fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            fileType === 'image/png' ||
+            fileType === 'image/jpeg' ||
+            fileType === 'image/jpg' ||
+            fileType === 'application/pdf' ||
+            fileType.startsWith('video/')
+          );
       
       if (!isValidType) {
-        alert(`File type not supported: ${file.name}. Please upload only .docx`);
+        const attachmentFormats = '.txt, .docx, .png, .jpg, .jpeg, .pdf, or video files (e.g. .mp4, .mov, .avi)';
+        alert(`File type not supported: ${file.name}. Please upload only ${isTemplateDrop ? '.docx' : attachmentFormats}.`);
       }
       return isValidType;
     });
@@ -412,16 +423,22 @@ const Reports = () => {
     console.log('Selected files:', selectedFiles.map(f => f.name));
     const validFiles = selectedFiles.filter(file => {
       const fileType = file.type;
-      const isValidType = 
-        fileType === 'text/plain' || 
-        fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        fileType === 'image/png' ||
-        fileType === 'image/jpeg' ||
-        fileType === 'image/jpg' ||
-        fileType === 'application/pdf';
+      const isTemplateInput = type === 'template';
+      const isValidType = isTemplateInput
+        ? fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : (
+            fileType === 'text/plain' || 
+            fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            fileType === 'image/png' ||
+            fileType === 'image/jpeg' ||
+            fileType === 'image/jpg' ||
+            fileType === 'application/pdf' ||
+            fileType.startsWith('video/')
+          );
       
       if (!isValidType) {
-        alert(`File type not supported: ${file.name}. Please upload only .txt, .docx, .png, .jpg, .jpeg, or .pdf files.`);
+        const attachmentFormats = '.txt, .docx, .png, .jpg, .jpeg, .pdf, or video files (e.g. .mp4, .mov, .avi)';
+        alert(`File type not supported: ${file.name}. Please upload only ${isTemplateInput ? '.docx' : attachmentFormats}.`);
       }
       return isValidType;
     });
@@ -1034,7 +1051,7 @@ const Reports = () => {
             <h3>Attachment Files</h3>
             <p>Drag and drop files to be attached here</p>
             <p className="file-types">
-              Supported formats: .txt, .docx, .png, .jpg, .jpeg, .pdf
+              Supported formats: .txt, .docx, .png, .jpg, .jpeg, .pdf, Video (MP4, MOV, AVI, etc.)
               {useTemplateAsCaption && <span className="mode-indicator"> (Single file mode)</span>}
             </p>
             <div className="file-input-container">
@@ -1044,7 +1061,7 @@ const Reports = () => {
                 id="attachment-file-input"
                 multiple={!useTemplateAsCaption}
                 onChange={(e) => handleFileInput(e, 'attachment')}
-                accept=".txt,.docx,.png,.jpg,.jpeg,.pdf"
+                accept=".txt,.docx,.png,.jpg,.jpeg,.pdf,video/*"
                 style={{ display: 'none' }}
               />
               <button 

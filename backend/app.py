@@ -2335,7 +2335,7 @@ def get_authority_list():
         
         # Get parameters
         factory = request.args.get('factory', 'KR')
-        sheet_name = request.args.get('sheet_name', 'Authority List')
+        sheet_name = request.args.get('sheet_name', 'List')
         sheet_id = request.args.get('sheet_id')
         
         if not sheet_id:
@@ -2361,12 +2361,15 @@ def get_authority_list():
         headers = authority_data[1] if len(authority_data) > 1 else []
         data_rows = authority_data[2:] if len(authority_data) > 2 else []
 
-        # Find the column index for "Authority Name" (case-insensitive), fallback to first non-empty
-        header_search_term = "authority name"
+        # Find the column index for "Authority Name" / "Given By" (case-insensitive), fallback to first non-empty
+        authority_header_terms = ["authority name", "given by"]
         authority_col_idx = None
-        for idx, h in enumerate(headers or []):
-            if str(h).strip().lower() == header_search_term:
-                authority_col_idx = idx
+        for term in authority_header_terms:
+            for idx, h in enumerate(headers or []):
+                if str(h).strip().lower() == term:
+                    authority_col_idx = idx
+                    break
+            if authority_col_idx is not None:
                 break
         if authority_col_idx is None:
             for idx, h in enumerate(headers or []):
@@ -2376,20 +2379,60 @@ def get_authority_list():
         if authority_col_idx is None:
             authority_col_idx = 0
 
-        # Extract values from the identified column
+        # Find Type and Importance columns if available
+        def find_column_index(possible_terms):
+            for term in possible_terms:
+                for idx, h in enumerate(headers or []):
+                    if str(h).strip().lower() == term:
+                        return idx
+            return None
+
+        type_col_idx = find_column_index(["type"])
+        importance_col_idx = find_column_index(["importance"])
+
+        # Extract values and construct structured records
         authority_names = []
+        type_values = set()
+        importance_values = set()
+        authority_records = []
+
         for row in data_rows:
             if not row or authority_col_idx >= len(row):
                 continue
-            value = str(row[authority_col_idx]).strip()
-            if value:
-                authority_names.append(value)
+
+            name_value = str(row[authority_col_idx]).strip()
+            type_value = ""
+            importance_value = ""
+
+            if type_col_idx is not None and type_col_idx < len(row):
+                type_value = str(row[type_col_idx]).strip()
+                if type_value:
+                    type_values.add(type_value)
+
+            if importance_col_idx is not None and importance_col_idx < len(row):
+                importance_value = str(row[importance_col_idx]).strip()
+                if importance_value:
+                    importance_values.add(importance_value)
+
+            if name_value:
+                authority_names.append(name_value)
+                record = {
+                    "givenBy": name_value
+                }
+                if type_value:
+                    record["type"] = type_value
+                if importance_value:
+                    record["importance"] = importance_value
+                authority_records.append(record)
         
         return jsonify({
             "success": True,
             "data": authority_names,
             "factory": factory,
-            "sheet_name": sheet_name
+            "sheet_name": sheet_name,
+            "types": sorted(list(type_values)),
+            "importances": sorted(list(importance_values)),
+            "records": authority_records
         }), 200
         
     except Exception as e:

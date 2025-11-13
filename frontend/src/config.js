@@ -570,7 +570,7 @@ export const PLANT_DATA = [
     sheet_name: {
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   },
   { 
@@ -580,7 +580,7 @@ export const PLANT_DATA = [
     sheet_name: {
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   },
   { 
@@ -591,7 +591,7 @@ export const PLANT_DATA = [
       RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   },
   { 
@@ -602,7 +602,7 @@ export const PLANT_DATA = [
       RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   },
   { 
@@ -612,7 +612,7 @@ export const PLANT_DATA = [
     sheet_name: {
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   },
   {
@@ -622,7 +622,7 @@ export const PLANT_DATA = [
     sheet_name: {
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'Authority List'
+      AuthorityList: 'List'
     }
   }
 ];
@@ -692,15 +692,15 @@ export const getPartySheetName = (sheetId) => {
 
 export const getAuthoritySheetName = (sheetId) => {
   const plant = getPlantBySheetId(sheetId);
-  if (!plant || !plant.sheet_name) return 'Authority List';
+  if (!plant || !plant.sheet_name) return 'List';
   
   if (typeof plant.sheet_name === 'string') {
-    return 'Authority List'; // Default for old format
+    return 'List'; // Default for old format
   } else if (typeof plant.sheet_name === 'object') {
-    return plant.sheet_name.AuthorityList || 'Authority List';
+    return plant.sheet_name.AuthorityList || 'List';
   }
   
-  return 'Authority List';
+  return 'List';
 };
 
 // Named exports

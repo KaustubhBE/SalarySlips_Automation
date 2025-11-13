@@ -3029,6 +3029,18 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             logger.error(f"Error adding final spacing paragraph: {e}")
             raise
         
+        # Prepare order details data
+        details_data = [
+            ("Date & Time", order_data.get('dateTime', 'N/A')),
+            ("Given By", order_data.get('givenBy', 'N/A')),
+            ("Type", order_data.get('type', 'N/A')),
+            ("Preferred Party", order_data.get('partyName', 'N/A')),
+            ("Place", order_data.get('place', 'N/A')),
+            ("Importance", order_data.get('importance', 'Normal')),
+            ("Description", order_data.get('description', 'N/A')),
+            ("Status", "Pending")
+        ]
+
         # Create Order Details Table
         try:
             logger.info("Creating order details table...")
@@ -3043,16 +3055,16 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             logger.info("Details heading paragraph created successfully")
             
             # Create table
-            logger.info("Creating table with 5 rows and 2 columns...")
+            logger.info("Creating table with dynamic rows and 2 columns...")
             try:
-                details_table = doc.add_table(rows=5, cols=2)
+                details_table = doc.add_table(rows=len(details_data), cols=2)
                 logger.info(f"Table created with {len(details_table.rows)} rows and {len(details_table.rows[0].cells)} columns")
             except Exception as table_error:
                 logger.warning(f"Error creating table with template, trying fallback approach: {table_error}")
                 # Fallback: create a new document without template
                 logger.info("Creating fallback document without template...")
                 doc = Document()
-                details_table = doc.add_table(rows=5, cols=2)
+                details_table = doc.add_table(rows=len(details_data), cols=2)
                 logger.info("Fallback table created successfully")
             
             # Set table alignment
@@ -3069,13 +3081,6 @@ def process_order_notification(order_id, order_data, recipients, method, factory
         # Add order details
         try:
             logger.info("Populating order details table...")
-            details_data = [
-                ("Date & Time", order_data.get('dateTime', 'N/A')),
-                ("Given By", order_data.get('givenBy', 'N/A')),
-                ("Importance", order_data.get('importance', 'Normal')),
-                ("Description", order_data.get('description', 'N/A')),
-                ("Status", "Pending")
-            ]
             
             for i, (label, value) in enumerate(details_data):
                 logger.info(f"Processing details row {i}: {label} = {value}")
@@ -3215,6 +3220,9 @@ def process_order_notification(order_id, order_data, recipients, method, factory
 *Factory:* {factory}
 *Date & Time:* {order_data.get('dateTime', 'N/A')}
 *Given By:* {order_data.get('givenBy', 'N/A')}
+*Type:* {order_data.get('type', 'N/A')}
+*Preferred Party:* {order_data.get('partyName', 'N/A')}
+*Place:* {order_data.get('place', 'N/A')}
 *Importance:* {order_data.get('importance', 'Normal')}
 
 *Description:*
@@ -3266,6 +3274,18 @@ Please find the detailed order document attached."""
                         <tr>
                             <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By:</strong></td>
                             <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('givenBy', 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('type', 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Preferred Party:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('partyName', 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('place', 'N/A')}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance:</strong></td>

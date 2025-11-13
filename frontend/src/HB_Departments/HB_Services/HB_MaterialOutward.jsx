@@ -762,7 +762,7 @@ const HB_MaterialOutward = () => {
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
           factory: 'HB',
-          sheet_name: 'Authority List',
+          sheet_name: 'List',
           sheet_id: sheetId
         }
       })

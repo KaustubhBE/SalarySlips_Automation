@@ -23,6 +23,7 @@ function Dashboard() {
   const [editingWebsitePassword, setEditingWebsitePassword] = useState("");
   const [editingWebsitePasswordConfirm, setEditingWebsitePasswordConfirm] = useState("");
   const [currentPasswordDisplay, setCurrentPasswordDisplay] = useState("");
+  const [currentPasswordMessage, setCurrentPasswordMessage] = useState("");
   const [loadingCurrentPassword, setLoadingCurrentPassword] = useState(false);
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
   const [editingPermissions, setEditingPermissions] = useState({});
@@ -40,6 +41,8 @@ function Dashboard() {
   const [passwordChangeRequest, setPasswordChangeRequest] = useState(null); // { userId, userName, userEmail }
   const [showPermissionChangeConfirm, setShowPermissionChangeConfirm] = useState(false);
   const [permissionChangeRequest, setPermissionChangeRequest] = useState(null); // { userId, userName, userEmail, permissionCount }
+  const [showAdminPasswordRestriction, setShowAdminPasswordRestriction] = useState(false);
+  const [adminPasswordRestrictionUser, setAdminPasswordRestrictionUser] = useState(null);
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -431,17 +434,34 @@ function Dashboard() {
     setEditingPermissions({});
     setSelectedUser(null);
     
-    // Open website password editing
-    setEditingWebsitePasswordUserId(user.id);
+    setEditingWebsitePasswordUserId(null);
     setEditingWebsitePassword("");
     setEditingWebsitePasswordConfirm("");
     setPasswordMismatchError("");
     setShowWebsitePassword(false);
+    setCurrentPasswordMessage("");
+    setCurrentPasswordDisplay("");
+    setLoadingCurrentPassword(false);
     setSelectedUserIdForActions(null); // Clear mobile selection
+    setAdminPasswordRestrictionUser(null);
+    setShowAdminPasswordRestriction(false);
     
+    const targetIsAdmin = (user.role || '').toString().trim().toLowerCase() === 'admin';
+    const editingOwnAccount = isCurrentUser(user);
+
+    if (targetIsAdmin && !editingOwnAccount) {
+      setAdminPasswordRestrictionUser(user);
+      setShowAdminPasswordRestriction(true);
+      return;
+    }
+
+    // Open website password editing
+    setEditingWebsitePasswordUserId(user.id);
+
     // Fetch current password
     setLoadingCurrentPassword(true);
     setCurrentPasswordDisplay("");
+
     try {
       const response = await axios.post(getApiUrl(ENDPOINTS.GET_USER_PASSWORD), 
         { user_id: user.id },
@@ -455,6 +475,7 @@ function Dashboard() {
       // Check if password is returned
       if (response.data.password) {
         setCurrentPasswordDisplay(response.data.password);
+        setCurrentPasswordMessage("");
         console.log('Current password retrieved and displayed');
       } else if (response.data.error) {
         // Backend returned an error message (e.g., no encrypted password stored)
@@ -604,6 +625,7 @@ function Dashboard() {
         setEditingWebsitePassword("");
         setEditingWebsitePasswordConfirm("");
         setCurrentPasswordDisplay("");
+        setCurrentPasswordMessage("");
         setPasswordMismatchError("");
         // Refresh users list immediately after successful password update
         fetchUsers();
@@ -635,6 +657,56 @@ function Dashboard() {
     setEditingPermissions({});
     setSelectedUser(null);
     setSelectedUserIdForActions(null); // Clear mobile selection
+    setCurrentPasswordMessage("");
+    setShowAdminPasswordRestriction(false);
+    setAdminPasswordRestrictionUser(null);
+  };
+
+  const handleCloseAdminPasswordRestriction = () => {
+    setShowAdminPasswordRestriction(false);
+    setAdminPasswordRestrictionUser(null);
+  };
+
+  const normalizeValueForComparison = (value) => {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    return value.toString().trim().toLowerCase();
+  };
+
+  const isCurrentUser = (userToCheck) => {
+    if (!userToCheck || !currentUser) return false;
+
+    const targetValues = [
+      userToCheck.id,
+      userToCheck.uid,
+      userToCheck.user_id,
+      userToCheck.userId,
+      userToCheck.docId,
+      userToCheck.email,
+      userToCheck.username
+    ].map(normalizeValueForComparison).filter(Boolean);
+
+    if (targetValues.length === 0) {
+      return false;
+    }
+
+    const currentValues = [
+      currentUser.id,
+      currentUser.uid,
+      currentUser.user_id,
+      currentUser.userId,
+      currentUser.docId,
+      currentUser.email,
+      currentUser.username
+    ].map(normalizeValueForComparison).filter(Boolean);
+
+    if (currentValues.length === 0) {
+      return false;
+    }
+
+    const targetSet = new Set(targetValues);
+    return currentValues.some(value => targetSet.has(value));
   };
 
   // Get current user info from auth context
@@ -857,6 +929,15 @@ function Dashboard() {
                                   disabled
                                   className="website-password-input"
                                   style={{ opacity: 0.6 }}
+                                />
+                              ) : currentPasswordMessage ? (
+                                <input
+                                  type="text"
+                                  value={currentPasswordMessage}
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.7, fontStyle: 'italic', color: '#666' }}
+                                  title={currentPasswordMessage}
                                 />
                               ) : currentPasswordDisplay ? (
                                 <PasswordToggle
@@ -1113,6 +1194,15 @@ function Dashboard() {
                                   className="website-password-input"
                                   style={{ opacity: 0.6 }}
                                 />
+                              ) : currentPasswordMessage ? (
+                                <input
+                                  type="text"
+                                  value={currentPasswordMessage}
+                                  disabled
+                                  className="website-password-input"
+                                  style={{ opacity: 0.7, fontStyle: 'italic', color: '#666' }}
+                                  title={currentPasswordMessage}
+                                />
                               ) : currentPasswordDisplay ? (
                                 <PasswordToggle
                                   id={`current-password-${user.id}`}
@@ -1284,6 +1374,52 @@ function Dashboard() {
                 onClick={handleCancelEdit}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Password Restriction Modal */}
+      {showAdminPasswordRestriction && adminPasswordRestrictionUser && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseAdminPasswordRestriction()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Admin Password Protected</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCloseAdminPasswordRestriction}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  You cannot view or change <strong>{adminPasswordRestrictionUser.username}</strong>'s password because they are an admin.
+                </p>
+                <div className="user-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{adminPasswordRestrictionUser.email}</span>
+                  </div>
+                </div>
+                <div className="warning-text">
+                  <strong>Admins can only manage their own passwords.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCloseAdminPasswordRestriction}
+                title="Close message"
+              >
+                Okay
               </button>
             </div>
           </div>

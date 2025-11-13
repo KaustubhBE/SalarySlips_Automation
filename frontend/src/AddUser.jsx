@@ -197,6 +197,8 @@ function AddUser() {
   const [success, setSuccess] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [addedUserInfo, setAddedUserInfo] = useState(null);
+  const [passwordMismatchError, setPasswordMismatchError] = useState("");
+  const [showPermissionWarning, setShowPermissionWarning] = useState(false);
 
   // Clear form data when component mounts
   useEffect(() => {
@@ -206,6 +208,8 @@ function AddUser() {
     setConfirmPassword('');
     setRole('user');
     setPermissions({});
+    setPasswordMismatchError("");
+    setShowPermissionWarning(false);
   }, []);
 
   // Set default permissions when role or departments change
@@ -307,6 +311,8 @@ function AddUser() {
     setError('');
     setSuccess('');
     setShowPassword(false);
+    setPasswordMismatchError("");
+    setShowPermissionWarning(false);
   };
 
   const closeSuccessModal = () => {
@@ -315,16 +321,48 @@ function AddUser() {
     resetForm();
   };
 
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+    if (value && confirmPassword) {
+      if (value !== confirmPassword) {
+        setPasswordMismatchError("Passwords do not match");
+      } else {
+        setPasswordMismatchError("");
+      }
+    } else {
+      setPasswordMismatchError("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (value) => {
+    setConfirmPassword(value);
+    if (value && password) {
+      if (value !== password) {
+        setPasswordMismatchError("Passwords do not match");
+      } else {
+        setPasswordMismatchError("");
+      }
+    } else {
+      setPasswordMismatchError("");
+    }
+  };
+
+  const handleClosePermissionWarning = () => {
+    setShowPermissionWarning(false);
+  };
+
   const handleAddUser = async (e) => {
     e.preventDefault();
     
     // Check if user has selected any permissions
-    if (Object.keys(permissions).length === 0) {
-      setError('Please select at least one permission for the user.');
+    if (!Object.values(permissions).some(value => value === true)) {
+      setShowPermissionWarning(true);
+      setError('');
       return;
     }
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setPasswordMismatchError("Passwords do not match");
       return;
     }
     
@@ -353,6 +391,7 @@ function AddUser() {
       if (response.data.message) {
         setSuccess(response.data.message);
         setError('');
+        setPasswordMismatchError("");
         
         // Store user info for success modal
         setAddedUserInfo({
@@ -456,7 +495,7 @@ function AddUser() {
                 id="password"
                 name="new-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 autoComplete="new-password"
                 required
               />
@@ -467,10 +506,27 @@ function AddUser() {
                 id="confirm-password"
                 name="confirm-new-password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                 autoComplete="new-password"
                 required
               />
+              {passwordMismatchError && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#ffebee',
+                  border: '1px solid #ffcdd2',
+                  borderRadius: '4px',
+                  color: '#c62828',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontSize: '16px' }}>⚠️</span>
+                  <span>{passwordMismatchError}</span>
+                </div>
+              )}
             </div>
             
             <div className="form-group">
@@ -500,7 +556,13 @@ function AddUser() {
             </div>
             
             <div className="form-actions">
-              <button type="submit" className="submit-btn" disabled={!password || password.length < 6 || password !== confirmPassword}>Add User</button>
+              <button 
+                type="submit" 
+                className="submit-btn" 
+                disabled={!password || password.length < 6 || password !== confirmPassword}
+              >
+                Add User
+              </button>
             </div>
           </form>
         </div>
@@ -510,6 +572,45 @@ function AddUser() {
           <button onClick={() => window.history.back()} className="back-btn">
             Go Back
           </button>
+        </div>
+      )}
+
+      {showPermissionWarning && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleClosePermissionWarning()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Permissions Required</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleClosePermissionWarning}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  Please select at least one permission before adding a user.
+                </p>
+                <div className="warning-text">
+                  <strong>Permissions define what the user can access after creation.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="cancel-delete-btn"
+                onClick={handleClosePermissionWarning}
+                title="Close message"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

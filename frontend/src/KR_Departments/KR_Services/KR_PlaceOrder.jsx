@@ -473,6 +473,9 @@ const KR_PlaceOrder = () => {
     uom: '',
     quantity: '',
     givenBy: '',
+    type: '',
+    partyName: '',
+    place: '',
     description: '',
     importance: 'Normal'
   })
@@ -483,6 +486,13 @@ const KR_PlaceOrder = () => {
   const [orderIdGenerated, setOrderIdGenerated] = useState(false)
   const [authorityNames, setAuthorityNames] = useState([])
   const [authorityLoading, setAuthorityLoading] = useState(true)
+  const [authorityRecords, setAuthorityRecords] = useState([])
+  const [typeOptions, setTypeOptions] = useState([])
+  const [partyNames, setPartyNames] = useState([])
+  const [places, setPlaces] = useState([])
+  const [partyPlaceMapping, setPartyPlaceMapping] = useState({})
+  const [partyLoading, setPartyLoading] = useState(true)
+  const [placesLoading, setPlacesLoading] = useState(true)
   
   // Recipients functionality
   const [recipients, setRecipients] = useState([])
@@ -525,13 +535,63 @@ const KR_PlaceOrder = () => {
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
           factory: 'KR',
-          sheet_name: 'Authority List',
+          sheet_name: 'List',
           sheet_id: sheetId
         }
       })
       
       if (response.data.success) {
-        setAuthorityNames(response.data.data)
+        const { data: authorityData = [], records = [], types = [] } = response.data
+
+        // Determine authority names (supporting both string arrays and record objects)
+        if (Array.isArray(records) && records.length > 0) {
+          const namesFromRecords = records
+            .map(record => {
+              if (!record) return ''
+              if (typeof record === 'string') return record
+              return (
+                record.givenBy ||
+                record.GivenBy ||
+                record['Given By'] ||
+                record.authorityName ||
+                record['Authority Name'] ||
+                ''
+              )
+            })
+            .filter(name => !!name)
+          if (namesFromRecords.length > 0) {
+            setAuthorityNames(namesFromRecords)
+          } else {
+            setAuthorityNames(Array.isArray(authorityData) ? authorityData : [])
+          }
+        } else {
+          setAuthorityNames(Array.isArray(authorityData) ? authorityData : [])
+        }
+
+        if (Array.isArray(records)) {
+          setAuthorityRecords(records)
+        } else {
+          setAuthorityRecords([])
+        }
+
+        // Determine type options from response
+        let derivedTypes = []
+        if (Array.isArray(types) && types.length > 0) {
+          derivedTypes = types.filter(typeValue => !!typeValue)
+        } else if (Array.isArray(records) && records.length > 0) {
+          derivedTypes = records
+            .map(record => {
+              if (!record || typeof record === 'string') return ''
+              return (
+                record.type ||
+                record.Type ||
+                record['Type'] ||
+                ''
+              )
+            })
+            .filter(typeValue => !!typeValue)
+        }
+        setTypeOptions([...new Set(derivedTypes)])
       } else {
         console.error('Failed to load authority list:', response.data.error)
       }
@@ -539,6 +599,45 @@ const KR_PlaceOrder = () => {
       console.error('Error fetching authority list:', error)
     } finally {
       setAuthorityLoading(false)
+    }
+  }
+
+  // Fetch party and place data with mapping from Google Sheets
+  const fetchPartyPlaceData = async () => {
+    try {
+      setPartyLoading(true)
+      setPlacesLoading(true)
+
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        return
+      }
+
+      const response = await axios.get(getApiUrl('get_party_place_data'), {
+        params: {
+          factory: 'KR',
+          sheet_name: 'Party List',
+          sheet_id: sheetId
+        }
+      })
+
+      if (response.data.success) {
+        const { party_names = [], places: placesData = [], party_place_mapping = {} } = response.data.data || {}
+
+        setPartyNames(Array.isArray(party_names) ? [...party_names].sort() : [])
+        setPlaces(Array.isArray(placesData) ? [...placesData].sort() : [])
+        setPartyPlaceMapping(typeof party_place_mapping === 'object' && party_place_mapping !== null ? party_place_mapping : {})
+      } else {
+        console.error('Failed to load party/place data:', response.data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching party/place data:', error)
+    } finally {
+      setPartyLoading(false)
+      setPlacesLoading(false)
     }
   }
 
@@ -616,6 +715,7 @@ const KR_PlaceOrder = () => {
     fetchMaterialData()
     fetchAuthorityList()
     fetchRecipientsList()
+    fetchPartyPlaceData()
     
     // Update current date/time
     const updateDateTime = () => {
@@ -704,7 +804,66 @@ const KR_PlaceOrder = () => {
         ...(field === 'specifications' && {
           uom: '',
           quantity: ''
-        })
+        }),
+        // Auto-select type when Given By changes
+        ...(field === 'givenBy' && (() => {
+          if (!value) {
+            return { type: '' }
+          }
+
+          if (!Array.isArray(authorityRecords) || authorityRecords.length === 0) {
+            return {}
+          }
+
+          const matchedRecord = authorityRecords.find(record => {
+            if (!record) return false
+            if (typeof record === 'string') {
+              return record === value
+            }
+            const possibleNames = [
+              record.givenBy,
+              record.GivenBy,
+              record['Given By'],
+              record.authorityName,
+              record['Authority Name']
+            ]
+            return possibleNames.filter(Boolean).some(name => name === value)
+          })
+
+          if (matchedRecord && typeof matchedRecord === 'object') {
+            const possibleType =
+              matchedRecord.type ||
+              matchedRecord.Type ||
+              matchedRecord['Type'] ||
+              ''
+            if (possibleType) {
+              return { type: possibleType }
+            }
+          }
+
+          return {}
+        })()),
+        // Auto-select place when party name changes
+        ...(field === 'partyName' && (() => {
+          if (!value) {
+            return { place: '' }
+          }
+
+          if (!partyPlaceMapping || Object.keys(partyPlaceMapping).length === 0) {
+            return {}
+          }
+
+          const mappedPlace =
+            partyPlaceMapping[value] ||
+            partyPlaceMapping[value.trim()] ||
+            ''
+
+          if (mappedPlace) {
+            return { place: mappedPlace }
+          }
+
+          return {}
+        })())
       }
 
       // NEW UOM LOGIC:
@@ -1112,6 +1271,9 @@ const KR_PlaceOrder = () => {
       orderId,
       orderItems: orderItems.length,
       givenBy: formData.givenBy,
+      type: formData.type,
+      partyName: formData.partyName,
+      place: formData.place,
       description: formData.description,
       formData: formData
     })
@@ -1120,8 +1282,8 @@ const KR_PlaceOrder = () => {
       alert('Please add at least one item to the order.')
       return
     }
-    if (!formData.givenBy || !formData.description) {
-      alert(`Please fill in all required fields. Given By: "${formData.givenBy}", Description: "${formData.description}"`)
+    if (!formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description) {
+      alert(`Please fill in all required fields. Given By: "${formData.givenBy}", Type: "${formData.type}", Party Name: "${formData.partyName}", Place: "${formData.place}", Description: "${formData.description}"`)
       return
     }
     
@@ -1133,6 +1295,9 @@ const KR_PlaceOrder = () => {
         orderId,
         orderItems,
         givenBy: formData.givenBy,
+        type: formData.type,
+        partyName: formData.partyName,
+        place: formData.place,
         description: formData.description,
         importance: formData.importance,
         factory: 'KR'
@@ -1152,6 +1317,9 @@ const KR_PlaceOrder = () => {
             orderData: {
               orderItems,
               givenBy: formData.givenBy,
+              type: formData.type,
+            partyName: formData.partyName,
+            place: formData.place,
               description: formData.description,
               importance: formData.importance
             }
@@ -1165,6 +1333,9 @@ const KR_PlaceOrder = () => {
           orderId,
           orderItems,
           givenBy: formData.givenBy,
+          type: formData.type,
+          partyName: formData.partyName,
+          place: formData.place,
           description: formData.description,
           importance: formData.importance
         })
@@ -1176,6 +1347,9 @@ const KR_PlaceOrder = () => {
         const notificationOrderData = {
           orderItems,
           givenBy: formData.givenBy,
+          type: formData.type,
+          partyName: formData.partyName,
+          place: formData.place,
           description: formData.description,
           importance: formData.importance,
           dateTime: formatDateTime(new Date())
@@ -1190,6 +1364,9 @@ const KR_PlaceOrder = () => {
           uom: '',
           quantity: '',
           givenBy: '',
+          type: '',
+          partyName: '',
+          place: '',
           description: '',
           importance: 'Normal'
         })
@@ -1791,6 +1968,28 @@ const KR_PlaceOrder = () => {
             </select>
           </div>
 
+          {/* Type - Required */}
+          <div className="form-group">
+            <label htmlFor="type" className="required">Type</label>
+            <select
+              id="type"
+              value={formData.type}
+              onChange={(e) => handleInputChange('type', e.target.value)}
+              required
+              className="form-select"
+              disabled={authorityLoading || typeOptions.length === 0}
+            >
+              <option value="">
+                {authorityLoading ? 'Loading type options...' : typeOptions.length === 0 ? 'No type options available' : 'Select Type'}
+              </option>
+              {typeOptions.map((typeOption) => (
+                <option key={typeOption} value={typeOption}>
+                  {typeOption}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Importance - Required */}
           <div className="form-group">
             <label htmlFor="importance" className="required">Importance</label>
@@ -1801,8 +2000,54 @@ const KR_PlaceOrder = () => {
               required
               className="form-select"
             >
-              {IMPORTANCE_OPTIONS.map(option => (
+        {IMPORTANCE_OPTIONS.map(option => (
                 <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          {/* Party Name - Required */}
+          <div className="form-group">
+            <label htmlFor="partyName" className="required">Party Name</label>
+            <select
+              id="partyName"
+              value={formData.partyName}
+              onChange={(e) => handleInputChange('partyName', e.target.value)}
+              required
+              className="form-select"
+              disabled={partyLoading}
+            >
+              <option value="">
+                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Party Name'}
+              </option>
+              {partyNames.map((party) => (
+                <option key={party} value={party}>
+                  {party}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Place - Required */}
+          <div className="form-group">
+            <label htmlFor="place" className="required">Place</label>
+            <select
+              id="place"
+              value={formData.place}
+              onChange={(e) => handleInputChange('place', e.target.value)}
+              required
+              className="form-select"
+              disabled={placesLoading}
+            >
+              <option value="">
+                {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place'}
+              </option>
+              {places.map((place) => (
+                <option key={place} value={place}>
+                  {place}
+                </option>
               ))}
             </select>
           </div>
@@ -1864,25 +2109,32 @@ const KR_PlaceOrder = () => {
         <div className="form-actions">
           <button 
             type="submit" 
-            className={`submit-btn ${orderItems.length > 0 && formData.givenBy && formData.description ? 'ready-to-submit' : 'disabled'}`}
-            disabled={orderItems.length === 0 || !formData.givenBy || !formData.description}
-            title={orderItems.length === 0 ? 'Add at least one item to place order' : (!formData.givenBy || !formData.description) ? 'Fill in Given By and Description' : 'Ready to submit'}
+            className={`submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? 'ready-to-submit' : 'disabled'}`}
+            disabled={orderItems.length === 0 || !formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description}
+            title={
+              orderItems.length === 0
+                ? 'Add at least one item to place order'
+                : (!formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description)
+                  ? 'Fill in Given By, Type, Party Name, Place, and Description'
+                  : 'Ready to submit'
+            }
           >
-            Place Order {orderItems.length > 0 && formData.givenBy && formData.description ? '✓' : ''}
+            Place Order {orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? '✓' : ''}
           </button>
           <button type="button" className="reset-btn" onClick={() => {
             // Reset form but keep the same order ID
-            setFormData({
-              category: '',
-              subCategory: '',
-              materialName: '',
-              specifications: '',
-              uom: '',
-              quantity: '',
-              givenBy: '',
-              description: '',
-              importance: 'Normal'
-            })
+        setFormData({
+          category: '',
+          subCategory: '',
+          materialName: '',
+          specifications: '',
+          uom: '',
+          quantity: '',
+          givenBy: '',
+          type: '',
+          description: '',
+          importance: 'Normal'
+        })
             setOrderItems([])
             
             alert(`Form reset! Order ID ${orderId} remains the same.`)
@@ -1918,6 +2170,15 @@ const KR_PlaceOrder = () => {
                 </div>
                 <div className="summary-item">
                   <strong>Given By:</strong> {lastSubmittedOrderData?.givenBy}
+                </div>
+                <div className="summary-item">
+                  <strong>Type:</strong> {lastSubmittedOrderData?.type}
+                </div>
+                <div className="summary-item">
+                  <strong>Preferred Party:</strong> {lastSubmittedOrderData?.partyName}
+                </div>
+                <div className="summary-item">
+                  <strong>Place:</strong> {lastSubmittedOrderData?.place}
                 </div>
                 <div className="summary-item">
                   <strong>Importance:</strong> {lastSubmittedOrderData?.importance}
