@@ -1819,42 +1819,56 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 continue
         
         # Convert sets to lists and restructure materialNames for KR_PlaceOrder.jsx compatibility
-        for category in material_data:
-            material_data[category]['subCategories'] = list(material_data[category]['subCategories'])
-            material_data[category]['specifications'] = list(material_data[category]['specifications'])
+        for category, category_data in material_data.items():
+            sub_categories_list = list(category_data['subCategories'])
+            specifications_list = list(category_data['specifications'])
+            category_data['subCategories'] = sub_categories_list
+            category_data['specifications'] = specifications_list
             
-            # Restructure materialNames based on complexity for KR_PlaceOrder.jsx compatibility
-            materials_list = material_data[category]['materialNames']
-            sub_categories = material_data[category]['subCategories']
-            specifications = material_data[category]['specifications']
+            materials_list = category_data['materialNames']
             
-            if sub_categories and specifications:
-                # Complex nested structure: subCategory -> specifications -> materials
+            def _normalize(value):
+                return (value or '').strip().lower()
+            
+            has_subcategories = any(sc and sc.strip() for sc in sub_categories_list)
+            has_specifications = any(spec and spec.strip() for spec in specifications_list)
+            
+            if has_subcategories:
                 nested_materials = {}
-                for sub_cat in sub_categories:
-                    nested_materials[sub_cat] = {}
-                    for specification in specifications:
-                        materials_for_specification = [
-                            mat for mat in materials_list 
-                            if mat['subCategory'] == sub_cat and mat['specifications'] == specification
-                        ]
-                        if materials_for_specification:
-                            nested_materials[sub_cat][specification] = materials_for_specification
-                material_data[category]['materialNames'] = nested_materials
-            elif specifications and not sub_categories:
-                # Simple nested structure: specifications -> materials
+                for sub_cat in sub_categories_list:
+                    if not sub_cat or not sub_cat.strip():
+                        continue
+                    materials_for_subcat = [
+                        mat for mat in materials_list
+                        if _normalize(mat.get('subCategory')) == _normalize(sub_cat)
+                    ]
+                    if materials_for_subcat:
+                        nested_materials[sub_cat] = materials_for_subcat
+                
+                # Handle materials without subcategory
+                materials_without_subcat = [
+                    mat for mat in materials_list
+                    if not mat.get('subCategory') or not mat.get('subCategory').strip()
+                ]
+                if materials_without_subcat:
+                    nested_materials[''] = materials_without_subcat
+                
+                category_data['materialNames'] = nested_materials or materials_list
+            elif has_specifications:
                 nested_materials = {}
-                for specification in specifications:
+                for specification in specifications_list:
+                    if not specification or not specification.strip():
+                        continue
                     materials_for_specification = [
-                        mat for mat in materials_list 
-                        if mat['specifications'] == specification
+                        mat for mat in materials_list
+                        if _normalize(mat.get('specifications')) == _normalize(specification)
                     ]
                     if materials_for_specification:
                         nested_materials[specification] = materials_for_specification
-                material_data[category]['materialNames'] = nested_materials
+                
+                category_data['materialNames'] = nested_materials or materials_list
             else:
-                # Simple array structure: just material objects (already correct)
-                pass  # materialNames is already an array
+                category_data['materialNames'] = materials_list
         
         # Calculate total materials processed successfully
         total_materials = 0

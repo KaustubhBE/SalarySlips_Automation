@@ -1894,6 +1894,8 @@ table tr:hover {
   right: 20px;
   background: rgba(255, 255, 255, 0.2);
   border: none;
+  outline: none;
+  box-shadow: none;
   color: white;
   width: 32px;
   height: 32px;
@@ -1906,10 +1908,13 @@ table tr:hover {
   justify-content: center;
   transition: all 0.2s ease;
   backdrop-filter: blur(10px);
+  transform: none;
 }
 
 .modal-close-btn:hover {
   background: rgba(255, 255, 255, 0.3);
+  transform: none !important;
+  box-shadow: none;
 }
 
 /* Permissions Content */

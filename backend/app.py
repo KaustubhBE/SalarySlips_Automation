@@ -61,6 +61,143 @@ import gspread
 from dotenv import load_dotenv
 
 # ============================================================================
+# MATERIAL DATA CONFIGURATION (GOOGLE SHEETS)
+# ============================================================================
+
+PLANT_DATA = [
+    {
+        "name": "Kerur",
+        "document_name": "KR",
+        "material_sheet_id": "1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List"
+        }
+    },
+    {
+        "name": "Gulbarga",
+        "document_name": "GB",
+        "material_sheet_id": "1EkjLEEMeZTJoMVDpmtxBVQ_LY_5u99J76PPMwodvD5Y",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List"
+        }
+    },
+    {
+        "name": "Humnabad",
+        "document_name": "HB",
+        "material_sheet_id": "1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List"
+        }
+    },
+    {
+        "name": "Omkar",
+        "document_name": "OM",
+        "material_sheet_id": "15MSsB7qXCyKWHvdJtUJuivlgy6khA2dCXxNXuY-sowg",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List"
+        }
+    },
+    {
+        "name": "Padmavati",
+        "document_name": "PV",
+        "material_sheet_id": "",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List"
+        }
+    },
+    {
+        "name": "Head Office",
+        "document_name": "HO",
+        "material_sheet_id": "",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List"
+        }
+    }
+]
+
+def _get_plant_config(factory_identifier):
+    """
+    Retrieve plant configuration using various identifiers (document name or full name).
+    """
+    if not factory_identifier:
+        return None
+
+    factory_identifier = factory_identifier.strip()
+    if not factory_identifier:
+        return None
+
+    for plant in PLANT_DATA:
+        if not plant:
+            continue
+
+        document_name = plant.get("document_name", "")
+        name = plant.get("name", "")
+
+        if document_name and document_name.lower() == factory_identifier.lower():
+            return plant
+        if name and name.lower() == factory_identifier.lower():
+            return plant
+
+    return None
+
+
+def _get_material_sheet_id(factory_identifier, explicit_sheet_id=None):
+    """
+    Resolve material sheet ID either from explicit parameter or plant configuration.
+    """
+    if explicit_sheet_id:
+        return explicit_sheet_id
+
+    plant_config = _get_plant_config(factory_identifier)
+    if plant_config:
+        return plant_config.get("material_sheet_id")
+
+    return None
+
+
+def _get_material_sheet_name(sheet_id, explicit_sheet_name=None):
+    """
+    Resolve the material sheet name for a Google Sheet.
+    """
+    if explicit_sheet_name:
+        return explicit_sheet_name
+
+    for plant in PLANT_DATA:
+        if not plant:
+            continue
+        if plant.get("material_sheet_id") == sheet_id:
+            sheet_name_config = plant.get("sheet_name")
+            if isinstance(sheet_name_config, dict):
+                return sheet_name_config.get("MaterialList", "Material List")
+            if isinstance(sheet_name_config, str):
+                return sheet_name_config
+
+    return "Material List"
+
+
+def _get_cached_material_data(sheet_id):
+    """
+    Retrieve material data directly from Google Sheets.
+    """
+    if not sheet_id:
+        return None
+    return get_plant_material_data_from_sheets(sheet_id, PLANT_DATA)
+
+# ============================================================================
 # CENTRALIZED RBAC CONFIGURATION
 # ============================================================================
 
@@ -2265,34 +2402,62 @@ def test_session():
 
 @app.route("/api/get_material_data", methods=["GET"])
 def get_material_data():
-    """Get material data from Firebase for dropdown population"""
+    """Get material data from Google Sheets for dropdown population"""
     try:
         if 'user' not in session:
             return jsonify({"error": "Not logged in"}), 401
         
-        # Get factory parameter (optional, defaults to KR for now)
+        # Extract parameters
         factory = request.args.get('factory', 'KR')
+        explicit_sheet_id = request.args.get('sheet_id') or request.args.get('sheetId')
+        explicit_sheet_name = request.args.get('sheet_name') or request.args.get('sheetName')
         
-        from Utils.firebase_utils import get_material_data_by_factory
+        sheet_id = _get_material_sheet_id(factory, explicit_sheet_id)
         
-        # Fetch material data for the specified factory
-        material_data = get_material_data_by_factory(factory)
+        if not sheet_id:
+            logger.warning(f"No material sheet configured for factory '{factory}'")
+            return jsonify({
+                "success": False,
+                "error": f"No material sheet configured for factory '{factory}'"
+            }), 400
         
-        if not material_data:
+        sheet_name = _get_material_sheet_name(sheet_id, explicit_sheet_name)
+        
+        material_result = _get_cached_material_data(sheet_id)
+        
+        if not material_result or not material_result.get('material_data'):
+            logger.info(f"No material data found in Google Sheet '{sheet_name}' ({sheet_id}) for factory '{factory}'")
             return jsonify({
                 "success": True,
                 "data": {},
-                "message": f"No material data found for factory {factory}"
+                "message": f"No material data found in Google Sheet '{sheet_name}'",
+                "factory": factory,
+                "sheet_id": sheet_id,
+                "sheet_name": sheet_name,
+                "source": "google_sheets"
             }), 200
         
-        return jsonify({
+        stats = {
+            "total_processed": material_result.get('total_processed'),
+            "total_materials": material_result.get('total_materials'),
+            "skipped_count": material_result.get('skipped_count'),
+            "skipped_reasons": material_result.get('skipped_reasons', {})
+        }
+        
+        response_payload = {
             "success": True,
-            "data": material_data,
-            "factory": factory
-        }), 200
+            "data": material_result.get('material_data', {}),
+            "factory": factory,
+            "sheet_id": sheet_id,
+            "sheet_name": sheet_name,
+            "source": "google_sheets",
+            "stats": stats
+        }
+        
+        return jsonify(response_payload), 200
         
     except Exception as e:
-        logger.error(f"Error fetching material data: {str(e)}")
+        logger.error(f"Error fetching material data: {str(e)}", exc_info=True)
         return jsonify({
             "success": False,
             "error": str(e)
@@ -2953,7 +3118,7 @@ def delete_material_endpoint():
 
 @app.route("/api/get_material_details", methods=["POST"])
 def get_material_details_endpoint():
-    """Get complete material details including current quantity"""
+    """Get complete material details including quantity and UOM from Google Sheets"""
     try:
         logger.info("Get material details endpoint called")
         
@@ -2973,29 +3138,123 @@ def get_material_details_endpoint():
                     "message": f"Missing required field: {field}"
                 }), 400
         
-        # Get factory from data or default to KR
+        # Extract parameters
         factory = data.get('department', 'KR')
         category = data.get('category')
         subCategory = data.get('subCategory', '')
         specifications = data.get('specifications', '')
         materialName = data.get('materialName')
+        explicit_sheet_id = data.get('sheet_id') or data.get('sheetId')
+        explicit_sheet_name = data.get('sheet_name') or data.get('sheetName')
         
-        # Call the get_material_details function
-        result = get_material_details(factory, category, subCategory, specifications, materialName)
-        
-        if result['success']:
-            logger.info(f"Material details retrieved: {materialName} from factory {factory}")
-            return jsonify({
-                "success": True,
-                "message": result['message'],
-                "material": result['material']
-            }), 200
-        else:
-            logger.warning(f"Failed to get material details: {result['message']}")
+        sheet_id = _get_material_sheet_id(factory, explicit_sheet_id)
+        if not sheet_id:
+            message = f"No material sheet configured for factory '{factory}'"
+            logger.warning(message)
             return jsonify({
                 "success": False,
-                "message": result['message']
+                "message": message
+            }), 400
+        
+        sheet_name = _get_material_sheet_name(sheet_id, explicit_sheet_name)
+        
+        material_result = _get_cached_material_data(sheet_id)
+        if not material_result or not material_result.get('material_data'):
+            message = f"No material data available in Google Sheet '{sheet_name}'"
+            logger.warning(message)
+            return jsonify({
+                "success": False,
+                "message": message
             }), 404
+        
+        material_data = material_result.get('material_data', {})
+        
+        # Helper to locate category case-insensitively if needed
+        category_data = material_data.get(category)
+        if category_data is None:
+            for cat_key, cat_value in material_data.items():
+                if isinstance(cat_key, str) and cat_key.strip().lower() == category.strip().lower():
+                    category_data = cat_value
+                    category = cat_key  # Use actual key casing
+                    break
+        
+        if not category_data:
+            message = f"Category '{category}' not found in Google Sheet '{sheet_name}'"
+            logger.warning(message)
+            return jsonify({
+                "success": False,
+                "message": message
+            }), 404
+        
+        def normalize(value):
+            return (value or '').strip().lower()
+        
+        target_name = normalize(materialName)
+        target_sub = normalize(subCategory)
+        target_spec = normalize(specifications)
+        
+        def material_matches(material_obj):
+            if not isinstance(material_obj, dict):
+                return False
+            
+            name = normalize(material_obj.get('name') or material_obj.get('materialName'))
+            sub_cat = normalize(material_obj.get('subCategory'))
+            spec = normalize(material_obj.get('specifications'))
+            
+            if name != target_name:
+                return False
+            
+            if target_sub and sub_cat != target_sub:
+                return False
+            
+            if target_spec and spec != target_spec:
+                return False
+            
+            return True
+        
+        def traverse_materials(container):
+            if isinstance(container, list):
+                for item in container:
+                    if material_matches(item):
+                        return item
+            elif isinstance(container, dict):
+                for nested in container.values():
+                    found = traverse_materials(nested)
+                    if found:
+                        return found
+            return None
+        
+        material_names = category_data.get('materialNames', [])
+        matched_material = traverse_materials(material_names)
+        
+        if not matched_material:
+            message = f"Material '{materialName}' not found in category '{category}'"
+            logger.warning(message)
+            return jsonify({
+                "success": False,
+                "message": message
+            }), 404
+        
+        # Prepare response payload
+        response_material = {
+            "category": category,
+            "materialName": matched_material.get('name') or matched_material.get('materialName'),
+            "subCategory": matched_material.get('subCategory', ''),
+            "specifications": matched_material.get('specifications', ''),
+            "uom": matched_material.get('uom', ''),
+            "initialQuantity": matched_material.get('initialQuantity', '0'),
+            "sheet_id": sheet_id,
+            "sheet_name": sheet_name,
+            "source": "google_sheets"
+        }
+        
+        logger.info(f"Material details retrieved from Google Sheet: {response_material}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Material details retrieved successfully",
+            "material": response_material
+        }), 200
         
     except Exception as e:
         logger.error(f"Error getting material details: {str(e)}")

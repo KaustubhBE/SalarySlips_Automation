@@ -344,12 +344,21 @@ const getUomForMaterial = (materialData, category, materialName, subCategory = '
 // Function to fetch UOM from backend for exact material match
 const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
   try {
+    const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+    const sheetId = kerurPlant?.material_sheet_id
+    const sheetName =
+      typeof kerurPlant?.sheet_name === 'object'
+        ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
+        : kerurPlant?.sheet_name || 'Material List'
+
     const payload = {
       category: category,
       subCategory: subCategory || '',
       specifications: specifications || '',
       materialName: materialName,
-      department: 'KR'
+      department: 'KR',
+      sheet_id: sheetId,
+      sheet_name: sheetName
     }
 
     console.log('Fetching UOM from backend with payload:', payload)
@@ -369,7 +378,9 @@ const fetchMaterialUomFromBackend = async (category, subCategory, specifications
           subCategory: subCategory || '',
           specifications: '',
           materialName: materialName,
-          department: 'KR'
+          department: 'KR',
+          sheet_id: sheetId,
+          sheet_name: sheetName
         }
         
         const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -394,8 +405,19 @@ const useMaterialData = () => {
   const fetchMaterialData = async () => {
     try {
       setDataLoading(true)
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      const sheetName =
+        typeof kerurPlant?.sheet_name === 'object'
+          ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
+          : kerurPlant?.sheet_name || 'Material List'
+
       const response = await axios.get(getApiUrl('get_material_data'), {
-        params: { factory: 'KR' }
+        params: {
+          factory: 'KR',
+          sheet_id: sheetId,
+          sheet_name: sheetName
+        }
       })
       
       if (response.data.success) {
@@ -1692,23 +1714,15 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="UOM"
-                        className={editingItem === item.id ? "editing-cell" : ""}
+                        className={`uom-cell ${editingItem === item.id ? 'is-editing' : ''}`}
                         title="UOM is auto-selected based on material name"
-                        style={{ 
-                          backgroundColor: editingItem === item.id ? '#f5f5f5' : 'transparent'
-                        }}
                       >
                         {editingItem === item.id ? (
                           <input
                             type="text"
                             value={editFormData.uom}
                             readOnly
-                            className="edit-input"
-                            style={{ 
-                              backgroundColor: '#f5f5f5', 
-                              cursor: 'not-allowed',
-                              color: '#333'
-                            }}
+                            className="edit-input readonly-input"
                           />
                         ) : (
                           item.uom
@@ -1921,13 +1935,8 @@ const KR_PlaceOrder = () => {
               value={formData.uom}
               readOnly
               required={orderItems.length === 0}
-              className={`form-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              className={`form-input readonly-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
               placeholder="UOM"
-              style={{ 
-                backgroundColor: '#f5f5f5', 
-                cursor: 'not-allowed',
-                color: '#333'
-              }}
             />
           </div>
 
