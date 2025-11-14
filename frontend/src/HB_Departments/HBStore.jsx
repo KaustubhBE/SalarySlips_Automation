@@ -19,8 +19,8 @@ const HBStore = () => {
   // Static services for HB Store department (only existing services)
   const hbStoreServices = [
     { key: 'hb_place_order', name: 'Place Order', route: '/humnabad/hb_store/hb_place_order' },
-    { key: 'hb_add_material_list', name: 'Add Material', route: '/humnabad/hb_store/hb_add_material_list' },
-    { key: 'hb_delete_material_list', name: 'Delete Material', route: '/humnabad/hb_store/hb_delete_material_list' },
+    // { key: 'hb_add_material_list', name: 'Add Material', route: '/humnabad/hb_store/hb_add_material_list' },
+    // { key: 'hb_delete_material_list', name: 'Delete Material', route: '/humnabad/hb_store/hb_delete_material_list' },
     { key: 'hb_material_inward', name: 'Material Inward', route: '/humnabad/hb_store/hb_material_inward' },
     { key: 'hb_material_outward', name: 'Material Outward', route: '/humnabad/hb_store/hb_material_outward' }
   ];

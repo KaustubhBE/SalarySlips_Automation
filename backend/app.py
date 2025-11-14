@@ -3238,6 +3238,34 @@ def get_material_details_endpoint():
                 "message": message
             }), 404
         
+        # Get currentQuantity from Firebase (transactions are stored there)
+        current_quantity = None
+        initial_quantity = matched_material.get('initialQuantity', '0')
+        try:
+            from Utils.firebase_utils import get_material_details as get_firebase_material_details
+            firebase_result = get_firebase_material_details(
+                factory=factory,
+                category=category,
+                subCategory=subCategory,
+                specifications=specifications,
+                materialName=materialName
+            )
+            if firebase_result.get('success'):
+                firebase_material = firebase_result.get('material', {})
+                current_quantity = firebase_material.get('currentQuantity')
+                # If currentQuantity not found in Firebase, use initialQuantity from Google Sheets
+                if current_quantity is None:
+                    current_quantity = initial_quantity
+                logger.info(f"Found currentQuantity from Firebase: {current_quantity}")
+            else:
+                # Material not in Firebase yet, use initialQuantity from Google Sheets
+                current_quantity = initial_quantity
+                logger.info(f"Material not in Firebase, using initialQuantity from Google Sheets: {current_quantity}")
+        except Exception as fb_error:
+            logger.warning(f"Error fetching currentQuantity from Firebase: {str(fb_error)}")
+            # Fallback to initialQuantity from Google Sheets
+            current_quantity = initial_quantity
+        
         # Prepare response payload
         response_material = {
             "category": category,
@@ -3245,7 +3273,8 @@ def get_material_details_endpoint():
             "subCategory": matched_material.get('subCategory', ''),
             "specifications": matched_material.get('specifications', ''),
             "uom": matched_material.get('uom', ''),
-            "initialQuantity": matched_material.get('initialQuantity', '0'),
+            "initialQuantity": initial_quantity,
+            "currentQuantity": current_quantity,
             "sheet_id": sheet_id,
             "sheet_name": sheet_name,
             "source": "google_sheets"

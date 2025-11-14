@@ -1797,7 +1797,7 @@ function Dashboard() {
                 onClick={handleCloseNoChangesModal}
                 title="Close message and continue editing"
               >
-                Okay
+                Back
               </button>
               <button
                 className="cancel-delete-btn"

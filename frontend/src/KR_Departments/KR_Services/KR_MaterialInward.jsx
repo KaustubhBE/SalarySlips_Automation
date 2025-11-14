@@ -349,12 +349,21 @@ const KR_MaterialInward = () => {
   // Function to fetch UOM from backend for exact material match
   const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
     try {
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      const sheetName =
+        typeof kerurPlant?.sheet_name === 'object'
+          ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
+          : kerurPlant?.sheet_name || 'Material List'
+
       const payload = {
         category: category,
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'KR'
+        department: 'KR',
+        sheet_id: sheetId,
+        sheet_name: sheetName
       }
 
       console.log('Fetching UOM from backend with payload:', payload)
@@ -379,7 +388,9 @@ const KR_MaterialInward = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'KR'
+            department: 'KR',
+            sheet_id: sheetId,
+            sheet_name: sheetName
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -688,8 +699,19 @@ const KR_MaterialInward = () => {
     const fetchMaterialData = async () => {
       try {
         setDataLoading(true)
+        const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+        const sheetId = kerurPlant?.material_sheet_id
+        const sheetName =
+          typeof kerurPlant?.sheet_name === 'object'
+            ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
+            : kerurPlant?.sheet_name || 'Material List'
+
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'KR' }
+          params: {
+            factory: 'KR',
+            sheet_id: sheetId,
+            sheet_name: sheetName
+          }
         })
         
         if (response.data.success) {
