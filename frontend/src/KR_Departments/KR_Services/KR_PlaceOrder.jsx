@@ -2019,7 +2019,7 @@ const KR_PlaceOrder = () => {
         <div className="po-form-row">
           {/* Party Name - Required */}
           <div className="po-form-group">
-            <label htmlFor="partyName" className="required">Party Name</label>
+            <label htmlFor="partyName" className="required">Preferred Vendor</label>
             <select
               id="partyName"
               value={formData.partyName}

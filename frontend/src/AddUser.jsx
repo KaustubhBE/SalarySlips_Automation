@@ -199,6 +199,7 @@ function AddUser() {
   const [addedUserInfo, setAddedUserInfo] = useState(null);
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
   const [passwordValidationErrors, setPasswordValidationErrors] = useState([]);
+  const [emailValidationErrors, setEmailValidationErrors] = useState([]);
   const [showPermissionWarning, setShowPermissionWarning] = useState(false);
 
   // Clear form data when component mounts
@@ -211,6 +212,7 @@ function AddUser() {
     setPermissions({});
     setPasswordMismatchError("");
     setPasswordValidationErrors([]);
+    setEmailValidationErrors([]);
     setShowPermissionWarning(false);
   }, []);
 
@@ -315,6 +317,7 @@ function AddUser() {
     setShowPassword(false);
     setPasswordMismatchError("");
     setPasswordValidationErrors([]);
+    setEmailValidationErrors([]);
     setShowPermissionWarning(false);
   };
 
@@ -322,6 +325,76 @@ function AddUser() {
     setShowSuccessModal(false);
     setAddedUserInfo(null);
     resetForm();
+  };
+
+  // Validate email requirements
+  const validateEmail = (emailValue) => {
+    const errors = [];
+    
+    if (!emailValue || emailValue.trim().length === 0) {
+      errors.push('Email is required');
+      return errors;
+    }
+    
+    // Check for @ symbol
+    if (!emailValue.includes('@')) {
+      errors.push('@ symbol is missing');
+    }
+    
+    // If @ exists, check all parts
+    if (emailValue.includes('@')) {
+      const parts = emailValue.split('@');
+      
+      // Check for multiple @ symbols
+      if (parts.length > 2) {
+        errors.push('Multiple @ symbols are not allowed');
+      }
+      
+      // If we have exactly 2 parts, validate both
+      if (parts.length === 2) {
+        const [localPart, domain] = parts;
+        
+        // Check local part (before @)
+        if (!localPart || localPart.trim().length === 0) {
+          errors.push('Email address before @ is missing');
+        }
+        
+        // Check domain (after @) - check all conditions independently
+        if (!domain || domain.trim().length === 0) {
+          errors.push('Domain after @ is missing');
+        } else {
+          // Domain exists, check for dot
+          if (!domain.includes('.')) {
+            errors.push('Domain must contain a dot (.)');
+          }
+          
+          // If domain has dot, also check extension
+          if (domain.includes('.')) {
+            const domainParts = domain.split('.');
+            const extension = domainParts[domainParts.length - 1];
+            
+            if (!extension || extension.trim().length === 0) {
+              errors.push('Domain extension (like .com, .in) is missing');
+            } else if (extension.length < 2) {
+              errors.push('Domain extension (like .com, .in) must be at least 2 characters');
+            }
+          }
+        }
+      }
+    }
+    
+    // Check for valid email format using regex (only if we have @ and basic structure)
+    // Show this error if format is invalid, even if we have other specific errors
+    if (emailValue.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailValue)) {
+        // Add "Invalid email format" to show overall format issue
+        // This helps users understand the email structure is wrong
+        errors.push('Invalid email format');
+      }
+    }
+    
+    return errors;
   };
 
   // Validate password requirements
@@ -389,6 +462,14 @@ function AddUser() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     
+    // Validate email requirements
+    const emailValidationErrors = validateEmail(email);
+    if (emailValidationErrors.length > 0) {
+      setEmailValidationErrors(emailValidationErrors);
+      setError('Email does not meet requirements');
+      return;
+    }
+    
     // Check if user has selected any permissions
     if (!Object.values(permissions).some(value => value === true)) {
       setShowPermissionWarning(true);
@@ -440,6 +521,7 @@ function AddUser() {
         setError('');
         setPasswordMismatchError("");
         setPasswordValidationErrors([]);
+        setEmailValidationErrors([]);
         
         // Store user info for success modal
         setAddedUserInfo({
@@ -529,12 +611,44 @@ function AddUser() {
                 id="email"
                 name="new-email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  const emailValue = e.target.value;
+                  setEmail(emailValue);
+                  
+                  // Real-time email validation
+                  if (emailValue.length === 0) {
+                    setEmailValidationErrors([]);
+                  } else {
+                    const validationErrors = validateEmail(emailValue);
+                    setEmailValidationErrors(validationErrors);
+                  }
+                }}
                 autoComplete="off"
                 autoFill="off"
                 data-form-type="other"
                 required
               />
+              {emailValidationErrors.length > 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#ffebee',
+                  border: '1px solid #ffcdd2',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  color: '#c62828'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                    <span>Email requirements:</span>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {emailValidationErrors.map((error, index) => (
+                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             
             <div className="form-group">
@@ -628,7 +742,7 @@ function AddUser() {
               <button 
                 type="submit" 
                 className="submit-btn" 
-                disabled={!password || passwordValidationErrors.length > 0 || password !== confirmPassword}
+                disabled={!email || emailValidationErrors.length > 0 || !password || passwordValidationErrors.length > 0 || password !== confirmPassword}
               >
                 Add User
               </button>
