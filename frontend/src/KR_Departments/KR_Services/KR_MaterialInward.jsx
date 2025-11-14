@@ -484,7 +484,7 @@ const KR_MaterialInward = () => {
     })
     
     const target = e.currentTarget
-    target.classList.add('touch-active')
+    target.classList.add('mio-touch-active')
   }
 
   const handleTouchEnd = (e, item, field) => {
@@ -498,7 +498,7 @@ const KR_MaterialInward = () => {
     )
 
     const target = e.currentTarget
-    target.classList.remove('touch-active')
+    target.classList.remove('mio-touch-active')
 
     setTouchStartTime(null)
     setTouchStartPosition(null)
@@ -603,7 +603,7 @@ const KR_MaterialInward = () => {
     const value = formData[field]
     
     return (
-      <div className="form-group">
+      <div className="mio-form-group">
         <label htmlFor={field}>
           {label} {required && '*'}
         </label>
@@ -612,7 +612,7 @@ const KR_MaterialInward = () => {
           value={value}
           onChange={(e) => handleInputChange(field, e.target.value)}
           required={required}
-          className="form-select"
+          className="mio-form-select"
           disabled={dataLoading || partyLoading || placesLoading || 
                    (field === 'subCategory' && !formData.category) || 
                    (field === 'particulars' && !formData.category) ||
@@ -932,7 +932,7 @@ const KR_MaterialInward = () => {
             <h2>Material Inward Form</h2>
           </div>
         </div>
-        <div className="loading-message">
+        <div className="mio-loading-message">
           <p>Loading material data...</p>
         </div>
       </div>
@@ -951,14 +951,14 @@ const KR_MaterialInward = () => {
       </div>
       
       <div className="form-section">
-        <form onSubmit={handleSubmit} className="material-form">
+        <form onSubmit={handleSubmit} className="mio-material-form">
 
           {/* Added Items Table - Moved to top */}
           {inwardItems.length > 0 && (
-            <div className="added-items-top-section">
-              <div className="items-table-container">
+            <div className="mio-added-items-top-section">
+              <div className="mio-items-table-container">
                 <h3>Added Items</h3>
-                <table className="items-table">
+                <table className="mio-items-table">
                   <thead>
                     <tr>
                       <th>S.No</th>
@@ -973,11 +973,11 @@ const KR_MaterialInward = () => {
                   </thead>
                   <tbody>
                     {inwardItems.map((item, index) => (
-                      <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
+                      <tr key={item.id} className={editingItem === item.id ? "mio-editing-row" : ""}>
                         <td data-label="S.No">{index + 1}</td>
                         <td 
                           data-label="Category"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
                           onTouchStart={(e) => handleTouchStart(e, item, 'category')}
                           onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
@@ -988,7 +988,7 @@ const KR_MaterialInward = () => {
                             <select
                               value={editFormData.category}
                               onChange={(e) => handleEditInputChange('category', e.target.value)}
-                              className="edit-select"
+                              className="mio-edit-select"
                             >
                               <option value="">Select Category</option>
                               {categories.map(category => (
@@ -1001,7 +1001,7 @@ const KR_MaterialInward = () => {
                         </td>
                         <td 
                           data-label="Sub Category"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
                           onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
                           onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
@@ -1012,7 +1012,7 @@ const KR_MaterialInward = () => {
                             <select
                               value={editFormData.subCategory}
                               onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
-                              className="edit-select"
+                              className="mio-edit-select"
                               disabled={!editFormData.category}
                             >
                               <option value="">Select Sub Category</option>
@@ -1026,7 +1026,7 @@ const KR_MaterialInward = () => {
                         </td>
                         <td 
                           data-label="Material Name"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
                           onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
                           onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
@@ -1037,7 +1037,7 @@ const KR_MaterialInward = () => {
                             <select
                               value={editFormData.materialName}
                               onChange={(e) => handleEditInputChange('materialName', e.target.value)}
-                              className="edit-select"
+                              className="mio-edit-select"
                               disabled={!editFormData.category}
                             >
                               <option value="">Select Material Name</option>
@@ -1053,7 +1053,7 @@ const KR_MaterialInward = () => {
                         </td>
                         <td 
                           data-label="Specifications"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
                           onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
                           onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
@@ -1064,7 +1064,7 @@ const KR_MaterialInward = () => {
                             <select
                               value={editFormData.specifications}
                               onChange={(e) => handleEditInputChange('specifications', e.target.value)}
-                              className="edit-select"
+                              className="mio-edit-select"
                               disabled={!editFormData.category}
                             >
                               <option value="">Select Specifications</option>
@@ -1078,7 +1078,7 @@ const KR_MaterialInward = () => {
                         </td>
                         <td 
                           data-label="Quantity"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
                           onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
                           onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
@@ -1090,7 +1090,7 @@ const KR_MaterialInward = () => {
                               type="text"
                               value={editFormData.quantity}
                               onChange={(e) => handleEditInputChange('quantity', e.target.value)}
-                              className="edit-input quantity-input"
+                              className="mio-edit-input mio-quantity-input"
                               placeholder="Enter quantity"
                               pattern="[0-9]*"
                               inputMode="numeric"
@@ -1101,7 +1101,7 @@ const KR_MaterialInward = () => {
                         </td>
                         <td 
                           data-label="UOM"
-                          className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
                           title={editingItem === item.id ? "UOM is auto-selected based on material name" : "UOM is auto-selected based on material name"}
                         >
                           {editingItem === item.id ? (
@@ -1109,7 +1109,7 @@ const KR_MaterialInward = () => {
                               type="text"
                               value={editFormData.uom}
                               readOnly
-                              className="edit-input"
+                              className="mio-edit-input"
                               style={{
                                 backgroundColor: '#f5f5f5',
                                 cursor: 'not-allowed',
@@ -1123,12 +1123,12 @@ const KR_MaterialInward = () => {
                         </td>
                         <td data-label="Action">
                           {editingItem === item.id ? (
-                            <div className="edit-actions-vertical">
-                              <div className="edit-actions-row">
+                            <div className="mio-edit-actions-vertical">
+                              <div className="mio-edit-actions-row">
                                 <button
                                   type="button"
                                   onClick={handleSaveEdit}
-                                  className="save-edit-btn"
+                                  className="mio-save-edit-btn"
                                   title="Save changes"
                                 >
                                   Save
@@ -1136,17 +1136,17 @@ const KR_MaterialInward = () => {
                                 <button
                                   type="button"
                                   onClick={handleCancelEdit}
-                                  className="cancel-edit-btn"
+                                  className="mio-cancel-edit-btn"
                                   title="Cancel edit"
                                 >
                                   Cancel
                                 </button>
                               </div>
-                              <div className="remove-actions-row">
+                              <div className="mio-remove-actions-row">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(item.id)}
-                                  className="remove-item-btn"
+                                  className="mio-remove-item-btn"
                                   title="Remove item"
                                 >
                                   Delete
@@ -1157,7 +1157,7 @@ const KR_MaterialInward = () => {
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(item.id)}
-                              className="remove-item-btn"
+                              className="mio-remove-item-btn"
                               title="Remove item"
                             >
                               ×
@@ -1172,23 +1172,23 @@ const KR_MaterialInward = () => {
             </div>
           )}
           {/* Main Content Area */}
-          <div className="form-main-content">
+          <div className="mio-form-main-content">
             {/* Left Section - Form Inputs */}
-            <div className="form-left-section">
+            <div className="mio-form-left-section">
               {/* Form inputs for adding new item - Only show when no items exist */}
               {inwardItems.length === 0 && (
-                <div className="add-item-section">
-                  <h3 className="add-item-header">
+                <div className="mio-add-item-section">
+                  <h3 className="mio-add-item-header">
                     Add Item to Inward
                   </h3>
-                  <p className="add-item-description">
+                  <p className="mio-add-item-description">
                     Fill in the required fields below to add your first item to the inward record.
                   </p>
                 </div>
               )}
-              <div className="form-row">
+              <div className="mio-form-row">
                 {/* Category - Required only if no items exist */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="category" className={inwardItems.length === 0 ? "required" : ""}>
                     Category
                   </label>
@@ -1197,7 +1197,7 @@ const KR_MaterialInward = () => {
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
                     required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    className={`mio-form-select ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
                     disabled={dataLoading || partyLoading || placesLoading}
                   >
                     <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
@@ -1208,13 +1208,13 @@ const KR_MaterialInward = () => {
                 </div>
 
                 {/* Sub Category - Optional */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="subCategory">Sub Category</label>
                   <select
                     id="subCategory"
                     value={formData.subCategory}
                     onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                    className={`form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'optional-field-red' : formData.subCategory ? 'optional-field-green' : ''}`}
+                    className={`mio-form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'mio-optional-field-red' : formData.subCategory ? 'mio-optional-field-green' : ''}`}
                     disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
                   >
                     <option value="">
@@ -1229,7 +1229,7 @@ const KR_MaterialInward = () => {
                 </div>
 
                 {/* Material Name - Required only if no items exist */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="materialName" className={inwardItems.length === 0 ? "required" : ""}>
                     Material Name
                   </label>
@@ -1238,7 +1238,7 @@ const KR_MaterialInward = () => {
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
                     required={inwardItems.length === 0}
-                    className={`form-select ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    className={`mio-form-select ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
                     disabled={!formData.category || dataLoading}
                   >
                     <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -1251,13 +1251,13 @@ const KR_MaterialInward = () => {
                 </div>
 
                 {/* Specifications - Optional */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="specifications">Specifications</label>
                   <select
                     id="specifications"
                     value={formData.specifications}
                     onChange={(e) => handleInputChange('specifications', e.target.value)}
-                    className={`form-select ${!formData.specifications && formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length > 0 ? 'optional-field-red' : formData.specifications ? 'optional-field-green' : ''}`}
+                    className={`mio-form-select ${!formData.specifications && formData.category && formData.materialName && getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length > 0 ? 'mio-optional-field-red' : formData.specifications ? 'mio-optional-field-green' : ''}`}
                     disabled={!formData.category || !formData.materialName || dataLoading || getSpecificationsForMaterial(materialData[formData.category], formData.materialName, formData.subCategory).length === 0}
                   >
                     <option value="">
@@ -1273,7 +1273,7 @@ const KR_MaterialInward = () => {
                 </div>
 
                 {/* Quantity - Required only if no items exist */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="quantity" className={inwardItems.length === 0 ? "required" : ""}>
                     Quantity
                   </label>
@@ -1283,7 +1283,7 @@ const KR_MaterialInward = () => {
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
                     required={inwardItems.length === 0}
-                    className={`form-input quantity-input ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    className={`mio-form-input mio-quantity-input ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
                     inputMode="numeric"
@@ -1292,7 +1292,7 @@ const KR_MaterialInward = () => {
                 </div>
 
                 {/* UOM - Required only if no items exist */}
-                <div className="form-group">
+                <div className="mio-form-group">
                   <label htmlFor="uom" className={inwardItems.length === 0 ? "required" : ""}>
                     UOM
                   </label>
@@ -1302,7 +1302,7 @@ const KR_MaterialInward = () => {
                     value={formData.uom}
                     readOnly
                     required={inwardItems.length === 0}
-                    className={`form-input ${inwardItems.length > 0 ? 'optional-field' : ''}`}
+                    className={`mio-form-input ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
                     placeholder="UOM"
                     style={{
                       backgroundColor: '#f5f5f5',
@@ -1315,12 +1315,12 @@ const KR_MaterialInward = () => {
 
 
                 {/* Add Item Button */}
-                <div className="form-group add-item-group">
+                <div className="mio-form-group mio-add-item-group">
                   <label>&nbsp;</label>
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="add-item-btn"
+                    className="mio-add-item-btn"
                   >
                     Add Item
                   </button>
@@ -1330,9 +1330,9 @@ const KR_MaterialInward = () => {
           </div>
 
           {/* General Form Fields - Party Name and Place */}
-          <div className="form-row">
+          <div className="mio-form-row">
             {/* Party Name - Required */}
-            <div className="form-group">
+            <div className="mio-form-group">
               <label htmlFor="generalPartyName" className="required">
                 Party Name
               </label>
@@ -1341,7 +1341,7 @@ const KR_MaterialInward = () => {
                 value={generalFormData.partyName}
                 onChange={(e) => handleGeneralInputChange('partyName', e.target.value)}
                 required
-                className="form-select"
+                className="mio-form-select"
                 disabled={partyLoading}
               >
                 <option value="">{partyLoading ? 'Loading party names...' : 'Select Party Name'}</option>
@@ -1352,7 +1352,7 @@ const KR_MaterialInward = () => {
             </div>
 
             {/* Place - Required */}
-            <div className="form-group">
+            <div className="mio-form-group">
               <label htmlFor="generalPlace" className="required">
                 Place
               </label>
@@ -1361,7 +1361,7 @@ const KR_MaterialInward = () => {
                 value={generalFormData.place}
                 onChange={(e) => handleGeneralInputChange('place', e.target.value)}
                 required
-                className="form-select"
+                className="mio-form-select"
                 disabled={placesLoading}
               >
                 <option value="">{placesLoading ? 'Loading places...' : 'Select Place'}</option>
@@ -1373,16 +1373,16 @@ const KR_MaterialInward = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="form-actions">
+          <div className="mio-form-actions">
             <button 
               type="submit" 
-              className={`submit-btn ${inwardItems.length > 0 ? 'ready-to-submit' : 'disabled'}`}
+              className={`mio-submit-btn ${inwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
               disabled={inwardItems.length === 0}
               title={inwardItems.length === 0 ? 'Add at least one item to record inward' : 'Ready to record inward'}
             >
               Record Inward {inwardItems.length > 0 ? '✓' : ''}
             </button>
-            <button type="button" className="reset-btn" onClick={() => {
+            <button type="button" className="mio-reset-btn" onClick={() => {
               setInwardItems([])
               setFormData({
                 category: '',

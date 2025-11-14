@@ -814,26 +814,29 @@ def update_role():
 
         # Admin can update any user's role
         if current_user_role == 'admin':
-            # Update role
+            # Update role only - preserve existing permissions
             firebase_update_role(user_id, new_role)
             
-            # Only update permissions if changing TO admin (admin gets all permissions)
-            # or if changing FROM admin (preserve existing permissions for regular users)
-            if new_role == 'admin':
-                # Admin role gets all permissions automatically
-                from Utils.firebase_utils import update_user_comprehensive_permissions
-                update_user_comprehensive_permissions(user_id, {
-                    'permissions': {
-                        'inventory': True,
-                        'reports': True,
-                        'single_processing': True,
-                        'batch_processing': True,
-                        'expense_management': True,
-                        'marketing_campaigns': True,
-                        'reactor_reports': True
-                    }
+            # IMPORTANT: Do NOT overwrite permissions when changing roles
+            # Preserve the user's existing permission_metadata regardless of role change
+            # This ensures that:
+            # - When user → admin: Their existing permissions are preserved (not all set to true)
+            # - When admin → user: Their existing permissions are preserved
+            # - Permissions should only be changed through the permissions update endpoint
+            
+            existing_metadata = target_user.get('permission_metadata', {})
+            if not existing_metadata or not isinstance(existing_metadata, dict):
+                # If no permission_metadata exists, initialize with empty structure
+                from Utils.firebase_utils import update_user_complete_rbac
+                update_user_complete_rbac(user_id, {
+                    'factories': [],
+                    'departments': {},
+                    'services': {}
                 })
-            # For other role changes, preserve existing permissions (don't overwrite)
+                logger.info(f"Initialized empty permission_metadata for user {user_id} during role change")
+            else:
+                # Permissions already exist, preserve them
+                logger.info(f"Preserved existing permissions for user {user_id} when changing role from {target_user_role} to {new_role}")
             
             return jsonify({"message": "Role updated successfully"}), 200
         

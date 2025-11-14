@@ -24,6 +24,13 @@
 
 .form-group {
   margin-bottom: 1.5rem;
+  width: 100% !important; /* Ensure form group doesn't constrain width */
+  max-width: 100% !important;
+}
+
+.login-container form {
+  width: 100% !important; /* Override global form styles from styles.css */
+  max-width: 100% !important;
 }
 
 .login-container label {
@@ -34,25 +41,29 @@
   font-size: 0.9rem;
 }
 
-.login-container input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
+.login-container input,
+.login-container .form-group input {
+  width: 100% !important; /* Override global input styles and Dashboard.css .form-group input */
+  padding: 0.75rem 1rem !important;
+  margin-bottom: 0.5rem !important;
+  border: 1px solid #ddd !important;
+  border-radius: 5px !important;
+  font-size: 1rem !important;
+  transition: all 0.3s ease !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important; /* Override global input max-width: 300px from styles.css and Dashboard.css */
 }
 
-.login-container input:focus {
-  outline: none;
-  border-color: #987349;
-  box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.2);
+.login-container input:focus,
+.login-container .form-group input:focus {
+  outline: none !important;
+  border-color: #987349 !important;
+  box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.2) !important;
 }
 
-.login-container input::placeholder {
-  color: #aaa;
+.login-container input::placeholder,
+.login-container .form-group input::placeholder {
+  color: #aaa !important;
 }
 
 /* Password Toggle Container Styles */
@@ -61,17 +72,19 @@
   display: flex !important;
   align-items: center !important;
   width: 100% !important;
+  margin-bottom: 0.5rem !important;
 }
 
 .login-container .password-input-container input {
   width: 100% !important;
   padding: 0.75rem 45px 0.75rem 1rem !important;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0 !important;
   border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 1rem;
   transition: all 0.3s ease;
   box-sizing: border-box;
+  max-width: 100% !important; /* Override global input max-width: 300px */
 }
 
 .login-container .password-input-container input:focus {
@@ -309,23 +322,37 @@
   color: #0056b3 !important;
 }
 
+/* Mobile breakpoints - Progressive scaling */
 @media screen and (max-width: 480px) {
   .login-container {
-    margin: 100px 1rem;
-    padding: 1.5rem;
+    max-width: 100% !important;
+    width: calc(100% - 2rem) !important;
+    margin: 100px 1rem !important;
+    padding: 1.5rem !important;
+    min-width: 0 !important;
   }
 
   .login-container h2 {
-    font-size: 1.5rem;
+    font-size: 1.5rem !important;
   }
 
   .login-container input,
+  .login-container .form-group input,
   .login-container button {
-    font-size: 0.95rem;
+    font-size: 0.95rem !important;
+    max-width: 100% !important;
+    width: 100% !important; /* Ensure width override */
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .login-container .password-input-container input {
     padding: 0.7rem 45px 0.7rem 0.9rem !important;
+    margin-bottom: 0 !important;
+    max-width: 100% !important;
   }
 
   .login-container .password-toggle-btn {
@@ -334,18 +361,294 @@
     transform: translateY(-50%) !important;
   }
 
+  .login-container .google-signin-button {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
   .google-signin-btn {
-    font-size: 0.95rem;
-    min-width: 180px;
-    padding: 0 12px 0 8px;
-    height: 38px;
+    font-size: 0.95rem !important;
+    min-width: 0 !important;
+    padding: 0 12px 0 8px !important;
+    height: 38px !important;
   }
   .google-signin-logo {
-    width: 20px;
-    height: 20px;
-    margin-right: 8px;
+    width: 20px !important;
+    height: 20px !important;
+    margin-right: 8px !important;
   }
   .login-link-btn {
-    font-size: 0.9rem;
+    font-size: 0.9rem !important;
+  }
+}
+
+/* Screen width 400px and below */
+@media screen and (max-width: 400px) {
+  .login-container {
+    max-width: 350px !important;
+    width: calc(100% - 1.5rem) !important;
+    margin: 80px 0.75rem !important;
+    padding: 1.25rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* Screen width 350px and below */
+@media screen and (max-width: 350px) {
+  .login-container {
+    max-width: 300px !important;
+    width: calc(100% - 1rem) !important;
+    margin: 60px 0.5rem !important;
+    padding: 1rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container h2 {
+    font-size: 1.4rem !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    font-size: 0.9rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container input {
+    padding: 0.65rem 40px 0.65rem 0.85rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* Screen width 320px and below */
+@media screen and (max-width: 320px) {
+  .login-container {
+    max-width: 280px !important;
+    width: calc(100% - 0.75rem) !important;
+    margin: 50px 0.375rem !important;
+    padding: 0.9rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container h2 {
+    font-size: 1.3rem !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    font-size: 0.85rem !important;
+    padding: 0.6rem 0.75rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container input {
+    padding: 0.6rem 35px 0.6rem 0.75rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-toggle-btn {
+    right: 8px !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .login-container .password-toggle-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+/* Screen width 300px and below */
+@media screen and (max-width: 300px) {
+  .login-container {
+    max-width: 260px !important;
+    width: calc(100% - 0.5rem) !important;
+    margin: 40px 0.25rem !important;
+    padding: 0.8rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container h2 {
+    font-size: 1.2rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    font-size: 0.8rem !important;
+    padding: 0.55rem 0.7rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container input {
+    padding: 0.55rem 32px 0.55rem 0.7rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .google-signin-button {
+    font-size: 12px !important;
+    height: 42px !important;
+    gap: 8px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Screen width 280px and below */
+@media screen and (max-width: 280px) {
+  .login-container {
+    max-width: 240px !important;
+    width: calc(100% - 0.5rem) !important;
+    margin: 30px 0.25rem !important;
+    padding: 0.7rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container h2 {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.9rem !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.6rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container input {
+    padding: 0.5rem 30px 0.5rem 0.6rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-toggle-btn {
+    right: 6px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .login-container .password-toggle-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+/* Screen width 250px and below */
+@media screen and (max-width: 250px) {
+  .login-container {
+    max-width: 220px !important;
+    width: calc(100% - 0.4rem) !important;
+    margin: 20px 0.2rem !important;
+    padding: 0.6rem !important;
+    min-width: 0 !important;
+  }
+
+  .login-container h2 {
+    font-size: 1rem !important;
+    margin-bottom: 0.8rem !important;
+    padding-bottom: 0.3rem !important;
+  }
+
+  .login-container label {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+
+  .login-container input,
+  .login-container .form-group input,
+  .login-container button {
+    font-size: 0.7rem !important;
+    padding: 0.45rem 0.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-input-container input {
+    padding: 0.45rem 28px 0.45rem 0.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .login-container .password-toggle-btn {
+    right: 5px !important;
+    width: 16px !important;
+    height: 16px !important;
+    padding: 2px !important;
+  }
+
+  .login-container .password-toggle-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .login-container .google-signin-button {
+    font-size: 11px !important;
+    height: 38px !important;
+    gap: 6px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .divider {
+    margin: 1rem 0 !important;
+  }
+
+  .divider span {
+    font-size: 0.75rem !important;
+    padding: 0 0.5rem !important;
+  }
+
+  .login-link-btn {
+    font-size: 0.75rem !important;
   }
 }

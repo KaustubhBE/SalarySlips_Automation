@@ -1,5 +1,5 @@
 /* Material In-Out Styles */
-.material_list-container {
+.mio-material_list-container {
   padding: 20px;
   max-width: 1600px;
   margin: 0 auto;
@@ -7,14 +7,14 @@
   min-height: 100vh;
 }
 
-.material-form-wrapper {
+.mio-material-form-wrapper {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   padding: 30px;
 }
 
-.material-form-wrapper h2 {
+.mio-material-form-wrapper h2 {
   color: #333;
   margin-bottom: 30px;
   text-align: center;
@@ -24,7 +24,7 @@
   padding-bottom: 10px;
 }
 
-.material-form {
+.mio-material-form {
   background: #f9f9f9;
   padding: 30px;
   border-radius: 8px;
@@ -34,18 +34,18 @@
   gap: 20px;
 }
 
-.form-main-content {
+.mio-form-main-content {
   display: flex;
   gap: 20px;
   align-items: flex-start;
 }
 
-.form-left-section {
+.mio-form-left-section {
   flex: 1;
   min-width: 0;
 }
 
-.form-right-section {
+.mio-form-right-section {
   flex: 0 0 400px;
   position: sticky;
   top: 20px;
@@ -54,35 +54,35 @@
 /* Form row and group styles are now defined in the vertical alignment fixes section above */
 
 /* Center align specific field labels */
-.form-group label[for="category"],
-.form-group label[for="subCategory"],
-.form-group label[for="materialName"],
-.form-group label[for="specifications"],
-.form-group label[for="quantity"],
-.form-group label[for="uom"] {
+.mio-form-group label[for="category"],
+.mio-form-group label[for="subCategory"],
+.mio-form-group label[for="materialName"],
+.mio-form-group label[for="specifications"],
+.mio-form-group label[for="quantity"],
+.mio-form-group label[for="uom"] {
   text-align: center;
 }
 
-.form-group label.required::after {
+.mio-form-group label.required::after {
   content: " *";
   color: #e74c3c;
 }
 
 /* Form input and select styles are now defined in the vertical alignment fixes section above */
 
-.form-input:focus,
-.form-select:focus {
+.mio-form-input:focus,
+.mio-form-select:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
-.form-input::placeholder {
+.mio-form-input::placeholder {
   color: #6c757d;
   font-style: italic;
 }
 
-.form-select {
+.mio-form-select {
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 12px center;
@@ -101,13 +101,13 @@
   width: 100%;
 }
 
-.form-select:disabled {
+.mio-form-select:disabled {
   background-color: #f5f5f5;
   color: #999;
   cursor: not-allowed;
 }
 
-.form-input:disabled {
+.mio-form-input:disabled {
   background-color: #f5f5f5;
   color: #999;
   cursor: not-allowed;
@@ -115,24 +115,24 @@
 
 /* Form textarea styles are now defined in the vertical alignment fixes section above */
 
-.form-textarea:focus {
+.mio-form-textarea:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
-.form-textarea:disabled {
+.mio-form-textarea:disabled {
   background-color: #f5f5f5;
   color: #999;
   cursor: not-allowed;
 }
 
-.form-textarea::placeholder {
+.mio-form-textarea::placeholder {
   color: #6c757d;
   font-style: italic;
 }
 
-.form-actions {
+.mio-form-actions {
   display: flex;
   gap: 15px;
   justify-content: center;
@@ -143,7 +143,7 @@
   flex-wrap: nowrap; /* Prevent wrapping */
 }
 
-.btn {
+.mio-btn {
   padding: 12px 20px;
   border: none;
   border-radius: 6px;
@@ -161,36 +161,36 @@
   box-sizing: border-box;
 }
 
-.btn-primary {
+.mio-btn-primary {
   background-color: #007bff;
   color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
+.mio-btn-primary:hover:not(:disabled) {
   background-color: #0056b3;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
-.btn-primary:disabled {
+.mio-btn-primary:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.btn-secondary {
+.mio-btn-secondary {
   background-color: #6c757d;
   color: white;
 }
 
-.btn-secondary:hover {
+.mio-btn-secondary:hover {
   background-color: #545b62;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
-.message {
+.mio-message {
   padding: 12px 16px;
   border-radius: 6px;
   margin-bottom: 20px;
@@ -199,13 +199,13 @@
   width: 100%;
 }
 
-.message.success {
+.mio-message.success {
   background-color: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
 }
 
-.message.error {
+.mio-message.error {
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
@@ -213,11 +213,11 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-  .form-main-content {
+  .mio-form-main-content {
     flex-direction: column;
   }
   
-  .form-right-section {
+  .mio-form-right-section {
     flex: none;
     position: static;
     margin-top: 20px;
@@ -225,162 +225,162 @@
 }
 
 @media (max-width: 768px) {
-  .form-main-content {
+  .mio-form-main-content {
     gap: 15px;
   }
   
-  .form-row {
+  .mio-form-row {
     flex-direction: column;
   }
   
-  .form-group {
+  .mio-form-group {
     min-width: 100%;
   }
   
-  .form-actions {
+  .mio-form-actions {
     flex-direction: column;
   }
   
-  .btn {
+  .mio-btn {
     width: 100%;
     min-width: auto;
   }
   
-  .add-item-btn,
-  .submit-btn,
-  .reset-btn {
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
     width: 100% !important;
     min-width: auto !important;
   }
 }
 
 @media (max-width: 480px) {
-  .material_list-container {
+  .mio-material_list-container {
     padding: 10px;
   }
   
-  .material-form-wrapper {
+  .mio-material-form-wrapper {
     padding: 20px;
   }
   
-  .material-form-wrapper h2 {
+  .mio-material-form-wrapper h2 {
     font-size: 20px;
   }
 }
 
 /* ==================== MOBILE (360px) ==================== */
 @media (max-width: 360px) {
-  .material_list-container {
+  .mio-material_list-container {
     padding: 8px;
   }
 
-  .material-form-wrapper {
+  .mio-material-form-wrapper {
     padding: 16px;
   }
 
-  .material-form-wrapper h2 {
+  .mio-material-form-wrapper h2 {
     font-size: 18px;
   }
 
-  .material-form {
+  .mio-material-form {
     padding: 16px;
   }
 
-  .form-row {
+  .mio-form-row {
     gap: 12px;
     margin-bottom: 20px;
   }
 
-  .form-group {
+  .mio-form-group {
     min-width: 100%;
   }
 
-  .form-group label {
+  .mio-form-group label {
     font-size: 12px;
   }
 
-  .form-input,
-  .form-select,
-  .form-textarea {
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
     padding: 10px;
     font-size: 13px;
     min-height: 42px;
     height: 42px;
   }
 
-  .form-textarea {
+  .mio-form-textarea {
     min-height: 80px;
     height: auto;
   }
 
-  .add-item-btn,
-  .submit-btn,
-  .reset-btn {
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
     padding: 10px 16px;
     font-size: 13px;
   }
 
-  .items-table-container {
+  .mio-items-table-container {
     padding: 12px;
   }
 
-  .items-table-container h3 {
+  .mio-items-table-container h3 {
     font-size: 16px;
   }
 }
 
 /* ==================== MOBILE (300px) ==================== */
 @media (max-width: 300px) {
-  .material_list-container {
+  .mio-material_list-container {
     padding: 6px;
   }
 
-  .material-form-wrapper {
+  .mio-material-form-wrapper {
     padding: 12px;
   }
 
-  .material-form-wrapper h2 {
+  .mio-material-form-wrapper h2 {
     font-size: 16px;
   }
 
-  .material-form {
+  .mio-material-form {
     padding: 12px;
   }
 
-  .form-group label {
+  .mio-form-group label {
     font-size: 11px;
   }
 
-  .form-input,
-  .form-select,
-  .form-textarea {
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
     padding: 8px;
     font-size: 12px;
     min-height: 38px;
     height: 38px;
   }
 
-  .form-textarea {
+  .mio-form-textarea {
     min-height: 70px;
     height: auto;
   }
 
-  .add-item-btn,
-  .submit-btn,
-  .reset-btn {
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
     padding: 8px 12px;
     font-size: 12px;
   }
 
-  .items-table-container {
+  .mio-items-table-container {
     padding: 10px;
   }
 
-  .items-table-container h3 {
+  .mio-items-table-container h3 {
     font-size: 14px;
   }
 
-  .toggle-mode-btn {
+  .mio-toggle-mode-btn {
     padding: 4px 6px;
     font-size: 11px;
   }
@@ -388,56 +388,56 @@
 
 /* ==================== MOBILE (250px) ==================== */
 @media (max-width: 250px) {
-  .material_list-container {
+  .mio-material_list-container {
     padding: 4px;
   }
 
-  .material-form-wrapper {
+  .mio-material-form-wrapper {
     padding: 10px;
   }
 
-  .material-form-wrapper h2 {
+  .mio-material-form-wrapper h2 {
     font-size: 14px;
   }
 
-  .material-form {
+  .mio-material-form {
     padding: 10px;
   }
 
-  .form-group label {
+  .mio-form-group label {
     font-size: 10px;
   }
 
-  .form-input,
-  .form-select,
-  .form-textarea {
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
     padding: 6px;
     font-size: 11px;
     min-height: 36px;
     height: 36px;
   }
 
-  .form-textarea {
+  .mio-form-textarea {
     min-height: 60px;
     height: auto;
   }
 
-  .add-item-btn,
-  .submit-btn,
-  .reset-btn {
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
     padding: 6px 10px;
     font-size: 11px;
   }
 
-  .items-table-container {
+  .mio-items-table-container {
     padding: 8px;
   }
 
-  .items-table-container h3 {
+  .mio-items-table-container h3 {
     font-size: 13px;
   }
 
-  .toggle-mode-btn {
+  .mio-toggle-mode-btn {
     padding: 3px 5px;
     font-size: 10px;
   }
@@ -445,56 +445,56 @@
 
 /* ==================== MOBILE (200px) ==================== */
 @media (max-width: 200px) {
-  .material_list-container {
+  .mio-material_list-container {
     padding: 2px;
   }
 
-  .material-form-wrapper {
+  .mio-material-form-wrapper {
     padding: 8px;
   }
 
-  .material-form-wrapper h2 {
+  .mio-material-form-wrapper h2 {
     font-size: 12px;
   }
 
-  .material-form {
+  .mio-material-form {
     padding: 8px;
   }
 
-  .form-group label {
+  .mio-form-group label {
     font-size: 9px;
   }
 
-  .form-input,
-  .form-select,
-  .form-textarea {
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
     padding: 5px;
     font-size: 10px;
     min-height: 32px;
     height: 32px;
   }
 
-  .form-textarea {
+  .mio-form-textarea {
     min-height: 50px;
     height: auto;
   }
 
-  .add-item-btn,
-  .submit-btn,
-  .reset-btn {
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
     padding: 5px 8px;
     font-size: 10px;
   }
 
-  .items-table-container {
+  .mio-items-table-container {
     padding: 6px;
   }
 
-  .items-table-container h3 {
+  .mio-items-table-container h3 {
     font-size: 12px;
   }
 
-  .toggle-mode-btn {
+  .mio-toggle-mode-btn {
     padding: 2px 4px;
     font-size: 9px;
   }
@@ -502,11 +502,11 @@
 
 
 /* Loading state */
-.btn-primary:disabled {
+.mio-btn-primary:disabled {
   position: relative;
 }
 
-.btn-primary:disabled::after {
+.mio-btn-primary:disabled::after {
   content: '';
   position: absolute;
   width: 16px;
@@ -515,16 +515,16 @@
   border: 2px solid transparent;
   border-top-color: #ffffff;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: mio-spin 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes mio-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
 /* Additional dropdown text fixes */
-.form-select option {
+.mio-form-select option {
   padding: 10px 12px;
   font-size: 14px;
   line-height: 1.4;
@@ -534,12 +534,12 @@
   min-height: 20px;
 }
 
-.form-select:focus option {
+.mio-form-select:focus option {
   background-color: #f8f9fa;
 }
 
 /* Critical fix for text truncation */
-.form-select {
+.mio-form-select {
   line-height: 1.3 !important;
   padding-top: 14px !important;
   padding-bottom: 14px !important;
@@ -555,8 +555,8 @@
 }
 
 /* Force dropdown text to be fully visible */
-.form-select,
-.form-select option {
+.mio-form-select,
+.mio-form-select option {
   text-indent: 0 !important;
   text-align: left !important;
   font-size: 14px !important;
@@ -565,74 +565,74 @@
 }
 
 /* Form validation styles */
-.form-input:invalid,
-.form-select:invalid {
+.mio-form-input:invalid,
+.mio-form-select:invalid {
   border-color: #dc3545;
 }
 
-.form-input:valid,
-.form-select:valid {
+.mio-form-input:valid,
+.mio-form-select:valid {
   border-color: #28a745;
 }
 
 /* Optional field border colors */
-.optional-field-red {
+.mio-optional-field-red {
   border-color: #dc3545 !important;
   box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
 }
 
-.optional-field-green {
+.mio-optional-field-green {
   border-color: #28a745 !important;
   box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1) !important;
 }
 
 /* Focus states for accessibility */
-.form-input:focus-visible,
-.form-select:focus-visible {
+.mio-form-input:focus-visible,
+.mio-form-select:focus-visible {
   outline: 2px solid #007bff;
   outline-offset: 2px;
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .form-input,
-  .form-select {
+  .mio-form-input,
+  .mio-form-select {
     border-width: 3px;
   }
   
-  .btn {
+  .mio-btn {
     border: 2px solid currentColor;
   }
 }
 
 /* Loading message styles */
-.loading-message {
+.mio-loading-message {
   text-align: center;
   padding: 40px 20px;
   color: #666;
   font-size: 16px;
 }
 
-.loading-message p {
+.mio-loading-message p {
   margin: 0;
   font-style: italic;
 }
 
 /* Form group header styles */
-.form-group-header {
+.mio-form-group-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.form-group-header label {
+.mio-form-group-header label {
   margin-bottom: 0;
   flex: 1;
 }
 
 /* Toggle mode button styles */
-.toggle-mode-btn {
+.mio-toggle-mode-btn {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 4px;
@@ -644,49 +644,49 @@
   margin-left: 10px;
 }
 
-.toggle-mode-btn:hover {
+.mio-toggle-mode-btn:hover {
   background: #e9ecef;
   border-color: #adb5bd;
 }
 
-.toggle-mode-btn:active {
+.mio-toggle-mode-btn:active {
   background: #dee2e6;
   transform: translateY(1px);
 }
 
-.toggle-mode-btn:focus {
+.mio-toggle-mode-btn:focus {
   outline: 2px solid #007bff;
   outline-offset: 2px;
 }
 
 /* Hide spinner arrows for number inputs */
-.no-spinner::-webkit-outer-spin-button,
-.no-spinner::-webkit-inner-spin-button {
+.mio-no-spinner::-webkit-outer-spin-button,
+.mio-no-spinner::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.no-spinner[type=number] {
+.mio-no-spinner[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
 /* Responsive adjustments for toggle button */
 @media (max-width: 768px) {
-  .form-group-header {
+  .mio-form-group-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
   
-  .toggle-mode-btn {
+  .mio-toggle-mode-btn {
     margin-left: 0;
     align-self: flex-end;
   }
 }
 
 /* Vertical alignment fixes for form fields */
-.form-row {
+.mio-form-row {
   display: flex;
   gap: 30px;
   margin-bottom: 30px;
@@ -695,7 +695,7 @@
   align-items: flex-start; /* Ensure all form groups align at the top */
 }
 
-.form-group {
+.mio-form-group {
   flex: 1;
   min-width: 300px;
   display: flex;
@@ -704,7 +704,7 @@
 }
 
 /* Ensure labels are aligned at the same height */
-.form-group label {
+.mio-form-group label {
   margin-bottom: 8px;
   font-weight: 600;
   color: #555;
@@ -715,8 +715,8 @@
 }
 
 /* Ensure form inputs have consistent height */
-.form-input,
-.form-select {
+.mio-form-input,
+.mio-form-select {
   padding: 14px 12px;
   border: 2px solid #ddd;
   border-radius: 6px;
@@ -732,7 +732,7 @@
 }
 
 /* Special handling for textarea to maintain alignment */
-.form-textarea {
+.mio-form-textarea {
   padding: 12px;
   border: 2px solid #ddd;
   border-radius: 6px;
@@ -748,38 +748,38 @@
 }
 
 /* Ensure textarea label aligns with other labels */
-.form-group:has(.form-textarea) label {
+.mio-form-group:has(.mio-form-textarea) label {
   min-height: 20px;
   display: flex;
   align-items: center;
 }
 
 /* Fallback for browsers that don't support :has() */
-.form-group .form-textarea + label,
-.form-group label[for*="description"] {
+.mio-form-group .mio-form-textarea + label,
+.mio-form-group label[for*="description"] {
   min-height: 20px;
   display: flex;
   align-items: center;
 }
 
 /* Additional alignment fixes for specific field combinations */
-.form-row .form-group:first-child {
+.mio-form-row .mio-form-group:first-child {
   align-self: flex-start;
 }
 
-.form-row .form-group:last-child {
+.mio-form-row .mio-form-group:last-child {
   align-self: flex-start;
 }
 
 /* Ensure consistent spacing between label and input */
-.form-group label + .form-input,
-.form-group label + .form-select,
-.form-group label + .form-textarea {
+.mio-form-group label + .mio-form-input,
+.mio-form-group label + .mio-form-select,
+.mio-form-group label + .mio-form-textarea {
   margin-top: 0;
 }
 
 /* Cross-browser alignment fixes */
-.form-row {
+.mio-form-row {
   display: -webkit-flex;
   display: -moz-flex;
   display: -ms-flex;
@@ -790,7 +790,7 @@
   align-items: flex-start;
 }
 
-.form-group {
+.mio-form-group {
   display: -webkit-flex;
   display: -moz-flex;
   display: -ms-flex;
@@ -802,19 +802,19 @@
 }
 
 /* Add item group container */
-.add-item-group {
+.mio-add-item-group {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start; /* Align button to the left */
 }
 
-.add-item-group .add-item-btn {
+.mio-add-item-group .mio-add-item-btn {
   flex-shrink: 0 !important; /* Prevent button from shrinking */
   flex-grow: 0 !important; /* Prevent button from growing */
 }
 
 /* Button width fixes - make buttons wrap their text content */
-.add-item-btn {
+.mio-add-item-btn {
   background-color: #28a745;
   color: white;
   border: none;
@@ -834,13 +834,13 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.add-item-btn:hover {
+.mio-add-item-btn:hover {
   background-color: #218838;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.submit-btn {
+.mio-submit-btn {
   background-color: #007bff;
   color: white;
   border: none;
@@ -859,28 +859,28 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.submit-btn:hover:not(:disabled) {
+.mio-submit-btn:hover:not(:disabled) {
   background-color: #0056b3;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.submit-btn:disabled {
+.mio-submit-btn:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.submit-btn.ready-to-submit {
+.mio-submit-btn.mio-ready-to-submit {
   background-color: #28a745;
 }
 
-.submit-btn.ready-to-submit:hover {
+.mio-submit-btn.mio-ready-to-submit:hover {
   background-color: #218838;
 }
 
-.reset-btn {
+.mio-reset-btn {
   background-color: #6c757d;
   color: white;
   border: none;
@@ -899,19 +899,19 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.reset-btn:hover {
+.mio-reset-btn:hover {
   background-color: #545b62;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Items table styling for Material Inward */
-.added-items-top-section {
+.mio-added-items-top-section {
   margin: 20px 0;
   width: 100%;
 }
 
-.added-items-top-section .items-table-container {
+.mio-added-items-top-section .mio-items-table-container {
   margin: 0;
   padding: 20px;
   background-color: #f8f9fa;
@@ -924,7 +924,7 @@
   overflow-y: auto;
 }
 
-.items-table-container {
+.mio-items-table-container {
   margin: 0;
   padding: 20px;
   background-color: #f8f9fa;
@@ -937,14 +937,14 @@
   overflow-y: auto;
 }
 
-.items-table-container h3 {
+.mio-items-table-container h3 {
   margin: 0 0 20px 0;
   color: #333;
   font-size: 18px;
   font-weight: 600;
 }
 
-.items-table {
+.mio-items-table {
   width: 100%;
   border-collapse: collapse;
   background-color: white;
@@ -954,12 +954,12 @@
   table-layout: fixed;
 }
 
-.items-table thead {
+.mio-items-table thead {
   background-color: #3498db;
   color: white;
 }
 
-.items-table th {
+.mio-items-table th {
   padding: 15px 12px;
   text-align: left;
   font-weight: 600;
@@ -968,46 +968,46 @@
 }
 
 /* Column width definitions */
-.items-table th:nth-child(1),
-.items-table td:nth-child(1) {
+.mio-items-table th:nth-child(1),
+.mio-items-table td:nth-child(1) {
   width: 5%;
   text-align: center;
 }
 
-.items-table th:nth-child(2),
-.items-table td:nth-child(2) {
+.mio-items-table th:nth-child(2),
+.mio-items-table td:nth-child(2) {
   width: 15%;
 }
 
-.items-table th:nth-child(3),
-.items-table td:nth-child(3) {
+.mio-items-table th:nth-child(3),
+.mio-items-table td:nth-child(3) {
   width: 15%;
 }
 
-.items-table th:nth-child(4),
-.items-table td:nth-child(4) {
+.mio-items-table th:nth-child(4),
+.mio-items-table td:nth-child(4) {
   width: 15%;
 }
 
-.items-table th:nth-child(5),
-.items-table td:nth-child(5) {
+.mio-items-table th:nth-child(5),
+.mio-items-table td:nth-child(5) {
   width: 20%;
 }
 
-.items-table th:nth-child(6),
-.items-table td:nth-child(6) {
+.mio-items-table th:nth-child(6),
+.mio-items-table td:nth-child(6) {
   width: 10%;
   text-align: center;
 }
 
-.items-table th:nth-child(7),
-.items-table td:nth-child(7) {
+.mio-items-table th:nth-child(7),
+.mio-items-table td:nth-child(7) {
   width: 10%;
   text-align: center;
 }
 
-.items-table th:nth-child(8),
-.items-table td:nth-child(8) {
+.mio-items-table th:nth-child(8),
+.mio-items-table td:nth-child(8) {
   width: 15%;
   text-align: center;
   min-width: 140px;
@@ -1015,12 +1015,12 @@
   border-left: 2px solid #e9ecef;
 }
 
-.items-table th:nth-child(8) {
+.mio-items-table th:nth-child(8) {
   background-color: #e9ecef;
   font-weight: 700;
 }
 
-.items-table td {
+.mio-items-table td {
   padding: 12px;
   border-bottom: 1px solid #e9ecef;
   font-size: 14px;
@@ -1032,21 +1032,21 @@
 }
 
 
-.items-table tbody tr:hover {
+.mio-items-table tbody tr:hover {
   background-color: #f8f9fa;
 }
 
-.items-table tbody tr.editing-row {
+.mio-items-table tbody tr.mio-editing-row {
   background-color: #fff3e0;
   box-shadow: 0 0 0 2px #ff9800;
 }
 
-.items-table tbody tr:last-child td {
+.mio-items-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Action buttons */
-.remove-item-btn {
+.mio-remove-item-btn {
   background-color: #dc3545;
   color: white;
   border: none;
@@ -1065,34 +1065,34 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.remove-item-btn:hover {
+.mio-remove-item-btn:hover {
   background-color: #c82333;
   transform: scale(1.05);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Editable cell styles */
-.editable-cell {
+.mio-editable-cell {
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
 }
 
-.editable-cell:hover {
+.mio-editable-cell:hover {
   background-color: #f8f9fa;
   box-shadow: inset 0 0 0 2px #e3f2fd;
 }
 
-.editable-cell:active {
+.mio-editable-cell:active {
   background-color: #e3f2fd;
 }
 
-.editing-cell {
+.mio-editing-cell {
   background-color: #fff3e0;
   box-shadow: inset 0 0 0 2px #ff9800;
 }
 
-.edit-actions-vertical {
+.mio-edit-actions-vertical {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1101,20 +1101,20 @@
   padding: 5px;
 }
 
-.edit-actions-row {
+.mio-edit-actions-row {
   display: flex;
   gap: 5px;
   justify-content: center;
   align-items: center;
 }
 
-.remove-actions-row {
+.mio-remove-actions-row {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.save-edit-btn {
+.mio-save-edit-btn {
   background-color: #27ae60;
   color: white;
   border: none;
@@ -1132,13 +1132,13 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.save-edit-btn:hover {
+.mio-save-edit-btn:hover {
   background-color: #229954;
   transform: scale(1.05);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.cancel-edit-btn {
+.mio-cancel-edit-btn {
   background-color: #e74c3c;
   color: white;
   border: none;
@@ -1156,13 +1156,13 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.cancel-edit-btn:hover {
+.mio-cancel-edit-btn:hover {
   background-color: #c0392b;
   transform: scale(1.05);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.edit-select, .edit-input {
+.mio-edit-select, .mio-edit-input {
   width: 100%;
   padding: 6px 8px;
   border: 2px solid #ddd;
@@ -1173,32 +1173,32 @@
   box-sizing: border-box;
 }
 
-.quantity-input {
+.mio-quantity-input {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
-.quantity-input::-webkit-outer-spin-button,
-.quantity-input::-webkit-inner-spin-button {
+.mio-quantity-input::-webkit-outer-spin-button,
+.mio-quantity-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   appearance: none;
   margin: 0;
 }
 
-.edit-select:focus, .edit-input:focus {
+.mio-edit-select:focus, .mio-edit-input:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
 }
 
-.edit-select:disabled {
+.mio-edit-select:disabled {
   background-color: #f5f5f5;
   color: #999;
   cursor: not-allowed;
 }
 
 /* Mobile touch interactions */
-.editable-cell {
+.mio-editable-cell {
   position: relative;
   cursor: pointer;
   user-select: none;
@@ -1208,23 +1208,23 @@
   transition: background-color 0.2s ease;
 }
 
-.editable-cell:hover {
+.mio-editable-cell:hover {
   background-color: #f8f9fa;
 }
 
-.editable-cell:active {
+.mio-editable-cell:active {
   background-color: #e9ecef;
 }
 
 /* Long press visual feedback */
-.editable-cell.touch-active {
+.mio-editable-cell.mio-touch-active {
   background-color: #e3f2fd !important;
   transform: scale(0.98);
   transition: all 0.1s ease;
 }
 
 /* Prevent text selection on touch devices */
-.editable-cell * {
+.mio-editable-cell * {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -1233,170 +1233,170 @@
 
 /* Responsive table */
 @media (max-width: 1400px) {
-  .items-table th,
-  .items-table td {
+  .mio-items-table th,
+  .mio-items-table td {
     padding: 12px 10px;
     font-size: 13px;
   }
   
-  .items-table th:nth-child(3),
-  .items-table th:nth-child(4),
-  .items-table td:nth-child(3),
-  .items-table td:nth-child(4) {
+  .mio-items-table th:nth-child(3),
+  .mio-items-table th:nth-child(4),
+  .mio-items-table td:nth-child(3),
+  .mio-items-table td:nth-child(4) {
     min-width: 130px;
   }
   
-  .items-table th:nth-child(5),
-  .items-table td:nth-child(5) {
+  .mio-items-table th:nth-child(5),
+  .mio-items-table td:nth-child(5) {
     min-width: 200px;
   }
 }
 
 @media (max-width: 1300px) {
-  .items-table-container {
+  .mio-items-table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
   
-  .items-table {
+  .mio-items-table {
     min-width: 1200px;
   }
   
-  .items-table th,
-  .items-table td {
+  .mio-items-table th,
+  .mio-items-table td {
     padding: 10px 8px;
     font-size: 13px;
     white-space: nowrap;
   }
   
-  .items-table th:nth-child(1),
-  .items-table td:nth-child(1) {
+  .mio-items-table th:nth-child(1),
+  .mio-items-table td:nth-child(1) {
     min-width: 50px;
     text-align: center;
   }
   
-  .items-table th:nth-child(2),
-  .items-table td:nth-child(2) {
+  .mio-items-table th:nth-child(2),
+  .mio-items-table td:nth-child(2) {
     min-width: 100px;
   }
   
-  .items-table th:nth-child(3),
-  .items-table th:nth-child(4),
-  .items-table td:nth-child(3),
-  .items-table td:nth-child(4) {
+  .mio-items-table th:nth-child(3),
+  .mio-items-table th:nth-child(4),
+  .mio-items-table td:nth-child(3),
+  .mio-items-table td:nth-child(4) {
     min-width: 140px;
   }
   
-  .items-table th:nth-child(5),
-  .items-table td:nth-child(5) {
+  .mio-items-table th:nth-child(5),
+  .mio-items-table td:nth-child(5) {
     min-width: 180px;
   }
   
-  .items-table th:nth-child(6),
-  .items-table td:nth-child(6) {
+  .mio-items-table th:nth-child(6),
+  .mio-items-table td:nth-child(6) {
     min-width: 80px;
     text-align: center;
   }
   
-  .items-table th:nth-child(7),
-  .items-table td:nth-child(7) {
+  .mio-items-table th:nth-child(7),
+  .mio-items-table td:nth-child(7) {
     min-width: 80px;
     text-align: center;
   }
   
-  .items-table th:nth-child(8),
-  .items-table td:nth-child(8) {
+  .mio-items-table th:nth-child(8),
+  .mio-items-table td:nth-child(8) {
     min-width: 140px;
     text-align: center;
   }
 }
 
 @media (max-width: 768px) {
-  .items-table-container {
+  .mio-items-table-container {
     margin: 20px 0;
     padding: 15px;
   }
   
-  .items-table-container h3 {
+  .mio-items-table-container h3 {
     font-size: 16px;
     margin-bottom: 15px;
   }
   
-  .items-table {
+  .mio-items-table {
     min-width: 800px;
   }
   
-  .items-table th,
-  .items-table td {
+  .mio-items-table th,
+  .mio-items-table td {
     padding: 6px 4px;
     font-size: 11px;
   }
   
-  .items-table th:nth-child(1),
-  .items-table td:nth-child(1) {
+  .mio-items-table th:nth-child(1),
+  .mio-items-table td:nth-child(1) {
     min-width: 40px;
     text-align: center;
   }
   
-  .items-table th:nth-child(2),
-  .items-table td:nth-child(2) {
+  .mio-items-table th:nth-child(2),
+  .mio-items-table td:nth-child(2) {
     min-width: 80px;
   }
   
-  .items-table th:nth-child(3),
-  .items-table th:nth-child(4),
-  .items-table td:nth-child(3),
-  .items-table td:nth-child(4) {
+  .mio-items-table th:nth-child(3),
+  .mio-items-table th:nth-child(4),
+  .mio-items-table td:nth-child(3),
+  .mio-items-table td:nth-child(4) {
     min-width: 100px;
   }
   
-  .items-table th:nth-child(5),
-  .items-table td:nth-child(5) {
+  .mio-items-table th:nth-child(5),
+  .mio-items-table td:nth-child(5) {
     min-width: 120px;
   }
   
-  .items-table th:nth-child(6),
-  .items-table td:nth-child(6) {
+  .mio-items-table th:nth-child(6),
+  .mio-items-table td:nth-child(6) {
     min-width: 60px;
     text-align: center;
   }
   
-  .items-table th:nth-child(7),
-  .items-table td:nth-child(7) {
+  .mio-items-table th:nth-child(7),
+  .mio-items-table td:nth-child(7) {
     min-width: 60px;
     text-align: center;
   }
   
-  .items-table th:nth-child(8),
-  .items-table td:nth-child(8) {
+  .mio-items-table th:nth-child(8),
+  .mio-items-table td:nth-child(8) {
     min-width: 120px;
     text-align: center;
   }
   
   /* Larger touch targets for mobile */
-  .editable-cell {
+  .mio-editable-cell {
     min-height: 44px;
     padding: 12px 8px;
     touch-action: manipulation; /* Disable double-tap zoom */
   }
   
-  .edit-actions-vertical {
+  .mio-edit-actions-vertical {
     flex-direction: column;
     gap: 8px;
   }
   
-  .edit-actions-row {
+  .mio-edit-actions-row {
     flex-direction: row;
     gap: 8px;
   }
   
-  .remove-actions-row {
+  .mio-remove-actions-row {
     margin-top: 8px;
   }
   
-  .save-edit-btn,
-  .cancel-edit-btn,
-  .remove-item-btn {
+  .mio-save-edit-btn,
+  .mio-cancel-edit-btn,
+  .mio-remove-item-btn {
     padding: 8px 12px;
     font-size: 12px;
     min-height: 36px;

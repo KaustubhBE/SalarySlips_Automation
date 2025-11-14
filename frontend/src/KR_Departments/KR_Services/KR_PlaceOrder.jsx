@@ -1034,7 +1034,7 @@ const KR_PlaceOrder = () => {
     
     // Add visual feedback for touch
     const target = e.currentTarget
-    target.classList.add('touch-active')
+    target.classList.add('po-touch-active')
   }
 
   const handleTouchEnd = (e, item, field) => {
@@ -1049,7 +1049,7 @@ const KR_PlaceOrder = () => {
 
     // Remove visual feedback
     const target = e.currentTarget
-    target.classList.remove('touch-active')
+    target.classList.remove('po-touch-active')
 
     // Reset touch state
     setTouchStartTime(null)
@@ -1074,7 +1074,7 @@ const KR_PlaceOrder = () => {
       if (touchDistance > TOUCH_MOVE_THRESHOLD) {
         // Remove visual feedback if user moves too much
         const target = e.currentTarget
-        target.classList.remove('touch-active')
+        target.classList.remove('po-touch-active')
         
         setTouchStartTime(null)
         setTouchStartPosition(null)
@@ -1485,21 +1485,21 @@ const KR_PlaceOrder = () => {
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
-        <div className="form-header">
-          <div className="header-left">
-            <div className="datetime-box">
+      <div className="po-place_order-container">
+        <div className="po-form-header">
+          <div className="po-header-left">
+            <div className="po-datetime-box">
               {formatDateTime(currentDateTime)}
             </div>
           </div>
-          <div className="header-center">
+          <div className="po-header-center">
             <h2>Material Order Form</h2>
           </div>
-          <div className="header-right">
-            <div className="order-id-section">
+          <div className="po-header-right">
+            <div className="po-order-id-section">
               <button 
                 type="button"
-                className="generate-order-id-btn"
+                className="po-generate-order-id-btn"
                 onClick={handleGenerateOrderId}
                 title="Click to generate Order ID"
                 disabled={dataLoading}
@@ -1509,7 +1509,7 @@ const KR_PlaceOrder = () => {
             </div>
           </div>
         </div>
-        <div className="loading-message">
+        <div className="po-loading-message">
           <p>Loading material data...</p>
         </div>
       </div>
@@ -1517,33 +1517,33 @@ const KR_PlaceOrder = () => {
   }
 
   return (
-    <div className="place_order-container">
+    <div className="po-place_order-container">
       {/* Loading Spinner */}
       {isSubmitting && <LoadingSpinner />}
       
       {/* Back Button Section - Always at top-left */}
       <BackButton label="Back to Store" to="/kerur/kr_store" />
       
-      <div className="form-header">
-        <div className="header-left">
-          <div className="datetime-box">
+      <div className="po-form-header">
+        <div className="po-header-left">
+          <div className="po-datetime-box">
             {formatDateTime(currentDateTime)}
           </div>
         </div>
-        <div className="header-center">
+        <div className="po-header-center">
           <h2>Material Order Form</h2>
         </div>
-        <div className="header-right">
-          <div className="order-id-section">
+        <div className="po-header-right">
+          <div className="po-order-id-section">
             {orderIdGenerated ? (
-              <div className="order-id-display">
-                <span className="order-id-label">Order ID:</span>
-                <span className="order-id-value">{orderId}</span>
+              <div className="po-order-id-display">
+                <span className="po-order-id-label">Order ID:</span>
+                <span className="po-order-id-value">{orderId}</span>
               </div>
             ) : (
               <button 
                 type="button"
-                className="generate-order-id-btn"
+                className="po-generate-order-id-btn"
                 onClick={handleGenerateOrderId}
                 title="Click to generate Order ID"
               >
@@ -1553,14 +1553,14 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="material-form">
+      <form onSubmit={handleSubmit} className="po-material-form">
 
         {/* Added Items Table - Moved to top */}
         {orderItems.length > 0 && (
-          <div className="added-items-top-section">
-            <div className="items-table-container">
+          <div className="po-added-items-top-section">
+            <div className="po-items-table-container">
               <h3>Added Items</h3>
-              <table className="items-table">
+              <table className="po-items-table">
                 <thead>
                   <tr>
                     <th>SN</th>
@@ -1575,11 +1575,11 @@ const KR_PlaceOrder = () => {
                 </thead>
                 <tbody>
                   {orderItems.map((item, index) => (
-                    <tr key={item.id} className={editingItem === item.id ? "editing-row" : ""}>
+                    <tr key={item.id} className={editingItem === item.id ? "po-editing-row" : ""}>
                       <td data-label="S.No">{index + 1}</td>
                       <td 
                         data-label="Category"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
                         onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
                         onTouchStart={(e) => handleTouchStart(e, item, 'category')}
                         onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
@@ -1590,7 +1590,7 @@ const KR_PlaceOrder = () => {
                           <select
                             value={editFormData.category}
                             onChange={(e) => handleEditInputChange('category', e.target.value)}
-                            className="edit-select"
+                            className="po-edit-select"
                           >
                             <option value="">Select Category</option>
                             {categories.map(category => (
@@ -1603,7 +1603,7 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="Sub Category"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
                         onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
                         onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
                         onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
@@ -1614,7 +1614,7 @@ const KR_PlaceOrder = () => {
                           <select
                             value={editFormData.subCategory}
                             onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
-                            className="edit-select"
+                            className="po-edit-select"
                             disabled={!editFormData.category}
                           >
                             <option value="">Select Sub Category</option>
@@ -1628,7 +1628,7 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="Specifications"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
                         onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
                         onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
                         onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
@@ -1639,7 +1639,7 @@ const KR_PlaceOrder = () => {
                           <select
                             value={editFormData.specifications}
                             onChange={(e) => handleEditInputChange('specifications', e.target.value)}
-                            className="edit-select"
+                            className="po-edit-select"
                             disabled={!editFormData.materialName}
                           >
                             <option value="">Select Specifications</option>
@@ -1665,7 +1665,7 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="Material Name"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
                         onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
                         onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
                         onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
@@ -1676,7 +1676,7 @@ const KR_PlaceOrder = () => {
                           <select
                             value={editFormData.materialName}
                             onChange={(e) => handleEditInputChange('materialName', e.target.value)}
-                            className="edit-select"
+                            className="po-edit-select"
                             disabled={!editFormData.category}
                           >
                             <option value="">Select Material Name</option>
@@ -1691,7 +1691,7 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="Quantity"
-                        className={editingItem === item.id ? "editing-cell" : "editable-cell"}
+                        className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
                         onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
                         onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
                         onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
@@ -1703,7 +1703,7 @@ const KR_PlaceOrder = () => {
                             type="text"
                             value={editFormData.quantity}
                             onChange={(e) => handleEditInputChange('quantity', e.target.value)}
-                            className="edit-input quantity-input"
+                            className="po-edit-input po-quantity-input"
                             placeholder="Enter quantity"
                             pattern="[0-9]*"
                             inputMode="numeric"
@@ -1714,7 +1714,7 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td 
                         data-label="UOM"
-                        className={`uom-cell ${editingItem === item.id ? 'is-editing' : ''}`}
+                        className={`po-uom-cell ${editingItem === item.id ? 'po-is-editing' : ''}`}
                         title="UOM is auto-selected based on material name"
                       >
                         {editingItem === item.id ? (
@@ -1722,7 +1722,7 @@ const KR_PlaceOrder = () => {
                             type="text"
                             value={editFormData.uom}
                             readOnly
-                            className="edit-input readonly-input"
+                            className="po-edit-input po-readonly-input"
                           />
                         ) : (
                           item.uom
@@ -1730,12 +1730,12 @@ const KR_PlaceOrder = () => {
                       </td>
                       <td data-label="Action">
                         {editingItem === item.id ? (
-                          <div className="edit-actions-vertical">
-                            <div className="edit-actions-row">
+                          <div className="po-edit-actions-vertical">
+                            <div className="po-edit-actions-row">
                               <button
                                 type="button"
                                 onClick={handleSaveEdit}
-                                className="save-edit-btn"
+                                className="po-save-edit-btn"
                                 title="Save changes"
                               >
                                 Save
@@ -1743,17 +1743,17 @@ const KR_PlaceOrder = () => {
                               <button
                                 type="button"
                                 onClick={handleCancelEdit}
-                                className="cancel-edit-btn"
+                                className="po-cancel-edit-btn"
                                 title="Cancel edit"
                               >
                                 Cancel
                               </button>
                             </div>
-                            <div className="remove-actions-row">
+                            <div className="po-remove-actions-row">
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(item.id)}
-                                className="remove-item-btn"
+                                className="po-remove-item-btn"
                                 title="Remove item"
                               >
                                 Delete
@@ -1764,7 +1764,7 @@ const KR_PlaceOrder = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(item.id)}
-                            className="remove-item-btn"
+                            className="po-remove-item-btn"
                             title="Remove item"
                           >
                             ×
@@ -1780,23 +1780,23 @@ const KR_PlaceOrder = () => {
         )}
 
         {/* Main Content Area */}
-        <div className="form-main-content">
+        <div className="po-form-main-content">
           {/* Left Section - Form Inputs */}
-          <div className="form-left-section">
+          <div className="po-form-left-section">
             {/* Form inputs for adding new item - Only show when no items exist */}
             {orderItems.length === 0 && (
-              <div className="add-item-section">
-                <h3 className="add-item-header">
+              <div className="po-add-item-section">
+                <h3 className="po-add-item-header">
                   Add Item to Order
                 </h3>
-                <p className="add-item-description">
+                <p className="po-add-item-description">
                   Fill in the required fields below to add your first item to the order.
                 </p>
               </div>
             )}
-            <div className="form-row">
+            <div className="po-form-row">
               {/* Category - Required only if no items exist */}
-              <div className="form-group">
+              <div className="po-form-group">
             <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
               Category
             </label>
@@ -1805,7 +1805,7 @@ const KR_PlaceOrder = () => {
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
               required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              className={`po-form-select ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
               disabled={dataLoading}
             >
               <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
@@ -1816,13 +1816,13 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Sub Category - Optional */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="subCategory">Sub Category</label>
             <select
               id="subCategory"
               value={formData.subCategory}
               onChange={(e) => handleInputChange('subCategory', e.target.value)}
-              className={`form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'optional-field-red' : formData.subCategory ? 'optional-field-green' : ''}`}
+              className={`po-form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'po-optional-field-red' : formData.subCategory ? 'po-optional-field-green' : ''}`}
               disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
             >
               <option value="">
@@ -1838,7 +1838,7 @@ const KR_PlaceOrder = () => {
 
 
           {/* Material Name - Required only if no items exist */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
               Material Name
             </label>
@@ -1847,7 +1847,7 @@ const KR_PlaceOrder = () => {
               value={formData.materialName}
               onChange={(e) => handleInputChange('materialName', e.target.value)}
               required={orderItems.length === 0}
-              className={`form-select ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              className={`po-form-select ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
               disabled={!formData.category || dataLoading}
             >
               <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -1859,18 +1859,18 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Specifications - Optional */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="specifications">Specifications</label>
             <select
               id="specifications"
               value={formData.specifications}
               onChange={(e) => handleInputChange('specifications', e.target.value)}
-              className={`form-select ${!formData.specifications && formData.category && formData.materialName && (() => {
+              className={`po-form-select ${!formData.specifications && formData.category && formData.materialName && (() => {
                 const categoryData = materialData[formData.category];
                 if (!categoryData) return false;
                 const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
                 return materialSpecs && materialSpecs.length > 0;
-              })() ? 'optional-field-red' : formData.specifications ? 'optional-field-green' : ''}`}
+              })() ? 'po-optional-field-red' : formData.specifications ? 'po-optional-field-green' : ''}`}
               disabled={!formData.category || !formData.materialName || dataLoading || (() => {
                 const categoryData = materialData[formData.category];
                 if (!categoryData) return true;
@@ -1907,7 +1907,7 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Quantity - Required only if no items exist */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
               Quantity
             </label>
@@ -1917,7 +1917,7 @@ const KR_PlaceOrder = () => {
               value={formData.quantity}
               onChange={(e) => handleInputChange('quantity', e.target.value)}
               required={orderItems.length === 0}
-              className={`form-input quantity-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              className={`po-form-input po-quantity-input ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
               placeholder="Enter quantity"
               pattern="[0-9]*"
               inputMode="numeric"
@@ -1925,7 +1925,7 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* UOM - Auto-selected (Read-only) */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
               UOM
             </label>
@@ -1935,18 +1935,18 @@ const KR_PlaceOrder = () => {
               value={formData.uom}
               readOnly
               required={orderItems.length === 0}
-              className={`form-input readonly-input ${orderItems.length > 0 ? 'optional-field' : ''}`}
+              className={`po-form-input po-readonly-input ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
               placeholder="UOM"
             />
           </div>
 
           {/* Add Item Button */}
-          <div className="form-group add-item-group">
+          <div className="po-form-group po-add-item-group">
             <label>&nbsp;</label>
             <button
               type="button"
               onClick={handleAddItem}
-              className="add-item-btn"
+              className="po-add-item-btn"
             >
               Add Item
             </button>
@@ -1954,16 +1954,16 @@ const KR_PlaceOrder = () => {
         </div>
 
         {/* Additional Order Information */}
-        <div className="form-row">
+        <div className="po-form-row">
           {/* Given By - Required */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="givenBy" className="required">Given By</label>
             <select
               id="givenBy"
               value={formData.givenBy}
               onChange={(e) => handleInputChange('givenBy', e.target.value)}
               required
-              className="form-select"
+              className="po-form-select"
               disabled={authorityLoading}
             >
               <option value="">
@@ -1978,14 +1978,14 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Type - Required */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="type" className="required">Type</label>
             <select
               id="type"
               value={formData.type}
               onChange={(e) => handleInputChange('type', e.target.value)}
               required
-              className="form-select"
+              className="po-form-select"
               disabled={authorityLoading || typeOptions.length === 0}
             >
               <option value="">
@@ -2000,14 +2000,14 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Importance - Required */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="importance" className="required">Importance</label>
             <select
               id="importance"
               value={formData.importance}
               onChange={(e) => handleInputChange('importance', e.target.value)}
               required
-              className="form-select"
+              className="po-form-select"
             >
         {IMPORTANCE_OPTIONS.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -2016,16 +2016,16 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
-        <div className="form-row">
+        <div className="po-form-row">
           {/* Party Name - Required */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="partyName" className="required">Party Name</label>
             <select
               id="partyName"
               value={formData.partyName}
               onChange={(e) => handleInputChange('partyName', e.target.value)}
               required
-              className="form-select"
+              className="po-form-select"
               disabled={partyLoading}
             >
               <option value="">
@@ -2040,14 +2040,14 @@ const KR_PlaceOrder = () => {
           </div>
 
           {/* Place - Required */}
-          <div className="form-group">
+          <div className="po-form-group">
             <label htmlFor="place" className="required">Place</label>
             <select
               id="place"
               value={formData.place}
               onChange={(e) => handleInputChange('place', e.target.value)}
               required
-              className="form-select"
+              className="po-form-select"
               disabled={placesLoading}
             >
               <option value="">
@@ -2063,15 +2063,15 @@ const KR_PlaceOrder = () => {
         </div>
 
         {/* Description - Full Width */}
-        <div className="form-row">
-          <div className="form-group full-width">
+        <div className="po-form-row">
+          <div className="po-form-group po-full-width">
             <label htmlFor="description" className="required">Description</label>
             <textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               required
-              className="form-textarea"
+              className="po-form-textarea"
               placeholder="Enter detailed description of the order requirements"
               rows="4"
             />
@@ -2079,46 +2079,46 @@ const KR_PlaceOrder = () => {
         </div>
 
         {/* Notification Settings */}
-        <div className="notification-section">
+        <div className="po-notification-section">
           <h2>Notification Methods</h2>
-          <div className="toggle-container">
-            <div className="toggle-item">
-              <label className="toggle">
+          <div className="po-toggle-container">
+            <div className="po-toggle-item">
+              <label className="po-toggle">
                 <input
                   type="checkbox"
                   checked={enableEmailNotification}
                   onChange={(e) => setEnableEmailNotification(e.target.checked)}
                 />
-                <span className="toggle-slider"></span>
+                <span className="po-toggle-slider"></span>
               </label>
-              <span className="toggle-label">Send via Email</span>
+              <span className="po-toggle-label">Send via Email</span>
             </div>
 
-            <div className="toggle-item">
-              <label className="toggle">
+            <div className="po-toggle-item">
+              <label className="po-toggle">
                 <input
                   type="checkbox"
                   checked={enableWhatsappNotification}
                   onChange={(e) => setEnableWhatsappNotification(e.target.checked)}
                 />
-                <span className="toggle-slider"></span>
+                <span className="po-toggle-slider"></span>
               </label>
-              <span className="toggle-label">Send via WhatsApp</span>
+              <span className="po-toggle-label">Send via WhatsApp</span>
             </div>
           </div>
           {!enableEmailNotification && !enableWhatsappNotification && (
-            <div className="notification-warning">
-              <span className="warning-icon">⚠️</span>
+            <div className="po-notification-warning">
+              <span className="po-warning-icon">⚠️</span>
               No notification method selected. Order will be placed without sending notifications.
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="form-actions">
+        <div className="po-form-actions">
           <button 
             type="submit" 
-            className={`submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? 'ready-to-submit' : 'disabled'}`}
+            className={`po-submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? 'po-ready-to-submit' : 'disabled'}`}
             disabled={orderItems.length === 0 || !formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description}
             title={
               orderItems.length === 0
@@ -2130,7 +2130,7 @@ const KR_PlaceOrder = () => {
           >
             Place Order {orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? '✓' : ''}
           </button>
-          <button type="button" className="reset-btn" onClick={() => {
+          <button type="button" className="po-reset-btn" onClick={() => {
             // Reset form but keep the same order ID
         setFormData({
           category: '',
@@ -2155,12 +2155,12 @@ const KR_PlaceOrder = () => {
 
       {/* Notification Modal */}
       {showNotificationModal && (
-        <div className="notification-modal-overlay">
-          <div className="notification-modal">
-            <div className="notification-modal-header">
+        <div className="po-notification-modal-overlay">
+          <div className="po-notification-modal">
+            <div className="po-notification-modal-header">
               <h3>Send Order Notification</h3>
               <button 
-                className="modal-close-btn"
+                className="po-modal-close-btn"
                 onClick={handleCloseNotificationModal}
                 title="Close modal"
               >
@@ -2168,61 +2168,61 @@ const KR_PlaceOrder = () => {
               </button>
             </div>
 
-            <div className="notification-modal-body">
-              <div className="order-summary">
+            <div className="po-notification-modal-body">
+              <div className="po-order-summary">
                 <h4>Order Summary</h4>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Order ID:</strong> {lastSubmittedOrderId}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Date & Time:</strong> {lastSubmittedOrderData?.dateTime}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Given By:</strong> {lastSubmittedOrderData?.givenBy}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Type:</strong> {lastSubmittedOrderData?.type}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Preferred Party:</strong> {lastSubmittedOrderData?.partyName}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Place:</strong> {lastSubmittedOrderData?.place}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Importance:</strong> {lastSubmittedOrderData?.importance}
                 </div>
-                <div className="summary-item">
+                <div className="po-summary-item">
                   <strong>Items Count:</strong> {lastSubmittedOrderData?.orderItems?.length || 0}
                 </div>
               </div>
 
-              <div className="notification-method-section">
+              <div className="po-notification-method-section">
                 <h4>Notification Method</h4>
-                <div className="notification-method-display">
+                <div className="po-notification-method-display">
                   {notificationMethod === 'both' && (
-                    <div className="method-badge both">
+                    <div className="po-method-badge po-both">
                       <span>📧</span> Email & <span>📱</span> WhatsApp
                     </div>
                   )}
                   {notificationMethod === 'email' && (
-                    <div className="method-badge email">
+                    <div className="po-method-badge po-email">
                       <span>📧</span> Email Only
                     </div>
                   )}
                   {notificationMethod === 'whatsapp' && (
-                    <div className="method-badge whatsapp">
+                    <div className="po-method-badge po-whatsapp">
                       <span>📱</span> WhatsApp Only
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="recipients-section">
-                <div className="recipients-header">
+              <div className="po-recipients-section">
+                <div className="po-recipients-header">
                   <h4>Select Recipients</h4>
                   <button 
-                    className="select-all-btn"
+                    className="po-select-all-btn"
                     onClick={handleSelectAllRecipients}
                     type="button"
                   >
@@ -2231,33 +2231,33 @@ const KR_PlaceOrder = () => {
                 </div>
 
                 {recipientsLoading ? (
-                  <div className="recipients-loading">
+                  <div className="po-recipients-loading">
                     <p>Loading recipients...</p>
                   </div>
                 ) : recipients.length === 0 ? (
-                  <div className="recipients-empty">
+                  <div className="po-recipients-empty">
                     <p>No recipients found</p>
                   </div>
                 ) : (
-                  <div className="recipients-list">
+                  <div className="po-recipients-list">
                     {recipients.map((recipient, index) => (
-                      <label key={index} className="recipient-item">
+                      <label key={index} className="po-recipient-item">
                         <input
                           type="checkbox"
                           checked={selectedRecipients.some(r => r['Email ID - To'] === recipient['Email ID - To'])}
                           onChange={() => handleRecipientToggle(recipient)}
                         />
-                        <div className="recipient-info">
-                          <div className="recipient-name">{recipient.Name}</div>
+                        <div className="po-recipient-info">
+                          <div className="po-recipient-name">{recipient.Name}</div>
                           {recipient['Email ID - To'] && (
-                            <div className="recipient-detail">
-                              <span className="recipient-icon">📧</span>
+                            <div className="po-recipient-detail">
+                              <span className="po-recipient-icon">📧</span>
                               {recipient['Email ID - To']}
                             </div>
                           )}
                           {recipient['Contact No.'] && (
-                            <div className="recipient-detail">
-                              <span className="recipient-icon">📱</span>
+                            <div className="po-recipient-detail">
+                              <span className="po-recipient-icon">📱</span>
                               {recipient['Contact No.']}
                             </div>
                           )}
@@ -2268,21 +2268,21 @@ const KR_PlaceOrder = () => {
                 )}
               </div>
 
-              <div className="selected-count">
+              <div className="po-selected-count">
                 Selected: {selectedRecipients.length} of {recipients.length} recipients
               </div>
             </div>
 
-            <div className="notification-modal-footer">
+            <div className="po-notification-modal-footer">
               <button
-                className="send-notification-btn"
+                className="po-send-notification-btn"
                 onClick={handleSendNotifications}
                 disabled={sendingNotification || selectedRecipients.length === 0}
               >
                 {sendingNotification ? 'Sending...' : 'Send Notifications'}
               </button>
               <button
-                className="skip-notification-btn"
+                className="po-skip-notification-btn"
                 onClick={handleCloseNotificationModal}
                 disabled={sendingNotification}
               >
