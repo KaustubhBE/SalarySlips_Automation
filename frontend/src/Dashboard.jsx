@@ -26,6 +26,7 @@ function Dashboard() {
   const [currentPasswordMessage, setCurrentPasswordMessage] = useState("");
   const [loadingCurrentPassword, setLoadingCurrentPassword] = useState(false);
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
+  const [passwordValidationErrors, setPasswordValidationErrors] = useState([]);
   const [editingPermissions, setEditingPermissions] = useState({});
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -456,6 +457,7 @@ function Dashboard() {
     setEditingWebsitePassword("");
     setEditingWebsitePasswordConfirm("");
     setPasswordMismatchError("");
+    setPasswordValidationErrors([]);
     setShowWebsitePassword(false);
     setCurrentPasswordMessage("");
     setCurrentPasswordDisplay("");
@@ -595,6 +597,29 @@ function Dashboard() {
     }
   };
 
+  // Validate password requirements
+  const validatePassword = (password) => {
+    const errors = [];
+    
+    if (!password || password.length < 6) {
+      errors.push('Minimum 6 characters required');
+    }
+    
+    if (password && !/[A-Z]/.test(password)) {
+      errors.push('At least one capital letter required');
+    }
+    
+    if (password && !/[0-9]/.test(password)) {
+      errors.push('At least one number required');
+    }
+    
+    if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('At least one special character required');
+    }
+    
+    return errors;
+  };
+
   const handleSaveWebsitePassword = (userId) => {
     // Find user to get their details for confirmation
     const user = users.find(user => user.id === userId);
@@ -612,10 +637,16 @@ function Dashboard() {
       setPasswordMismatchError("");
     }
     
-    if (!editingWebsitePassword || editingWebsitePassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+    // Validate password requirements
+    const validationErrors = validatePassword(editingWebsitePassword);
+    if (validationErrors.length > 0) {
+      setPasswordValidationErrors(validationErrors);
+      setError('Password does not meet requirements');
       return;
     }
+    
+    // Clear validation errors if password is valid
+    setPasswordValidationErrors([]);
     
     // Show confirmation modal
     setPasswordChangeRequest({
@@ -647,6 +678,7 @@ function Dashboard() {
         setCurrentPasswordDisplay("");
         setCurrentPasswordMessage("");
         setPasswordMismatchError("");
+        setPasswordValidationErrors([]);
         // Refresh users list immediately after successful password update
         fetchUsers();
       } else {
@@ -672,6 +704,7 @@ function Dashboard() {
     setCurrentPasswordDisplay("");
     setLoadingCurrentPassword(false);
     setPasswordMismatchError("");
+    setPasswordValidationErrors([]);
     setShowWebsitePassword(false);
     setShowPermissionsModal(false);
     setEditingPermissions({});
@@ -1003,11 +1036,21 @@ function Dashboard() {
                                 name={`website-password-${user.id}`}
                                 value={editingWebsitePassword}
                                 onChange={e => {
-                                  setEditingWebsitePassword(e.target.value);
+                                  const newPassword = e.target.value;
+                                  setEditingWebsitePassword(newPassword);
+                                  
+                                  // Real-time password validation
+                                  if (newPassword.length === 0) {
+                                    setPasswordValidationErrors([]);
+                                  } else {
+                                    const validationErrors = validatePassword(newPassword);
+                                    setPasswordValidationErrors(validationErrors);
+                                  }
+                                  
                                   // Clear mismatch error when new password changes
                                   if (passwordMismatchError) {
                                     // Re-validate immediately
-                                    if (e.target.value === editingWebsitePasswordConfirm) {
+                                    if (newPassword === editingWebsitePasswordConfirm) {
                                       setPasswordMismatchError("");
                                     } else if (editingWebsitePasswordConfirm) {
                                       setPasswordMismatchError("Passwords do not match");
@@ -1018,6 +1061,27 @@ function Dashboard() {
                                 className="website-password-input"
                                 autoComplete="new-password"
                               />
+                              {passwordValidationErrors.length > 0 && (
+                                <div style={{
+                                  marginTop: '8px',
+                                  padding: '8px 12px',
+                                  backgroundColor: '#ffebee',
+                                  border: '1px solid #ffcdd2',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  color: '#c62828'
+                                }}>
+                                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                                    <span>Password requirements:</span>
+                                  </div>
+                                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                    {passwordValidationErrors.map((error, index) => (
+                                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                               <div style={{ marginTop: '8px' }}>
                                 <PasswordToggle
                                   id={`website-password-confirm-${user.id}`}
@@ -1048,23 +1112,13 @@ function Dashboard() {
                                     border: '1px solid #ffcdd2',
                                     borderRadius: '4px',
                                     color: '#c62828',
-                                    fontSize: '14px',
+                                    fontSize: '12px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
                                   }}>
-                                    <span style={{ fontSize: '16px' }}>⚠️</span>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
                                     <span>{passwordMismatchError}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="password-strength-indicator">
-                                {editingWebsitePassword && (
-                                  <div className={`strength-meter ${editingWebsitePassword.length >= 8 ? 'strong' : editingWebsitePassword.length >= 6 ? 'medium' : 'weak'}`}>
-                                    <div className="strength-bar"></div>
-                                    <span className="strength-text">
-                                      {editingWebsitePassword.length >= 8 ? 'Strong' : editingWebsitePassword.length >= 6 ? 'Medium' : 'Weak'}
-                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -1073,7 +1127,7 @@ function Dashboard() {
                               <button
                                 className="password-save-btn"
                                 onClick={() => handleSaveWebsitePassword(user.id)}
-                                  disabled={!editingWebsitePassword || editingWebsitePassword.length < 6 || editingWebsitePassword !== editingWebsitePasswordConfirm}
+                                disabled={!editingWebsitePassword || passwordValidationErrors.length > 0 || editingWebsitePassword !== editingWebsitePasswordConfirm}
                                 title="Save new website password"
                               >
                                 Save Password
@@ -1267,11 +1321,21 @@ function Dashboard() {
                                 name={`website-password-${user.id}`}
                                 value={editingWebsitePassword}
                                 onChange={e => {
-                                  setEditingWebsitePassword(e.target.value);
+                                  const newPassword = e.target.value;
+                                  setEditingWebsitePassword(newPassword);
+                                  
+                                  // Real-time password validation
+                                  if (newPassword.length === 0) {
+                                    setPasswordValidationErrors([]);
+                                  } else {
+                                    const validationErrors = validatePassword(newPassword);
+                                    setPasswordValidationErrors(validationErrors);
+                                  }
+                                  
                                   // Clear mismatch error when new password changes
                                   if (passwordMismatchError) {
                                     // Re-validate immediately
-                                    if (e.target.value === editingWebsitePasswordConfirm) {
+                                    if (newPassword === editingWebsitePasswordConfirm) {
                                       setPasswordMismatchError("");
                                     } else if (editingWebsitePasswordConfirm) {
                                       setPasswordMismatchError("Passwords do not match");
@@ -1282,6 +1346,27 @@ function Dashboard() {
                                 className="website-password-input"
                                 autoComplete="new-password"
                               />
+                              {passwordValidationErrors.length > 0 && (
+                                <div style={{
+                                  marginTop: '8px',
+                                  padding: '8px 12px',
+                                  backgroundColor: '#ffebee',
+                                  border: '1px solid #ffcdd2',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  color: '#c62828'
+                                }}>
+                                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                                    <span>Password requirements:</span>
+                                  </div>
+                                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                    {passwordValidationErrors.map((error, index) => (
+                                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                               <div style={{ marginTop: '8px' }}>
                                 <PasswordToggle
                                   id={`website-password-confirm-${user.id}`}
@@ -1312,23 +1397,13 @@ function Dashboard() {
                                     border: '1px solid #ffcdd2',
                                     borderRadius: '4px',
                                     color: '#c62828',
-                                    fontSize: '14px',
+                                    fontSize: '12px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
                                   }}>
-                                    <span style={{ fontSize: '16px' }}>⚠️</span>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
                                     <span>{passwordMismatchError}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="password-strength-indicator">
-                                {editingWebsitePassword && (
-                                  <div className={`strength-meter ${editingWebsitePassword.length >= 8 ? 'strong' : editingWebsitePassword.length >= 6 ? 'medium' : 'weak'}`}>
-                                    <div className="strength-bar"></div>
-                                    <span className="strength-text">
-                                      {editingWebsitePassword.length >= 8 ? 'Strong' : editingWebsitePassword.length >= 6 ? 'Medium' : 'Weak'}
-                                    </span>
                                   </div>
                                 )}
                               </div>

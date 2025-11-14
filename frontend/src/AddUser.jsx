@@ -198,6 +198,7 @@ function AddUser() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [addedUserInfo, setAddedUserInfo] = useState(null);
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
+  const [passwordValidationErrors, setPasswordValidationErrors] = useState([]);
   const [showPermissionWarning, setShowPermissionWarning] = useState(false);
 
   // Clear form data when component mounts
@@ -209,6 +210,7 @@ function AddUser() {
     setRole('user');
     setPermissions({});
     setPasswordMismatchError("");
+    setPasswordValidationErrors([]);
     setShowPermissionWarning(false);
   }, []);
 
@@ -312,6 +314,7 @@ function AddUser() {
     setSuccess('');
     setShowPassword(false);
     setPasswordMismatchError("");
+    setPasswordValidationErrors([]);
     setShowPermissionWarning(false);
   };
 
@@ -321,8 +324,40 @@ function AddUser() {
     resetForm();
   };
 
+  // Validate password requirements
+  const validatePassword = (password) => {
+    const errors = [];
+    
+    if (!password || password.length < 6) {
+      errors.push('Minimum 6 characters required');
+    }
+    
+    if (password && !/[A-Z]/.test(password)) {
+      errors.push('At least one capital letter required');
+    }
+    
+    if (password && !/[0-9]/.test(password)) {
+      errors.push('At least one number required');
+    }
+    
+    if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('At least one special character required');
+    }
+    
+    return errors;
+  };
+
   const handlePasswordChange = (value) => {
     setPassword(value);
+    
+    // Real-time password validation
+    if (value.length === 0) {
+      setPasswordValidationErrors([]);
+    } else {
+      const validationErrors = validatePassword(value);
+      setPasswordValidationErrors(validationErrors);
+    }
+    
     if (value && confirmPassword) {
       if (value !== confirmPassword) {
         setPasswordMismatchError("Passwords do not match");
@@ -360,11 +395,23 @@ function AddUser() {
       setError('');
       return;
     }
+    
+    // Validate password requirements
+    const validationErrors = validatePassword(password);
+    if (validationErrors.length > 0) {
+      setPasswordValidationErrors(validationErrors);
+      setError('Password does not meet requirements');
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       setPasswordMismatchError("Passwords do not match");
       return;
     }
+    
+    // Clear validation errors if password is valid
+    setPasswordValidationErrors([]);
     
     try {
       // Convert tree permissions to permission_metadata format (same as Dashboard.jsx)
@@ -392,6 +439,7 @@ function AddUser() {
         setSuccess(response.data.message);
         setError('');
         setPasswordMismatchError("");
+        setPasswordValidationErrors([]);
         
         // Store user info for success modal
         setAddedUserInfo({
@@ -499,6 +547,27 @@ function AddUser() {
                 autoComplete="new-password"
                 required
               />
+              {passwordValidationErrors.length > 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#ffebee',
+                  border: '1px solid #ffcdd2',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  color: '#c62828'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                    <span>Password requirements:</span>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {passwordValidationErrors.map((error, index) => (
+                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label htmlFor="confirm-password">Confirm Password:</label>
@@ -518,12 +587,12 @@ function AddUser() {
                   border: '1px solid #ffcdd2',
                   borderRadius: '4px',
                   color: '#c62828',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span style={{ fontSize: '16px' }}>⚠️</span>
+                  <span style={{ fontSize: '14px' }}>⚠️</span>
                   <span>{passwordMismatchError}</span>
                 </div>
               )}
@@ -559,7 +628,7 @@ function AddUser() {
               <button 
                 type="submit" 
                 className="submit-btn" 
-                disabled={!password || password.length < 6 || password !== confirmPassword}
+                disabled={!password || passwordValidationErrors.length > 0 || password !== confirmPassword}
               >
                 Add User
               </button>

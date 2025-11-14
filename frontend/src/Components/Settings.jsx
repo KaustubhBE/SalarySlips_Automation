@@ -16,12 +16,36 @@ function Settings({ onLogout }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
+  const [passwordValidationErrors, setPasswordValidationErrors] = useState([]);
   const [showPasswordChangeConfirm, setShowPasswordChangeConfirm] = useState(false);
   const [passwordChangeRequest, setPasswordChangeRequest] = useState(null);
 
   if (!user) {
     return <div className="settings-container"><p>Loading...</p></div>;
   }
+
+  // Validate password requirements
+  const validatePassword = (password) => {
+    const errors = [];
+    
+    if (!password || password.length < 6) {
+      errors.push('Minimum 6 characters required');
+    }
+    
+    if (password && !/[A-Z]/.test(password)) {
+      errors.push('At least one capital letter required');
+    }
+    
+    if (password && !/[0-9]/.test(password)) {
+      errors.push('At least one number required');
+    }
+    
+    if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('At least one special character required');
+    }
+    
+    return errors;
+  };
 
   const handleUpdatePassword = () => {
     setShowPasswordInput(true);
@@ -32,6 +56,7 @@ function Settings({ onLogout }) {
     setShowConfirmPassword(false);
     setShowCurrentPassword(false);
     setPasswordMismatchError("");
+    setPasswordValidationErrors([]);
   };
 
   const handleCurrentPasswordChange = (e) => {
@@ -39,10 +64,20 @@ function Settings({ onLogout }) {
   };
 
   const handleNewPasswordChange = (e) => {
-    setNewPassword(e.target.value);
+    const newPasswordValue = e.target.value;
+    setNewPassword(newPasswordValue);
+    
+    // Real-time password validation
+    if (newPasswordValue.length === 0) {
+      setPasswordValidationErrors([]);
+    } else {
+      const validationErrors = validatePassword(newPasswordValue);
+      setPasswordValidationErrors(validationErrors);
+    }
+    
     // Real-time validation
-    if (e.target.value && confirmPassword) {
-      if (e.target.value !== confirmPassword) {
+    if (newPasswordValue && confirmPassword) {
+      if (newPasswordValue !== confirmPassword) {
         setPasswordMismatchError("Passwords do not match");
       } else {
         setPasswordMismatchError("");
@@ -80,8 +115,11 @@ function Settings({ onLogout }) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      alert('⚠️ New password must be at least 6 characters long.');
+    // Validate password requirements
+    const validationErrors = validatePassword(newPassword);
+    if (validationErrors.length > 0) {
+      setPasswordValidationErrors(validationErrors);
+      alert('⚠️ Password does not meet requirements. Please check the error messages below.');
       return;
     }
 
@@ -97,10 +135,11 @@ function Settings({ onLogout }) {
       return;
     }
 
-    // Clear mismatch error if passwords match
+    // Clear mismatch error and validation errors if passwords match
     if (passwordMismatchError) {
       setPasswordMismatchError("");
     }
+    setPasswordValidationErrors([]);
 
     // Show confirmation modal
     setPasswordChangeRequest({
@@ -140,6 +179,7 @@ function Settings({ onLogout }) {
         setShowConfirmPassword(false);
         setShowCurrentPassword(false);
         setPasswordMismatchError("");
+        setPasswordValidationErrors([]);
       } else {
         alert(response.data?.error || '⚠️ Failed to update password.');
       }
@@ -206,6 +246,27 @@ function Settings({ onLogout }) {
                     className="form-input"
                     placeholder="Enter new password (min 6 characters)"
                   />
+                  {passwordValidationErrors.length > 0 && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      backgroundColor: '#ffebee',
+                      border: '1px solid #ffcdd2',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      color: '#c62828'
+                    }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '14px' }}>⚠️</span>
+                        <span>Password requirements:</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {passwordValidationErrors.map((error, index) => (
+                          <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label htmlFor="confirm-password">Confirm New Password</label>
@@ -227,12 +288,12 @@ function Settings({ onLogout }) {
                       border: '1px solid #ffcdd2',
                       borderRadius: '4px',
                       color: '#c62828',
-                      fontSize: '14px',
+                      fontSize: '12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px'
                     }}>
-                      <span style={{ fontSize: '16px' }}>⚠️</span>
+                      <span style={{ fontSize: '14px' }}>⚠️</span>
                       <span>{passwordMismatchError}</span>
                     </div>
                   )}
@@ -241,7 +302,7 @@ function Settings({ onLogout }) {
                   <button 
                     type="submit" 
                     className="btn btn-primary"
-                    disabled={!newPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+                    disabled={!newPassword || passwordValidationErrors.length > 0 || newPassword !== confirmPassword}
                   >
                     Update Password
                   </button>
@@ -254,6 +315,7 @@ function Settings({ onLogout }) {
                     setShowConfirmPassword(false);
                     setShowCurrentPassword(false);
                     setPasswordMismatchError("");
+                    setPasswordValidationErrors([]);
                   }}>
                     Cancel
                   </button>
