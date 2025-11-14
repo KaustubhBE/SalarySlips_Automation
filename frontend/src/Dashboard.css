@@ -1893,9 +1893,9 @@ table tr:hover {
   top: 20px;
   right: 20px;
   background: rgba(255, 255, 255, 0.2);
-  border: none;
-  outline: none;
-  box-shadow: none;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: white;
   width: 32px;
   height: 32px;
@@ -1912,9 +1912,56 @@ table tr:hover {
 }
 
 .modal-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #dc3545;
+  color: white;
   transform: none !important;
-  box-shadow: none;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.modal-close-btn:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.modal-close-btn:active {
+  background: #dc3545;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.modal-close-btn:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure permissions modal close button styles work correctly */
+.permissions-modal .modal-close-btn {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.permissions-modal .modal-close-btn:hover {
+  background: #dc3545 !important;
+  color: white !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.permissions-modal .modal-close-btn:focus,
+.permissions-modal .modal-close-btn:active,
+.permissions-modal .modal-close-btn:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Permissions Content */
