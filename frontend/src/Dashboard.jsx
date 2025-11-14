@@ -43,6 +43,8 @@ function Dashboard() {
   const [permissionChangeRequest, setPermissionChangeRequest] = useState(null); // { userId, userName, userEmail, permissionCount }
   const [showAdminPasswordRestriction, setShowAdminPasswordRestriction] = useState(false);
   const [adminPasswordRestrictionUser, setAdminPasswordRestrictionUser] = useState(null);
+  const [showNoChangesModal, setShowNoChangesModal] = useState(false);
+  const [originalPermissions, setOriginalPermissions] = useState({});
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -336,6 +338,22 @@ function Dashboard() {
     const user = users.find(user => user.id === userId);
     if (!user) return;
     
+    // Compare current permissions with original permissions
+    const originalKeys = Object.keys(originalPermissions).sort();
+    const updatedKeys = Object.keys(updatedPermissions).sort();
+    
+    // Check if permissions have changed
+    const hasChanges = 
+      originalKeys.length !== updatedKeys.length ||
+      originalKeys.some(key => originalPermissions[key] !== updatedPermissions[key]) ||
+      updatedKeys.some(key => originalPermissions[key] !== updatedPermissions[key]);
+    
+    if (!hasChanges) {
+      // No changes made - show popup
+      setShowNoChangesModal(true);
+      return;
+    }
+    
     // Count permissions
     const permissionCount = Object.keys(updatedPermissions).filter(key => updatedPermissions[key] === true).length;
     
@@ -565,6 +583,8 @@ function Dashboard() {
       console.log(`User ${user.username} has no permissions set`);
     }
     
+    // Store original permissions for comparison
+    setOriginalPermissions(JSON.parse(JSON.stringify(permissions)));
     setEditingPermissions(permissions);
     setShowPermissionsModal(true);
   };
@@ -660,6 +680,21 @@ function Dashboard() {
     setCurrentPasswordMessage("");
     setShowAdminPasswordRestriction(false);
     setAdminPasswordRestrictionUser(null);
+    setOriginalPermissions({});
+    setShowNoChangesModal(false);
+  };
+
+  const handleCloseNoChangesModal = () => {
+    setShowNoChangesModal(false);
+  };
+
+  const handleCancelNoChangesModal = () => {
+    // Close both the "no changes" modal and the permissions modal
+    setShowNoChangesModal(false);
+    setShowPermissionsModal(false);
+    setEditingPermissions({});
+    setSelectedUser(null);
+    setOriginalPermissions({});
   };
 
   const handleCloseAdminPasswordRestriction = () => {
@@ -1646,6 +1681,53 @@ function Dashboard() {
                 className="cancel-delete-btn"
                 onClick={handleCancelPermissionChange}
                 title="Cancel permission change"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Changes Made Modal */}
+      {showNoChangesModal && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseNoChangesModal()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>ℹ️ No Changes Detected</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCloseNoChangesModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">ℹ️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  No changes made in permission.
+                </p>
+                <div className="warning-text">
+                  <strong>Please make changes to permissions before saving.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="confirm-delete-btn"
+                onClick={handleCloseNoChangesModal}
+                title="Close message and continue editing"
+              >
+                Okay
+              </button>
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCancelNoChangesModal}
+                title="Cancel and close permissions window"
               >
                 Cancel
               </button>
