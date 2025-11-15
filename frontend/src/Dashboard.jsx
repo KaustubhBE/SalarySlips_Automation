@@ -991,7 +991,7 @@ function Dashboard() {
                               Permissions
                             </button>
                           )}
-                          {canDeleteUser(user.role) && (
+                          {canDeleteUser(user) && (
                             <button 
                               className="action-button delete-button"
                               onClick={(e) => {
@@ -1281,7 +1281,7 @@ function Dashboard() {
                               Permissions
                             </button>
                           )}
-                          {canDeleteUser(user.role) && (
+                          {canDeleteUser(user) && (
                             <button 
                               className="action-button delete-button"
                               onClick={(e) => {
