@@ -46,6 +46,7 @@ function Dashboard() {
   const [adminPasswordRestrictionUser, setAdminPasswordRestrictionUser] = useState(null);
   const [showNoChangesModal, setShowNoChangesModal] = useState(false);
   const [originalPermissions, setOriginalPermissions] = useState({});
+  const [showSelfDeleteRestriction, setShowSelfDeleteRestriction] = useState(false);
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -179,6 +180,12 @@ function Dashboard() {
   const handleDeleteUser = (userId) => {
     // Find the user to get their details for the confirmation message
     const user = users.find(user => user.id === userId);
+    
+    // Prevent self-deletion
+    if (isCurrentUser(user)) {
+      setShowSelfDeleteRestriction(true);
+      return;
+    }
     
     // Close any open actions first
     setShowPermissionsModal(false);
@@ -735,6 +742,10 @@ function Dashboard() {
     setAdminPasswordRestrictionUser(null);
   };
 
+  const handleCloseSelfDeleteRestriction = () => {
+    setShowSelfDeleteRestriction(false);
+  };
+
   const normalizeValueForComparison = (value) => {
     if (value === undefined || value === null) {
       return null;
@@ -827,9 +838,18 @@ function Dashboard() {
     return getCurrentUserRole() === 'admin';
   };
 
-  const canDeleteUser = (targetUserRole) => {
+  const canDeleteUser = (targetUser) => {
     // Use the new RBAC system - only admin can delete users
-    return getCurrentUserRole() === 'admin';
+    if (getCurrentUserRole() !== 'admin') {
+      return false;
+    }
+    
+    // Prevent users from deleting their own account
+    if (isCurrentUser(targetUser)) {
+      return false;
+    }
+    
+    return true;
   };
 
   const canCreateRole = (targetRole) => {
@@ -924,7 +944,7 @@ function Dashboard() {
                             Permissions
                           </button>
                         )}
-                        {canDeleteUser(user.role) && (
+                        {canDeleteUser(user) && (
                           <button 
                             className="action-button delete-button"
                             onClick={() => handleDeleteUser(user.id)}
@@ -1209,7 +1229,7 @@ function Dashboard() {
                             Permissions
                           </button>
                         )}
-                        {canDeleteUser(user.role) && (
+                        {canDeleteUser(user) && (
                           <button 
                             className="action-button delete-button"
                             onClick={() => handleDeleteUser(user.id)}
@@ -1527,6 +1547,46 @@ function Dashboard() {
               <button
                 className="cancel-delete-btn"
                 onClick={handleCloseAdminPasswordRestriction}
+                title="Close message"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Self-Delete Restriction Modal */}
+      {showSelfDeleteRestriction && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseSelfDeleteRestriction()}>
+          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header delete-modal-header">
+              <h3>⚠️ Cannot Delete Own Account</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={handleCloseSelfDeleteRestriction}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="delete-modal-body">
+              <div className="warning-icon">
+                <i className="warning-symbol">⚠️</i>
+              </div>
+              <div className="delete-message">
+                <p className="delete-question">
+                  You cannot delete your own account.
+                </p>
+                <div className="warning-text">
+                  <strong>For security reasons, users are not allowed to delete their own accounts. Please contact another administrator if you need to delete your account.</strong>
+                </div>
+              </div>
+            </div>
+            <div className="delete-modal-actions">
+              <button
+                className="cancel-delete-btn"
+                onClick={handleCloseSelfDeleteRestriction}
                 title="Close message"
               >
                 Okay

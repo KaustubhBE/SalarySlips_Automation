@@ -131,7 +131,6 @@
   line-height: 1.3;
   box-sizing: border-box;
   display: block;
-  vertical-align: middle;
 }
 
 .ml-form-input:focus,
@@ -349,7 +348,6 @@
   padding-top: 14px !important;
   padding-bottom: 14px !important;
   min-height: 50px !important;
-  vertical-align: middle !important;
   display: block !important;
   width: 100% !important;
   overflow: visible !important;
