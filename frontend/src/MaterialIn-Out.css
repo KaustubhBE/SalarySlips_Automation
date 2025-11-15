@@ -245,8 +245,37 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
+  .mio-material_list-container {
+    padding: 15px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .place_order-container {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form-wrapper {
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form {
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
   .mio-form-main-content {
     flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-left-section,
+  .mio-form-right-section {
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .mio-form-right-section {
@@ -254,28 +283,113 @@
     position: static;
     margin-top: 20px;
   }
+  
+  .mio-form-row {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
+    box-sizing: border-box;
+  }
+  
+  .mio-added-items-top-section {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-added-items-top-section .mio-items-table-container {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-items-table-container {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 @media (max-width: 768px) {
+  .mio-material_list-container {
+    padding: 12px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .place_order-container {
+    padding: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form-wrapper {
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form {
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .form-header {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 15px 0;
+    margin-bottom: 20px;
+  }
+  
+  .header-center,
+  .header-left,
+  .header-right {
+    box-sizing: border-box;
+  }
+  
   .mio-form-main-content {
     gap: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-left-section,
+  .mio-form-right-section {
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .mio-form-row {
     flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .mio-form-group {
     min-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .mio-form-actions {
     flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .mio-btn {
     width: 100%;
     min-width: auto;
+    box-sizing: border-box;
   }
   
   .mio-add-item-btn,
@@ -283,6 +397,27 @@
   .mio-reset-btn {
     width: 100% !important;
     min-width: auto !important;
+    box-sizing: border-box;
+  }
+  
+  .mio-add-item-group {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-added-items-top-section {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-added-items-top-section .mio-items-table-container {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-items-table-container {
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -304,10 +439,13 @@
 @media (max-width: 360px) {
   .mio-material_list-container {
     padding: 8px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .mio-material-form-wrapper {
     padding: 16px;
+    box-sizing: border-box;
   }
 
   .mio-material-form-wrapper h2 {
@@ -316,15 +454,21 @@
 
   .mio-material-form {
     padding: 16px;
+    box-sizing: border-box;
   }
 
   .mio-form-row {
     gap: 12px;
     margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .mio-form-group {
-    min-width: 100%;
+    min-width: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
 
   .mio-form-group label {
@@ -334,10 +478,20 @@
   .mio-form-input,
   .mio-form-select,
   .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     padding: 10px;
     font-size: 13px;
     min-height: 42px;
     height: 42px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .mio-form-textarea {
@@ -348,16 +502,134 @@
   .mio-add-item-btn,
   .mio-submit-btn,
   .mio-reset-btn {
+    width: 100% !important;
+    min-width: auto !important;
+    max-width: 100% !important;
     padding: 10px 16px;
     font-size: 13px;
+    box-sizing: border-box;
   }
 
   .mio-items-table-container {
     padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .mio-items-table-container h3 {
     font-size: 16px;
+  }
+}
+
+/* ==================== MOBILE (335px and below) ==================== */
+@media (max-width: 335px) {
+  .mio-material_list-container {
+    padding: 8px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .place_order-container {
+    padding: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form-wrapper {
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  
+  .mio-material-form {
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  
+  .form-header {
+    padding: 12px 0;
+    margin-bottom: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-row {
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-group {
+    min-width: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-group label {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 40px;
+    height: 40px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-textarea {
+    min-height: 70px;
+    height: auto;
+  }
+  
+  .mio-form-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .mio-add-item-group {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-add-item-btn,
+  .mio-submit-btn,
+  .mio-reset-btn {
+    width: 100% !important;
+    min-width: auto !important;
+    max-width: 100% !important;
+    padding: 10px;
+    font-size: 12px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-actions {
+    width: 100%;
+    box-sizing: border-box;
+    gap: 10px;
+  }
+  
+  .mio-items-table-container {
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-items-table-container h3 {
+    font-size: 14px;
+  }
+  
+  .mio-toggle-mode-btn {
+    padding: 4px 6px;
+    font-size: 11px;
   }
 }
 
@@ -383,13 +655,30 @@
     font-size: 11px;
   }
 
+  .mio-form-group {
+    min-width: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  
   .mio-form-input,
   .mio-form-select,
   .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     padding: 8px;
     font-size: 12px;
     min-height: 38px;
     height: 38px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .mio-form-textarea {
@@ -440,13 +729,30 @@
     font-size: 10px;
   }
 
+  .mio-form-group {
+    min-width: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  
   .mio-form-input,
   .mio-form-select,
   .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     padding: 6px;
     font-size: 11px;
     min-height: 36px;
     height: 36px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .mio-form-textarea {
@@ -497,13 +803,30 @@
     font-size: 9px;
   }
 
+  .mio-form-group {
+    min-width: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  
   .mio-form-input,
   .mio-form-select,
   .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     padding: 5px;
     font-size: 10px;
     min-height: 32px;
     height: 32px;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .mio-form-textarea {
@@ -1432,5 +1755,457 @@
     padding: 8px 12px;
     font-size: 12px;
     min-height: 36px;
+  }
+}
+
+/* ==================== MOBILE ITEMS BUTTON & SHEET ==================== */
+/* Mobile Items Button Container - Hidden by default */
+.mio-mobile-items-button-container {
+  display: none;
+}
+
+/* Desktop Table - Hidden on Mobile */
+.mio-desktop-table {
+  display: block;
+}
+
+/* Mobile View: Show Button, Hide Table */
+@media (max-width: 768px) {
+  .mio-mobile-items-button-container {
+    display: block;
+    margin: 15px 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-desktop-table {
+    display: none !important;
+  }
+  
+  .mio-view-items-btn {
+    width: 100%;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    box-sizing: border-box;
+  }
+  
+  .mio-view-items-btn:hover {
+    background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+  }
+  
+  .mio-view-items-btn:active {
+    transform: translateY(0);
+  }
+  
+  .mio-items-count-badge {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    min-width: 32px;
+    text-align: center;
+  }
+  
+  .mio-view-items-text {
+    flex: 1;
+    text-align: left;
+  }
+}
+
+/* Full-Screen Items Sheet Overlay */
+.mio-items-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 10000;
+  animation: mio-fadeIn 0.3s ease;
+}
+
+@keyframes mio-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Full-Screen Items Sheet */
+.mio-items-sheet {
+  background: white;
+  width: 100%;
+  max-width: 100%;
+  height: 90vh;
+  max-height: 90vh;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+  animation: mio-slideUpSheet 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes mio-slideUpSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Sheet Header */
+.mio-items-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.mio-items-sheet-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+}
+
+.mio-items-sheet-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 32px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mio-items-sheet-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.mio-items-sheet-close-btn:active {
+  transform: rotate(90deg) scale(0.95);
+}
+
+/* Sheet Body */
+.mio-items-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 15px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Items List Container */
+.mio-items-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+/* Item Card */
+.mio-items-sheet-card {
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.mio-items-sheet-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.mio-items-sheet-card.mio-editing-card {
+  border-color: #ff9800;
+  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+  background-color: #fff3e0;
+}
+
+/* Card Header */
+.mio-item-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 5px;
+}
+
+.mio-item-card-number {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mio-item-card-delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.mio-item-card-delete-btn:hover {
+  background-color: #c82333;
+  transform: scale(1.1);
+}
+
+/* Card Field */
+.mio-item-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mio-item-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mio-item-card-value {
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-height: 20px;
+}
+
+.mio-items-sheet-card .mio-editable-cell {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mio-items-sheet-card .mio-editable-cell:hover {
+  background-color: #e3f2fd;
+  border-radius: 6px;
+}
+
+.mio-items-sheet-card .mio-editing-cell {
+  background-color: transparent;
+}
+
+.mio-items-sheet-card .mio-edit-select,
+.mio-items-sheet-card .mio-edit-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #3498db;
+  border-radius: 6px;
+  font-size: 15px;
+  background-color: white;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+
+.mio-items-sheet-card .mio-edit-select:focus,
+.mio-items-sheet-card .mio-edit-input:focus {
+  outline: none;
+  border-color: #2980b9;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.mio-items-sheet-card .mio-edit-select:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* Card Actions */
+.mio-item-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 15px;
+  border-top: 2px solid #e9ecef;
+  flex-wrap: wrap;
+}
+
+.mio-item-card-actions .mio-save-edit-btn,
+.mio-item-card-actions .mio-cancel-edit-btn,
+.mio-item-card-actions .mio-remove-item-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 44px;
+}
+
+.mio-item-card-actions .mio-save-edit-btn {
+  background: linear-gradient(135deg, #27ae60, #229954);
+  color: white;
+}
+
+.mio-item-card-actions .mio-save-edit-btn:hover {
+  background: linear-gradient(135deg, #229954, #1e8449);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.mio-item-card-actions .mio-cancel-edit-btn {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+  color: white;
+}
+
+.mio-item-card-actions .mio-cancel-edit-btn:hover {
+  background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+}
+
+.mio-item-card-actions .mio-remove-item-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.mio-item-card-actions .mio-remove-item-btn:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* Responsive adjustments for sheet */
+@media (max-width: 480px) {
+  .mio-items-sheet {
+    height: 95vh;
+    max-height: 95vh;
+    border-radius: 15px 15px 0 0;
+  }
+  
+  .mio-items-sheet-header {
+    padding: 15px;
+  }
+  
+  .mio-items-sheet-header h3 {
+    font-size: 18px;
+  }
+  
+  .mio-items-sheet-close-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 28px;
+  }
+  
+  .mio-items-sheet-body {
+    padding: 12px;
+  }
+  
+  .mio-items-sheet-list {
+    gap: 12px;
+  }
+  
+  .mio-items-sheet-card {
+    padding: 12px;
+    gap: 10px;
+  }
+  
+  .mio-item-card-value {
+    font-size: 14px;
+    padding: 6px 10px;
+  }
+  
+  .mio-item-card-actions {
+    flex-direction: column;
+  }
+  
+  .mio-item-card-actions .mio-save-edit-btn,
+  .mio-item-card-actions .mio-cancel-edit-btn,
+  .mio-item-card-actions .mio-remove-item-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .mio-items-sheet-header h3 {
+    font-size: 16px;
+  }
+  
+  .mio-items-sheet-body {
+    padding: 10px;
+  }
+  
+  .mio-items-sheet-card {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .mio-item-card-label {
+    font-size: 11px;
+  }
+  
+  .mio-item-card-value {
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+  
+  .mio-item-card-number {
+    font-size: 12px;
+    padding: 5px 10px;
   }
 }
