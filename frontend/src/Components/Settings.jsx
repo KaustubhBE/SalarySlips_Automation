@@ -24,6 +24,12 @@ function Settings({ onLogout }) {
     return <div className="settings-container"><p>Loading...</p></div>;
   }
 
+  // Prevent pasting in password fields
+  const handlePastePrevention = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
   // Validate password requirements
   const validatePassword = (password) => {
     const errors = [];
@@ -232,6 +238,7 @@ function Settings({ onLogout }) {
                     required
                     className="form-input"
                     placeholder="Enter Current password"
+                    inputProps={{ onPaste: handlePastePrevention }}
                   />
                 </div>
                 <div className="form-group">
@@ -245,6 +252,7 @@ function Settings({ onLogout }) {
                     minLength={6}
                     className="form-input"
                     placeholder="Enter new password (min 6 characters)"
+                    inputProps={{ onPaste: handlePastePrevention }}
                   />
                   {passwordValidationErrors.length > 0 && (
                     <div style={{
@@ -279,6 +287,7 @@ function Settings({ onLogout }) {
                     minLength={6}
                     className="form-input"
                     placeholder="Re-enter new password"
+                    inputProps={{ onPaste: handlePastePrevention }}
                   />
                   {passwordMismatchError && (
                     <div style={{

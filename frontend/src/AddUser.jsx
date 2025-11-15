@@ -397,6 +397,12 @@ function AddUser() {
     return errors;
   };
 
+  // Prevent pasting in password fields
+  const handlePastePrevention = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
   // Validate password requirements
   const validatePassword = (password) => {
     const errors = [];
@@ -660,6 +666,7 @@ function AddUser() {
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 autoComplete="new-password"
                 required
+                inputProps={{ onPaste: handlePastePrevention }}
               />
               {passwordValidationErrors.length > 0 && (
                 <div style={{
@@ -692,6 +699,7 @@ function AddUser() {
                 onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                 autoComplete="new-password"
                 required
+                inputProps={{ onPaste: handlePastePrevention }}
               />
               {passwordMismatchError && (
                 <div style={{

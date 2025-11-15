@@ -604,6 +604,12 @@ function Dashboard() {
     }
   };
 
+  // Prevent pasting in password fields
+  const handlePastePrevention = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
   // Validate password requirements
   const validatePassword = (password) => {
     const errors = [];
@@ -1035,8 +1041,11 @@ function Dashboard() {
                                   onChange={() => {}} // Read-only
                                   placeholder=""
                                   className="website-password-input"
-                                  disabled={true}
-                                  readOnly={true}
+                                  inputProps={{ 
+                                    disabled: true, 
+                                    readOnly: true,
+                                    onPaste: handlePastePrevention 
+                                  }}
                                 />
                               ) : (
                                 <input
@@ -1080,6 +1089,7 @@ function Dashboard() {
                                 placeholder="Enter new password"
                                 className="website-password-input"
                                 autoComplete="new-password"
+                                inputProps={{ onPaste: handlePastePrevention }}
                               />
                               {passwordValidationErrors.length > 0 && (
                                 <div style={{
@@ -1123,6 +1133,7 @@ function Dashboard() {
                                   placeholder="Confirm new password"
                                   className="website-password-input"
                                   autoComplete="new-password"
+                                  inputProps={{ onPaste: handlePastePrevention }}
                                 />
                                 {passwordMismatchError && (
                                   <div style={{
@@ -1320,8 +1331,11 @@ function Dashboard() {
                                   onChange={() => {}} // Read-only
                                   placeholder=""
                                   className="website-password-input"
-                                  disabled={true}
-                                  readOnly={true}
+                                  inputProps={{ 
+                                    disabled: true, 
+                                    readOnly: true,
+                                    onPaste: handlePastePrevention 
+                                  }}
                                 />
                               ) : (
                                 <input
@@ -1365,6 +1379,7 @@ function Dashboard() {
                                 placeholder="Enter new password"
                                 className="website-password-input"
                                 autoComplete="new-password"
+                                inputProps={{ onPaste: handlePastePrevention }}
                               />
                               {passwordValidationErrors.length > 0 && (
                                 <div style={{
@@ -1408,6 +1423,7 @@ function Dashboard() {
                                   placeholder="Confirm new password"
                                   className="website-password-input"
                                   autoComplete="new-password"
+                                  inputProps={{ onPaste: handlePastePrevention }}
                                 />
                                 {passwordMismatchError && (
                                   <div style={{
