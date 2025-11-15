@@ -516,6 +516,21 @@ const KR_PlaceOrder = () => {
   const [partyLoading, setPartyLoading] = useState(true)
   const [placesLoading, setPlacesLoading] = useState(true)
   
+  // Helper function to get available places for a party name
+  const getPlacesForParty = (partyName) => {
+    if (!partyName || !partyPlaceMapping[partyName]) {
+      return []
+    }
+    const placeData = partyPlaceMapping[partyName]
+    // Handle both single string and array of places
+    if (Array.isArray(placeData)) {
+      return placeData
+    } else if (typeof placeData === 'string') {
+      return [placeData]
+    }
+    return []
+  }
+  
   // Recipients functionality
   const [recipients, setRecipients] = useState([])
   const [recipientsLoading, setRecipientsLoading] = useState(true)
@@ -875,13 +890,19 @@ const KR_PlaceOrder = () => {
             return {}
           }
 
-          const mappedPlace =
+          const placeData =
             partyPlaceMapping[value] ||
             partyPlaceMapping[value.trim()] ||
-            ''
+            null
 
-          if (mappedPlace) {
-            return { place: mappedPlace }
+          if (placeData) {
+            // Handle both single string and array of places
+            if (Array.isArray(placeData)) {
+              // Auto-select first place if multiple places available
+              return { place: placeData.length > 0 ? placeData[0] : '' }
+            } else if (typeof placeData === 'string') {
+              return { place: placeData }
+            }
           }
 
           return {}
@@ -2042,23 +2063,46 @@ const KR_PlaceOrder = () => {
           {/* Place - Required */}
           <div className="po-form-group">
             <label htmlFor="place" className="required">Place</label>
-            <select
-              id="place"
-              value={formData.place}
-              onChange={(e) => handleInputChange('place', e.target.value)}
-              required
-              className="po-form-select"
-              disabled={placesLoading}
-            >
-              <option value="">
-                {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place'}
-              </option>
-              {places.map((place) => (
-                <option key={place} value={place}>
-                  {place}
-                </option>
-              ))}
-            </select>
+            {(() => {
+              const availablePlaces = getPlacesForParty(formData.partyName)
+              const hasMultiplePlaces = availablePlaces.length > 1
+              
+              // Show dropdown if multiple places, read-only input if single place
+              if (hasMultiplePlaces) {
+                return (
+                  <select
+                    id="place"
+                    value={formData.place}
+                    onChange={(e) => handleInputChange('place', e.target.value)}
+                    required
+                    className="po-form-select"
+                    disabled={!formData.partyName || placesLoading}
+                  >
+                    <option value="">
+                      {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place'}
+                    </option>
+                    {availablePlaces.map((place) => (
+                      <option key={place} value={place}>
+                        {place}
+                      </option>
+                    ))}
+                  </select>
+                )
+              } else {
+                return (
+                  <input
+                    type="text"
+                    id="place"
+                    value={formData.place}
+                    readOnly
+                    required
+                    className="po-form-input po-readonly-input"
+                    placeholder={placesLoading ? 'Loading places...' : 'Place'}
+                    title={formData.partyName ? "Place is auto-selected based on preferred vendor" : "Select preferred vendor first"}
+                  />
+                )
+              }
+            })()}
           </div>
         </div>
 

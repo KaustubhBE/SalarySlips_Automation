@@ -2717,9 +2717,27 @@ def get_party_place_data():
                 
                 party_names.append(party_name)
                 places.append(place)
-                party_place_mapping[party_name] = place
+                
+                # Aggregate places per party - support multiple places per party
+                if party_name in party_place_mapping:
+                    # If party already exists, check if it's a list or single value
+                    existing_places = party_place_mapping[party_name]
+                    
+                    if isinstance(existing_places, list):
+                        # Add to existing list if not already present
+                        if place not in existing_places:
+                            existing_places.append(place)
+                    else:
+                        # Convert single value to list and add new place
+                        if existing_places != place:
+                            party_place_mapping[party_name] = [existing_places, place]
+                        else:
+                            party_place_mapping[party_name] = [place]
+                else:
+                    # First occurrence - store as single value (will be converted to list if needed)
+                    party_place_mapping[party_name] = place
         
-        # Remove duplicates
+        # Remove duplicates from party names
         party_names = list(set(party_names))
         places = list(set(places))
         

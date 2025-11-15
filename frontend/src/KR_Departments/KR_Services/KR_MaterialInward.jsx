@@ -42,6 +42,21 @@ const KR_MaterialInward = () => {
   const [partyPlaceMapping, setPartyPlaceMapping] = useState({}) // Store party name to place mapping
   const [partyLoading, setPartyLoading] = useState(true)
   const [placesLoading, setPlacesLoading] = useState(true)
+  
+  // Helper function to get available places for a party name
+  const getPlacesForParty = (partyName) => {
+    if (!partyName || !partyPlaceMapping[partyName]) {
+      return []
+    }
+    const placeData = partyPlaceMapping[partyName]
+    // Handle both single string and array of places
+    if (Array.isArray(placeData)) {
+      return placeData
+    } else if (typeof placeData === 'string') {
+      return [placeData]
+    }
+    return []
+  }
 
   // Multi-item management
   const [inwardItems, setInwardItems] = useState([])
@@ -837,8 +852,21 @@ const KR_MaterialInward = () => {
       }
 
       // Auto-select place when party name is selected
-      if (field === 'partyName' && value && partyPlaceMapping[value]) {
-        newGeneralFormData.place = partyPlaceMapping[value]
+      if (field === 'partyName') {
+        if (value && partyPlaceMapping[value]) {
+          const placeData = partyPlaceMapping[value]
+          
+          // Handle both single string and array of places
+          if (Array.isArray(placeData)) {
+            // Auto-select first place if multiple places available
+            newGeneralFormData.place = placeData.length > 0 ? placeData[0] : ''
+          } else if (typeof placeData === 'string') {
+            newGeneralFormData.place = placeData
+          }
+        } else {
+          // Reset place when party name is cleared
+          newGeneralFormData.place = ''
+        }
       }
 
       return newGeneralFormData
@@ -1378,19 +1406,49 @@ const KR_MaterialInward = () => {
               <label htmlFor="generalPlace" className="required">
                 Place
               </label>
-              <select
-                id="generalPlace"
-                value={generalFormData.place}
-                onChange={(e) => handleGeneralInputChange('place', e.target.value)}
-                required
-                className="mio-form-select"
-                disabled={placesLoading}
-              >
-                <option value="">{placesLoading ? 'Loading places...' : 'Select Place'}</option>
-                {places.map(place => (
-                  <option key={place} value={place}>{place}</option>
-                ))}
-              </select>
+              {(() => {
+                const availablePlaces = getPlacesForParty(generalFormData.partyName)
+                const hasMultiplePlaces = availablePlaces.length > 1
+                
+                // Show dropdown if multiple places, read-only input if single place
+                if (hasMultiplePlaces) {
+                  return (
+                    <select
+                      id="generalPlace"
+                      value={generalFormData.place}
+                      onChange={(e) => handleGeneralInputChange('place', e.target.value)}
+                      required
+                      className="mio-form-select"
+                      disabled={!generalFormData.partyName || placesLoading}
+                    >
+                      <option value="">
+                        {placesLoading ? 'Loading places...' : 'Select Place'}
+                      </option>
+                      {availablePlaces.map(place => (
+                        <option key={place} value={place}>{place}</option>
+                      ))}
+                    </select>
+                  )
+                } else {
+                  return (
+                    <input
+                      type="text"
+                      id="generalPlace"
+                      value={generalFormData.place}
+                      readOnly
+                      required
+                      className="mio-form-input"
+                      placeholder={placesLoading ? 'Loading places...' : 'Place'}
+                      style={{
+                        backgroundColor: '#f5f5f5',
+                        cursor: 'not-allowed',
+                        color: '#333'
+                      }}
+                      title={generalFormData.partyName ? "Place is auto-selected based on party name" : "Select party name first"}
+                    />
+                  )
+                }
+              })()}
             </div>
           </div>
 
