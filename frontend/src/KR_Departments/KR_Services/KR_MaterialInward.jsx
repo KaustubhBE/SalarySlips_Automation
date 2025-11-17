@@ -861,13 +861,14 @@ const KR_MaterialInward = () => {
           
           // Handle both single string and array of places
           if (Array.isArray(placeData)) {
-            // Auto-select first place if multiple places available
-            newGeneralFormData.place = placeData.length > 0 ? placeData[0] : ''
+            newGeneralFormData.place = placeData.length === 1 ? placeData[0] : ''
           } else if (typeof placeData === 'string') {
             newGeneralFormData.place = placeData
+          } else {
+            newGeneralFormData.place = ''
           }
         } else {
-          // Reset place when party name is cleared
+          // Reset place when party name is cleared or not mapped
           newGeneralFormData.place = ''
         }
       }

@@ -899,16 +899,17 @@ const KR_PlaceOrder = () => {
             null
 
           if (placeData) {
-            // Handle both single string and array of places
             if (Array.isArray(placeData)) {
-              // Auto-select first place if multiple places available
-              return { place: placeData.length > 0 ? placeData[0] : '' }
+              if (placeData.length === 1) {
+                return { place: placeData[0] }
+              }
+              return { place: '' }
             } else if (typeof placeData === 'string') {
               return { place: placeData }
             }
           }
 
-          return {}
+          return { place: '' }
         })())
       }
 
