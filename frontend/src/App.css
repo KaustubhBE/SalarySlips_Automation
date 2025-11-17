@@ -46,7 +46,7 @@ body {
 }
 
 .nav-link {
-  display: inline-block;
+  display: inline-flex;
   padding: 10px 20px;
   background-color: #987349;
   color: white;
@@ -55,6 +55,8 @@ body {
   transition: background-color 0.3s;
   flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
   text-align: center; /* Center text */
+  align-items: center;
+  justify-content: center;
   margin: 5px; /* Add margin for spacing */
 }
 
@@ -64,7 +66,7 @@ body {
 
 /* Button styles */
 .btn {
-  display: inline-block;
+  display: inline-flex;
   padding: 10px 20px;
   background-color: #987349;
   color: white;
@@ -73,6 +75,8 @@ body {
   transition: background-color 0.3s;
   flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
   text-align: center; /* Center text */
+  align-items: center;
+  justify-content: center;
   margin: 5px; /* Add margin for spacing */
 }
 
