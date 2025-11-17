@@ -978,6 +978,219 @@ const KR_MaterialInward = () => {
     }
   }
 
+  const renderItemsTable = () => (
+    <table className="mio-items-table">
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Category</th>
+          <th>Sub Category</th>
+          <th>Material Name</th>
+          <th>Specifications</th>
+          <th>Quantity</th>
+          <th>UOM</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {inwardItems.map((item, index) => (
+          <tr key={item.id} className={editingItem === item.id ? "mio-editing-row" : ""}>
+            <td data-label="S.No">{index + 1}</td>
+            <td 
+              data-label="Category"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'category')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <select
+                  value={editFormData.category}
+                  onChange={(e) => handleEditInputChange('category', e.target.value)}
+                  className="mio-edit-select"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              ) : (
+                item.category
+              )}
+            </td>
+            <td 
+              data-label="Sub Category"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <select
+                  value={editFormData.subCategory}
+                  onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
+                  className="mio-edit-select"
+                  disabled={!editFormData.category}
+                >
+                  <option value="">Select Sub Category</option>
+                  {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
+                    <option key={subCat} value={subCat}>{subCat}</option>
+                  ))}
+                </select>
+              ) : (
+                item.subCategory || '-'
+              )}
+            </td>
+            <td 
+              data-label="Material Name"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <select
+                  value={editFormData.materialName}
+                  onChange={(e) => handleEditInputChange('materialName', e.target.value)}
+                  className="mio-edit-select"
+                  disabled={!editFormData.category}
+                >
+                  <option value="">Select Material Name</option>
+                  {editFormData.category && getMaterialNameOptions(materialData[editFormData.category], editFormData.subCategory).map(name => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                item.materialName
+              )}
+            </td>
+            <td 
+              data-label="Specifications"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <select
+                  value={editFormData.specifications}
+                  onChange={(e) => handleEditInputChange('specifications', e.target.value)}
+                  className="mio-edit-select"
+                  disabled={!editFormData.category}
+                >
+                  <option value="">Select Specifications</option>
+                  {editFormData.category && editFormData.materialName && getSpecificationsForMaterial(materialData[editFormData.category], editFormData.materialName, editFormData.subCategory).map(spec => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
+                </select>
+              ) : (
+                item.specifications || '-'
+              )}
+            </td>
+            <td 
+              data-label="Quantity"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <input
+                  type="text"
+                  value={editFormData.quantity}
+                  onChange={(e) => handleEditInputChange('quantity', e.target.value)}
+                  className="mio-edit-input mio-quantity-input"
+                  placeholder="Enter quantity"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                />
+              ) : (
+                item.quantity
+              )}
+            </td>
+            <td 
+              data-label="UOM"
+              className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
+              title={editingItem === item.id ? "UOM is auto-selected based on material name" : "UOM is auto-selected based on material name"}
+            >
+              {editingItem === item.id ? (
+                <input
+                  type="text"
+                  value={editFormData.uom}
+                  readOnly
+                  className="mio-edit-input"
+                  style={{
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'not-allowed',
+                    color: '#333'
+                  }}
+                  title="UOM is auto-selected based on material name"
+                />
+              ) : (
+                item.uom
+              )}
+            </td>
+            <td data-label="Action">
+              {editingItem === item.id ? (
+                <div className="mio-edit-actions-vertical">
+                  <div className="mio-edit-actions-row">
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      className="mio-save-edit-btn"
+                      title="Save changes"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="mio-cancel-edit-btn"
+                      title="Cancel edit"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="mio-remove-actions-row">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="mio-remove-item-btn"
+                      title="Remove item"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(item.id)}
+                  className="mio-remove-item-btn"
+                  title="Remove item"
+                >
+                  ×
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+
   if (dataLoading) {
     return (
       <div className="place_order-container">
@@ -1025,216 +1238,7 @@ const KR_MaterialInward = () => {
               {/* Desktop View: Show Table */}
               <div className="mio-items-table-container mio-desktop-table">
                 <h3>Added Items</h3>
-                <table className="mio-items-table">
-                  <thead>
-                    <tr>
-                      <th>S.No</th>
-                      <th>Category</th>
-                      <th>Sub Category</th>
-                      <th>Material Name</th>
-                      <th>Specifications</th>
-                      <th>Quantity</th>
-                      <th>UOM</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inwardItems.map((item, index) => (
-                      <tr key={item.id} className={editingItem === item.id ? "mio-editing-row" : ""}>
-                        <td data-label="S.No">{index + 1}</td>
-                        <td 
-                          data-label="Category"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'category')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.category}
-                              onChange={(e) => handleEditInputChange('category', e.target.value)}
-                              className="mio-edit-select"
-                            >
-                              <option value="">Select Category</option>
-                              {categories.map(category => (
-                                <option key={category} value={category}>{category}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.category
-                          )}
-                        </td>
-                        <td 
-                          data-label="Sub Category"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.subCategory}
-                              onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
-                              className="mio-edit-select"
-                              disabled={!editFormData.category}
-                            >
-                              <option value="">Select Sub Category</option>
-                              {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
-                                <option key={subCat} value={subCat}>{subCat}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.subCategory || '-'
-                          )}
-                        </td>
-                        <td 
-                          data-label="Material Name"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.materialName}
-                              onChange={(e) => handleEditInputChange('materialName', e.target.value)}
-                              className="mio-edit-select"
-                              disabled={!editFormData.category}
-                            >
-                              <option value="">Select Material Name</option>
-                              {editFormData.category && getMaterialNameOptions(materialData[editFormData.category], editFormData.subCategory).map(name => (
-                                <option key={name} value={name}>
-                                  {name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.materialName
-                          )}
-                        </td>
-                        <td 
-                          data-label="Specifications"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <select
-                              value={editFormData.specifications}
-                              onChange={(e) => handleEditInputChange('specifications', e.target.value)}
-                              className="mio-edit-select"
-                              disabled={!editFormData.category}
-                            >
-                              <option value="">Select Specifications</option>
-                              {editFormData.category && editFormData.materialName && getSpecificationsForMaterial(materialData[editFormData.category], editFormData.materialName, editFormData.subCategory).map(spec => (
-                                <option key={spec} value={spec}>{spec}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            item.specifications || '-'
-                          )}
-                        </td>
-                        <td 
-                          data-label="Quantity"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
-                          onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
-                          onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
-                          onTouchMove={handleTouchMove}
-                          title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                        >
-                          {editingItem === item.id ? (
-                            <input
-                              type="text"
-                              value={editFormData.quantity}
-                              onChange={(e) => handleEditInputChange('quantity', e.target.value)}
-                              className="mio-edit-input mio-quantity-input"
-                              placeholder="Enter quantity"
-                              pattern="[0-9]*"
-                              inputMode="numeric"
-                            />
-                          ) : (
-                            item.quantity
-                          )}
-                        </td>
-                        <td 
-                          data-label="UOM"
-                          className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                          title={editingItem === item.id ? "UOM is auto-selected based on material name" : "UOM is auto-selected based on material name"}
-                        >
-                          {editingItem === item.id ? (
-                            <input
-                              type="text"
-                              value={editFormData.uom}
-                              readOnly
-                              className="mio-edit-input"
-                              style={{
-                                backgroundColor: '#f5f5f5',
-                                cursor: 'not-allowed',
-                                color: '#333'
-                              }}
-                              title="UOM is auto-selected based on material name"
-                            />
-                          ) : (
-                            item.uom
-                          )}
-                        </td>
-                        <td data-label="Action">
-                          {editingItem === item.id ? (
-                            <div className="mio-edit-actions-vertical">
-                              <div className="mio-edit-actions-row">
-                                <button
-                                  type="button"
-                                  onClick={handleSaveEdit}
-                                  className="mio-save-edit-btn"
-                                  title="Save changes"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelEdit}
-                                  className="mio-cancel-edit-btn"
-                                  title="Cancel edit"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                              <div className="mio-remove-actions-row">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveItem(item.id)}
-                                  className="mio-remove-item-btn"
-                                  title="Remove item"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="mio-remove-item-btn"
-                              title="Remove item"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {renderItemsTable()}
               </div>
             </div>
           )}
@@ -1255,214 +1259,8 @@ const KR_MaterialInward = () => {
                   </button>
                 </div>
                 <div className="mio-items-sheet-body">
-                  <div className="mio-items-sheet-list">
-                    {inwardItems.map((item, index) => (
-                      <div key={item.id} className={`mio-items-sheet-card ${editingItem === item.id ? "mio-editing-card" : ""}`}>
-                        {/* Item Number Badge */}
-                        <div className="mio-item-card-header">
-                          <span className="mio-item-card-number">Item #{index + 1}</span>
-                          {editingItem !== item.id && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="mio-item-card-delete-btn"
-                              title="Remove item"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Category Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">Category</label>
-                          <div 
-                            className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                            onDoubleClick={() => handleDoubleClickEdit(item, 'category')}
-                            onTouchStart={(e) => handleTouchStart(e, item, 'category')}
-                            onTouchEnd={(e) => handleTouchEnd(e, item, 'category')}
-                            onTouchMove={handleTouchMove}
-                            title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                          >
-                            {editingItem === item.id ? (
-                              <select
-                                value={editFormData.category}
-                                onChange={(e) => handleEditInputChange('category', e.target.value)}
-                                className="mio-edit-select"
-                              >
-                                <option value="">Select Category</option>
-                                {categories.map(category => (
-                                  <option key={category} value={category}>{category}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="mio-item-card-value">{item.category}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Sub Category Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">Sub Category</label>
-                          <div 
-                            className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                            onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
-                            onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
-                            onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
-                            onTouchMove={handleTouchMove}
-                            title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                          >
-                            {editingItem === item.id ? (
-                              <select
-                                value={editFormData.subCategory}
-                                onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
-                                className="mio-edit-select"
-                                disabled={!editFormData.category}
-                              >
-                                <option value="">Select Sub Category</option>
-                                {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
-                                  <option key={subCat} value={subCat}>{subCat}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="mio-item-card-value">{item.subCategory || '-'}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Material Name Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">Material Name</label>
-                          <div 
-                            className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                            onDoubleClick={() => handleDoubleClickEdit(item, 'materialName')}
-                            onTouchStart={(e) => handleTouchStart(e, item, 'materialName')}
-                            onTouchEnd={(e) => handleTouchEnd(e, item, 'materialName')}
-                            onTouchMove={handleTouchMove}
-                            title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                          >
-                            {editingItem === item.id ? (
-                              <select
-                                value={editFormData.materialName}
-                                onChange={(e) => handleEditInputChange('materialName', e.target.value)}
-                                className="mio-edit-select"
-                                disabled={!editFormData.category}
-                              >
-                                <option value="">Select Material Name</option>
-                                {editFormData.category && getMaterialNameOptions(materialData[editFormData.category], editFormData.subCategory).map(name => (
-                                  <option key={name} value={name}>{name}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="mio-item-card-value">{item.materialName}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Specifications Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">Specifications</label>
-                          <div 
-                            className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                            onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
-                            onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
-                            onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
-                            onTouchMove={handleTouchMove}
-                            title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                          >
-                            {editingItem === item.id ? (
-                              <select
-                                value={editFormData.specifications}
-                                onChange={(e) => handleEditInputChange('specifications', e.target.value)}
-                                className="mio-edit-select"
-                                disabled={!editFormData.category}
-                              >
-                                <option value="">Select Specifications</option>
-                                {editFormData.category && editFormData.materialName && getSpecificationsForMaterial(materialData[editFormData.category], editFormData.materialName, editFormData.subCategory).map(spec => (
-                                  <option key={spec} value={spec}>{spec}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="mio-item-card-value">{item.specifications || '-'}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Quantity Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">Quantity</label>
-                          <div 
-                            className={editingItem === item.id ? "mio-editing-cell" : "mio-editable-cell"}
-                            onDoubleClick={() => handleDoubleClickEdit(item, 'quantity')}
-                            onTouchStart={(e) => handleTouchStart(e, item, 'quantity')}
-                            onTouchEnd={(e) => handleTouchEnd(e, item, 'quantity')}
-                            onTouchMove={handleTouchMove}
-                            title={editingItem === item.id ? "" : "Double-click or long press to edit"}
-                          >
-                            {editingItem === item.id ? (
-                              <input
-                                type="text"
-                                value={editFormData.quantity}
-                                onChange={(e) => handleEditInputChange('quantity', e.target.value)}
-                                className="mio-edit-input mio-quantity-input"
-                                placeholder="Enter quantity"
-                                pattern="[0-9]*"
-                                inputMode="numeric"
-                              />
-                            ) : (
-                              <div className="mio-item-card-value">{item.quantity}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* UOM Field */}
-                        <div className="mio-item-card-field">
-                          <label className="mio-item-card-label">UOM</label>
-                          <div className={`mio-uom-cell ${editingItem === item.id ? 'mio-is-editing' : ''}`}>
-                            {editingItem === item.id ? (
-                              <input
-                                type="text"
-                                value={editFormData.uom}
-                                readOnly
-                                className="mio-edit-input mio-readonly-input"
-                              />
-                            ) : (
-                              <div className="mio-item-card-value">{item.uom}</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons (when editing) */}
-                        {editingItem === item.id && (
-                          <div className="mio-item-card-actions">
-                            <button
-                              type="button"
-                              onClick={handleSaveEdit}
-                              className="mio-save-edit-btn"
-                              title="Save changes"
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCancelEdit}
-                              className="mio-cancel-edit-btn"
-                              title="Cancel edit"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="mio-remove-item-btn"
-                              title="Remove item"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="mio-items-table-container mio-mobile-table">
+                    {renderItemsTable()}
                   </div>
                 </div>
               </div>
