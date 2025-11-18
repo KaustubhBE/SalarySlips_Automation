@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const styles = {
   overlay: {
     position: 'fixed',
     top: 0,
     left: 0,
-    width: '100vw',
-    height: '100vh',
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '16px',
+    padding: '18px',
     zIndex: 1000,
     boxSizing: 'border-box',
   },
@@ -148,11 +149,17 @@ const ConfirmModal = ({
   closeOnOverlayClick = true,
   children,
 }) => {
+  const [isClient, setIsClient] = useState(false);
+  const [closeHovered, setCloseHovered] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    return () => setIsClient(false);
+  }, []);
+
   if (!isOpen) {
     return null;
   }
-
-  const [closeHovered, setCloseHovered] = useState(false);
 
   const handleOverlayClick = (event) => {
     if (event.target === event.currentTarget && closeOnOverlayClick && onClose) {
@@ -184,7 +191,7 @@ const ConfirmModal = ({
     );
   };
 
-  return (
+  const modalNode = (
     <div
       style={styles.overlay}
       onClick={handleOverlayClick}
@@ -256,6 +263,12 @@ const ConfirmModal = ({
       </div>
     </div>
   );
+
+  if (isClient && typeof document !== 'undefined') {
+    return createPortal(modalNode, document.body);
+  }
+
+  return modalNode;
 };
 
 export default ConfirmModal;
