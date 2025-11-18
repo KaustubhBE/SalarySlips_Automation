@@ -11,6 +11,7 @@ import { useAuth } from './Components/AuthContext';
 import './Dashboard.css'; // Import the CSS file
 import PasswordToggle from './Components/Password-Toggle';
 import BackButton from './Components/BackButton';
+import ConfirmModal from './Components/ConfirmModal';
 
 // Tree-based Permissions Component for dynamic factory.department.service combinations
 const TreeBasedPermissions = ({ 
@@ -766,44 +767,19 @@ function AddUser() {
         </div>
       )}
 
-      {showPermissionWarning && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleClosePermissionWarning()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Permissions Required</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleClosePermissionWarning}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Please select at least one permission before adding a user.
-                </p>
-                <div className="warning-text">
-                  <strong>Permissions define what the user can access after creation.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="cancel-delete-btn"
-                onClick={handleClosePermissionWarning}
-                title="Close message"
-              >
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showPermissionWarning}
+        onClose={handleClosePermissionWarning}
+        title="Permissions Required"
+        icon="⚠️"
+        message="Please select at least one permission before adding a user."
+        warningText="Permissions define what the user can access after creation."
+        primaryAction={{
+          label: 'Okay',
+          onClick: handleClosePermissionWarning,
+          title: 'Close message',
+        }}
+      />
 
       {/* Success Modal */}
       {showSuccessModal && (

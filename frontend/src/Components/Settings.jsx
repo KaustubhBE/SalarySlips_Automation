@@ -5,6 +5,7 @@ import { getApiUrl, ENDPOINTS } from '../config';
 import axios from 'axios';
 import './Settings.css';
 import PasswordToggle from './Password-Toggle';
+import ConfirmModal from './ConfirmModal';
 
 function Settings({ onLogout }) {
   const { user } = useAuth();
@@ -346,58 +347,29 @@ function Settings({ onLogout }) {
         </div>
       </div>
 
-      {/* Password Change Confirmation Modal */}
-      {showPasswordChangeConfirm && passwordChangeRequest && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPasswordChange()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Confirm Password Change</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelPasswordChange}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Are you sure you want to change your password?
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{passwordChangeRequest.userEmail}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>This change affects your login access immediately.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleConfirmPasswordChange}
-                title="Confirm password change"
-              >
-                Yes, Change Password
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelPasswordChange}
-                title="Cancel password change"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showPasswordChangeConfirm && Boolean(passwordChangeRequest)}
+        onClose={handleCancelPasswordChange}
+        title="Confirm Password Change"
+        icon="⚠️"
+        message="Are you sure you want to change your password?"
+        details={
+          passwordChangeRequest
+            ? [{ label: 'Email', value: passwordChangeRequest.userEmail }]
+            : []
+        }
+        warningText="This change affects your login access immediately."
+        primaryAction={{
+          label: 'Yes, Change Password',
+          onClick: handleConfirmPasswordChange,
+          title: 'Confirm password change',
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: handleCancelPasswordChange,
+          title: 'Cancel password change',
+        }}
+      />
     </ClientOnly>
   );
 }

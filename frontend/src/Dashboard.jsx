@@ -11,9 +11,7 @@ import TreePermissions from './Components/TreePermissions';
 import './Dashboard.css';
 import PasswordToggle from './Components/Password-Toggle';
 import BackButton from './Components/BackButton';
-
-
-
+import ConfirmModal from './Components/ConfirmModal';
 
 function Dashboard() {
   const { user: currentUser } = useAuth();
@@ -1492,13 +1490,6 @@ function Dashboard() {
                   </div>
                 )}
               </div>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelEdit}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
             </div>
             <TreePermissions
               permissions={editingPermissions}
@@ -1526,366 +1517,186 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Admin Password Restriction Modal */}
-      {showAdminPasswordRestriction && adminPasswordRestrictionUser && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseAdminPasswordRestriction()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Admin Password Protected</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCloseAdminPasswordRestriction}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  You cannot view or change <strong>{adminPasswordRestrictionUser.username}</strong>'s password because they are an admin.
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{adminPasswordRestrictionUser.email}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>Admins can only manage their own passwords.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCloseAdminPasswordRestriction}
-                title="Close message"
-              >
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showAdminPasswordRestriction && Boolean(adminPasswordRestrictionUser)}
+        onClose={handleCloseAdminPasswordRestriction}
+        title="Admin Password Protected"
+        icon="⚠️"
+        message={
+          adminPasswordRestrictionUser
+            ? `You cannot view or change ${adminPasswordRestrictionUser.username}'s password because they are an admin.`
+            : ''
+        }
+        details={
+          adminPasswordRestrictionUser
+            ? [{ label: 'Email', value: adminPasswordRestrictionUser.email }]
+            : []
+        }
+        warningText="Admins can only manage their own passwords."
+        primaryAction={{
+          label: 'Okay',
+          onClick: handleCloseAdminPasswordRestriction,
+          title: 'Close message',
+        }}
+      />
 
-      {/* Self-Delete Restriction Modal */}
-      {showSelfDeleteRestriction && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseSelfDeleteRestriction()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Cannot Delete Own Account</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCloseSelfDeleteRestriction}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  You cannot delete your own account.
-                </p>
-                <div className="warning-text">
-                  <strong>For security reasons, users are not allowed to delete their own accounts. Please contact another administrator if you need to delete your account.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCloseSelfDeleteRestriction}
-                title="Close message"
-              >
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showSelfDeleteRestriction}
+        onClose={handleCloseSelfDeleteRestriction}
+        title="Cannot Delete Own Account"
+        icon="⚠️"
+        message="You cannot delete your own account."
+        warningText="For security reasons, users are not allowed to delete their own accounts. Please contact another administrator if you need to delete your account."
+        primaryAction={{
+          label: 'Okay',
+          onClick: handleCloseSelfDeleteRestriction,
+          title: 'Close message',
+        }}
+      />
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && userToDelete && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelDelete()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Confirm User Deletion</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelDelete}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Are you sure you want to delete <strong>{userToDelete.username}</strong>'s account?
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{userToDelete.email}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Role:</span>
-                    <span className="detail-value">{userToDelete.role}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>This action cannot be undone!</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleConfirmDelete}
-                title="Permanently delete this user account"
-              >
-                Yes, I Confirm
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelDelete}
-                title="Cancel deletion"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm && Boolean(userToDelete)}
+        onClose={handleCancelDelete}
+        title="Confirm User Deletion"
+        icon="⚠️"
+        message={
+          userToDelete
+            ? `Are you sure you want to delete ${userToDelete.username}'s account?`
+            : ''
+        }
+        details={
+          userToDelete
+            ? [
+                { label: 'Email', value: userToDelete.email },
+                { label: 'Role', value: userToDelete.role },
+              ]
+            : []
+        }
+        warningText="This action cannot be undone!"
+        primaryAction={{
+          label: 'Yes, I Confirm',
+          onClick: handleConfirmDelete,
+          title: 'Permanently delete this user account',
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: handleCancelDelete,
+          title: 'Cancel deletion',
+        }}
+      />
 
-      {/* Role Change Confirmation Modal */}
-      {showRoleChangeConfirm && roleChangeRequest && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelRoleChange()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Confirm Role Change</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelRoleChange}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Are you sure you want to change <strong>{roleChangeRequest.userName}</strong>'s role?
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{roleChangeRequest.userEmail}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Current Role:</span>
-                    <span className="detail-value">{roleChangeRequest.currentRole}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">New Role:</span>
-                    <span className="detail-value">{roleChangeRequest.newRole}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>This change affects the user's access immediately.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleConfirmRoleChange}
-                title="Confirm role change"
-              >
-                Yes, Change Role
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelRoleChange}
-                title="Cancel role change"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showRoleChangeConfirm && Boolean(roleChangeRequest)}
+        onClose={handleCancelRoleChange}
+        title="Confirm Role Change"
+        icon="⚠️"
+        message={
+          roleChangeRequest
+            ? `Are you sure you want to change ${roleChangeRequest.userName}'s role?`
+            : ''
+        }
+        details={
+          roleChangeRequest
+            ? [
+                { label: 'Email', value: roleChangeRequest.userEmail },
+                { label: 'Current Role', value: roleChangeRequest.currentRole },
+                { label: 'New Role', value: roleChangeRequest.newRole },
+              ]
+            : []
+        }
+        warningText="This change affects the user's access immediately."
+        primaryAction={{
+          label: 'Yes, Change Role',
+          onClick: handleConfirmRoleChange,
+          title: 'Confirm role change',
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: handleCancelRoleChange,
+          title: 'Cancel role change',
+        }}
+      />
 
-      {/* Password Change Confirmation Modal */}
-      {showPasswordChangeConfirm && passwordChangeRequest && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPasswordChange()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Confirm Password Change</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelPasswordChange}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Are you sure you want to change <strong>{passwordChangeRequest.userName}</strong>'s password?
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{passwordChangeRequest.userEmail}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>This change affects the user's login access immediately.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleConfirmPasswordChange}
-                title="Confirm password change"
-              >
-                Yes, Change Password
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelPasswordChange}
-                title="Cancel password change"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showPasswordChangeConfirm && Boolean(passwordChangeRequest)}
+        onClose={handleCancelPasswordChange}
+        title="Confirm Password Change"
+        icon="⚠️"
+        message={
+          passwordChangeRequest
+            ? `Are you sure you want to change ${passwordChangeRequest.userName}'s password?`
+            : ''
+        }
+        details={
+          passwordChangeRequest
+            ? [{ label: 'Email', value: passwordChangeRequest.userEmail }]
+            : []
+        }
+        warningText="This change affects the user's login access immediately."
+        primaryAction={{
+          label: 'Yes, Change Password',
+          onClick: handleConfirmPasswordChange,
+          title: 'Confirm password change',
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: handleCancelPasswordChange,
+          title: 'Cancel password change',
+        }}
+      />
 
-      {/* Permission Change Confirmation Modal */}
-      {showPermissionChangeConfirm && permissionChangeRequest && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelPermissionChange()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>⚠️ Confirm Permission Change</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCancelPermissionChange}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">⚠️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  Are you sure you want to change <strong>{permissionChangeRequest.userName}</strong>'s permissions?
-                </p>
-                <div className="user-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Email:</span>
-                    <span className="detail-value">{permissionChangeRequest.userEmail}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Permissions Count:</span>
-                    <span className="detail-value">{permissionChangeRequest.permissionCount} permission{permissionChangeRequest.permissionCount !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-                <div className="warning-text">
-                  <strong>This change affects the user's access immediately.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleConfirmPermissionChange}
-                title="Confirm permission change"
-              >
-                Yes, Change Permissions
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelPermissionChange}
-                title="Cancel permission change"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showPermissionChangeConfirm && Boolean(permissionChangeRequest)}
+        onClose={handleCancelPermissionChange}
+        title="Confirm Permission Change"
+        icon="⚠️"
+        message={
+          permissionChangeRequest
+            ? `Are you sure you want to change ${permissionChangeRequest.userName}'s permissions?`
+            : ''
+        }
+        details={
+          permissionChangeRequest
+            ? [
+                { label: 'Email', value: permissionChangeRequest.userEmail },
+                {
+                  label: 'Permissions Count',
+                  value: `${permissionChangeRequest.permissionCount} permission${permissionChangeRequest.permissionCount !== 1 ? 's' : ''}`,
+                },
+              ]
+            : []
+        }
+        warningText="This change affects the user's access immediately."
+        primaryAction={{
+          label: 'Yes, Change Permissions',
+          onClick: handleConfirmPermissionChange,
+          title: 'Confirm permission change',
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: handleCancelPermissionChange,
+          title: 'Cancel permission change',
+        }}
+      />
 
-      {/* No Changes Made Modal */}
-      {showNoChangesModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseNoChangesModal()}>
-          <div className="modal-content delete-confirmation-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header delete-modal-header">
-              <h3>ℹ️ No Changes Detected</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={handleCloseNoChangesModal}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-            <div className="delete-modal-body">
-              <div className="warning-icon">
-                <i className="warning-symbol">ℹ️</i>
-              </div>
-              <div className="delete-message">
-                <p className="delete-question">
-                  No changes made in permission.
-                </p>
-                <div className="warning-text">
-                  <strong>Please make changes to permissions before saving.</strong>
-                </div>
-              </div>
-            </div>
-            <div className="delete-modal-actions">
-              <button
-                className="confirm-delete-btn"
-                onClick={handleCloseNoChangesModal}
-                title="Close message and continue editing"
-              >
-                Back
-              </button>
-              <button
-                className="cancel-delete-btn"
-                onClick={handleCancelNoChangesModal}
-                title="Cancel and close permissions window"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showNoChangesModal}
+        onClose={handleCloseNoChangesModal}
+        title="No Changes Detected"
+        icon="ℹ️"
+        message="No changes made in permission."
+        warningText="Please make changes to permissions before saving."
+        primaryAction={{
+          label: 'Cancle',
+          onClick: handleCancelNoChangesModal,
+          title: 'Cancel and close permissions window',
+        }}
+        secondaryAction={{
+          label: 'Back',
+          onClick: handleCloseNoChangesModal,
+          title: 'Close message and continue editing',
+        }}
+      />
     </div>
   );
 }
