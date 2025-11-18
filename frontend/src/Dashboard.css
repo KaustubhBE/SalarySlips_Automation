@@ -2916,9 +2916,26 @@ table tr:hover {
   }
   
   .factory-header {
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
-    align-items: stretch;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  
+  .factory-checkbox {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .factory-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .expand-button {
+    flex-shrink: 0;
   }
   
   .factory-header-left {
@@ -2951,6 +2968,59 @@ table tr:hover {
   
   .modal-actions .action-button {
     width: 100%;
+  }
+  
+  /* Make expand button smaller on mobile */
+  .expand-button {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    border-radius: 4px;
+  }
+  
+  .factory-header {
+    padding: 15px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  
+  .factory-checkbox {
+    font-size: 1rem;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .factory-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .expand-button {
+    flex-shrink: 0;
+  }
+  
+  .factory-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .departments-container {
+    padding: 15px;
+  }
+  
+  .department-header {
+    padding: 12px 15px;
+  }
+  
+  .services-container {
+    padding: 15px;
+    gap: 12px;
+  }
+  
+  .service-node {
+    padding: 10px 12px;
   }
 }
 
@@ -3093,5 +3163,78 @@ table tr:hover {
   .factory-select {
     font-size: 0.75rem;
     padding: 4px 6px;
+  }
+  
+  /* Make expand button even smaller on very small screens */
+  .expand-button {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    border-radius: 3px;
+  }
+  
+  .factory-header {
+    padding: 12px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  
+  .factory-checkbox {
+    font-size: 0.9rem;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .factory-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+  
+  .expand-button {
+    flex-shrink: 0;
+  }
+  
+  .factory-checkbox input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .department-checkbox {
+    gap: 8px;
+  }
+  
+  .department-checkbox input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .service-checkbox input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .departments-container {
+    padding: 12px;
+  }
+  
+  .department-header {
+    padding: 10px 12px;
+  }
+  
+  .services-container {
+    padding: 12px;
+    gap: 10px;
+    grid-template-columns: 1fr;
+  }
+  
+  .service-node {
+    padding: 8px 10px;
+  }
+  
+  .service-name {
+    font-size: 0.85rem;
   }
 }
