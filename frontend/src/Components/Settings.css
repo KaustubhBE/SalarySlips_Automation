@@ -353,7 +353,7 @@ h2 {
 /* ==================== RESPONSIVE DESIGN ==================== */
 @media (max-width: 640px) {
   .settings-container {
-    margin: 20px 16px;
+    margin: 20px auto;
     border-radius: 8px;
   }
 
@@ -397,7 +397,7 @@ h2 {
 
 @media (max-width: 480px) {
   .settings-container {
-    margin: 16px 12px;
+    margin: 16px auto;
   }
 
   .settings-header {
