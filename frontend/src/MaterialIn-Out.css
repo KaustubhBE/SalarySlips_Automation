@@ -1775,7 +1775,15 @@
     display: block;
     margin: 15px 0;
     width: 100%;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
     box-sizing: border-box;
+  }
+  
+  .mio-form-row .mio-form-group.mio-mobile-items-button-container {
+    width: 100%;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
   }
   
   .mio-desktop-table {

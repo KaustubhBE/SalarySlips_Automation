@@ -1220,21 +1220,9 @@ const KR_MaterialInward = () => {
       <div className="form-section">
         <form onSubmit={handleSubmit} className="mio-material-form">
 
-          {/* Added Items Table - Moved to top */}
+          {/* Added Items Table - Desktop view at top */}
           {inwardItems.length > 0 && (
             <div className="mio-added-items-top-section">
-              {/* Mobile View: Show Button Instead of Table */}
-              <div className="mio-mobile-items-button-container">
-                <button
-                  type="button"
-                  className="mio-view-items-btn"
-                  onClick={() => setShowItemsSheet(true)}
-                >
-                  <span className="mio-items-count-badge">{inwardItems.length}</span>
-                  <span className="mio-view-items-text">View Added Items</span>
-                </button>
-              </div>
-              
               {/* Desktop View: Show Table */}
               <div className="mio-items-table-container mio-desktop-table">
                 <h3>Added Items</h3>
@@ -1424,6 +1412,23 @@ const KR_MaterialInward = () => {
               </div>
             </div>
           </div>
+
+          {/* Mobile View: View Added Items Button - Below Add Item Button */}
+          {inwardItems.length > 0 && (
+            <div className="mio-form-row">
+              <div className="mio-form-group mio-mobile-items-button-container">
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="mio-view-items-btn"
+                  onClick={() => setShowItemsSheet(true)}
+                >
+                  <span className="mio-items-count-badge">{inwardItems.length}</span>
+                  <span className="mio-view-items-text">View Added Items</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* General Form Fields - Party Name and Place */}
           <div className="mio-form-row">

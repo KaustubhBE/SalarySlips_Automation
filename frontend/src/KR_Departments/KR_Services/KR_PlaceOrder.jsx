@@ -990,7 +990,9 @@ const KR_PlaceOrder = () => {
       materialName: formData.materialName,
       specifications: formData.specifications,
       uom: formData.uom,
-      quantity: formData.quantity
+      quantity: formData.quantity,
+      partyName: formData.partyName || '',
+      place: formData.place || ''
     }
 
     setOrderItems(prev => [...prev, newItem])
@@ -1003,7 +1005,9 @@ const KR_PlaceOrder = () => {
       materialName: '',
       specifications: '',
       uom: '',
-      quantity: ''
+      quantity: '',
+      partyName: '',
+      place: ''
       // Keep givenBy, description, and importance unchanged
     }))
   }
@@ -1020,7 +1024,9 @@ const KR_PlaceOrder = () => {
       materialName: item.materialName,
       specifications: item.specifications,
       uom: item.uom,
-      quantity: item.quantity
+      quantity: item.quantity,
+      partyName: item.partyName || '',
+      place: item.place || ''
     })
   }
 
@@ -1044,7 +1050,9 @@ const KR_PlaceOrder = () => {
       materialName: item.materialName,
       specifications: item.specifications,
       uom: item.uom,
-      quantity: item.quantity
+      quantity: item.quantity,
+      partyName: item.partyName || '',
+      place: item.place || ''
     })
   }
 
@@ -1142,7 +1150,35 @@ const KR_PlaceOrder = () => {
         ...(field === 'specifications' && {
           uom: '',
           quantity: ''
-        })
+        }),
+        // Auto-select place when party name changes in edit mode
+        ...(field === 'partyName' && (() => {
+          if (!value) {
+            return { place: '' }
+          }
+
+          if (!partyPlaceMapping || Object.keys(partyPlaceMapping).length === 0) {
+            return {}
+          }
+
+          const placeData =
+            partyPlaceMapping[value] ||
+            partyPlaceMapping[value.trim()] ||
+            null
+
+          if (placeData) {
+            if (Array.isArray(placeData)) {
+              if (placeData.length === 1) {
+                return { place: placeData[0] }
+              }
+              return { place: '' }
+            } else if (typeof placeData === 'string') {
+              return { place: placeData }
+            }
+          }
+
+          return { place: '' }
+        })())
       }
 
       // Auto-assign UOM immediately when material name changes in edit mode
@@ -1314,13 +1350,11 @@ const KR_PlaceOrder = () => {
     }
     
     // Debug logging
-    console.log('Form submission attempt:', {
+        console.log('Form submission attempt:', {
       orderId,
       orderItems: orderItems.length,
       givenBy: formData.givenBy,
       type: formData.type,
-      partyName: formData.partyName,
-      place: formData.place,
       description: formData.description,
       formData: formData
     })
@@ -1329,8 +1363,8 @@ const KR_PlaceOrder = () => {
       alert('Please add at least one item to the order.')
       return
     }
-    if (!formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description) {
-      alert(`Please fill in all required fields. Given By: "${formData.givenBy}", Type: "${formData.type}", Party Name: "${formData.partyName}", Place: "${formData.place}", Description: "${formData.description}"`)
+    if (!formData.givenBy || !formData.type || !formData.description) {
+      alert(`Please fill in all required fields. Given By: "${formData.givenBy}", Type: "${formData.type}", Description: "${formData.description}"`)
       return
     }
     
@@ -1343,8 +1377,6 @@ const KR_PlaceOrder = () => {
         orderItems,
         givenBy: formData.givenBy,
         type: formData.type,
-        partyName: formData.partyName,
-        place: formData.place,
         description: formData.description,
         importance: formData.importance,
         factory: 'KR'
@@ -1365,8 +1397,6 @@ const KR_PlaceOrder = () => {
               orderItems,
               givenBy: formData.givenBy,
               type: formData.type,
-            partyName: formData.partyName,
-            place: formData.place,
               description: formData.description,
               importance: formData.importance
             }
@@ -1381,8 +1411,6 @@ const KR_PlaceOrder = () => {
           orderItems,
           givenBy: formData.givenBy,
           type: formData.type,
-          partyName: formData.partyName,
-          place: formData.place,
           description: formData.description,
           importance: formData.importance
         })
@@ -1395,8 +1423,6 @@ const KR_PlaceOrder = () => {
           orderItems,
           givenBy: formData.givenBy,
           type: formData.type,
-          partyName: formData.partyName,
-          place: formData.place,
           description: formData.description,
           importance: formData.importance,
           dateTime: formatDateTime(new Date())
@@ -1519,6 +1545,8 @@ const KR_PlaceOrder = () => {
           <th>Specifications</th>
           <th>Quantity</th>
           <th>UOM</th>
+          <th>Preferred Vendor</th>
+          <th>Place</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -1677,6 +1705,84 @@ const KR_PlaceOrder = () => {
                 item.uom
               )}
             </td>
+            <td 
+              data-label="Preferred Vendor"
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'partyName')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'partyName')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'partyName')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                <select
+                  value={editFormData.partyName || ''}
+                  onChange={(e) => handleEditInputChange('partyName', e.target.value)}
+                  className="po-edit-select"
+                  disabled={partyLoading}
+                >
+                  <option value="">
+                    {partyLoading ? 'Loading...' : 'Select Preferred Vendor'}
+                  </option>
+                  {partyNames.map((party) => (
+                    <option key={party} value={party}>
+                      {party}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                item.partyName || '-'
+              )}
+            </td>
+            <td 
+              data-label="Place"
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              onDoubleClick={() => handleDoubleClickEdit(item, 'place')}
+              onTouchStart={(e) => handleTouchStart(e, item, 'place')}
+              onTouchEnd={(e) => handleTouchEnd(e, item, 'place')}
+              onTouchMove={handleTouchMove}
+              title={editingItem === item.id ? "" : "Double-click or long press to edit"}
+            >
+              {editingItem === item.id ? (
+                (() => {
+                  const availablePlaces = getPlacesForParty(editFormData.partyName)
+                  const hasMultiplePlaces = availablePlaces.length > 1
+                  
+                  if (hasMultiplePlaces) {
+                    return (
+                      <select
+                        value={editFormData.place || ''}
+                        onChange={(e) => handleEditInputChange('place', e.target.value)}
+                        className="po-edit-select"
+                        disabled={!editFormData.partyName || placesLoading}
+                      >
+                        <option value="">
+                          {placesLoading ? 'Loading...' : 'Select Place'}
+                        </option>
+                        {availablePlaces.map((place) => (
+                          <option key={place} value={place}>
+                            {place}
+                          </option>
+                        ))}
+                      </select>
+                    )
+                  } else {
+                    return (
+                      <input
+                        type="text"
+                        value={editFormData.place || ''}
+                        readOnly
+                        className="po-edit-input po-readonly-input"
+                        placeholder="Place"
+                        title={editFormData.partyName ? "Place is auto-selected based on preferred vendor" : "Select preferred vendor first"}
+                      />
+                    )
+                  }
+                })()
+              ) : (
+                item.place || '-'
+              )}
+            </td>
             <td data-label="Action">
               {editingItem === item.id ? (
                 <div className="po-edit-actions-vertical">
@@ -1798,21 +1904,9 @@ const KR_PlaceOrder = () => {
       </div>
       <form onSubmit={handleSubmit} className="po-material-form">
 
-        {/* Added Items Table - Moved to top */}
+        {/* Added Items Table - Desktop view at top */}
         {orderItems.length > 0 && (
           <div className="po-added-items-top-section">
-            {/* Mobile View: Show Button Instead of Table */}
-            <div className="po-mobile-items-button-container">
-              <button
-                type="button"
-                className="po-view-items-btn"
-                onClick={() => setShowItemsSheet(true)}
-              >
-                <span className="po-items-count-badge">{orderItems.length}</span>
-                <span className="po-view-items-text">View Added Items</span>
-              </button>
-            </div>
-            
             {/* Desktop View: Show Table */}
             <div className="po-items-table-container po-desktop-table">
               <h3>Added Items</h3>
@@ -2010,7 +2104,74 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
-        {/* Third Row: Add Item Button */}
+        {/* Third Row: Preferred Vendor and Place (Optional, Per Item) */}
+        <div className="po-form-row">
+          {/* Preferred Vendor - Optional */}
+          <div className="po-form-group">
+            <label htmlFor="partyName">Preferred Vendor</label>
+            <select
+              id="partyName"
+              value={formData.partyName}
+              onChange={(e) => handleInputChange('partyName', e.target.value)}
+              className="po-form-select"
+              disabled={partyLoading}
+            >
+              <option value="">
+                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Preferred Vendor (Optional)'}
+              </option>
+              {partyNames.map((party) => (
+                <option key={party} value={party}>
+                  {party}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Place - Optional */}
+          <div className="po-form-group">
+            <label htmlFor="place">Place</label>
+            {(() => {
+              const availablePlaces = getPlacesForParty(formData.partyName)
+              const hasMultiplePlaces = availablePlaces.length > 1
+              
+              // Show dropdown if multiple places, read-only input if single place
+              if (hasMultiplePlaces) {
+                return (
+                  <select
+                    id="place"
+                    value={formData.place}
+                    onChange={(e) => handleInputChange('place', e.target.value)}
+                    className="po-form-select"
+                    disabled={!formData.partyName || placesLoading}
+                  >
+                    <option value="">
+                      {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place (Optional)'}
+                    </option>
+                    {availablePlaces.map((place) => (
+                      <option key={place} value={place}>
+                        {place}
+                      </option>
+                    ))}
+                  </select>
+                )
+              } else {
+                return (
+                  <input
+                    type="text"
+                    id="place"
+                    value={formData.place}
+                    readOnly
+                    className="po-form-input po-readonly-input"
+                    placeholder={placesLoading ? 'Loading places...' : 'Place (Optional)'}
+                    title={formData.partyName ? "Place is auto-selected based on preferred vendor" : "Select preferred vendor first"}
+                  />
+                )
+              }
+            })()}
+          </div>
+        </div>
+
+        {/* Fourth Row: Add Item Button */}
         <div className="po-form-row">
           {/* Add Item Button */}
           <div className="po-form-group po-add-item-group">
@@ -2024,6 +2185,23 @@ const KR_PlaceOrder = () => {
             </button>
           </div>
         </div>
+
+        {/* Mobile View: View Added Items Button - Below Add Item Button */}
+        {orderItems.length > 0 && (
+          <div className="po-form-row">
+            <div className="po-form-group po-mobile-items-button-container">
+              <label>&nbsp;</label>
+              <button
+                type="button"
+                className="po-view-items-btn"
+                onClick={() => setShowItemsSheet(true)}
+              >
+                <span className="po-items-count-badge">{orderItems.length}</span>
+                <span className="po-view-items-text">View Added Items</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Additional Order Information */}
         <div className="po-form-row">
@@ -2088,75 +2266,6 @@ const KR_PlaceOrder = () => {
           </div>
         </div>
 
-        <div className="po-form-row">
-          {/* Party Name - Required */}
-          <div className="po-form-group">
-            <label htmlFor="partyName" className="required">Preferred Vendor</label>
-            <select
-              id="partyName"
-              value={formData.partyName}
-              onChange={(e) => handleInputChange('partyName', e.target.value)}
-              required
-              className="po-form-select"
-              disabled={partyLoading}
-            >
-              <option value="">
-                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Party Name'}
-              </option>
-              {partyNames.map((party) => (
-                <option key={party} value={party}>
-                  {party}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Place - Required */}
-          <div className="po-form-group">
-            <label htmlFor="place" className="required">Place</label>
-            {(() => {
-              const availablePlaces = getPlacesForParty(formData.partyName)
-              const hasMultiplePlaces = availablePlaces.length > 1
-              
-              // Show dropdown if multiple places, read-only input if single place
-              if (hasMultiplePlaces) {
-                return (
-                  <select
-                    id="place"
-                    value={formData.place}
-                    onChange={(e) => handleInputChange('place', e.target.value)}
-                    required
-                    className="po-form-select"
-                    disabled={!formData.partyName || placesLoading}
-                  >
-                    <option value="">
-                      {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place'}
-                    </option>
-                    {availablePlaces.map((place) => (
-                      <option key={place} value={place}>
-                        {place}
-                      </option>
-                    ))}
-                  </select>
-                )
-              } else {
-                return (
-                  <input
-                    type="text"
-                    id="place"
-                    value={formData.place}
-                    readOnly
-                    required
-                    className="po-form-input po-readonly-input"
-                    placeholder={placesLoading ? 'Loading places...' : 'Place'}
-                    title={formData.partyName ? "Place is auto-selected based on preferred vendor" : "Select preferred vendor first"}
-                  />
-                )
-              }
-            })()}
-          </div>
-        </div>
-
         {/* Description - Full Width */}
         <div className="po-form-row">
           <div className="po-form-group po-full-width">
@@ -2213,17 +2322,17 @@ const KR_PlaceOrder = () => {
         <div className="po-form-actions">
           <button 
             type="submit" 
-            className={`po-submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? 'po-ready-to-submit' : 'disabled'}`}
-            disabled={orderItems.length === 0 || !formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description}
+            className={`po-submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.description ? 'po-ready-to-submit' : 'disabled'}`}
+            disabled={orderItems.length === 0 || !formData.givenBy || !formData.type || !formData.description}
             title={
               orderItems.length === 0
                 ? 'Add at least one item to place order'
-                : (!formData.givenBy || !formData.type || !formData.partyName || !formData.place || !formData.description)
-                  ? 'Fill in Given By, Type, Party Name, Place, and Description'
+                : (!formData.givenBy || !formData.type || !formData.description)
+                  ? 'Fill in Given By, Type, and Description'
                   : 'Ready to submit'
             }
           >
-            Place Order {orderItems.length > 0 && formData.givenBy && formData.type && formData.partyName && formData.place && formData.description ? '✓' : ''}
+            Place Order {orderItems.length > 0 && formData.givenBy && formData.type && formData.description ? '✓' : ''}
           </button>
           <button type="button" className="po-reset-btn" onClick={() => {
             // Reset form but keep the same order ID
@@ -2234,6 +2343,8 @@ const KR_PlaceOrder = () => {
           specifications: '',
           uom: '',
           quantity: '',
+          partyName: '',
+          place: '',
           givenBy: '',
           type: '',
           description: '',
@@ -2277,12 +2388,6 @@ const KR_PlaceOrder = () => {
                 </div>
                 <div className="po-summary-item">
                   <strong>Type:</strong> {lastSubmittedOrderData?.type}
-                </div>
-                <div className="po-summary-item">
-                  <strong>Preferred Party:</strong> {lastSubmittedOrderData?.partyName}
-                </div>
-                <div className="po-summary-item">
-                  <strong>Place:</strong> {lastSubmittedOrderData?.place}
                 </div>
                 <div className="po-summary-item">
                   <strong>Importance:</strong> {lastSubmittedOrderData?.importance}
