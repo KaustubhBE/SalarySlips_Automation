@@ -129,7 +129,7 @@ const TreeBasedPermissions = ({
                   checked={isFactoryFullySelected(factoryKey)}
                   onChange={(e) => handleFactoryChange(factoryKey, e.target.checked)}
                   disabled={!canEdit}
-                />
+                />{' '}
                 <span className="factory-name">{factoryData.name}</span>
               </label>
               <button
