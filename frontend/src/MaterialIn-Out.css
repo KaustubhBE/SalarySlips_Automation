@@ -1320,6 +1320,7 @@
   font-weight: 600;
   font-size: 14px;
   border-bottom: 2px solid #2980b9;
+  vertical-align: middle !important;
 }
 
 /* Column width definitions */
@@ -1379,7 +1380,7 @@
   padding: 12px;
   border-bottom: 1px solid #e9ecef;
   font-size: 14px;
-  vertical-align: middle;
+  vertical-align: middle !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 200px;
@@ -1592,6 +1593,7 @@
   .mio-items-table td {
     padding: 12px 10px;
     font-size: 13px;
+    vertical-align: middle !important;
   }
   
   .mio-items-table th:nth-child(3),
@@ -1622,6 +1624,7 @@
     padding: 10px 8px;
     font-size: 13px;
     white-space: nowrap;
+    vertical-align: middle !important;
   }
   
   .mio-items-table th:nth-child(1),
@@ -1685,6 +1688,7 @@
   .mio-items-table td {
     padding: 6px 4px;
     font-size: 11px;
+    vertical-align: middle !important;
   }
   
   .mio-items-table th:nth-child(1),
@@ -1755,6 +1759,21 @@
     padding: 8px 12px;
     font-size: 12px;
     min-height: 36px;
+    min-width: 44px;
+    width: auto;
+  }
+
+  .mio-remove-item-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    font-size: 16px !important;
+    line-height: 34px !important;
+    background: linear-gradient(135deg, #d92d20, #b42318) !important;
+    box-shadow: 0 6px 14px rgba(217, 45, 32, 0.35) !important;
   }
 }
 
@@ -1978,12 +1997,15 @@
 .mio-items-table-container.mio-mobile-table .mio-items-table th,
 .mio-items-table-container.mio-mobile-table .mio-items-table td {
   display: table-cell !important;
-  padding: 10px;
+  padding: 10px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
   font-size: 12px;
   border: 1px solid #d5d8dc !important;
   position: static;
   text-align: left;
   white-space: normal;
+  vertical-align: middle !important;
 }
 
 .mio-items-table-container.mio-mobile-table .mio-items-table th {

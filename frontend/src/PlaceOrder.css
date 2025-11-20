@@ -1102,7 +1102,8 @@
       z-index: 10;
     }
   
-    .po-items-table td:not(:nth-child(1)):not(:nth-child(10)) {
+    /* Only apply extra top padding for card layout, NOT for mobile table overlay */
+    .po-items-table-container:not(.po-mobile-table) .po-items-table td:not(:nth-child(1)):not(:nth-child(10)) {
       border: none;
       padding: 10px 12px 10px 12px;
       text-align: left;
@@ -1646,13 +1647,16 @@
     .po-items-table-container.po-mobile-table .po-items-table th,
     .po-items-table-container.po-mobile-table .po-items-table td {
       display: table-cell !important;
-      padding: 10px;
+      padding: 10px !important;
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
       font-size: 12px;
       border: 1px solid #d5d8dc !important;
       border-inline: 1px solid #d5d8dc;
       position: static;
       text-align: left;
       white-space: normal;
+      vertical-align: middle !important;
     }
     
     .po-items-table-container.po-mobile-table .po-items-table th {
@@ -1897,6 +1901,7 @@
     
     .po-items-sheet-header {
       padding: 15px;
+      margin-top: 40px;
     }
     
     .po-items-sheet-header h3 {
@@ -2192,6 +2197,7 @@
     white-space: normal;
     line-height: 1.4;
     position: relative;
+    vertical-align: middle !important;
   }
   
   /* Dynamic column width definitions - Desktop (1400px+) */
@@ -2283,7 +2289,7 @@
     padding: 12px;
     border-bottom: 1px solid #e9ecef;
     font-size: 14px;
-  vertical-align: middle;
+    vertical-align: middle !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
@@ -2512,6 +2518,7 @@
       overflow-wrap: break-word;
       word-break: break-word;
       line-height: 1.4;
+      vertical-align: middle !important;
     }
     
     /* Adjust column widths for better fit */
@@ -2582,6 +2589,7 @@
     .items-table td {
       padding: 12px 10px;
       font-size: 13px;
+      vertical-align: middle !important;
     }
     
     .po-items-table th:nth-child(3),
@@ -2681,6 +2689,7 @@
     .po-items-table td {
       padding: 8px 6px;
       font-size: 12px;
+      vertical-align: middle !important;
     }
     
     .po-items-table th:nth-child(3),
@@ -2727,6 +2736,7 @@
       word-wrap: break-word;
       overflow-wrap: break-word;
       word-break: break-word;
+      vertical-align: middle !important;
     }
     
     .po-items-table th:nth-child(3),
@@ -2774,6 +2784,7 @@
     .po-items-table td {
       padding: 6px 4px;
       font-size: 11px;
+      vertical-align: middle !important;
     }
     
     .po-items-table th:nth-child(1),
@@ -2829,6 +2840,31 @@
       min-width: 100px;
       text-align: center;
     }
+
+  /* Ensure action buttons shrink appropriately on mobile */
+  .po-items-table .po-remove-item-btn,
+  .po-items-table .po-save-edit-btn,
+  .po-items-table .po-cancel-edit-btn {
+    min-width: 44px;
+    width: auto;
+    padding: 6px 10px;
+    height: 30px;
+    font-size: 11px;
+  }
+
+  /* Make remove action button mimic the compact modal close control */
+  .po-items-table .po-remove-item-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    font-size: 16px !important;
+    line-height: 34px !important;
+    background: linear-gradient(135deg, #d92d20, #b42318) !important;
+    box-shadow: 0 6px 14px rgba(217, 45, 32, 0.35) !important;
+  }
   }
   
   @media (max-width: 576px) {
@@ -2845,6 +2881,7 @@
     .po-items-table td {
       padding: 4px 2px;
       font-size: 10px;
+      vertical-align: middle !important;
     }
     
     .po-items-table th:nth-child(1),
@@ -3009,7 +3046,8 @@
       margin-bottom: 4px;
     }
     
-    .po-items-table td:not(:nth-child(1)):not(:nth-child(10)) {
+    /* Only apply extra top padding for card layout, NOT for mobile table overlay */
+    .po-items-table-container:not(.po-mobile-table) .po-items-table td:not(:nth-child(1)):not(:nth-child(10)) {
       padding-top: 28px;
       padding-bottom: 12px;
     }
