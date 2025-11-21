@@ -2,6 +2,8 @@
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
   
   .po-place_order-container h2 {
@@ -44,6 +46,7 @@
   .po-form-left-section {
     flex: 1;
     min-width: 0;
+    scroll-margin-top: 100px; /* Offset for smooth scroll positioning */
   }
   
   .po-form-right-section {
@@ -142,6 +145,10 @@
     .po-material-form {
       padding: 20px;
       box-sizing: border-box;
+    }
+    
+    .po-form-left-section {
+      scroll-margin-top: 80px; /* Smaller offset for mobile */
     }
     
     .po-form-header {
@@ -2125,6 +2132,78 @@
     max-width: 100%;
     max-height: 50vh;
     overflow-y: auto;
+    transition: all 0.3s ease;
+  }
+
+  /* Flash animation for item addition */
+  .po-added-items-top-section .po-items-table-container.po-item-added-flash {
+    animation: po-flash-transition 0.8s ease-in-out;
+  }
+
+  @keyframes po-flash-transition {
+    0% {
+      background-color: #f8f9fa;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transform: scale(1);
+      border-color: #e9ecef;
+    }
+    25% {
+      background-color: #e3f2fd;
+      box-shadow: 0 4px 20px rgba(52, 152, 219, 0.4);
+      transform: scale(1.01);
+      border-color: #3498db;
+    }
+    50% {
+      background-color: #bbdefb;
+      box-shadow: 0 6px 30px rgba(52, 152, 219, 0.6);
+      transform: scale(1.02);
+      border-color: #2980b9;
+    }
+    75% {
+      background-color: #e3f2fd;
+      box-shadow: 0 4px 20px rgba(52, 152, 219, 0.4);
+      transform: scale(1.01);
+      border-color: #3498db;
+    }
+    100% {
+      background-color: #f8f9fa;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transform: scale(1);
+      border-color: #e9ecef;
+    }
+  }
+
+  /* Full screen flash overlay for item addition */
+  .po-screen-flash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(52, 152, 219, 0.1);
+    z-index: 9998;
+    pointer-events: none;
+    animation: po-screen-flash 0.6s ease-in-out;
+    opacity: 0;
+  }
+
+  @keyframes po-screen-flash {
+    0% {
+      opacity: 0;
+      background: rgba(52, 152, 219, 0);
+    }
+    30% {
+      opacity: 1;
+      background: rgba(52, 152, 219, 0.15);
+    }
+    60% {
+      opacity: 1;
+      background: rgba(52, 152, 219, 0.2);
+    }
+    100% {
+      opacity: 0;
+      background: rgba(52, 152, 219, 0);
+    }
   }
   
   /* Items table styling */
@@ -2139,6 +2218,12 @@
     max-width: 100%;
     max-height: 70vh;
     overflow-y: auto;
+    transition: all 0.3s ease;
+  }
+
+  /* Flash animation for item addition in general table */
+  .po-items-table-container.po-item-added-flash {
+    animation: po-flash-transition 0.8s ease-in-out;
   }
   
   .po-items-table-container::after {
@@ -2160,6 +2245,13 @@
   @media (max-width: 1300px) {
     .po-items-table-container::after {
       display: block;
+    }
+  }
+  
+  /* Hide scroll hint on mobile */
+  @media (max-width: 768px) {
+    .po-items-table-container::after {
+      display: none !important;
     }
   }
   

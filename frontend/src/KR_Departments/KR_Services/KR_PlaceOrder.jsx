@@ -533,6 +533,7 @@ const KR_PlaceOrder = () => {
   
   // Recipients functionality
   const [recipients, setRecipients] = useState([])
+  const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [recipientsLoading, setRecipientsLoading] = useState(true)
   const [showNotificationModal, setShowNotificationModal] = useState(false)
   const [selectedRecipients, setSelectedRecipients] = useState([])
@@ -559,13 +560,14 @@ const KR_PlaceOrder = () => {
   const { materialData, categories, dataLoading, fetchMaterialData } = useMaterialData()
   const { sessionId, registerSession, cleanupSession, cleanupOldSessions } = useSessionManagement()
   const materialInputSectionRef = useRef(null)
+  const itemsTableContainerRef = useRef(null)
   const scrollToMaterialInputs = () => {
     if (typeof window === 'undefined') return
-    if (window.innerWidth < 1024) return
     if (materialInputSectionRef.current) {
       const element = materialInputSectionRef.current
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
-      const offset = 100 // Offset to ensure label is visible
+      // Adjust offset based on screen size - smaller offset for mobile
+      const offset = window.innerWidth < 768 ? 80 : 100
       
       window.scrollTo({
         top: elementPosition - offset,
@@ -1012,6 +1014,22 @@ const KR_PlaceOrder = () => {
 
     setOrderItems(prev => [...prev, newItem])
     
+    // Trigger flash animation on table container
+    if (itemsTableContainerRef.current) {
+      itemsTableContainerRef.current.classList.add('po-item-added-flash')
+      setTimeout(() => {
+        if (itemsTableContainerRef.current) {
+          itemsTableContainerRef.current.classList.remove('po-item-added-flash')
+        }
+      }, 800) // Remove class after animation completes
+    }
+    
+    // Trigger screen flash overlay
+    setShowScreenFlash(true)
+    setTimeout(() => {
+      setShowScreenFlash(false)
+    }, 600) // Remove overlay after animation completes
+    
     // Reset only the item-specific fields after adding item, preserve order details
     setFormData(prev => ({
       ...prev,
@@ -1026,7 +1044,10 @@ const KR_PlaceOrder = () => {
       // Keep givenBy, description, and importance unchanged
     }))
 
-    scrollToMaterialInputs()
+    // Scroll to material inputs after a short delay to allow DOM update
+    setTimeout(() => {
+      scrollToMaterialInputs()
+    }, 100)
   }
 
   const handleRemoveItem = (itemId) => {
@@ -1884,6 +1905,8 @@ const KR_PlaceOrder = () => {
 
   return (
     <div className="po-place_order-container">
+      {/* Screen Flash Overlay */}
+      {showScreenFlash && <div className="po-screen-flash-overlay" />}
       {/* Loading Spinner */}
       {isSubmitting && <LoadingSpinner />}
       
@@ -1925,7 +1948,7 @@ const KR_PlaceOrder = () => {
         {orderItems.length > 0 && (
           <div className="po-added-items-top-section">
             {/* Desktop View: Show Table */}
-            <div className="po-items-table-container po-desktop-table">
+            <div className="po-items-table-container po-desktop-table" ref={itemsTableContainerRef}>
               <h3>Added Items</h3>
               {renderItemsTable()}
             </div>

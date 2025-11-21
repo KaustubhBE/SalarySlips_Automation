@@ -54,17 +54,19 @@ const KR_MaterialOutward = () => {
   
   // Mobile items sheet modal
   const [showItemsSheet, setShowItemsSheet] = useState(false)
+  const [showScreenFlash, setShowScreenFlash] = useState(false)
   
   // Ref to track if component is still mounted and form is active
   const isFormActive = useRef(true)
   const materialInputSectionRef = useRef(null)
+  const itemsTableContainerRef = useRef(null)
   const scrollToMaterialInputs = () => {
     if (typeof window === 'undefined') return
-    if (window.innerWidth < 1024) return
     if (materialInputSectionRef.current) {
       const element = materialInputSectionRef.current
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
-      const offset = 100 // Offset to ensure label is visible
+      // Adjust offset based on screen size - smaller offset for mobile
+      const offset = window.innerWidth < 768 ? 80 : 100
       
       window.scrollTo({
         top: elementPosition - offset,
@@ -535,6 +537,22 @@ const KR_MaterialOutward = () => {
 
     setOutwardItems(prev => [...prev, newItem])
     
+    // Trigger flash animation on table container
+    if (itemsTableContainerRef.current) {
+      itemsTableContainerRef.current.classList.add('mio-item-added-flash')
+      setTimeout(() => {
+        if (itemsTableContainerRef.current) {
+          itemsTableContainerRef.current.classList.remove('mio-item-added-flash')
+        }
+      }, 800) // Remove class after animation completes
+    }
+    
+    // Trigger screen flash overlay
+    setShowScreenFlash(true)
+    setTimeout(() => {
+      setShowScreenFlash(false)
+    }, 600) // Remove overlay after animation completes
+    
     // Reset only the item-specific fields after adding item
     setFormData(prev => ({
       ...prev,
@@ -548,6 +566,11 @@ const KR_MaterialOutward = () => {
     
     // Reset current quantity
     setCurrentQuantity(null)
+    
+    // Scroll to material inputs after a short delay to allow DOM update
+    setTimeout(() => {
+      scrollToMaterialInputs()
+    }, 100)
     scrollToMaterialInputs()
   }
 
@@ -1326,6 +1349,9 @@ const KR_MaterialOutward = () => {
 
   return (
     <div className="place_order-container">
+      {/* Screen Flash Overlay */}
+      {showScreenFlash && <div className="mio-screen-flash-overlay" />}
+      
       {/* Back Button Section - Always at top-left */}
       <BackButton label="Back to Store" to="/kerur/kr_store" />
       
@@ -1342,7 +1368,7 @@ const KR_MaterialOutward = () => {
           {outwardItems.length > 0 && (
             <div className="mio-added-items-top-section">
               {/* Desktop View: Show Table */}
-              <div className="mio-items-table-container mio-desktop-table">
+              <div className="mio-items-table-container mio-desktop-table" ref={itemsTableContainerRef}>
                 <h3>Added Items</h3>
                 {renderItemsTable()}
               </div>
