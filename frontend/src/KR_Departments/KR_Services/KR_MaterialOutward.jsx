@@ -57,6 +57,21 @@ const KR_MaterialOutward = () => {
   
   // Ref to track if component is still mounted and form is active
   const isFormActive = useRef(true)
+  const materialInputSectionRef = useRef(null)
+  const scrollToMaterialInputs = () => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth < 1024) return
+    if (materialInputSectionRef.current) {
+      const element = materialInputSectionRef.current
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
+      const offset = 100 // Offset to ensure label is visible
+      
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      })
+    }
+  }
 
   // Function to fetch current quantity from database
   const fetchCurrentQuantity = async (category, subCategory, specifications, materialName) => {
@@ -533,6 +548,7 @@ const KR_MaterialOutward = () => {
     
     // Reset current quantity
     setCurrentQuantity(null)
+    scrollToMaterialInputs()
   }
 
   const handleRemoveItem = (itemId) => {
@@ -1360,7 +1376,7 @@ const KR_MaterialOutward = () => {
           {/* Main Content Area */}
           <div className="mio-form-main-content">
             {/* Left Section - Form Inputs */}
-            <div className="mio-form-left-section">
+            <div className="mio-form-left-section" ref={materialInputSectionRef}>
               {/* Form inputs for adding new item - Only show when no items exist */}
               {outwardItems.length === 0 && (
                 <div className="mio-add-item-section">

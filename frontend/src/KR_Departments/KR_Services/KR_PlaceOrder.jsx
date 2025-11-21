@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl, PLANT_DATA } from '../../config'
@@ -558,6 +558,21 @@ const KR_PlaceOrder = () => {
   // Custom Hooks
   const { materialData, categories, dataLoading, fetchMaterialData } = useMaterialData()
   const { sessionId, registerSession, cleanupSession, cleanupOldSessions } = useSessionManagement()
+  const materialInputSectionRef = useRef(null)
+  const scrollToMaterialInputs = () => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth < 1024) return
+    if (materialInputSectionRef.current) {
+      const element = materialInputSectionRef.current
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
+      const offset = 100 // Offset to ensure label is visible
+      
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      })
+    }
+  }
 
   // Fetch authority list data from Google Sheets
   const fetchAuthorityList = async () => {
@@ -1010,6 +1025,8 @@ const KR_PlaceOrder = () => {
       place: ''
       // Keep givenBy, description, and importance unchanged
     }))
+
+    scrollToMaterialInputs()
   }
 
   const handleRemoveItem = (itemId) => {
@@ -1942,7 +1959,7 @@ const KR_PlaceOrder = () => {
         {/* Main Content Area */}
         <div className="po-form-main-content">
           {/* Left Section - Form Inputs */}
-          <div className="po-form-left-section">
+          <div className="po-form-left-section" ref={materialInputSectionRef}>
             {/* Form inputs for adding new item - Only show when no items exist */}
             {orderItems.length === 0 && (
               <div className="po-add-item-section">
