@@ -1,23 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl, PLANT_DATA, DEFAULT_WHATSAPP_URL } from '../../config'
-import { useAuth } from '../../Components/AuthContext'
+import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../MaterialIn-Out.css'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
 
 // Constants
-const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
 // Utility Functions
 
 const KR_MaterialInward = () => {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
@@ -46,8 +40,6 @@ const KR_MaterialInward = () => {
   const [partyLoading, setPartyLoading] = useState(true)
   const [placesLoading, setPlacesLoading] = useState(true)
   const [formValidationErrors, setFormValidationErrors] = useState([])
-  const [whatsappAuthenticated, setWhatsappAuthenticated] = useState(false)
-  const [whatsappStatusLoading, setWhatsappStatusLoading] = useState(false)
   
   // Helper function to get available places for a party name
   const getPlacesForParty = (partyName) => {
@@ -816,43 +808,6 @@ const KR_MaterialInward = () => {
     return /^[0-9]*\.?[0-9]*$/.test(value)
   }
 
-  // Check WhatsApp authentication status
-  const checkWhatsAppAuthStatus = async () => {
-    try {
-      setWhatsappStatusLoading(true)
-      const userIdentifier = user?.email || user?.username
-      if (!userIdentifier) {
-        console.error('No user identifier available for WhatsApp authentication')
-        setWhatsappAuthenticated(false)
-        return false
-      }
-
-      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
-        credentials: 'include',
-        headers: {
-          'X-User-Email': userIdentifier,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        const isAuthenticated = data.isReady || data.authenticated || false
-        setWhatsappAuthenticated(isAuthenticated)
-        return isAuthenticated
-      } else {
-        setWhatsappAuthenticated(false)
-        return false
-      }
-    } catch (error) {
-      console.error('Error checking WhatsApp auth status:', error)
-      setWhatsappAuthenticated(false)
-      return false
-    } finally {
-      setWhatsappStatusLoading(false)
-    }
-  }
-
   // Form validation function
   const validateForm = () => {
     const errors = []
@@ -869,24 +824,14 @@ const KR_MaterialInward = () => {
       errors.push('Please select Place')
     }
     
-    // Check WhatsApp authentication
-    if (!whatsappAuthenticated) {
-      errors.push('WhatsApp service not available, please login')
-    }
-    
     return errors
   }
-
-  // Check WhatsApp status on mount
-  useEffect(() => {
-    checkWhatsAppAuthStatus()
-  }, [])
 
   // Validate form on state changes
   useEffect(() => {
     const errors = validateForm()
     setFormValidationErrors(errors)
-  }, [inwardItems, generalFormData.partyName, generalFormData.place, whatsappAuthenticated])
+  }, [inwardItems, generalFormData.partyName, generalFormData.place])
 
   const handleInputChange = (field, value) => {
     // For quantity field, only allow numeric input
@@ -1623,7 +1568,10 @@ const KR_MaterialInward = () => {
           </div>
 
           {/* Form Validation Errors */}
-          <FormValidationErrors errors={formValidationErrors} />
+          <FormValidationErrors 
+            errors={formValidationErrors} 
+            checkWhatsApp={true}
+          />
 
           {/* Action Buttons */}
           <div className="mio-form-actions">

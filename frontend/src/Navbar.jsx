@@ -246,6 +246,11 @@ const Navbar = ({ onLogout }) => {
         
         if (data.isReady || data.authenticated) {
           setIsAuthenticated(true);
+          // Dispatch event to notify other components about WhatsApp authentication
+          window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+            detail: { isAuthenticated: true, userInfo: data.userInfo }
+          }));
+          
           const hasUsableUserInfo = !!(data.userInfo && (data.userInfo.name || data.userInfo.pushName || data.userInfo.phoneNumber));
           if (hasUsableUserInfo) {
             const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');
@@ -281,6 +286,10 @@ const Navbar = ({ onLogout }) => {
           setUserInfo(null);
           setStatusMsg('');
           setUserInfoRetryCount(0);
+          // Dispatch event to notify other components about WhatsApp logout
+          window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+            detail: { isAuthenticated: false }
+          }));
         }
       }
     } catch (error) {
@@ -288,6 +297,10 @@ const Navbar = ({ onLogout }) => {
       setIsAuthenticated(false);
       setUserInfo(null);
       setUserInfoRetryCount(0);
+      // Dispatch event to notify other components about WhatsApp error
+      window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+        detail: { isAuthenticated: false }
+      }));
     }
   };
 
@@ -339,6 +352,11 @@ const Navbar = ({ onLogout }) => {
       
       if (data.authenticated) {
         setIsAuthenticated(true);
+        // Dispatch event to notify other components about WhatsApp authentication
+        window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+          detail: { isAuthenticated: true, userInfo: data.userInfo }
+        }));
+        
         if (data.userInfo && data.userInfo.name && data.userInfo.name !== 'Unknown') {
           setUserInfo({
             name: data.userInfo.name || data.userInfo.pushName || 'WhatsApp User',
@@ -411,6 +429,11 @@ const Navbar = ({ onLogout }) => {
           setQRValue('');
           setIsPolling(false);
           setUserInfoRetryCount(0); // Reset retry count on logout
+          
+          // Dispatch event to notify other components about WhatsApp logout
+          window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+            detail: { isAuthenticated: false }
+          }));
           
           // Clear any pending retry timeout
           if (userInfoRetryRef.current) {
@@ -509,6 +532,11 @@ const Navbar = ({ onLogout }) => {
       if (data.isReady === true || data.status === 'ready') {
         setLoginSuccess(true);
         setIsAuthenticated(true);
+        // Dispatch event to notify other components about WhatsApp authentication
+        window.dispatchEvent(new CustomEvent('whatsapp-auth-status-changed', {
+          detail: { isAuthenticated: true, userInfo: data.userInfo }
+        }));
+        
         // Populate user info if available
         if (data.userInfo && (data.userInfo.name || data.userInfo.pushName || data.userInfo.phoneNumber)) {
           const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');

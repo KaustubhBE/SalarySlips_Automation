@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl, PLANT_DATA, DEFAULT_WHATSAPP_URL } from '../../config'
-import { useAuth } from '../../Components/AuthContext'
+import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../PlaceOrder.css'
 import LoadingSpinner from '../../LoadingSpinner'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
 
 // Constants
-const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 const IMPORTANCE_OPTIONS = ['Normal', 'Urgent']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
@@ -486,9 +483,6 @@ const useSessionManagement = () => {
 }
 
 const KR_PlaceOrder = () => {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  
   // State Management
   const [formData, setFormData] = useState({
     category: '',
@@ -548,8 +542,6 @@ const KR_PlaceOrder = () => {
   const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
-  const [whatsappAuthenticated, setWhatsappAuthenticated] = useState(false)
-  const [whatsappStatusLoading, setWhatsappStatusLoading] = useState(false)
   
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
@@ -832,48 +824,6 @@ const KR_PlaceOrder = () => {
     return /^[0-9]*\.?[0-9]*$/.test(value)
   }
 
-  // Check WhatsApp authentication status
-  const checkWhatsAppAuthStatus = async () => {
-    if (!enableWhatsappNotification) {
-      // If WhatsApp notifications are disabled, skip check
-      return true
-    }
-
-    try {
-      setWhatsappStatusLoading(true)
-      const userIdentifier = user?.email || user?.username
-      if (!userIdentifier) {
-        console.error('No user identifier available for WhatsApp authentication')
-        setWhatsappAuthenticated(false)
-        return false
-      }
-
-      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
-        credentials: 'include',
-        headers: {
-          'X-User-Email': userIdentifier,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        const isAuthenticated = data.isReady || data.authenticated || false
-        setWhatsappAuthenticated(isAuthenticated)
-        return isAuthenticated
-      } else {
-        setWhatsappAuthenticated(false)
-        return false
-      }
-    } catch (error) {
-      console.error('Error checking WhatsApp auth status:', error)
-      setWhatsappAuthenticated(false)
-      return false
-    } finally {
-      setWhatsappStatusLoading(false)
-    }
-  }
-
   // Form validation function
   const validateForm = () => {
     const errors = []
@@ -898,28 +848,14 @@ const KR_PlaceOrder = () => {
       errors.push('Please enter Description')
     }
     
-    // Check WhatsApp authentication if WhatsApp notifications are enabled
-    if (enableWhatsappNotification && !whatsappAuthenticated) {
-      errors.push('WhatsApp service not available, please login')
-    }
-    
     return errors
   }
-
-  // Check WhatsApp status on mount and when WhatsApp notification toggle changes
-  useEffect(() => {
-    if (enableWhatsappNotification) {
-      checkWhatsAppAuthStatus()
-    } else {
-      setWhatsappAuthenticated(true) // Skip validation if disabled
-    }
-  }, [enableWhatsappNotification])
 
   // Validate form on state changes
   useEffect(() => {
     const errors = validateForm()
     setFormValidationErrors(errors)
-  }, [orderIdGenerated, orderId, orderItems, formData.givenBy, formData.type, formData.description, enableWhatsappNotification, whatsappAuthenticated])
+  }, [orderIdGenerated, orderId, orderItems, formData.givenBy, formData.type, formData.description])
 
   const handleInputChange = (field, value) => {
     // For quantity field, only allow numeric input
@@ -2454,7 +2390,10 @@ const KR_PlaceOrder = () => {
         </div>
 
         {/* Form Validation Errors */}
-        <FormValidationErrors errors={formValidationErrors} />
+        <FormValidationErrors 
+          errors={formValidationErrors} 
+          checkWhatsApp={enableWhatsappNotification}
+        />
 
         {/* Action Buttons */}
         <div className="po-form-actions">
