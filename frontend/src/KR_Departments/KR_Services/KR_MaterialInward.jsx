@@ -70,6 +70,7 @@ const KR_MaterialInward = () => {
   // Mobile items sheet modal
   const [showItemsSheet, setShowItemsSheet] = useState(false)
   const [showScreenFlash, setShowScreenFlash] = useState(false)
+  const itemsSheetHistoryPushed = useRef(false)
   const materialInputSectionRef = useRef(null)
   const itemsTableContainerRef = useRef(null)
   const scrollToMaterialInputs = () => {
@@ -832,6 +833,43 @@ const KR_MaterialInward = () => {
     const errors = validateForm()
     setFormValidationErrors(errors)
   }, [inwardItems, generalFormData.partyName, generalFormData.place])
+
+  // Handle browser back button when items sheet modal is open
+  useEffect(() => {
+    if (showItemsSheet) {
+      // Push a history state when modal opens
+      if (!itemsSheetHistoryPushed.current) {
+        window.history.pushState({ itemsSheetOpen: true }, '')
+        itemsSheetHistoryPushed.current = true
+      }
+
+      // Handle browser back button
+      const handlePopState = (event) => {
+        // Only close modal if the state indicates it was our pushed state
+        if (showItemsSheet && (!event.state || event.state.itemsSheetOpen === undefined)) {
+          setShowItemsSheet(false)
+          itemsSheetHistoryPushed.current = false
+        }
+      }
+
+      window.addEventListener('popstate', handlePopState)
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+      }
+    } else {
+      // When modal closes via close button, remove the history state we pushed
+      if (itemsSheetHistoryPushed.current) {
+        // Use setTimeout to avoid navigation conflicts
+        setTimeout(() => {
+          // Check if we're still on the pushed state and replace it
+          if (window.history.state && window.history.state.itemsSheetOpen) {
+            window.history.replaceState(null, '')
+          }
+        }, 0)
+        itemsSheetHistoryPushed.current = false
+      }
+    }
+  }, [showItemsSheet])
 
   const handleInputChange = (field, value) => {
     // For quantity field, only allow numeric input
