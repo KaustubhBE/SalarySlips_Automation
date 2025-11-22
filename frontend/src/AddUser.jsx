@@ -12,6 +12,7 @@ import './Dashboard.css'; // Import the CSS file
 import PasswordToggle from './Components/Password-Toggle';
 import BackButton from './Components/BackButton';
 import ConfirmModal from './Components/ConfirmModal';
+import FormValidationErrors from './Components/FormValidationErrors';
 
 // Tree-based Permissions Component for dynamic factory.department.service combinations
 const TreeBasedPermissions = ({ 
@@ -635,27 +636,11 @@ function AddUser() {
                 data-form-type="other"
                 required
               />
-              {emailValidationErrors.length > 0 && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: '#ffebee',
-                  border: '1px solid #ffcdd2',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  color: '#c62828'
-                }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                    <span>Email requirements:</span>
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                    {emailValidationErrors.map((error, index) => (
-                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <FormValidationErrors
+                errors={emailValidationErrors}
+                title="Email requirements:"
+                style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+              />
             </div>
             
             <div className="form-group">
@@ -669,27 +654,11 @@ function AddUser() {
                 required
                 inputProps={{ onPaste: handlePastePrevention }}
               />
-              {passwordValidationErrors.length > 0 && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: '#ffebee',
-                  border: '1px solid #ffcdd2',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  color: '#c62828'
-                }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                    <span>Password requirements:</span>
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                    {passwordValidationErrors.map((error, index) => (
-                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <FormValidationErrors
+                errors={passwordValidationErrors}
+                title="Password requirements:"
+                style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+              />
             </div>
             <div className="form-group">
               <label htmlFor="confirm-password">Confirm Password:</label>
@@ -703,21 +672,11 @@ function AddUser() {
                 inputProps={{ onPaste: handlePastePrevention }}
               />
               {passwordMismatchError && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: '#ffebee',
-                  border: '1px solid #ffcdd2',
-                  borderRadius: '4px',
-                  color: '#c62828',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '14px' }}>⚠️</span>
-                  <span>{passwordMismatchError}</span>
-                </div>
+                <FormValidationErrors
+                  errors={[passwordMismatchError]}
+                  title=""
+                  style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                />
               )}
             </div>
             

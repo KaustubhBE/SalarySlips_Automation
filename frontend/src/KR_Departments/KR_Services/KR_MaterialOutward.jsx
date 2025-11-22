@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { getApiUrl, PLANT_DATA } from '../../config'
+import { getApiUrl, PLANT_DATA, DEFAULT_WHATSAPP_URL } from '../../config'
+import { useAuth } from '../../Components/AuthContext'
 import '../../MaterialIn-Out.css'
 import BackButton from '../../Components/BackButton'
+import FormValidationErrors from '../../Components/FormValidationErrors'
 
 // Constants
 const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
@@ -12,6 +14,7 @@ const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
 const KR_MaterialOutward = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const [formData, setFormData] = useState({
     category: '',
@@ -55,6 +58,9 @@ const KR_MaterialOutward = () => {
   // Mobile items sheet modal
   const [showItemsSheet, setShowItemsSheet] = useState(false)
   const [showScreenFlash, setShowScreenFlash] = useState(false)
+  const [formValidationErrors, setFormValidationErrors] = useState([])
+  const [whatsappAuthenticated, setWhatsappAuthenticated] = useState(false)
+  const [whatsappStatusLoading, setWhatsappStatusLoading] = useState(false)
   
   // Ref to track if component is still mounted and form is active
   const isFormActive = useRef(true)
@@ -899,6 +905,78 @@ const KR_MaterialOutward = () => {
     return /^[0-9]*\.?[0-9]*$/.test(value)
   }
 
+  // Check WhatsApp authentication status
+  const checkWhatsAppAuthStatus = async () => {
+    try {
+      setWhatsappStatusLoading(true)
+      const userIdentifier = user?.email || user?.username
+      if (!userIdentifier) {
+        console.error('No user identifier available for WhatsApp authentication')
+        setWhatsappAuthenticated(false)
+        return false
+      }
+
+      const res = await fetch(`${DEFAULT_WHATSAPP_URL}/api/whatsapp-status`, {
+        credentials: 'include',
+        headers: {
+          'X-User-Email': userIdentifier,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const isAuthenticated = data.isReady || data.authenticated || false
+        setWhatsappAuthenticated(isAuthenticated)
+        return isAuthenticated
+      } else {
+        setWhatsappAuthenticated(false)
+        return false
+      }
+    } catch (error) {
+      console.error('Error checking WhatsApp auth status:', error)
+      setWhatsappAuthenticated(false)
+      return false
+    } finally {
+      setWhatsappStatusLoading(false)
+    }
+  }
+
+  // Form validation function
+  const validateForm = () => {
+    const errors = []
+    
+    if (outwardItems.length === 0) {
+      errors.push('Please add at least one item to record material outward')
+    }
+    
+    if (!generalFormData.givenTo) {
+      errors.push('Please select Given To (Authority Name)')
+    }
+    
+    if (!generalFormData.description || generalFormData.description.trim() === '') {
+      errors.push('Please enter Description')
+    }
+    
+    // Check WhatsApp authentication
+    if (!whatsappAuthenticated) {
+      errors.push('WhatsApp service not available, please login')
+    }
+    
+    return errors
+  }
+
+  // Check WhatsApp status on mount
+  useEffect(() => {
+    checkWhatsAppAuthStatus()
+  }, [])
+
+  // Validate form on state changes
+  useEffect(() => {
+    const errors = validateForm()
+    setFormValidationErrors(errors)
+  }, [outwardItems, generalFormData.givenTo, generalFormData.description, whatsappAuthenticated])
+
   const handleInputChange = (field, value) => {
     // For quantity field, only allow numeric input
     if (field === 'quantity' && !validateNumericInput(value)) {
@@ -1638,6 +1716,9 @@ const KR_MaterialOutward = () => {
               />
             </div>
           </div>
+
+          {/* Form Validation Errors */}
+          <FormValidationErrors errors={formValidationErrors} />
 
           {/* Action Buttons */}
           <div className="mio-form-actions">

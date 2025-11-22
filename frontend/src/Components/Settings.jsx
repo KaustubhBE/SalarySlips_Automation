@@ -6,6 +6,7 @@ import axios from 'axios';
 import './Settings.css';
 import PasswordToggle from './Password-Toggle';
 import ConfirmModal from './ConfirmModal';
+import FormValidationErrors from './FormValidationErrors';
 
 function Settings({ onLogout }) {
   const { user } = useAuth();
@@ -255,27 +256,11 @@ function Settings({ onLogout }) {
                     placeholder="Enter new password (min 6 characters)"
                     inputProps={{ onPaste: handlePastePrevention }}
                   />
-                  {passwordValidationErrors.length > 0 && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '8px 12px',
-                      backgroundColor: '#ffebee',
-                      border: '1px solid #ffcdd2',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      color: '#c62828'
-                    }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '14px' }}>⚠️</span>
-                        <span>Password requirements:</span>
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        {passwordValidationErrors.map((error, index) => (
-                          <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <FormValidationErrors
+                    errors={passwordValidationErrors}
+                    title="Password requirements:"
+                    style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="confirm-password">Confirm New Password</label>
@@ -291,21 +276,11 @@ function Settings({ onLogout }) {
                     inputProps={{ onPaste: handlePastePrevention }}
                   />
                   {passwordMismatchError && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '8px 12px',
-                      backgroundColor: '#ffebee',
-                      border: '1px solid #ffcdd2',
-                      borderRadius: '4px',
-                      color: '#c62828',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <span style={{ fontSize: '14px' }}>⚠️</span>
-                      <span>{passwordMismatchError}</span>
-                    </div>
+                    <FormValidationErrors
+                      errors={[passwordMismatchError]}
+                      title=""
+                      style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                    />
                   )}
                 </div>
                 <div className="form-actions">

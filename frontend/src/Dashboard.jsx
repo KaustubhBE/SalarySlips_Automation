@@ -12,6 +12,7 @@ import './Dashboard.css';
 import PasswordToggle from './Components/Password-Toggle';
 import BackButton from './Components/BackButton';
 import ConfirmModal from './Components/ConfirmModal';
+import FormValidationErrors from './Components/FormValidationErrors';
 
 function Dashboard() {
   const { user: currentUser } = useAuth();
@@ -1089,27 +1090,11 @@ function Dashboard() {
                                 autoComplete="new-password"
                                 inputProps={{ onPaste: handlePastePrevention }}
                               />
-                              {passwordValidationErrors.length > 0 && (
-                                <div style={{
-                                  marginTop: '8px',
-                                  padding: '8px 12px',
-                                  backgroundColor: '#ffebee',
-                                  border: '1px solid #ffcdd2',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  color: '#c62828'
-                                }}>
-                                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                                    <span>Password requirements:</span>
-                                  </div>
-                                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                                    {passwordValidationErrors.map((error, index) => (
-                                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
+                              <FormValidationErrors
+                                errors={passwordValidationErrors}
+                                title="Password requirements:"
+                                style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                              />
                               <div style={{ marginTop: '8px' }}>
                                 <PasswordToggle
                                   id={`website-password-confirm-${user.id}`}
@@ -1134,21 +1119,11 @@ function Dashboard() {
                                   inputProps={{ onPaste: handlePastePrevention }}
                                 />
                                 {passwordMismatchError && (
-                                  <div style={{
-                                    marginTop: '8px',
-                                    padding: '8px 12px',
-                                    backgroundColor: '#ffebee',
-                                    border: '1px solid #ffcdd2',
-                                    borderRadius: '4px',
-                                    color: '#c62828',
-                                    fontSize: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                  }}>
-                                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                                    <span>{passwordMismatchError}</span>
-                                  </div>
+                                  <FormValidationErrors
+                                    errors={[passwordMismatchError]}
+                                    title=""
+                                    style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                                  />
                                 )}
                               </div>
                             </div>
@@ -1379,27 +1354,11 @@ function Dashboard() {
                                 autoComplete="new-password"
                                 inputProps={{ onPaste: handlePastePrevention }}
                               />
-                              {passwordValidationErrors.length > 0 && (
-                                <div style={{
-                                  marginTop: '8px',
-                                  padding: '8px 12px',
-                                  backgroundColor: '#ffebee',
-                                  border: '1px solid #ffcdd2',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  color: '#c62828'
-                                }}>
-                                  <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                                    <span>Password requirements:</span>
-                                  </div>
-                                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                                    {passwordValidationErrors.map((error, index) => (
-                                      <li key={index} style={{ marginBottom: '2px' }}>{error}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
+                              <FormValidationErrors
+                                errors={passwordValidationErrors}
+                                title="Password requirements:"
+                                style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                              />
                               <div style={{ marginTop: '8px' }}>
                                 <PasswordToggle
                                   id={`website-password-confirm-${user.id}`}
@@ -1424,21 +1383,11 @@ function Dashboard() {
                                   inputProps={{ onPaste: handlePastePrevention }}
                                 />
                                 {passwordMismatchError && (
-                                  <div style={{
-                                    marginTop: '8px',
-                                    padding: '8px 12px',
-                                    backgroundColor: '#ffebee',
-                                    border: '1px solid #ffcdd2',
-                                    borderRadius: '4px',
-                                    color: '#c62828',
-                                    fontSize: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                  }}>
-                                    <span style={{ fontSize: '14px' }}>⚠️</span>
-                                    <span>{passwordMismatchError}</span>
-                                  </div>
+                                  <FormValidationErrors
+                                    errors={[passwordMismatchError]}
+                                    title=""
+                                    style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px' }}
+                                  />
                                 )}
                               </div>
                             </div>
