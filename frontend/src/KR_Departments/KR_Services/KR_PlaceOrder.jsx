@@ -2431,6 +2431,7 @@ const KR_PlaceOrder = () => {
         <FormValidationErrors 
           errors={formValidationErrors} 
           checkWhatsApp={enableWhatsappNotification}
+          checkEmail={enableEmailNotification}
         />
 
         {/* Action Buttons */}

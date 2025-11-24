@@ -1704,6 +1704,7 @@ const KR_MaterialOutward = () => {
           <FormValidationErrors 
             errors={formValidationErrors} 
             checkWhatsApp={true}
+            checkEmail={true}
           />
 
           {/* Action Buttons */}

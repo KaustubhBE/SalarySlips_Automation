@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { DEFAULT_WHATSAPP_URL } from '../config';
+import { DEFAULT_WHATSAPP_URL, getApiUrl } from '../config';
 
 /**
  * FormValidationErrors Component
@@ -15,6 +15,7 @@ import { DEFAULT_WHATSAPP_URL } from '../config';
  * @param {Object} [props.style] - Optional additional inline styles
  * @param {string} [props.className] - Optional additional CSS class names
  * @param {boolean} [props.checkWhatsApp] - Optional flag to check WhatsApp authentication status (default: false)
+ * @param {boolean} [props.checkEmail] - Optional flag to check Email authentication status (default: false)
  */
 const FormValidationErrors = ({ 
   errors = [], 
@@ -22,13 +23,17 @@ const FormValidationErrors = ({
   icon = "⚠️",
   style = {},
   className = "",
-  checkWhatsApp = false
+  checkWhatsApp = false,
+  checkEmail = false
 }) => {
   const { user } = useAuth();
   const [whatsappAuthenticated, setWhatsappAuthenticated] = useState(false);
   const [whatsappStatusLoading, setWhatsappStatusLoading] = useState(false);
+  const [emailAuthenticated, setEmailAuthenticated] = useState(false);
+  const [emailStatusLoading, setEmailStatusLoading] = useState(false);
   const [allErrors, setAllErrors] = useState([]);
   const retryTimeoutRef = useRef(null);
+  const emailRetryTimeoutRef = useRef(null);
 
   // Helper function to get user identifier (same as Navbar.jsx)
   const getUserIdentifier = () => {
@@ -125,7 +130,97 @@ const FormValidationErrors = ({
     };
   }, [checkWhatsApp, user]);
 
-  // Combine errors with WhatsApp error if needed
+  // Listen for Email authentication status changes (similar to WhatsApp)
+  useEffect(() => {
+    if (!checkEmail) {
+      return;
+    }
+
+    const handleEmailStatusChange = (event) => {
+      const { isAuthenticated } = event.detail;
+      console.log('[FormValidationErrors] Received Email auth status change event:', isAuthenticated);
+      setEmailAuthenticated(isAuthenticated);
+      setEmailStatusLoading(false);
+    };
+
+    // Listen for Email status change events
+    window.addEventListener('email-auth-status-changed', handleEmailStatusChange);
+
+    return () => {
+      window.removeEventListener('email-auth-status-changed', handleEmailStatusChange);
+    };
+  }, [checkEmail]);
+
+  // Check Email authentication status on mount and when user changes
+  useEffect(() => {
+    if (!checkEmail) {
+      return;
+    }
+
+    // Clear any existing retry timeout
+    if (emailRetryTimeoutRef.current) {
+      clearTimeout(emailRetryTimeoutRef.current);
+      emailRetryTimeoutRef.current = null;
+    }
+
+    const checkEmailAuthStatus = async () => {
+      const userIdentifier = getUserIdentifier();
+      
+      if (!userIdentifier) {
+        console.warn('[FormValidationErrors] User not available yet for email check, will retry in 1 second...');
+        // Retry after a short delay if user is not available
+        emailRetryTimeoutRef.current = setTimeout(() => {
+          checkEmailAuthStatus();
+        }, 1000);
+        return;
+      }
+
+      try {
+        setEmailStatusLoading(true);
+        console.log(`[FormValidationErrors] Checking Email auth status for user: ${userIdentifier}`);
+        
+        const res = await fetch(getApiUrl('auth/google/check-credentials'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: userIdentifier })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[FormValidationErrors] Email auth status response:', data);
+          
+          // Check if credentials are valid (valid: true means authenticated)
+          const isAuthenticated = data.valid === true && data.needsAuth === false;
+          console.log(`[FormValidationErrors] Email authenticated: ${isAuthenticated} (valid: ${data.valid}, needsAuth: ${data.needsAuth})`);
+          setEmailAuthenticated(isAuthenticated);
+        } else {
+          console.warn(`[FormValidationErrors] Email status check failed with status: ${res.status}`);
+          setEmailAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('[FormValidationErrors] Error checking Email auth status:', error);
+        setEmailAuthenticated(false);
+      } finally {
+        setEmailStatusLoading(false);
+      }
+    };
+
+    // Check immediately when component mounts or when user/checkEmail changes
+    checkEmailAuthStatus();
+
+    // Cleanup function
+    return () => {
+      if (emailRetryTimeoutRef.current) {
+        clearTimeout(emailRetryTimeoutRef.current);
+        emailRetryTimeoutRef.current = null;
+      }
+    };
+  }, [checkEmail, user]);
+
+  // Combine errors with WhatsApp and Email errors if needed
   useEffect(() => {
     const combinedErrors = [...errors];
     
@@ -133,8 +228,12 @@ const FormValidationErrors = ({
       combinedErrors.push('WhatsApp service not available, please login');
     }
     
+    if (checkEmail && !emailStatusLoading && !emailAuthenticated) {
+      combinedErrors.push('Email service not available, please login');
+    }
+    
     setAllErrors(combinedErrors);
-  }, [errors, checkWhatsApp, whatsappStatusLoading, whatsappAuthenticated]);
+  }, [errors, checkWhatsApp, whatsappStatusLoading, whatsappAuthenticated, checkEmail, emailStatusLoading, emailAuthenticated]);
 
   // Don't render if there are no errors
   if (!allErrors || allErrors.length === 0) {

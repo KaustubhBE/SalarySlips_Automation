@@ -1609,6 +1609,7 @@ const KR_MaterialInward = () => {
           <FormValidationErrors 
             errors={formValidationErrors} 
             checkWhatsApp={true}
+            checkEmail={true}
           />
 
           {/* Action Buttons */}
