@@ -75,10 +75,10 @@ class WhatsAppAuth extends EventEmitter {
                         '--disable-default-apps',
                         '--disable-extensions',
                         '--disable-plugins',
-                        '--disable-sync',
+                        // Removed '--disable-sync' - allows WhatsApp Web to sync Store objects (messages, chats, contacts)
                         '--disable-translate',
-                        '--disable-background-networking',
-                        '--disable-component-extensions-with-background-pages',
+                        // Removed '--disable-background-networking' - CRITICAL: This was preventing WhatsApp Web from syncing Store objects from server
+                        // Removed '--disable-component-extensions-with-background-pages' - allows background processes needed for syncing
                         '--disable-client-side-phishing-detection',
                         '--disable-hang-monitor',
                         '--disable-prompt-on-repost',
