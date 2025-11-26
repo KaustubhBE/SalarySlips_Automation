@@ -1566,13 +1566,14 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 12px;
+    font-size: 16px;
   font-weight: bold;
   transition: all 0.3s ease;
   margin: 0 auto;
   min-width: 60px;
   height: 32px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    line-height: 1;
 }
 
 .mio-remove-item-btn:hover {

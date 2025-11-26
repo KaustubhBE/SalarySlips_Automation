@@ -8,6 +8,7 @@ import FormValidationErrors from '../../Components/FormValidationErrors'
 
 // Constants
 const IMPORTANCE_OPTIONS = ['Normal', 'Urgent']
+const TYPE_OPTIONS = ['Regular',  'Project']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
@@ -492,7 +493,7 @@ const KR_PlaceOrder = () => {
     uom: '',
     quantity: '',
     givenBy: '',
-    type: '',
+    type: TYPE_OPTIONS[0] || '',
     partyName: '',
     place: '',
     description: '',
@@ -506,7 +507,6 @@ const KR_PlaceOrder = () => {
   const [authorityNames, setAuthorityNames] = useState([])
   const [authorityLoading, setAuthorityLoading] = useState(true)
   const [authorityRecords, setAuthorityRecords] = useState([])
-  const [typeOptions, setTypeOptions] = useState([])
   const [partyNames, setPartyNames] = useState([])
   const [places, setPlaces] = useState([])
   const [partyPlaceMapping, setPartyPlaceMapping] = useState({})
@@ -630,24 +630,6 @@ const KR_PlaceOrder = () => {
           setAuthorityRecords([])
         }
 
-        // Determine type options from response
-        let derivedTypes = []
-        if (Array.isArray(types) && types.length > 0) {
-          derivedTypes = types.filter(typeValue => !!typeValue)
-        } else if (Array.isArray(records) && records.length > 0) {
-          derivedTypes = records
-            .map(record => {
-              if (!record || typeof record === 'string') return ''
-              return (
-                record.type ||
-                record.Type ||
-                record['Type'] ||
-                ''
-              )
-            })
-            .filter(typeValue => !!typeValue)
-        }
-        setTypeOptions([...new Set(derivedTypes)])
       } else {
         console.error('Failed to load authority list:', response.data.error)
       }
@@ -932,43 +914,7 @@ const KR_PlaceOrder = () => {
           quantity: ''
         }),
         // Auto-select type when Given By changes
-        ...(field === 'givenBy' && (() => {
-          if (!value) {
-            return { type: '' }
-          }
-
-          if (!Array.isArray(authorityRecords) || authorityRecords.length === 0) {
-            return {}
-          }
-
-          const matchedRecord = authorityRecords.find(record => {
-            if (!record) return false
-            if (typeof record === 'string') {
-              return record === value
-            }
-            const possibleNames = [
-              record.givenBy,
-              record.GivenBy,
-              record['Given By'],
-              record.authorityName,
-              record['Authority Name']
-            ]
-            return possibleNames.filter(Boolean).some(name => name === value)
-          })
-
-          if (matchedRecord && typeof matchedRecord === 'object') {
-            const possibleType =
-              matchedRecord.type ||
-              matchedRecord.Type ||
-              matchedRecord['Type'] ||
-              ''
-            if (possibleType) {
-              return { type: possibleType }
-            }
-          }
-
-          return {}
-        })()),
+        ...(field === 'givenBy' && !value ? { type: TYPE_OPTIONS[0] || '' } : {}),
         // Auto-select place when party name changes
         ...(field === 'partyName' && (() => {
           if (!value) {
@@ -2345,12 +2291,8 @@ const KR_PlaceOrder = () => {
               onChange={(e) => handleInputChange('type', e.target.value)}
               required
               className="po-form-select"
-              disabled={authorityLoading || typeOptions.length === 0}
             >
-              <option value="">
-                {authorityLoading ? 'Loading type options...' : typeOptions.length === 0 ? 'No type options available' : 'Select Type'}
-              </option>
-              {typeOptions.map((typeOption) => (
+              {TYPE_OPTIONS.map((typeOption) => (
                 <option key={typeOption} value={typeOption}>
                   {typeOption}
                 </option>
