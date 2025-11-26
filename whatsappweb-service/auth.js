@@ -19,7 +19,52 @@ class WhatsAppAuth extends EventEmitter {
         console.log(`Session path: ${this.sessionPath}`);
     }
 
-    // Removed cleanupCorruptedSession - cleanup only happens on server startup now
+    // Clean up corrupted session directory and Chrome lock files
+    async cleanupCorruptedSession() {
+        try {
+            console.log(`Cleaning up corrupted session for ${this.clientId}...`);
+            
+            if (!fs.existsSync(this.sessionPath)) {
+                console.log(`Session path does not exist: ${this.sessionPath}`);
+                return;
+            }
+
+            // Remove SingletonLock files that prevent Chrome from launching
+            const singletonLockPath = path.join(this.sessionPath, 'SingletonLock');
+            if (fs.existsSync(singletonLockPath)) {
+                try {
+                    fs.unlinkSync(singletonLockPath);
+                    console.log(`Removed SingletonLock file: ${singletonLockPath}`);
+                } catch (error) {
+                    console.log(`Could not remove SingletonLock (may be locked): ${error.message}`);
+                }
+            }
+
+            // Remove the entire session directory
+            try {
+                fs.rmSync(this.sessionPath, { recursive: true, force: true });
+                console.log(`Successfully removed session directory: ${this.sessionPath}`);
+            } catch (error) {
+                console.log(`Error removing session directory: ${error.message}`);
+                // Try to remove individual files if directory removal fails
+                try {
+                    const files = fs.readdirSync(this.sessionPath);
+                    for (const file of files) {
+                        const filePath = path.join(this.sessionPath, file);
+                        try {
+                            fs.unlinkSync(filePath);
+                        } catch (e) {
+                            // Ignore individual file errors
+                        }
+                    }
+                } catch (e) {
+                    console.log(`Could not clean individual files: ${e.message}`);
+                }
+            }
+        } catch (error) {
+            console.error(`Error cleaning up corrupted session for ${this.clientId}:`, error);
+        }
+    }
 
     // Removed killChromeProcesses - process cleanup only happens on server startup now
 
@@ -678,8 +723,17 @@ class WhatsAppAuth extends EventEmitter {
     async disconnect() {
         try {
             if (this.client) {
-                await this.client.destroy();
-                console.log(`WhatsApp client disconnected for ${this.clientId}`);
+                try {
+                    // Check if client has a browser instance before destroying
+                    if (this.client.pupBrowser && this.client.pupBrowser.isConnected()) {
+                        await this.client.destroy();
+                        console.log(`WhatsApp client disconnected for ${this.clientId}`);
+                    } else {
+                        console.log(`Client browser already disconnected for ${this.clientId}`);
+                    }
+                } catch (destroyError) {
+                    console.log(`Error during client destroy (may already be closed): ${destroyError.message}`);
+                }
             }
             
             this.client = null;
