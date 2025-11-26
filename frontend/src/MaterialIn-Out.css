@@ -1430,14 +1430,14 @@
 
 .mio-items-table th {
   padding: 15px 12px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   font-size: 14px;
   border-bottom: 2px solid #2980b9;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap !important;
   line-height: 1.4;
   position: relative;
   vertical-align: middle !important;
@@ -2186,6 +2186,8 @@
 .mio-items-table-container.mio-mobile-table .mio-items-table th {
   background: #f5f7fb;
   font-weight: 600;
+  text-align: center;
+  white-space: nowrap !important;
 }
 
 .mio-items-table-container.mio-mobile-table .mio-items-table th:nth-child(1),
