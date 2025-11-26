@@ -1373,17 +1373,17 @@ const KR_MaterialInward = () => {
                 </div>
               )}
               <div className="mio-form-row">
-                {/* Category - Required only if no items exist */}
+                {/* Category */}
                 <div className="mio-form-group">
-                  <label htmlFor="category" className={inwardItems.length === 0 ? "required" : ""}>
+                  <label htmlFor="category" className="required">
                     Category
                   </label>
                   <select
                     id="category"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`mio-form-select ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
+                    required
+                    className="mio-form-select"
                     disabled={dataLoading || partyLoading || placesLoading}
                   >
                     <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
@@ -1414,17 +1414,17 @@ const KR_MaterialInward = () => {
                   </select>
                 </div>
 
-                {/* Material Name - Required only if no items exist */}
+                {/* Material Name */}
                 <div className="mio-form-group">
-                  <label htmlFor="materialName" className={inwardItems.length === 0 ? "required" : ""}>
+                  <label htmlFor="materialName" className="required">
                     Material Name
                   </label>
                   <select
                     id="materialName"
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`mio-form-select ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
+                    required
+                    className="mio-form-select"
                     disabled={!formData.category || dataLoading}
                   >
                     <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -1458,9 +1458,9 @@ const KR_MaterialInward = () => {
                   </select>
                 </div>
 
-                {/* Quantity - Required only if no items exist */}
+                {/* Quantity */}
                 <div className="mio-form-group">
-                  <label htmlFor="quantity" className={inwardItems.length === 0 ? "required" : ""}>
+                  <label htmlFor="quantity" className="required">
                     Quantity
                   </label>
                   <input
@@ -1468,8 +1468,8 @@ const KR_MaterialInward = () => {
                     id="quantity"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
-                    required={inwardItems.length === 0}
-                    className={`mio-form-input mio-quantity-input ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
+                    required
+                    className="mio-form-input mio-quantity-input"
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
                     inputMode="numeric"
@@ -1477,9 +1477,9 @@ const KR_MaterialInward = () => {
                   />
                 </div>
 
-                {/* UOM - Required only if no items exist */}
+                {/* UOM */}
                 <div className="mio-form-group">
-                  <label htmlFor="uom" className={inwardItems.length === 0 ? "required" : ""}>
+                  <label htmlFor="uom" className="required">
                     UOM
                   </label>
                   <input
@@ -1487,8 +1487,8 @@ const KR_MaterialInward = () => {
                     id="uom"
                     value={formData.uom}
                     readOnly
-                    required={inwardItems.length === 0}
-                    className={`mio-form-input ${inwardItems.length > 0 ? 'mio-optional-field' : ''}`}
+                    required
+                    className="mio-form-input"
                     placeholder="UOM"
                     style={{
                       backgroundColor: '#f5f5f5',

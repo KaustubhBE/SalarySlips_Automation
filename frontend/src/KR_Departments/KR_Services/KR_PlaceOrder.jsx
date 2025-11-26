@@ -2066,15 +2066,15 @@ const KR_PlaceOrder = () => {
             <div className="po-form-row">
               {/* Category - Required only if no items exist */}
               <div className="po-form-group">
-            <label htmlFor="category" className={orderItems.length === 0 ? "required" : ""}>
+            <label htmlFor="category" className="required">
               Category
             </label>
             <select
               id="category"
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
-              required={orderItems.length === 0}
-              className={`po-form-select ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
+              required
+              className="po-form-select"
               disabled={dataLoading}
             >
               <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
@@ -2108,15 +2108,15 @@ const KR_PlaceOrder = () => {
 
           {/* Material Name - Required only if no items exist */}
           <div className="po-form-group">
-            <label htmlFor="materialName" className={orderItems.length === 0 ? "required" : ""}>
+            <label htmlFor="materialName" className="required">
               Material Name
             </label>
             <select
               id="materialName"
               value={formData.materialName}
               onChange={(e) => handleInputChange('materialName', e.target.value)}
-              required={orderItems.length === 0}
-              className={`po-form-select ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
+              required
+              className="po-form-select"
               disabled={!formData.category || dataLoading}
             >
               <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
@@ -2180,7 +2180,7 @@ const KR_PlaceOrder = () => {
 
           {/* Quantity - Required only if no items exist */}
           <div className="po-form-group">
-            <label htmlFor="quantity" className={orderItems.length === 0 ? "required" : ""}>
+            <label htmlFor="quantity" className="required">
               Quantity
             </label>
             <input
@@ -2188,8 +2188,8 @@ const KR_PlaceOrder = () => {
               id="quantity"
               value={formData.quantity}
               onChange={(e) => handleInputChange('quantity', e.target.value)}
-              required={orderItems.length === 0}
-              className={`po-form-input po-quantity-input ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
+              required
+              className="po-form-input po-quantity-input"
               placeholder="Enter quantity"
               pattern="[0-9]*"
               inputMode="numeric"
@@ -2198,7 +2198,7 @@ const KR_PlaceOrder = () => {
 
           {/* UOM - Auto-selected (Read-only) */}
           <div className="po-form-group">
-            <label htmlFor="uom" className={orderItems.length === 0 ? "required" : ""}>
+            <label htmlFor="uom" className="required">
               UOM
             </label>
             <input
@@ -2206,8 +2206,8 @@ const KR_PlaceOrder = () => {
               id="uom"
               value={formData.uom}
               readOnly
-              required={orderItems.length === 0}
-              className={`po-form-input po-readonly-input ${orderItems.length > 0 ? 'po-optional-field' : ''}`}
+              required
+              className="po-form-input po-readonly-input"
               placeholder="UOM"
             />
           </div>
@@ -2226,7 +2226,7 @@ const KR_PlaceOrder = () => {
               disabled={partyLoading}
             >
               <option value="">
-                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Preferred Vendor (Optional)'}
+                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Preferred Vendor'}
               </option>
               {partyNames.map((party) => (
                 <option key={party} value={party}>
@@ -2254,7 +2254,7 @@ const KR_PlaceOrder = () => {
                     disabled={!formData.partyName || placesLoading}
                   >
                     <option value="">
-                      {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place (Optional)'}
+                      {placesLoading ? 'Loading places...' : places.length === 0 ? 'No places available' : 'Select Place'}
                     </option>
                     {availablePlaces.map((place) => (
                       <option key={place} value={place}>
@@ -2271,7 +2271,7 @@ const KR_PlaceOrder = () => {
                     value={formData.place}
                     readOnly
                     className="po-form-input po-readonly-input"
-                    placeholder={placesLoading ? 'Loading places...' : 'Place (Optional)'}
+                    placeholder={placesLoading ? 'Loading places...' : 'Place'}
                     title={formData.partyName ? "Place is auto-selected based on preferred vendor" : "Select preferred vendor first"}
                   />
                 )
