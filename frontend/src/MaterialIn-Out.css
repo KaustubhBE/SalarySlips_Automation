@@ -1441,6 +1441,8 @@
   line-height: 1.4;
   position: relative;
   vertical-align: middle !important;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
 }
 
 /* Column width definitions - Desktop */
@@ -1502,15 +1504,19 @@
   min-width: 120px;
   max-width: 150px;
   text-align: center;
-  background-color: #f8f9fa;
   border-left: 2px solid #e9ecef;
   position: sticky;
   right: 0;
   z-index: 10;
 }
 
+.mio-items-table td:nth-child(8) {
+  background-color: #f8f9fa;
+}
+
 .mio-items-table th:nth-child(8) {
-  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
   font-weight: 700;
 }
 
@@ -2184,7 +2190,8 @@
 }
 
 .mio-items-table-container.mio-mobile-table .mio-items-table th {
-  background: #f5f7fb;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
   font-weight: 600;
   text-align: center;
   white-space: nowrap !important;
