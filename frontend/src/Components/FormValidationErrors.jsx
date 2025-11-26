@@ -24,7 +24,10 @@ const FormValidationErrors = ({
   style = {},
   className = "",
   checkWhatsApp = false,
-  checkEmail = false
+  checkEmail = false,
+  notificationSelectionRequired = false,
+  notificationSelectionMade = true,
+  onErrorsChange
 }) => {
   const { user } = useAuth();
   const [whatsappAuthenticated, setWhatsappAuthenticated] = useState(false);
@@ -231,9 +234,27 @@ const FormValidationErrors = ({
     if (checkEmail && !emailStatusLoading && !emailAuthenticated) {
       combinedErrors.push('Email service not available, please login');
     }
+
+    if (notificationSelectionRequired && !notificationSelectionMade) {
+      combinedErrors.push('No notification method selected. Please enable Email or WhatsApp notifications.');
+    }
     
     setAllErrors(combinedErrors);
-  }, [errors, checkWhatsApp, whatsappStatusLoading, whatsappAuthenticated, checkEmail, emailStatusLoading, emailAuthenticated]);
+    if (typeof onErrorsChange === 'function') {
+      onErrorsChange(combinedErrors);
+    }
+  }, [
+    errors,
+    checkWhatsApp,
+    whatsappStatusLoading,
+    whatsappAuthenticated,
+    checkEmail,
+    emailStatusLoading,
+    emailAuthenticated,
+    notificationSelectionRequired,
+    notificationSelectionMade,
+    onErrorsChange
+  ]);
 
   // Don't render if there are no errors
   if (!allErrors || allErrors.length === 0) {

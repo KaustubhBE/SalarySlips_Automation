@@ -53,6 +53,7 @@ const KR_MaterialOutward = () => {
   const [showItemsSheet, setShowItemsSheet] = useState(false)
   const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
+  const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
   const itemsSheetHistoryPushed = useRef(false)
   
   // Ref to track if component is still mounted and form is active
@@ -1705,17 +1706,24 @@ const KR_MaterialOutward = () => {
             errors={formValidationErrors} 
             checkWhatsApp={true}
             checkEmail={true}
+            onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
           />
 
           {/* Action Buttons */}
           <div className="mio-form-actions">
             <button 
               type="submit" 
-              className={`mio-submit-btn ${outwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
-              disabled={outwardItems.length === 0}
-              title={outwardItems.length === 0 ? 'Add at least one item to record outward' : 'Ready to record outward'}
+              className={`mio-submit-btn ${!formHasBlockingErrors && outwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
+              disabled={formHasBlockingErrors || outwardItems.length === 0}
+              title={
+                formHasBlockingErrors
+                  ? 'Resolve all form errors before submitting'
+                  : outwardItems.length === 0
+                    ? 'Add at least one item to record outward'
+                    : 'Ready to record outward'
+              }
             >
-              Record Outward {outwardItems.length > 0 ? '✓' : ''}
+              Record Outward {!formHasBlockingErrors && outwardItems.length > 0 ? '✓' : ''}
             </button>
             <button type="button" className="mio-reset-btn" onClick={() => {
               setOutwardItems([])

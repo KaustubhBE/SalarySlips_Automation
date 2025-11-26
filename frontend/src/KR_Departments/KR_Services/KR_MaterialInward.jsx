@@ -40,6 +40,7 @@ const KR_MaterialInward = () => {
   const [partyLoading, setPartyLoading] = useState(true)
   const [placesLoading, setPlacesLoading] = useState(true)
   const [formValidationErrors, setFormValidationErrors] = useState([])
+  const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
   
   // Helper function to get available places for a party name
   const getPlacesForParty = (partyName) => {
@@ -1610,17 +1611,24 @@ const KR_MaterialInward = () => {
             errors={formValidationErrors} 
             checkWhatsApp={true}
             checkEmail={true}
+            onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
           />
 
           {/* Action Buttons */}
           <div className="mio-form-actions">
             <button 
               type="submit" 
-              className={`mio-submit-btn ${inwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
-              disabled={inwardItems.length === 0}
-              title={inwardItems.length === 0 ? 'Add at least one item to record inward' : 'Ready to record inward'}
+              className={`mio-submit-btn ${!formHasBlockingErrors && inwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
+              disabled={formHasBlockingErrors || inwardItems.length === 0}
+              title={
+                formHasBlockingErrors
+                  ? 'Resolve all form errors before submitting'
+                  : inwardItems.length === 0
+                    ? 'Add at least one item to record inward'
+                    : 'Ready to record inward'
+              }
             >
-              Record Inward {inwardItems.length > 0 ? '✓' : ''}
+              Record Inward {!formHasBlockingErrors && inwardItems.length > 0 ? '✓' : ''}
             </button>
             <button type="button" className="mio-reset-btn" onClick={() => {
               setInwardItems([])

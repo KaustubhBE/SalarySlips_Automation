@@ -8,7 +8,7 @@ import FormValidationErrors from '../../Components/FormValidationErrors'
 
 // Constants
 const IMPORTANCE_OPTIONS = ['Normal', 'Urgent']
-const TYPE_OPTIONS = ['Regular',  'Project']
+const TYPE_OPTIONS = ['Regular', 'Project']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
@@ -542,6 +542,7 @@ const KR_PlaceOrder = () => {
   const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
+  const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
   
   // Edit functionality
   const [editingItem, setEditingItem] = useState(null)
@@ -2361,12 +2362,6 @@ const KR_PlaceOrder = () => {
               <span className="po-toggle-label">Send via WhatsApp</span>
             </div>
           </div>
-          {!enableEmailNotification && !enableWhatsappNotification && (
-            <div className="po-notification-warning">
-              <span className="po-warning-icon">⚠️</span>
-              No notification method selected. Order will be placed without sending notifications.
-            </div>
-          )}
         </div>
 
         {/* Form Validation Errors */}
@@ -2374,45 +2369,56 @@ const KR_PlaceOrder = () => {
           errors={formValidationErrors} 
           checkWhatsApp={enableWhatsappNotification}
           checkEmail={enableEmailNotification}
+          notificationSelectionRequired={true}
+          notificationSelectionMade={enableEmailNotification || enableWhatsappNotification}
+          onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
         />
 
         {/* Action Buttons */}
-        <div className="po-form-actions">
-          <button 
-            type="submit" 
-            className={`po-submit-btn ${orderItems.length > 0 && formData.givenBy && formData.type && formData.description ? 'po-ready-to-submit' : 'disabled'}`}
-            disabled={orderItems.length === 0 || !formData.givenBy || !formData.type || !formData.description}
-            title={
-              orderItems.length === 0
-                ? 'Add at least one item to place order'
-                : (!formData.givenBy || !formData.type || !formData.description)
-                  ? 'Fill in Given By, Type, and Description'
-                  : 'Ready to submit'
-            }
-          >
-            Place Order {orderItems.length > 0 && formData.givenBy && formData.type && formData.description ? '✓' : ''}
-          </button>
-          <button type="button" className="po-reset-btn" onClick={() => {
-            // Reset form but keep the same order ID
-        setFormData({
-          category: '',
-          subCategory: '',
-          materialName: '',
-          specifications: '',
-          uom: '',
-          quantity: '',
-          partyName: '',
-          place: '',
-          givenBy: '',
-          type: '',
-          description: '',
-          importance: 'Normal'
-        })
-            setOrderItems([])
-            
-            alert(`Form reset! Order ID ${orderId} remains the same.`)
-          }}>Reset</button>
-        </div>
+        {(() => {
+          const baseRequirementsMet = orderItems.length > 0 && formData.givenBy && formData.type && formData.description
+          const isSubmitDisabled = formHasBlockingErrors || !baseRequirementsMet
+          const buttonTitle = formHasBlockingErrors
+            ? 'Resolve all form errors before submitting'
+            : !orderItems.length
+              ? 'Add at least one item to place order'
+              : (!formData.givenBy || !formData.type || !formData.description)
+                ? 'Fill in Given By, Type, and Description'
+                : 'Ready to submit'
+
+          return (
+            <div className="po-form-actions">
+              <button 
+                type="submit" 
+                className={`po-submit-btn ${!isSubmitDisabled ? 'po-ready-to-submit' : 'disabled'}`}
+                disabled={isSubmitDisabled}
+                title={buttonTitle}
+              >
+                Place Order {!isSubmitDisabled ? '✓' : ''}
+              </button>
+              <button type="button" className="po-reset-btn" onClick={() => {
+                // Reset form but keep the same order ID
+                setFormData({
+                  category: '',
+                  subCategory: '',
+                  materialName: '',
+                  specifications: '',
+                  uom: '',
+                  quantity: '',
+                  partyName: '',
+                  place: '',
+                  givenBy: '',
+                  type: '',
+                  description: '',
+                  importance: 'Normal'
+                })
+                setOrderItems([])
+                
+                alert(`Form reset! Order ID ${orderId} remains the same.`)
+              }}>Reset</button>
+            </div>
+          )
+        })()}
           </div>
         </div>
       </form>
