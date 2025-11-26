@@ -1696,6 +1696,11 @@
       background: #f8f9fa;
       border-left: 1px solid #e9ecef;
     }
+    
+    .po-items-table-container.po-mobile-table .po-items-table td:nth-child(6),
+    .po-items-table-container.po-mobile-table .po-items-table td:nth-child(7) {
+      text-align: center;
+    }
   
     .po-items-table-container.po-mobile-table .po-items-table .po-remove-item-btn {
       min-width: 80px;
@@ -3139,6 +3144,12 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 4px;
+    }
+    
+    /* Center quantity & UOM values inside mobile cards */
+    .po-items-table td:nth-child(6),
+    .po-items-table td:nth-child(7) {
+      text-align: center;
     }
     
     /* Only apply extra top padding for card layout, NOT for mobile table overlay */

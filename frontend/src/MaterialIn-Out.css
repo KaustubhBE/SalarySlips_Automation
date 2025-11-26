@@ -2205,6 +2205,11 @@
   background: #f8f9fa;
 }
 
+.mio-items-table-container.mio-mobile-table .mio-items-table td:nth-child(6),
+.mio-items-table-container.mio-mobile-table .mio-items-table td:nth-child(7) {
+  text-align: center;
+}
+
 /* Items List Container */
 .mio-items-sheet-list {
   display: flex;
