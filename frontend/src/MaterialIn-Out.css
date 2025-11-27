@@ -329,6 +329,22 @@
   
   .mio-form-left-section {
     scroll-margin-top: 80px; /* Smaller offset for mobile */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Reduce top padding when mobile button is at top */
+  .mio-form-left-section:has(.mio-mobile-items-button-container) {
+    padding-top: 0;
+    margin-top: 0;
+  }
+  
+  /* Move mobile items button row to appear before category field */
+  .mio-form-left-section > .mio-form-row:has(.mio-mobile-items-button-container) {
+    order: -1;
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding-top: 0;
   }
   
   .mio-material-form-wrapper {
@@ -415,11 +431,13 @@
   .mio-added-items-top-section {
     width: 100%;
     box-sizing: border-box;
+    display: none;
+    margin: 0;
+    padding: 0;
   }
   
   .mio-added-items-top-section .mio-items-table-container {
-    width: 100%;
-    box-sizing: border-box;
+    display: none;
   }
   
   .mio-items-table-container {
@@ -1055,6 +1073,17 @@
   flex-wrap: wrap;
   min-width: 100%;
   align-items: flex-start; /* Ensure all form groups align at the top */
+}
+
+/* Reduce spacing before Add Item button */
+.mio-form-row:has(.mio-add-item-group) {
+  margin-top: -20px;
+  margin-bottom: 15px;
+}
+
+/* Reduce spacing for the row that contains Place field (comes before Add Item button) */
+.mio-form-row:has([id="place"]) {
+  margin-bottom: 10px;
 }
 
 .mio-form-group {
@@ -1974,17 +2003,48 @@
 @media (max-width: 768px) {
   .mio-mobile-items-button-container {
     display: block;
-    margin: 15px 0;
+    margin: 0 0 20px 0;
     width: 100%;
     flex: 1 1 100% !important;
     min-width: 100% !important;
     box-sizing: border-box;
+    order: -1; /* Move to top of form */
   }
   
   .mio-form-row .mio-form-group.mio-mobile-items-button-container {
     width: 100%;
     flex: 1 1 100% !important;
     min-width: 100% !important;
+    order: -1; /* Move to top of form */
+  }
+  
+  .mio-form-row:has(.mio-mobile-items-button-container) {
+    order: -1; /* Move the entire row containing the button to top */
+    margin-top: 0 !important;
+    margin-bottom: 12px;
+    padding-top: 0 !important;
+  }
+
+  .mio-mobile-items-button-container label {
+    display: none;
+    margin: 0;
+  }
+  
+  /* Reduce form top padding when mobile button is visible */
+  .mio-material-form:has(.mio-mobile-items-button-container) {
+    padding-top: 10px;
+  }
+  
+  /* Reduce form-main-content top spacing when mobile button is visible */
+  .mio-form-main-content:has(.mio-mobile-items-button-container) {
+    padding-top: 0;
+    margin-top: 0;
+  }
+  
+  /* Reduce form-section top spacing when mobile button is visible */
+  .form-section:has(.mio-mobile-items-button-container) {
+    padding-top: 0;
+    margin-top: 0;
   }
   
   .mio-desktop-table {

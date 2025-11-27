@@ -147,9 +147,25 @@
       box-sizing: border-box;
     }
     
-    .po-form-left-section {
-      scroll-margin-top: 80px; /* Smaller offset for mobile */
-    }
+  .po-form-left-section {
+    scroll-margin-top: 80px; /* Smaller offset for mobile */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Reduce top padding when mobile button is at top */
+  .po-form-left-section:has(.po-mobile-items-button-container) {
+    padding-top: 0;
+    margin-top: 0;
+  }
+  
+  /* Move mobile items button row to appear before category field */
+  .po-form-left-section > .po-form-row:has(.po-mobile-items-button-container) {
+    order: -1;
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding-top: 0;
+  }
     
     .po-form-header {
       flex-direction: column;
@@ -214,13 +230,13 @@
     .po-added-items-top-section {
       width: 100%;
       box-sizing: border-box;
+      display: none;
+      margin: 0;
+      padding: 0;
     }
     
     .po-added-items-top-section .po-items-table-container {
-      max-height: 35vh;
-      padding: 15px;
-      width: 100%;
-      box-sizing: border-box;
+      display: none;
     }
     
     .po-items-table-container {
@@ -318,6 +334,17 @@
     gap: 15px;
     margin-bottom: 30px;
     flex-wrap: wrap;
+  }
+  
+  /* Reduce spacing before Add Item button */
+  .po-form-row:has(.po-add-item-group) {
+    margin-top: -20px;
+    margin-bottom: 15px;
+  }
+  
+  /* Reduce spacing for the row that contains Place field (comes before Add Item button) */
+  .po-form-row:has([id="place"]) {
+    margin-bottom: 10px;
   }
   
   .po-form-group {
@@ -1423,21 +1450,46 @@
     display: block;
   }
   
-  /* Mobile View: Show Button, Hide Table */
-  @media (max-width: 768px) {
-    .po-mobile-items-button-container {
-      display: block;
-      margin: 15px 0;
-      width: 100%;
-      flex: 1 1 100% !important;
-      min-width: 100% !important;
-    }
-    
-    .po-form-row .po-form-group.po-mobile-items-button-container {
-      width: 100%;
-      flex: 1 1 100% !important;
-      min-width: 100% !important;
-    }
+/* Mobile View: Show Button, Hide Table */
+@media (max-width: 768px) {
+  .po-mobile-items-button-container {
+    display: block;
+    margin: 0 0 20px 0;
+    width: 100%;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+    order: -1; /* Move to top of form */
+  }
+  
+  .po-form-row .po-form-group.po-mobile-items-button-container {
+    width: 100%;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+    order: -1; /* Move to top of form */
+  }
+  
+  .po-form-row:has(.po-mobile-items-button-container) {
+    order: -1; /* Move the entire row containing the button to top */
+    margin-top: 0 !important;
+    margin-bottom: 12px;
+    padding-top: 0 !important;
+  }
+
+  .po-mobile-items-button-container label {
+    display: none;
+    margin: 0;
+  }
+  
+  /* Reduce form top padding when mobile button is visible */
+  .po-material-form:has(.po-mobile-items-button-container) {
+    padding-top: 10px;
+  }
+  
+  /* Reduce form-main-content top spacing when mobile button is visible */
+  .po-form-main-content:has(.po-mobile-items-button-container) {
+    padding-top: 0;
+    margin-top: 0;
+  }
     
     .po-desktop-table {
       display: none !important;
