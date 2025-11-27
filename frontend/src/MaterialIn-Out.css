@@ -353,7 +353,7 @@
   .mio-form-left-section > .mio-form-row:has(.mio-mobile-items-button-container) {
     order: -1;
     margin-bottom: 20px;
-    margin-top: 0;
+    margin-top: 12px;
     padding-top: 0;
   }
   
@@ -2030,7 +2030,7 @@
   
   .mio-form-row:has(.mio-mobile-items-button-container) {
     order: -1; /* Move the entire row containing the button to top */
-    margin-top: 0 !important;
+    margin-top: 12px !important;
     margin-bottom: 12px;
     padding-top: 0 !important;
   }
