@@ -580,8 +580,8 @@ function AddUser() {
 
   return (
     <div className="add-user-page-container">
+      <BackButton label="Back to Dashboard" to="/dashboard" />
       <div className="page-header">
-        <BackButton label="Back to Dashboard" to="/dashboard" />
         <h1>Add New User</h1>
       </div>
       
