@@ -1334,7 +1334,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   className="mio-remove-item-btn"
                   title="Remove item"
                 >
-                  ×
+                  Delete
                 </button>
               )}
             </td>

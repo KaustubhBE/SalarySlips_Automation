@@ -2489,25 +2489,25 @@
     border-bottom: none;
   }
   
-  .po-items-table .po-remove-item-btn {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    margin: 0 auto;
-    min-width: 55px;
-    height: 28px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-  }
+.po-items-table .po-remove-item-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  margin: 0 auto;
+  min-width: 55px;
+  height: 28px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
   
   .po-items-table .po-remove-item-btn:hover {
     background-color: #c82333;
@@ -3022,18 +3022,18 @@
     font-size: 11px;
   }
 
-  /* Make remove action button mimic the compact modal close control */
+  /* Keep mobile delete button consistent with other action buttons */
   .po-items-table .po-remove-item-btn {
-    width: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    height: 34px !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    font-size: 16px !important;
-    line-height: 34px !important;
-    background: linear-gradient(135deg, #d92d20, #b42318) !important;
-    box-shadow: 0 6px 14px rgba(217, 45, 32, 0.35) !important;
+    width: auto !important;
+    min-width: 44px !important;
+    max-width: none !important;
+    height: 30px !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    background: #dc3545 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   }
   }
   

@@ -1929,7 +1929,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   className="po-remove-item-btn"
                   title="Remove item"
                 >
-                  ×
+                  Delete
                 </button>
               )}
             </td>

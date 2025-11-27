@@ -412,6 +412,18 @@
     box-sizing: border-box;
   }
   
+  /* Center the Add Item button on mobile just like Place Order */
+  .mio-add-item-group {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .mio-add-item-btn {
+    width: 100% !important;
+    min-width: auto !important;
+    margin: 0 auto;
+  }
+  
   .mio-form-actions {
     flex-direction: column;
     gap: 12px;
@@ -1600,19 +1612,19 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-    font-size: 16px;
+  font-size: 12px;
   font-weight: bold;
   transition: all 0.3s ease;
   margin: 0 auto;
-  min-width: 60px;
-  height: 32px;
+  min-width: 55px;
+  height: 28px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    line-height: 1;
+  line-height: 1;
 }
 
 .mio-remove-item-btn:hover {
@@ -1985,16 +1997,16 @@
   }
 
   .mio-remove-item-btn {
-    width: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    height: 34px !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    font-size: 16px !important;
-    line-height: 34px !important;
-    background: linear-gradient(135deg, #d92d20, #b42318) !important;
-    box-shadow: 0 6px 14px rgba(217, 45, 32, 0.35) !important;
+    width: auto !important;
+    min-width: 44px !important;
+    max-width: none !important;
+    height: 36px !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    background: #dc3545 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   }
 }
 
