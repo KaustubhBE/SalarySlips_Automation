@@ -1,3 +1,13 @@
+:root {
+  --po-error-border: #ff4d4f;
+  --po-error-glow: rgba(255, 77, 79, 0.25);
+}
+
+.po-error-highlight {
+  border-color: var(--po-error-border) !important;
+  box-shadow: 0 0 0 2px var(--po-error-glow);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
 .po-place_order-container {
     padding: 20px;
     max-width: 1200px;

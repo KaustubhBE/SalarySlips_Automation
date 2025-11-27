@@ -1,3 +1,13 @@
+:root {
+  --mio-error-border: #ff4d4f;
+  --mio-error-glow: rgba(255, 77, 79, 0.25);
+}
+
+.mio-error-highlight {
+  border-color: var(--mio-error-border) !important;
+  box-shadow: 0 0 0 2px var(--mio-error-glow);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
 /* Material In-Out Styles */
 .mio-material_list-container {
   padding: 20px;

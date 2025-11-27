@@ -41,6 +41,19 @@ const KR_MaterialInward = () => {
   const [placesLoading, setPlacesLoading] = useState(true)
   const [formValidationErrors, setFormValidationErrors] = useState([])
   const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
+  const [highlightedFields, setHighlightedFields] = useState([])
+  const highlightTimeoutRef = useRef(null)
+  const screenFlashTimeoutRef = useRef(null)
+const categoryInputRef = useRef(null)
+const materialNameInputRef = useRef(null)
+const quantityInputRef = useRef(null)
+const uomInputRef = useRef(null)
+const addItemFieldRefs = {
+  category: categoryInputRef,
+  materialName: materialNameInputRef,
+  quantity: quantityInputRef,
+  uom: uomInputRef
+}
   
   // Helper function to get available places for a party name
   const getPlacesForParty = (partyName) => {
@@ -88,6 +101,36 @@ const KR_MaterialInward = () => {
       })
     }
   }
+
+const triggerScreenFlash = (duration = 600) => {
+  setShowScreenFlash(true)
+  if (screenFlashTimeoutRef.current) {
+    clearTimeout(screenFlashTimeoutRef.current)
+  }
+  screenFlashTimeoutRef.current = setTimeout(() => {
+    setShowScreenFlash(false)
+    screenFlashTimeoutRef.current = null
+  }, duration)
+}
+
+const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) => {
+  setHighlightedFields(fieldsToHighlight)
+
+  if (highlightTimeoutRef.current) {
+    clearTimeout(highlightTimeoutRef.current)
+  }
+  highlightTimeoutRef.current = setTimeout(() => {
+    setHighlightedFields([])
+  }, 2000)
+
+  const targetRef = addItemFieldRefs[primaryField]
+  if (targetRef?.current) {
+    targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (typeof targetRef.current.focus === 'function') {
+      targetRef.current.focus({ preventScroll: true })
+    }
+  }
+}
 
   // Helper function to get material name options based on category data structure
   const getMaterialNameOptions = (categoryData, subCategory) => {
@@ -446,18 +489,20 @@ const KR_MaterialInward = () => {
 
   // Multi-item management functions
   const handleAddItem = () => {
-    // If no fields are filled, don't add anything
-    if (!formData.category && !formData.materialName && !formData.uom && !formData.quantity) {
-      return
-    }
-    
-    // If some fields are filled but not all required ones, show validation
-    if (formData.category || formData.materialName || formData.uom || formData.quantity) {
-      if (!formData.category || !formData.materialName || !formData.uom || !formData.quantity) {
-        alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before adding an item.')
-        return
-      }
-    }
+  // Determine which required fields are missing
+  const requiredFields = [
+    { name: 'category', label: 'Category' },
+    { name: 'materialName', label: 'Material Name' },
+    { name: 'uom', label: 'UOM' },
+    { name: 'quantity', label: 'Quantity' }
+  ]
+
+  const missingFields = requiredFields.filter(field => !formData[field.name])
+  if (missingFields.length > 0) {
+    triggerScreenFlash(450)
+    focusFieldWithError(missingFields[0].name, missingFields.map(field => field.name))
+    return
+  }
 
     const newItem = {
       id: Date.now(),
@@ -482,10 +527,7 @@ const KR_MaterialInward = () => {
     }
     
     // Trigger screen flash overlay
-    setShowScreenFlash(true)
-    setTimeout(() => {
-      setShowScreenFlash(false)
-    }, 600) // Remove overlay after animation completes
+    triggerScreenFlash()
     
     // Reset only the item-specific fields after adding item
     setFormData(prev => ({
@@ -871,6 +913,17 @@ const KR_MaterialInward = () => {
       }
     }
   }, [showItemsSheet])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current)
+      }
+      if (screenFlashTimeoutRef.current) {
+        clearTimeout(screenFlashTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleInputChange = (field, value) => {
     // For quantity field, only allow numeric input
@@ -1384,8 +1437,9 @@ const KR_MaterialInward = () => {
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
                     required
-                    className="mio-form-select"
+                  className={`mio-form-select ${highlightedFields.includes('category') ? 'mio-error-highlight' : ''}`}
                     disabled={dataLoading || partyLoading || placesLoading}
+                  ref={categoryInputRef}
                   >
                     <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
                     {categories.map(category => (
@@ -1425,8 +1479,9 @@ const KR_MaterialInward = () => {
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
                     required
-                    className="mio-form-select"
+                    className={`mio-form-select ${highlightedFields.includes('materialName') ? 'mio-error-highlight' : ''}`}
                     disabled={!formData.category || dataLoading}
+                    ref={materialNameInputRef}
                   >
                     <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
                     {formData.category && getMaterialNameOptions(materialData[formData.category], formData.subCategory).map(name => (
@@ -1470,11 +1525,12 @@ const KR_MaterialInward = () => {
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
                     required
-                    className="mio-form-input mio-quantity-input"
+                    className={`mio-form-input mio-quantity-input ${highlightedFields.includes('quantity') ? 'mio-error-highlight' : ''}`}
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
                     inputMode="numeric"
                     disabled={dataLoading}
+                    ref={quantityInputRef}
                   />
                 </div>
 
@@ -1489,7 +1545,7 @@ const KR_MaterialInward = () => {
                     value={formData.uom}
                     readOnly
                     required
-                    className="mio-form-input"
+                    className={`mio-form-input ${highlightedFields.includes('uom') ? 'mio-error-highlight' : ''}`}
                     placeholder="UOM"
                     style={{
                       backgroundColor: '#f5f5f5',
@@ -1497,6 +1553,7 @@ const KR_MaterialInward = () => {
                       color: '#333'
                     }}
                     title="UOM is auto-selected based on material name"
+                    ref={uomInputRef}
                   />
                 </div>
 
