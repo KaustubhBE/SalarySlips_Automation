@@ -1698,6 +1698,14 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.mio-save-edit-btn,
+.mio-cancel-edit-btn,
+.mio-remove-item-btn {
+  word-break: normal;
+  overflow-wrap: normal;
+  min-width: 70px;
+}
+
 .mio-save-edit-btn:hover {
   background-color: #229954;
   transform: scale(1.05);
@@ -2007,6 +2015,66 @@
     line-height: 1 !important;
     background: #dc3545 !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Revert to horizontal desktop layout while editing */
+  .mio-items-table-container:has(tr.mio-editing-row) {
+    overflow-x: auto;
+    padding: 12px;
+    border: 2px solid #f39c12;
+    border-radius: 10px;
+    background: #fffdf5;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row),
+  .mio-items-table:has(tr.mio-editing-row) thead,
+  .mio-items-table:has(tr.mio-editing-row) tbody {
+    display: table !important;
+    width: auto !important;
+    min-width: 900px;
+    box-shadow: none;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) tr {
+    display: table-row !important;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) th,
+  .mio-items-table:has(tr.mio-editing-row) td {
+    display: table-cell !important;
+    padding: 10px !important;
+    border: 1px solid #d5d8dc !important;
+    text-align: left;
+    white-space: normal;
+    min-width: 220px;
+    background: white;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) td::before {
+    content: none !important;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) td:nth-child(1) {
+    position: static;
+    background: white;
+    color: inherit;
+    font-weight: 500;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) td:nth-child(8) {
+    background: #fff4df;
+  }
+
+  .mio-items-table:has(tr.mio-editing-row) select,
+  .mio-items-table:has(tr.mio-editing-row) input {
+    width: 100% !important;
+    min-width: 210px;
+    max-width: none;
+    font-size: 14px;
+    white-space: normal;
   }
 }
 

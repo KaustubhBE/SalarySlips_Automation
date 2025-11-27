@@ -2587,6 +2587,14 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
   }
+
+.po-save-edit-btn,
+.po-cancel-edit-btn,
+.po-remove-item-btn {
+  word-break: normal;
+  overflow-wrap: normal;
+  min-width: 70px;
+}
   
   .po-save-edit-btn:hover {
     background-color: #229954;
@@ -3370,6 +3378,66 @@
       background: linear-gradient(135deg, #c0392b, #a93226);
       transform: translateY(-2px);
       box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    }
+
+    /* Revert to horizontal desktop layout while editing */
+    .po-items-table-container:has(tr.po-editing-row) {
+      overflow-x: auto;
+      padding: 12px;
+      border: 2px solid #f39c12;
+      border-radius: 10px;
+      background: #fffdf5;
+    }
+
+    .po-items-table:has(tr.po-editing-row),
+    .po-items-table:has(tr.po-editing-row) thead,
+    .po-items-table:has(tr.po-editing-row) tbody {
+      display: table !important;
+      width: auto !important;
+      min-width: 900px;
+      box-shadow: none;
+    }
+
+    .po-items-table:has(tr.po-editing-row) tr {
+      display: table-row !important;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    .po-items-table:has(tr.po-editing-row) th,
+    .po-items-table:has(tr.po-editing-row) td {
+      display: table-cell !important;
+      padding: 10px !important;
+      border: 1px solid #d5d8dc !important;
+      text-align: left;
+      white-space: normal;
+      min-width: 220px;
+      background: white;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td::before {
+      content: none !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(1) {
+      position: static;
+      background: white;
+      color: inherit;
+      font-weight: 500;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(10) {
+      background: #fff4df;
+    }
+
+    .po-items-table:has(tr.po-editing-row) select,
+    .po-items-table:has(tr.po-editing-row) input {
+      width: 100% !important;
+      min-width: 210px;
+      max-width: none;
+      font-size: 14px;
+      white-space: normal;
     }
   }
   
