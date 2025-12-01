@@ -8,6 +8,9 @@ import Dashboard from './Dashboard';
 import AddUser from './AddUser';
 import Processing from './Processing';
 import Reports from './Reports';
+import SessionExpiredModal from './Components/SessionExpiredModal';
+import { useSessionExpired } from './Components/SessionExpiredContext';
+import { setSessionExpiredHandler } from './config';
 
 // Import KR Store Services components
 import KR_PlaceOrder from './KR_Departments/KR_Services/KR_PlaceOrder';
@@ -270,6 +273,14 @@ function App() {
     canAccessFactory 
   } = authContext;
   
+  // Session expired modal state
+  const { isSessionExpired, showSessionExpired, hideSessionExpired } = useSessionExpired();
+  
+  // Set up the session expired handler for axios interceptor
+  useEffect(() => {
+    setSessionExpiredHandler(showSessionExpired);
+  }, [showSessionExpired]);
+  
   // Provide a safe fallback for canAccessFactory to prevent undefined errors
   const safeCanAccessFactory = canAccessFactory || (() => false);
 
@@ -352,6 +363,12 @@ function App() {
   return (
     <div className="app-container">
       {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
+      
+      {/* Session Expired Modal */}
+      <SessionExpiredModal 
+        isOpen={isSessionExpired} 
+        onClose={hideSessionExpired} 
+      />
       
       <main className="main-content">
         <Routes>

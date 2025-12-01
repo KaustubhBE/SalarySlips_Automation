@@ -33,6 +33,48 @@ axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
 axios.defaults.timeout = 2 * 24 * 60 * 60 * 1000; // 2 days timeout
 
+// Global variable to store the session expired handler
+// This will be set by the SessionExpiredProvider
+let sessionExpiredHandler = null;
+let isSessionExpiredModalShown = false;
+
+// Function to set the session expired handler
+export const setSessionExpiredHandler = (handler) => {
+  sessionExpiredHandler = handler;
+};
+
+// Function to reset the session expired flag (called when modal is closed)
+export const resetSessionExpiredFlag = () => {
+  isSessionExpiredModalShown = false;
+};
+
+// Axios response interceptor to handle 401 errors globally
+axios.interceptors.response.use(
+  (response) => {
+    // If the response is successful, just return it
+    return response;
+  },
+  (error) => {
+    // Handle 401 Unauthorized errors
+    if (error.response && error.response.status === 401) {
+      // Only show modal if we're not already on the login page and modal is not already shown
+      if (
+        window.location.pathname !== '/login' && 
+        window.location.pathname !== '/' &&
+        !isSessionExpiredModalShown
+      ) {
+        isSessionExpiredModalShown = true;
+        // Call the session expired handler if it's set
+        if (sessionExpiredHandler && typeof sessionExpiredHandler === 'function') {
+          sessionExpiredHandler();
+        }
+      }
+    }
+    // Return the error so it can be handled by the calling code
+    return Promise.reject(error);
+  }
+);
+
 // Feature flags (optional)
 export const FEATURES = {
     ENABLE_WHATSAPP: import.meta.env.VITE_ENABLE_WHATSAPP === 'true',

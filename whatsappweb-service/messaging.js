@@ -279,7 +279,13 @@ class WhatsAppMessaging {
                     }
                 }
             } catch (contactError) {
-                console.error(`Error getting contact ${contactName}:`, contactError);
+                const contactErrorMessage = contactError?.message || contactError?.toString?.() || 'Unknown contact lookup error';
+                if (contactErrorMessage.includes('ContactMethods.getIsMyContact')) {
+                    console.warn(`WhatsApp contact lookup API is not available for ${contactName}. Proceeding with direct send.`);
+                } else {
+                    console.warn(`Unable to pre-fetch contact ${contactName}: ${contactErrorMessage}`);
+                    console.debug(contactError);
+                }
                 // Try to send message directly without contact validation
                 console.log(`Attempting to send message directly to ${formattedNumber}`);
             }

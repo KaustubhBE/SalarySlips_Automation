@@ -2954,6 +2954,8 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 "total_recipients": len(recipients),
                 "successful_deliveries": 0,
                 "failed_deliveries": 0,
+                "email_successful": 0,
+                "whatsapp_successful": 0,
                 "failed_contacts": []
             },
             "errors": [],
@@ -3257,15 +3259,25 @@ Please find the detailed order document attached."""
             country_code = recipient.get('Country Code', '91')
             
             # Format phone number
-            recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '')
+            recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '') if recipient_phone_raw else ''
+            contact_identifiers = [value for value in [recipient_email, recipient_phone] if value]
+            contact_display = " | ".join(contact_identifiers) if contact_identifiers else "N/A"
+            recipient_success = False
+            recipient_fail_reasons = []
+            channel_status = {
+                "email": {"status": "not_enabled", "reason": ""},
+                "whatsapp": {"status": "not_enabled", "reason": ""}
+            }
             
             logger.info(f"Processing recipient: {recipient_name}")
             
             # Send email
-            if send_email and recipient_email:
-                try:
-                    email_subject = f"Material Order {order_id} - {factory}"
-                    email_body = f"""
+            if send_email:
+                channel_status["email"]["status"] = "pending"
+                if recipient_email:
+                    try:
+                        email_subject = f"Material Order {order_id} - {factory}"
+                        email_body = f"""
                     <html>
                     <body>
                     <h2>Material Order Notification</h2>
@@ -3319,80 +3331,106 @@ Please find the detailed order document attached."""
                     </body>
                     </html>
                     """
-                    
-                    success = send_email_gmail_api(
-                        user_email=user_email,
-                        recipient_email=recipient_email,
-                        subject=email_subject,
-                        body=email_body,
-                        attachment_paths=[notification_file]
-                    )
-                    
-                    if success is True:
-                        result["delivery_stats"]["successful_deliveries"] += 1
-                        logger.info(f"Email sent successfully to {recipient_name} ({recipient_email})")
-                    else:
-                        result["delivery_stats"]["failed_deliveries"] += 1
-                        failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
-                        result["delivery_stats"]["failed_contacts"].append({
-                            "name": recipient_name,
-                            "contact": recipient_email,
-                            "reason": failure_reason
-                        })
-                        logger.error(f"Failed to send email to {recipient_name}: {success}")
                         
-                except Exception as e:
-                    result["delivery_stats"]["failed_deliveries"] += 1
-                    result["delivery_stats"]["failed_contacts"].append({
-                        "name": recipient_name,
-                        "contact": recipient_email,
-                        "reason": f"Exception: {str(e)}"
-                    })
-                    logger.error(f"Error sending email to {recipient_name}: {e}")
+                        success = send_email_gmail_api(
+                            user_email=user_email,
+                            recipient_email=recipient_email,
+                            subject=email_subject,
+                            body=email_body,
+                            attachment_paths=[notification_file]
+                        )
+                        
+                        if success is True:
+                            recipient_success = True
+                            channel_status["email"]["status"] = "success"
+                            result["delivery_stats"]["email_successful"] += 1
+                            logger.info(f"Email sent successfully to {recipient_name} ({recipient_email})")
+                        else:
+                            failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
+                            recipient_fail_reasons.append(failure_reason)
+                            channel_status["email"]["status"] = "failed"
+                            channel_status["email"]["reason"] = failure_reason
+                            logger.error(f"Failed to send email to {recipient_name}: {success}")
+                            
+                    except Exception as e:
+                        exception_reason = f"Email exception: {str(e)}"
+                        recipient_fail_reasons.append(exception_reason)
+                        channel_status["email"]["status"] = "failed"
+                        channel_status["email"]["reason"] = exception_reason
+                        logger.error(f"Error sending email to {recipient_name}: {e}")
+                else:
+                    no_email_reason = "Email: No recipient address provided"
+                    recipient_fail_reasons.append(no_email_reason)
+                    channel_status["email"]["status"] = "skipped"
+                    channel_status["email"]["reason"] = no_email_reason
+            else:
+                channel_status["email"]["status"] = "not_enabled"
             
             # Send WhatsApp
-            if send_whatsapp and recipient_phone_raw:
-                try:
-                    # Validate phone number
-                    if not country_code or not recipient_phone_raw.strip():
-                        result["delivery_stats"]["failed_deliveries"] += 1
-                        result["delivery_stats"]["failed_contacts"].append({
-                            "name": recipient_name,
-                            "contact": recipient_phone_raw,
-                            "reason": "Missing phone number or country code"
-                        })
-                        logger.warning(f"Skipping WhatsApp for {recipient_name}: Missing phone data")
-                        continue
-                    
-                    success = send_whatsapp_message(
-                        contact_name=recipient_name,
-                        message=notification_message,
-                        file_paths=[notification_file],
-                        whatsapp_number=recipient_phone,
-                        process_name="order_notification"
-                    )
-                    
-                    if success is True:
-                        result["delivery_stats"]["successful_deliveries"] += 1
-                        logger.info(f"WhatsApp sent successfully to {recipient_name} ({recipient_phone})")
-                    else:
-                        result["delivery_stats"]["failed_deliveries"] += 1
-                        failure_reason = f"WhatsApp error: {success}" if isinstance(success, str) else "WhatsApp send failed"
-                        result["delivery_stats"]["failed_contacts"].append({
-                            "name": recipient_name,
-                            "contact": recipient_phone,
-                            "reason": failure_reason
-                        })
-                        logger.error(f"Failed to send WhatsApp to {recipient_name}: {success}")
+            if send_whatsapp:
+                channel_status["whatsapp"]["status"] = "pending"
+                if recipient_phone_raw and country_code:
+                    try:
+                        success = send_whatsapp_message(
+                            contact_name=recipient_name,
+                            message=notification_message,
+                            file_paths=[notification_file],
+                            whatsapp_number=recipient_phone,
+                            process_name="order_notification"
+                        )
                         
-                except Exception as e:
-                    result["delivery_stats"]["failed_deliveries"] += 1
-                    result["delivery_stats"]["failed_contacts"].append({
-                        "name": recipient_name,
-                        "contact": recipient_phone,
-                        "reason": f"Exception: {str(e)}"
-                    })
-                    logger.error(f"Error sending WhatsApp to {recipient_name}: {e}")
+                        if success is True:
+                            recipient_success = True
+                            channel_status["whatsapp"]["status"] = "success"
+                            result["delivery_stats"]["whatsapp_successful"] += 1
+                            logger.info(f"WhatsApp sent successfully to {recipient_name} ({recipient_phone})")
+                        else:
+                            failure_reason = f"WhatsApp error: {success}" if isinstance(success, str) else "WhatsApp send failed"
+                            recipient_fail_reasons.append(failure_reason)
+                            channel_status["whatsapp"]["status"] = "failed"
+                            channel_status["whatsapp"]["reason"] = failure_reason
+                            logger.error(f"Failed to send WhatsApp to {recipient_name}: {success}")
+                            
+                    except Exception as e:
+                        exception_reason = f"WhatsApp exception: {str(e)}"
+                        recipient_fail_reasons.append(exception_reason)
+                        channel_status["whatsapp"]["status"] = "failed"
+                        channel_status["whatsapp"]["reason"] = exception_reason
+                        logger.error(f"Error sending WhatsApp to {recipient_name}: {e}")
+                else:
+                    whatsapp_skip_reason = "WhatsApp: Missing phone number or country code"
+                    recipient_fail_reasons.append(whatsapp_skip_reason)
+                    channel_status["whatsapp"]["status"] = "skipped"
+                    channel_status["whatsapp"]["reason"] = whatsapp_skip_reason
+            else:
+                channel_status["whatsapp"]["status"] = "not_enabled"
+            
+            # Count overall success: recipient is successful if at least one enabled channel succeeded
+            enabled_channels = [ch for ch, status in channel_status.items() if status.get("status") != "not_enabled"]
+            has_success = any(
+                channel_status[ch].get("status") == "success" 
+                for ch in enabled_channels
+            )
+            
+            if has_success:
+                result["delivery_stats"]["successful_deliveries"] += 1
+            else:
+                result["delivery_stats"]["failed_deliveries"] += 1
+
+            # Only add to failed_contacts if all enabled channels failed or were skipped
+            all_channels_failed_or_skipped = all(
+                channel_status[ch].get("status") in ("failed", "skipped")
+                for ch in enabled_channels
+            ) if enabled_channels else True
+
+            if all_channels_failed_or_skipped and not has_success:
+                reason_text = " | ".join(recipient_fail_reasons) if recipient_fail_reasons else "No delivery methods attempted"
+                result["delivery_stats"]["failed_contacts"].append({
+                    "name": recipient_name,
+                    "contact": contact_display,
+                    "reason": reason_text,
+                    "channel_status": channel_status
+                })
         
         # Clean up temporary files
         try:
@@ -3426,6 +3464,537 @@ Please find the detailed order document attached."""
                 "total_recipients": len(recipients),
                 "successful_deliveries": 0,
                 "failed_deliveries": len(recipients),
+                "email_successful": 0,
+                "whatsapp_successful": 0,
+                "failed_contacts": []
+            }
+        }
+
+def process_material_notification(material_data, notification_type, recipients, method, factory, template_path, output_dir, user_email, logger, send_whatsapp_message):
+    """
+    Process material inward/outward notification by creating a formatted document and sending via email/WhatsApp
+    """
+    try:
+        from docx.shared import Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+        
+        # Initialize result tracking
+        result = {
+            "success": False,
+            "message": "",
+            "delivery_stats": {
+                "total_recipients": len(recipients),
+                "successful_deliveries": 0,
+                "failed_deliveries": 0,
+                "email_successful": 0,
+                "whatsapp_successful": 0,
+                "failed_contacts": []
+            },
+            "errors": [],
+            "warnings": []
+        }
+        
+        # Determine notification type details
+        is_inward = notification_type == 'material_inward'
+        notification_title = "Material Inward" if is_inward else "Material Outward"
+        logger.info(f"Processing {notification_title} notification for Factory: {factory}")
+        logger.info(f"Recipients count: {len(recipients)}, Method: {method}")
+        
+        # Create document
+        doc = None
+        try:
+            if template_path and os.path.exists(template_path):
+                logger.info(f"Attempting to use template: {template_path}")
+                doc = Document(template_path)
+                logger.info(f"Template loaded successfully: {template_path}")
+            else:
+                logger.info("Template not found, creating new document")
+                doc = Document()
+        except Exception as e:
+            logger.warning(f"Error loading template, falling back to new document: {e}")
+            try:
+                doc = Document()
+                logger.info("Fallback: Created new document successfully")
+            except Exception as e2:
+                logger.error(f"Error creating new document: {e2}")
+                raise
+        
+        if doc is None:
+            raise Exception("Failed to create document")
+        
+        # Add title
+        try:
+            title_para = doc.add_paragraph()
+            title_run = title_para.add_run(f"📦 {notification_title} - {factory}")
+            title_run.bold = True
+            title_run.font.size = Pt(18)
+            title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        except Exception as e:
+            logger.error(f"Error adding title paragraph: {e}")
+            raise
+        
+        doc.add_paragraph()  # Spacing
+        
+        # Prepare material details data
+        if is_inward:
+            details_data = [
+                ("Date & Time", material_data.get('dateTime', 'N/A')),
+                ("Party Name", material_data.get('partyName', 'N/A')),
+                ("Place", material_data.get('place', 'N/A')),
+            ]
+        else:  # outward
+            details_data = [
+                ("Date & Time", material_data.get('dateTime', 'N/A')),
+                ("Given To", material_data.get('givenTo', 'N/A')),
+                ("Description", material_data.get('description', 'N/A')),
+            ]
+        
+        # Create Details Table
+        try:
+            details_heading = doc.add_paragraph(f"{notification_title} Details")
+            details_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in details_heading.runs:
+                run.bold = True
+                run.font.size = Pt(12)
+            
+            details_table = doc.add_table(rows=len(details_data), cols=2)
+            details_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Add details
+            for i, (label, value) in enumerate(details_data):
+                row = details_table.rows[i]
+                cells = row.cells
+                cells[0].text = label
+                cells[1].text = str(value)
+            
+            # Format cells
+            for i, (label, value) in enumerate(details_data):
+                row = details_table.rows[i]
+                cells = row.cells
+                for cell in cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.bold = True
+                            run.font.size = Pt(10)
+            
+            # Apply professional formatting
+            try:
+                format_table_professional(details_table, is_header=False, logger=logger)
+            except Exception as e:
+                logger.warning(f"Could not apply professional formatting to details table: {e}")
+            
+        except Exception as e:
+            logger.error(f"Error creating details table: {e}")
+            raise
+        
+        doc.add_paragraph()  # Spacing
+        
+        # Create Items Table
+        items_heading = doc.add_paragraph(f"{notification_title} Items")
+        items_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        for run in items_heading.runs:
+            run.bold = True
+            run.font.size = Pt(12)
+        
+        # Get items based on type
+        items = material_data.get('inwardItems', []) if is_inward else material_data.get('outwardItems', [])
+        
+        if items:
+            # Create table with headers
+            items_table = doc.add_table(rows=1, cols=7)
+            items_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Add header row
+            header_cells = items_table.rows[0].cells
+            headers = ['S.No', 'Category', 'Sub Category', 'Material Name', 'Specifications', 'Quantity', 'UOM']
+            for i, header_text in enumerate(headers):
+                header_cells[i].text = header_text
+                header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in header_cells[i].paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.bold = True
+                        run.font.size = Pt(11)
+            
+            # Add data rows
+            for idx, item in enumerate(items, 1):
+                row = items_table.add_row()
+                cells = row.cells
+                
+                cells[0].text = str(idx)
+                cells[1].text = item.get('category', '')
+                cells[2].text = item.get('subCategory', '-')
+                cells[3].text = item.get('materialName', '')
+                cells[4].text = item.get('specifications', '-')
+                cells[5].text = str(item.get('quantity', ''))
+                cells[6].text = item.get('uom', '')
+                
+                # Format cells
+                for i, cell in enumerate(cells):
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        if i == 0:  # S.No
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        elif i in [5, 6]:  # Quantity and UOM
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        else:
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        
+                        for run in paragraph.runs:
+                            run.font.size = Pt(10)
+            
+            # Apply professional formatting
+            try:
+                format_table_professional(items_table, is_header=True, logger=logger)
+            except Exception as e:
+                logger.warning(f"Could not apply professional formatting to items table: {e}")
+        
+        # Add quantity updates if available
+        quantity_updates = material_data.get('quantityUpdates', [])
+        if quantity_updates:
+            doc.add_paragraph()  # Spacing
+            qty_heading = doc.add_paragraph("Quantity Updates")
+            qty_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in qty_heading.runs:
+                run.bold = True
+                run.font.size = Pt(12)
+            
+            qty_table = doc.add_table(rows=1, cols=4)
+            qty_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Add header row
+            qty_header_cells = qty_table.rows[0].cells
+            qty_headers = ['Material', 'Previous', 'New', 'Change']
+            for i, header_text in enumerate(qty_headers):
+                qty_header_cells[i].text = header_text
+                qty_header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in qty_header_cells[i].paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.bold = True
+                        run.font.size = Pt(11)
+            
+            # Add data rows
+            for update in quantity_updates:
+                row = qty_table.add_row()
+                cells = row.cells
+                
+                cells[0].text = update.get('material', '')
+                cells[1].text = str(update.get('previous', ''))
+                cells[2].text = str(update.get('new', ''))
+                change_label = f"+{update.get('added', '')}" if is_inward else f"-{update.get('removed', '')}"
+                cells[3].text = change_label
+                
+                # Format cells
+                for i, cell in enumerate(cells):
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.font.size = Pt(10)
+            
+            # Apply professional formatting
+            try:
+                format_table_professional(qty_table, is_header=True, logger=logger)
+            except Exception as e:
+                logger.warning(f"Could not apply professional formatting to quantity table: {e}")
+        
+        # Add footer
+        doc.add_paragraph()
+        footer = doc.add_paragraph(f"Generated by Bajaj Earths - {factory} Store")
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in footer.runs:
+            run.font.size = Pt(9)
+            run.font.italic = True
+        
+        # Save document
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        docx_filename = f"{notification_type}_{factory}_{timestamp_str}.docx"
+        docx_path = os.path.join(output_dir, docx_filename)
+        doc.save(docx_path)
+        
+        logger.info(f"{notification_title} document created: {docx_path}")
+        
+        # Convert to PDF
+        pdf_filename = f"{notification_type}_{factory}_{timestamp_str}.pdf"
+        pdf_path = os.path.join(output_dir, pdf_filename)
+        
+        pdf_created = False
+        if convert_docx_to_pdf(docx_path, pdf_path):
+            logger.info(f"Successfully converted to PDF: {pdf_path}")
+            pdf_created = True
+            notification_file = pdf_path
+        else:
+            logger.warning("PDF conversion failed, using DOCX file")
+            result["warnings"].append("PDF conversion failed, using DOCX file")
+            notification_file = docx_path
+        
+        # Prepare notification message
+        if is_inward:
+            notification_message = f"""📥 *Material Inward Notification*
+
+*Factory:* {factory}
+*Date & Time:* {material_data.get('dateTime', 'N/A')}
+*Party Name:* {material_data.get('partyName', 'N/A')}
+*Place:* {material_data.get('place', 'N/A')}
+
+*Total Items:* {len(items)}
+
+Please find the detailed inward document attached."""
+        else:
+            notification_message = f"""📤 *Material Outward Notification*
+
+*Factory:* {factory}
+*Date & Time:* {material_data.get('dateTime', 'N/A')}
+*Given To:* {material_data.get('givenTo', 'N/A')}
+
+*Description:*
+{material_data.get('description', 'N/A')}
+
+*Total Items:* {len(items)}
+
+Please find the detailed outward document attached."""
+        
+        # Send notifications to recipients
+        send_email = method in ['email', 'both']
+        send_whatsapp = method in ['whatsapp', 'both']
+        
+        for recipient in recipients:
+            recipient_name = recipient.get('Name', 'Unknown')
+            recipient_email = recipient.get('Email ID - To', '').strip()
+            recipient_phone_raw = recipient.get('Contact No.', '').strip()
+            country_code = recipient.get('Country Code', '91').strip() or '91'
+            
+            # Format phone number
+            recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '') if recipient_phone_raw else ''
+            contact_identifiers = [value for value in [recipient_email, recipient_phone] if value]
+            contact_display = " | ".join(contact_identifiers) if contact_identifiers else "N/A"
+            recipient_success = False
+            recipient_fail_reasons = []
+            channel_status = {
+                "email": {"status": "not_enabled", "reason": ""},
+                "whatsapp": {"status": "not_enabled", "reason": ""}
+            }
+            
+            logger.info(f"Processing recipient: {recipient_name}")
+            
+            # Send email
+            if send_email:
+                channel_status["email"]["status"] = "pending"
+                if recipient_email:
+                    try:
+                        email_subject = f"{notification_title} - {factory}"
+                        if is_inward:
+                            email_body = f"""
+                        <html>
+                        <body>
+                        <h2>Material Inward Notification</h2>
+                        <p>Dear <b>{recipient_name}</b>,</p>
+                        <p>New material inward has been recorded. Please find the details below:</p>
+                        
+                        <table style="border-collapse: collapse; margin: 20px 0;">
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{factory}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date & Time:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('dateTime', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Party Name:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('partyName', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('place', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{len(items)}</td>
+                            </tr>
+                        </table>
+                        
+                        <p>Please find the detailed inward document attached.</p>
+                        
+                        <p>Best regards,<br>Bajaj Earths - {factory} Store</p>
+                        </body>
+                        </html>
+                        """
+                        else:
+                            email_body = f"""
+                        <html>
+                        <body>
+                        <h2>Material Outward Notification</h2>
+                        <p>Dear <b>{recipient_name}</b>,</p>
+                        <p>New material outward has been recorded. Please find the details below:</p>
+                        
+                        <table style="border-collapse: collapse; margin: 20px 0;">
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{factory}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date & Time:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('dateTime', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given To:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('givenTo', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Description:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{material_data.get('description', 'N/A')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items:</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{len(items)}</td>
+                            </tr>
+                        </table>
+                        
+                        <p>Please find the detailed outward document attached.</p>
+                        
+                        <p>Best regards,<br>Bajaj Earths - {factory} Store</p>
+                        </body>
+                        </html>
+                        """
+                        
+                        success = send_email_gmail_api(
+                            user_email=user_email,
+                            recipient_email=recipient_email,
+                            subject=email_subject,
+                            body=email_body,
+                            attachment_paths=[notification_file]
+                        )
+                        
+                        if success is True:
+                            recipient_success = True
+                            channel_status["email"]["status"] = "success"
+                            result["delivery_stats"]["email_successful"] += 1
+                            logger.info(f"Email sent successfully to {recipient_name} ({recipient_email})")
+                        else:
+                            failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
+                            recipient_fail_reasons.append(failure_reason)
+                            channel_status["email"]["status"] = "failed"
+                            channel_status["email"]["reason"] = failure_reason
+                            logger.error(f"Failed to send email to {recipient_name}: {success}")
+                            
+                    except Exception as e:
+                        exception_reason = f"Email exception: {str(e)}"
+                        recipient_fail_reasons.append(exception_reason)
+                        channel_status["email"]["status"] = "failed"
+                        channel_status["email"]["reason"] = exception_reason
+                        logger.error(f"Error sending email to {recipient_name}: {e}")
+                else:
+                    no_email_reason = "Email: No recipient address provided"
+                    recipient_fail_reasons.append(no_email_reason)
+                    channel_status["email"]["status"] = "skipped"
+                    channel_status["email"]["reason"] = no_email_reason
+            else:
+                channel_status["email"]["status"] = "not_enabled"
+            
+            # Send WhatsApp
+            if send_whatsapp:
+                channel_status["whatsapp"]["status"] = "pending"
+                if recipient_phone_raw and country_code:
+                    try:
+                        success = send_whatsapp_message(
+                            contact_name=recipient_name,
+                            message=notification_message,
+                            file_paths=[notification_file],
+                            whatsapp_number=recipient_phone,
+                            process_name="material_notification"
+                        )
+                        
+                        if success is True:
+                            recipient_success = True
+                            channel_status["whatsapp"]["status"] = "success"
+                            result["delivery_stats"]["whatsapp_successful"] += 1
+                            logger.info(f"WhatsApp sent successfully to {recipient_name} ({recipient_phone})")
+                        else:
+                            failure_reason = f"WhatsApp error: {success}" if isinstance(success, str) else "WhatsApp send failed"
+                            recipient_fail_reasons.append(failure_reason)
+                            channel_status["whatsapp"]["status"] = "failed"
+                            channel_status["whatsapp"]["reason"] = failure_reason
+                            logger.error(f"Failed to send WhatsApp to {recipient_name}: {success}")
+                            
+                    except Exception as e:
+                        exception_reason = f"WhatsApp exception: {str(e)}"
+                        recipient_fail_reasons.append(exception_reason)
+                        channel_status["whatsapp"]["status"] = "failed"
+                        channel_status["whatsapp"]["reason"] = exception_reason
+                        logger.error(f"Error sending WhatsApp to {recipient_name}: {e}")
+                else:
+                    whatsapp_skip_reason = "WhatsApp: Missing phone number or country code"
+                    recipient_fail_reasons.append(whatsapp_skip_reason)
+                    channel_status["whatsapp"]["status"] = "skipped"
+                    channel_status["whatsapp"]["reason"] = whatsapp_skip_reason
+            else:
+                channel_status["whatsapp"]["status"] = "not_enabled"
+            
+            # Count overall success: recipient is successful if at least one enabled channel succeeded
+            enabled_channels = [ch for ch, status in channel_status.items() if status.get("status") != "not_enabled"]
+            has_success = any(
+                channel_status[ch].get("status") == "success" 
+                for ch in enabled_channels
+            )
+            
+            if has_success:
+                result["delivery_stats"]["successful_deliveries"] += 1
+            else:
+                result["delivery_stats"]["failed_deliveries"] += 1
+
+            # Only add to failed_contacts if all enabled channels failed or were skipped
+            all_channels_failed_or_skipped = all(
+                channel_status[ch].get("status") in ("failed", "skipped")
+                for ch in enabled_channels
+            ) if enabled_channels else True
+
+            if all_channels_failed_or_skipped and not has_success:
+                reason_text = " | ".join(recipient_fail_reasons) if recipient_fail_reasons else "No delivery methods attempted"
+                result["delivery_stats"]["failed_contacts"].append({
+                    "name": recipient_name,
+                    "contact": contact_display,
+                    "reason": reason_text,
+                    "channel_status": channel_status
+                })
+        
+        # Clean up temporary files
+        try:
+            if pdf_created and os.path.exists(docx_path):
+                os.remove(docx_path)
+                logger.info(f"Cleaned up temporary DOCX: {docx_path}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up DOCX file: {e}")
+        
+        # Set final status
+        successful = result["delivery_stats"]["successful_deliveries"]
+        total = result["delivery_stats"]["total_recipients"]
+        
+        if successful > 0:
+            result["success"] = True
+            result["message"] = f"Notifications sent successfully to {successful}/{total} recipients"
+        else:
+            result["message"] = "Failed to send notifications to any recipients"
+        
+        logger.info(f"{notification_title} notification processing completed: {successful}/{total} successful")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in process_material_notification: {e}")
+        return {
+            "success": False,
+            "message": f"Error processing material notification: {str(e)}",
+            "errors": [str(e)],
+            "delivery_stats": {
+                "total_recipients": len(recipients),
+                "successful_deliveries": 0,
+                "failed_deliveries": len(recipients),
+                "email_successful": 0,
+                "whatsapp_successful": 0,
                 "failed_contacts": []
             }
         }

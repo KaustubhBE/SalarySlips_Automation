@@ -169,7 +169,21 @@ class WhatsAppServer {
 
         this.app.get('/status', async (req, res) => {
             try {
-                const svc = await this.getServiceForRequest(req);
+                // Status checks should NOT create new services - only check existing ones
+                const key = this.getServiceKey(req);
+                const svc = await sessionManager.getServiceForClientIfExists(key);
+                
+                if (!svc) {
+                    // No service exists yet - return not ready status without creating service
+                    return res.json({
+                        isReady: false,
+                        authenticated: false,
+                        status: 'not_initialized',
+                        hasQR: false,
+                        qr: ''
+                    });
+                }
+                
                 const status = await svc.getCurrentStatus();
                 
                 res.json({
@@ -189,7 +203,22 @@ class WhatsAppServer {
         // Alias for /status to match frontend expectations
         this.app.get('/api/whatsapp-status', async (req, res) => {
             try {
-                const svc = await this.getServiceForRequest(req);
+                // Status checks should NOT create new services - only check existing ones
+                const key = this.getServiceKey(req);
+                const svc = await sessionManager.getServiceForClientIfExists(key);
+                
+                if (!svc) {
+                    // No service exists yet - return not ready status without creating service
+                    return res.json({
+                        isReady: false,
+                        authenticated: false,
+                        status: 'not_initialized',
+                        hasQR: false,
+                        qr: '',
+                        connectionStatus: { connected: false, reason: 'Not initialized' }
+                    });
+                }
+                
                 const status = await svc.getCurrentStatus();
                 const connectionStatus = await svc.checkConnectionStatus();
                 
@@ -211,7 +240,21 @@ class WhatsAppServer {
         // QR code endpoint
         this.app.get('/api/qr', async (req, res) => {
             try {
-                const svc = await this.getServiceForRequest(req);
+                // QR checks should NOT create new services - only check existing ones
+                const key = this.getServiceKey(req);
+                const svc = await sessionManager.getServiceForClientIfExists(key);
+                
+                if (!svc) {
+                    // No service exists yet - return no QR without creating service
+                    return res.json({ 
+                        success: true, 
+                        data: { qr: '' }, 
+                        qr: '',
+                        isReady: false,
+                        authenticated: false
+                    });
+                }
+                
                 const qr = svc.currentQR || '';
                 res.json({ 
                     success: true, 
@@ -231,7 +274,18 @@ class WhatsAppServer {
 
         this.app.get('/auth-status', async (req, res) => {
             try {
-                const svc = await this.getServiceForRequest(req);
+                // Auth status checks should NOT create new services - only check existing ones
+                const key = this.getServiceKey(req);
+                const svc = await sessionManager.getServiceForClientIfExists(key);
+                
+                if (!svc) {
+                    // No service exists yet - return not authenticated
+                    return res.json({
+                        authenticated: false,
+                        userInfo: null
+                    });
+                }
+                
                 const status = await svc.getCurrentStatus();
                         
                 if (status.isReady && status.authenticated) {
@@ -460,15 +514,10 @@ class WhatsAppServer {
             } catch (error) {
                 console.error('Error in /send-message:', error);
                 res.status(500).json({ success: false, error: error.message });
-            } finally {
-                // Get user email for cleanup
-                const userEmail = req.headers['x-user-email'] || req.body?.user_email || req.body?.email;
-                if (userEmail) {
-                    this.cleanUserUploads(userEmail);
-                } else {
-                    this.cleanUploads(); // Fallback to legacy cleanup
-                }
             }
+            // Note: Cleanup removed from /send-message endpoint to support multiple sequential calls
+            // Files are stored in user-specific directories and should be cleaned up by the backend
+            // after all recipients are processed, or use /send-bulk endpoint which handles cleanup
         });
 
         this.app.post('/send-bulk', this.upload.array('files'), async (req, res) => {

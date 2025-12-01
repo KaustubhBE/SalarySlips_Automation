@@ -54,6 +54,37 @@ class WhatsAppSessionManager {
         return this.createNewSessionWithLock(sanitizedClientId);
     }
 
+    // Get service only if it exists - don't create new one (for status checks)
+    async getServiceForClientIfExists(clientId) {
+        const sanitizedClientId = this.sanitizeClientId(clientId);
+        
+        // Check if we have an active session
+        if (this.sessions.has(sanitizedClientId)) {
+            const session = this.sessions.get(sanitizedClientId);
+            
+            // Check if session is still valid
+            if (this.isSessionValid(session)) {
+                session.lastAccessed = Date.now();
+                return this.serviceInstances.get(sanitizedClientId);
+            }
+        }
+        
+        // If creation is in progress, wait for it
+        if (this.creationLocks.has(sanitizedClientId)) {
+            console.log(`Session creation already in progress for ${sanitizedClientId}, waiting...`);
+            try {
+                return await this.creationLocks.get(sanitizedClientId);
+            } catch (error) {
+                // If creation failed, return null
+                return null;
+            }
+        }
+        
+        // Return existing service if available (even if expired), but don't create new one
+        const existingService = this.serviceInstances.get(sanitizedClientId);
+        return existingService || null;
+    }
+
     async createNewSessionWithLock(clientId) {
         // Create a promise for the session creation
         const creationPromise = this._createNewSession(clientId);

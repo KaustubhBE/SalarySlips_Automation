@@ -2793,7 +2793,6 @@ def material_inward():
         )
         
         # Debug: Let's also check all materials in the database to see what exists
-        from Utils.firebase_utils import db
         factory_ref = db.collection('MATERIAL').document(factory)
         factory_doc = factory_ref.get()
         if factory_doc.exists:
@@ -2807,7 +2806,6 @@ def material_inward():
         if not material_check['success']:
             logger.info(f"Material not found, creating new material: {data['materialName']}")
             # Create new material with initial quantity 0
-            from Utils.firebase_utils import db
             factory_ref = db.collection('MATERIAL').document(factory)
             factory_doc = factory_ref.get()
             
@@ -3028,8 +3026,6 @@ def add_material():
         # Get factory from data or default to KR
         factory = data.get('department', 'KR')
         
-        from Utils.firebase_utils import db
-        from firebase_admin import firestore
         
         # Get initial quantity
         initial_qty = float(data.get('initialQuantity', 0))
@@ -3706,7 +3702,7 @@ def get_next_order_id_endpoint():
 
 @app.route("/api/send_order_notification", methods=["POST"])
 def send_order_notification():
-    """Send order notification via email and/or WhatsApp"""
+    """Send order notification via email and/or WhatsApp (supports orders, material inward, and material outward)"""
     try:
         if 'user' not in session:
             return jsonify({"error": "Not logged in"}), 401
@@ -3716,10 +3712,17 @@ def send_order_notification():
             return jsonify({"error": "No user email found"}), 400
         
         data = request.get_json()
-        logger.info(f"Received order notification request: {data}")
+        logger.info(f"Received notification request: {data}")
         
-        # Validate required fields
-        required_fields = ['orderId', 'orderData', 'method', 'factory']
+        # Check notification type
+        notification_type = data.get('type', 'order')  # 'order', 'material_inward', 'material_outward'
+        
+        # Validate required fields based on type
+        if notification_type == 'order':
+            required_fields = ['orderId', 'orderData', 'method', 'factory']
+        else:  # material_inward or material_outward
+            required_fields = ['orderData', 'method', 'factory']
+        
         for field in required_fields:
             if field not in data:
                 return jsonify({
@@ -3727,7 +3730,7 @@ def send_order_notification():
                     "message": f"Missing required field: {field}"
                 }), 400
         
-        order_id = data.get('orderId')
+        order_id = data.get('orderId')  # Optional for material inward/outward
         order_data = data.get('orderData')
         recipients = data.get('recipients', [])
         method = data.get('method')  # 'email', 'whatsapp', or 'both'
@@ -3803,22 +3806,43 @@ def send_order_notification():
             logger.warning("Reactor report template not found, will create basic document")
             template_path = None
         
-        # Import the order notification processing function
-        from Utils.process_utils import process_order_notification
+        # Import notification processing functions
+        from Utils.process_utils import process_order_notification, process_material_notification
         
-        # Process and send order notification
-        result = process_order_notification(
-            order_id=order_id,
-            order_data=order_data,
-            recipients=recipients,
-            method=method,
-            factory=factory,
-            template_path=template_path,
-            output_dir=temp_dir,
-            user_email=user_email,
-            logger=logger,
-            send_whatsapp_message=send_whatsapp_message
-        )
+        # Process and send notification based on type
+        if notification_type == 'order':
+            # Process order notification
+            result = process_order_notification(
+                order_id=order_id,
+                order_data=order_data,
+                recipients=recipients,
+                method=method,
+                factory=factory,
+                template_path=template_path,
+                output_dir=temp_dir,
+                user_email=user_email,
+                logger=logger,
+                send_whatsapp_message=send_whatsapp_message
+            )
+        elif notification_type in ['material_inward', 'material_outward']:
+            # Process material inward/outward notification
+            result = process_material_notification(
+                material_data=order_data,
+                notification_type=notification_type,
+                recipients=recipients,
+                method=method,
+                factory=factory,
+                template_path=template_path,
+                output_dir=temp_dir,
+                user_email=user_email,
+                logger=logger,
+                send_whatsapp_message=send_whatsapp_message
+            )
+        else:
+            return jsonify({
+                "success": False,
+                "message": f"Invalid notification type: {notification_type}"
+            }), 400
         
         # Clean up user-specific temporary directory
         from Utils.temp_manager import cleanup_user_temp_dir

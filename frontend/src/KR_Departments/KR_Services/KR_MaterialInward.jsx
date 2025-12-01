@@ -4,6 +4,8 @@ import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../MaterialIn-Out.css'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
+import LoadingSpinner from '../../LoadingSpinner'
+import NotificationSummaryModal from '../../Components/NotificationSummaryModal'
 
 // Constants
 const LONG_PRESS_DURATION = 500 // 500ms for long press
@@ -42,6 +44,19 @@ const KR_MaterialInward = () => {
   const [formValidationErrors, setFormValidationErrors] = useState([])
   const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
   const [highlightedFields, setHighlightedFields] = useState([])
+  
+  // Recipients functionality
+  const [recipients, setRecipients] = useState([])
+  const [recipientsLoading, setRecipientsLoading] = useState(true)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [selectedRecipients, setSelectedRecipients] = useState([])
+  const [notificationMethod, setNotificationMethod] = useState('both') // 'email', 'whatsapp', 'both'
+  const [sendingNotification, setSendingNotification] = useState(false)
+  const [lastSubmittedData, setLastSubmittedData] = useState(null)
+  const [enableEmailNotification, setEnableEmailNotification] = useState(true)
+  const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
+  const [summaryModalData, setSummaryModalData] = useState(null)
   const highlightTimeoutRef = useRef(null)
   const screenFlashTimeoutRef = useRef(null)
 const categoryInputRef = useRef(null)
@@ -115,13 +130,6 @@ const triggerScreenFlash = (duration = 600) => {
 
 const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) => {
   setHighlightedFields(fieldsToHighlight)
-
-  if (highlightTimeoutRef.current) {
-    clearTimeout(highlightTimeoutRef.current)
-  }
-  highlightTimeoutRef.current = setTimeout(() => {
-    setHighlightedFields([])
-  }, 2000)
 
   const targetRef = addItemFieldRefs[primaryField]
   if (targetRef?.current) {
@@ -455,6 +463,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           ...prev,
           uom: material.uom
         }))
+        // Clear UOM highlight when it's auto-filled
+        setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
         console.log('UOM updated to:', material.uom)
       } else {
         console.warn('Material not found in database for UOM fetch:', response.data.message)
@@ -478,6 +488,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               ...prev,
               uom: material.uom
             }))
+            // Clear UOM highlight when it's auto-filled
+            setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
             console.log('UOM updated to (without specs):', material.uom)
           }
         }
@@ -707,6 +719,113 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     setEditFormData({})
   }
 
+  // Handle recipient selection
+  const handleRecipientToggle = (recipient) => {
+    setSelectedRecipients(prev => {
+      const isSelected = prev.some(r => r['Email ID - To'] === recipient['Email ID - To'])
+      if (isSelected) {
+        return prev.filter(r => r['Email ID - To'] !== recipient['Email ID - To'])
+      } else {
+        return [...prev, recipient]
+      }
+    })
+  }
+
+  // Select/Deselect all recipients
+  const handleSelectAllRecipients = () => {
+    if (selectedRecipients.length === recipients.length) {
+      setSelectedRecipients([])
+    } else {
+      setSelectedRecipients([...recipients])
+    }
+  }
+
+  // Send notifications
+  const handleSendNotifications = async () => {
+    if (selectedRecipients.length === 0) {
+      alert('Please select at least one recipient')
+      return
+    }
+
+    if (!lastSubmittedData) {
+      alert('No data found. Please try again.')
+      return
+    }
+
+    try {
+      setSendingNotification(true)
+      
+      // Get sheet ID from PLANT_DATA
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      const notificationData = {
+        orderData: lastSubmittedData,
+        recipients: selectedRecipients,
+        method: notificationMethod,
+        factory: 'KR',
+        autoSend: false, // Manual send with selected recipients
+        sheetId: sheetId, // Send sheet ID to backend
+        sheetName: 'Recipents List', // Send sheet name to backend
+        type: 'material_inward' // Specify the type
+      }
+
+      const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
+
+      if (response.data.success) {
+        const contextDetails = buildInwardSummaryContext(lastSubmittedData)
+        showDetailedLogReport(response.data, contextDetails)
+        alert('Notifications sent successfully!')
+        setShowNotificationModal(false)
+        setSelectedRecipients([])
+        setLastSubmittedData(null)
+      } else {
+        alert(`Failed to send notifications: ${response.data.message}`)
+      }
+    } catch (error) {
+      console.error('Error sending notifications:', error)
+      alert(`Error sending notifications: ${error.response?.data?.message || error.message}`)
+    } finally {
+      setSendingNotification(false)
+    }
+  }
+
+  // Close notification modal
+  const handleCloseNotificationModal = () => {
+    setShowNotificationModal(false)
+    setSelectedRecipients([])
+    setLastSubmittedData(null)
+  }
+
+  const buildInwardSummaryContext = (data) => {
+    if (!data) {
+      return []
+    }
+    const rows = [
+      { label: 'Party Name', value: data.partyName },
+      { label: 'Place', value: data.place },
+      { label: 'Items Count', value: data.inwardItems?.length },
+      { label: 'Recorded At', value: data.dateTime ? new Date(data.dateTime).toLocaleString() : null }
+    ]
+    return rows.filter(row => row.value)
+  }
+
+  const openSummaryModal = (stats, contextDetails = []) => {
+    setSummaryModalData({ stats, contextDetails })
+    setShowSummaryModal(true)
+  }
+
+  const handleCloseSummaryModal = () => {
+    setShowSummaryModal(false)
+    setSummaryModalData(null)
+  }
+
+  // Show detailed log report
+  const showDetailedLogReport = (result, contextDetails = []) => {
+    const stats = result.delivery_stats || {}
+    openSummaryModal(stats, contextDetails)
+  }
+
   // Helper function to render dropdown input field
   const renderDropdownInput = (field, label, required = false, options = []) => {
     const value = formData[field]
@@ -743,6 +862,39 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         </select>
       </div>
     )
+  }
+
+  // Fetch recipients list data from Google Sheets
+  const fetchRecipientsList = async () => {
+    try {
+      setRecipientsLoading(true)
+      // Find the Kerur plant data to get the sheet ID
+      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+      const sheetId = kerurPlant?.material_sheet_id
+      
+      if (!sheetId) {
+        console.error('No sheet ID found for Kerur plant')
+        return
+      }
+      
+      const response = await axios.get(getApiUrl('get_recipients_list'), {
+        params: { 
+          factory: 'KR',
+          sheet_name: 'Recipents List',
+          sheet_id: sheetId
+        }
+      })
+      
+      if (response.data.success) {
+        setRecipients(response.data.data)
+      } else {
+        console.error('Failed to load recipients list:', response.data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching recipients list:', error)
+    } finally {
+      setRecipientsLoading(false)
+    }
   }
 
   // Fetch party and place data with mapping from Google Sheets
@@ -830,6 +982,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
     fetchMaterialData()
     fetchPartyPlaceData()
+    fetchRecipientsList()
   }, [])
 
   // Show alert popup when message is set
@@ -916,9 +1069,6 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
   useEffect(() => {
     return () => {
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current)
-      }
       if (screenFlashTimeoutRef.current) {
         clearTimeout(screenFlashTimeoutRef.current)
       }
@@ -929,6 +1079,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     // For quantity field, only allow numeric input
     if (field === 'quantity' && !validateNumericInput(value)) {
       return // Don't update if input is not numeric
+    }
+    
+    // Clear highlight for this field if it now has a value
+    if (value && highlightedFields.includes(field)) {
+      setHighlightedFields(prev => prev.filter(f => f !== field))
     }
     
     setFormData(prev => {
@@ -1105,6 +1260,69 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         
         setMessage(successMsg)
         setMessageType('success')
+        
+        // Prepare data for notification
+        const notificationData = {
+          inwardItems,
+          partyName: generalFormData.partyName,
+          place: generalFormData.place,
+          dateTime: new Date().toISOString(),
+          quantityUpdates
+        }
+        
+        // Determine notification method
+        const bothEnabled = enableEmailNotification && enableWhatsappNotification
+        const emailOnly = enableEmailNotification && !enableWhatsappNotification
+        const whatsappOnly = !enableEmailNotification && enableWhatsappNotification
+        
+        // If both notifications are enabled, auto-send to all recipients
+        if (bothEnabled) {
+          try {
+            console.log('Auto-sending notifications to all recipients from Google Sheets...')
+            
+            // Get sheet ID and sheet name from PLANT_DATA
+            const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
+            const sheetId = kerurPlant?.material_sheet_id
+            
+            if (!sheetId) {
+              console.error('No sheet ID found for Kerur plant configuration')
+            } else {
+              // Send notifications automatically - backend will fetch all recipients from Google Sheets
+              const autoNotificationData = {
+                orderData: notificationData,
+                recipients: [], // Empty array - backend will fetch from Google Sheets
+                method: 'both',
+                factory: 'KR',
+                autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
+                sheetId: sheetId, // Send sheet ID to backend
+                sheetName: 'Recipents List', // Send sheet name to backend
+                type: 'material_inward' // Specify the type
+              }
+              
+              const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
+              
+              if (notifResponse.data.success) {
+                const contextDetails = buildInwardSummaryContext(notificationData)
+                showDetailedLogReport(notifResponse.data, contextDetails)
+              } else {
+                console.error('Notifications failed:', notifResponse.data.message)
+              }
+            }
+          } catch (notifError) {
+            console.error('Error sending auto-notifications:', notifError)
+          }
+        } 
+        // If only one notification method is enabled, show modal for recipient selection
+        else if (emailOnly || whatsappOnly) {
+          // Save data for notification modal
+          setLastSubmittedData(notificationData)
+          
+          // Set notification method based on toggles
+          setNotificationMethod(emailOnly ? 'email' : 'whatsapp')
+          
+          setShowNotificationModal(true)
+        }
+        
         setInwardItems([])
         setFormData({
           category: '',
@@ -1360,7 +1578,9 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   }
 
   return (
-    <div className="place_order-container">
+    <>
+      {(loading || sendingNotification) && <LoadingSpinner />}
+      <div className="place_order-container">
       {/* Screen Flash Overlay */}
       {showScreenFlash && <div className="mio-screen-flash-overlay" />}
       
@@ -1436,7 +1656,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="category"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
-                    required
+                    required={inwardItems.length === 0}
                   className={`mio-form-select ${highlightedFields.includes('category') ? 'mio-error-highlight' : ''}`}
                     disabled={dataLoading || partyLoading || placesLoading}
                   ref={categoryInputRef}
@@ -1478,7 +1698,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="materialName"
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
-                    required
+                    required={inwardItems.length === 0}
                     className={`mio-form-select ${highlightedFields.includes('materialName') ? 'mio-error-highlight' : ''}`}
                     disabled={!formData.category || dataLoading}
                     ref={materialNameInputRef}
@@ -1524,7 +1744,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="quantity"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
-                    required
+                    required={inwardItems.length === 0}
                     className={`mio-form-input mio-quantity-input ${highlightedFields.includes('quantity') ? 'mio-error-highlight' : ''}`}
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
@@ -1544,7 +1764,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="uom"
                     value={formData.uom}
                     readOnly
-                    required
+                    required={inwardItems.length === 0}
                     className={`mio-form-input ${highlightedFields.includes('uom') ? 'mio-error-highlight' : ''}`}
                     placeholder="UOM"
                     style={{
@@ -1663,11 +1883,43 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </div>
           </div>
 
+          {/* Notification Settings */}
+          <div className="po-notification-section">
+            <h2>Notification Methods</h2>
+            <div className="po-toggle-container">
+              <div className="po-toggle-item">
+                <label className="po-toggle">
+                  <input
+                    type="checkbox"
+                    checked={enableEmailNotification}
+                    onChange={(e) => setEnableEmailNotification(e.target.checked)}
+                  />
+                  <span className="po-toggle-slider"></span>
+                </label>
+                <span className="po-toggle-label">Send via Email</span>
+              </div>
+
+              <div className="po-toggle-item">
+                <label className="po-toggle">
+                  <input
+                    type="checkbox"
+                    checked={enableWhatsappNotification}
+                    onChange={(e) => setEnableWhatsappNotification(e.target.checked)}
+                  />
+                  <span className="po-toggle-slider"></span>
+                </label>
+                <span className="po-toggle-label">Send via WhatsApp</span>
+              </div>
+            </div>
+          </div>
+
           {/* Form Validation Errors */}
           <FormValidationErrors 
             errors={formValidationErrors} 
-            checkWhatsApp={true}
-            checkEmail={true}
+            checkWhatsApp={enableWhatsappNotification}
+            checkEmail={enableEmailNotification}
+            notificationSelectionRequired={true}
+            notificationSelectionMade={enableEmailNotification || enableWhatsappNotification}
             onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
           />
 
@@ -1706,7 +1958,142 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
         </form>
       </div>
-    </div>
+
+      {/* Notification Modal */}
+      {showNotificationModal && (
+        <div className="po-notification-modal-overlay">
+          <div className="po-notification-modal">
+            <div className="po-notification-modal-header">
+              <h3>Send Material Inward Notification</h3>
+              <button 
+                className="po-modal-close-btn"
+                onClick={handleCloseNotificationModal}
+                title="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="po-notification-modal-body">
+              <div className="po-order-summary">
+                <h4>Inward Summary</h4>
+                <div className="po-summary-item">
+                  <strong>Party Name:</strong> {lastSubmittedData?.partyName}
+                </div>
+                <div className="po-summary-item">
+                  <strong>Place:</strong> {lastSubmittedData?.place}
+                </div>
+                <div className="po-summary-item">
+                  <strong>Date & Time:</strong> {lastSubmittedData?.dateTime ? new Date(lastSubmittedData.dateTime).toLocaleString() : ''}
+                </div>
+                <div className="po-summary-item">
+                  <strong>Items Count:</strong> {lastSubmittedData?.inwardItems?.length || 0}
+                </div>
+              </div>
+
+              <div className="po-notification-method-section">
+                <h4>Notification Method</h4>
+                <div className="po-notification-method-display">
+                  {notificationMethod === 'both' && (
+                    <div className="po-method-badge po-both">
+                      <span>📧</span> Email & <span>📱</span> WhatsApp
+                    </div>
+                  )}
+                  {notificationMethod === 'email' && (
+                    <div className="po-method-badge po-email">
+                      <span>📧</span> Email Only
+                    </div>
+                  )}
+                  {notificationMethod === 'whatsapp' && (
+                    <div className="po-method-badge po-whatsapp">
+                      <span>📱</span> WhatsApp Only
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="po-recipients-section">
+                <div className="po-recipients-header">
+                  <h4>Select Recipients</h4>
+                  <button 
+                    className="po-select-all-btn"
+                    onClick={handleSelectAllRecipients}
+                    type="button"
+                  >
+                    {selectedRecipients.length === recipients.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+
+                {recipientsLoading ? (
+                  <div className="po-recipients-loading">
+                    <p>Loading recipients...</p>
+                  </div>
+                ) : recipients.length === 0 ? (
+                  <div className="po-recipients-empty">
+                    <p>No recipients found</p>
+                  </div>
+                ) : (
+                  <div className="po-recipients-list">
+                    {recipients.map((recipient, index) => (
+                      <label key={index} className="po-recipient-item">
+                        <input
+                          type="checkbox"
+                          checked={selectedRecipients.some(r => r['Email ID - To'] === recipient['Email ID - To'])}
+                          onChange={() => handleRecipientToggle(recipient)}
+                        />
+                        <div className="po-recipient-info">
+                          <div className="po-recipient-name">{recipient.Name}</div>
+                          {recipient['Email ID - To'] && (
+                            <div className="po-recipient-detail">
+                              <span className="po-recipient-icon">📧</span>
+                              {recipient['Email ID - To']}
+                            </div>
+                          )}
+                          {recipient['Contact No.'] && (
+                            <div className="po-recipient-detail">
+                              <span className="po-recipient-icon">📱</span>
+                              {recipient['Contact No.']}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="po-selected-count">
+                Selected: {selectedRecipients.length} of {recipients.length} recipients
+              </div>
+            </div>
+
+            <div className="po-notification-modal-footer">
+              <button
+                className="po-send-notification-btn"
+                onClick={handleSendNotifications}
+                disabled={sendingNotification || selectedRecipients.length === 0}
+              >
+                {sendingNotification ? 'Sending...' : 'Send Notifications'}
+              </button>
+              <button
+                className="po-skip-notification-btn"
+                onClick={handleCloseNotificationModal}
+                disabled={sendingNotification}
+              >
+                Skip for Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+      <NotificationSummaryModal
+        isOpen={showSummaryModal}
+        onClose={handleCloseSummaryModal}
+        stats={summaryModalData?.stats}
+        contextDetails={summaryModalData?.contextDetails}
+      />
+    </>
   )
 }
 

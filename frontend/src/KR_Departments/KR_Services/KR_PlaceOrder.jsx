@@ -5,6 +5,7 @@ import '../../PlaceOrder.css'
 import LoadingSpinner from '../../LoadingSpinner'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
+import NotificationSummaryModal from '../../Components/NotificationSummaryModal'
 
 // Constants
 const IMPORTANCE_OPTIONS = ['Normal', 'Urgent']
@@ -540,6 +541,8 @@ const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [lastSubmittedOrderData, setLastSubmittedOrderData] = useState(null)
   const [enableEmailNotification, setEnableEmailNotification] = useState(true)
   const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
+  const [summaryModalData, setSummaryModalData] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
   const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
@@ -602,13 +605,6 @@ const triggerScreenFlash = (duration = 600) => {
 
 const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) => {
   setHighlightedFields(fieldsToHighlight)
-
-  if (highlightTimeoutRef.current) {
-    clearTimeout(highlightTimeoutRef.current)
-  }
-  highlightTimeoutRef.current = setTimeout(() => {
-    setHighlightedFields([])
-  }, 2000)
 
   const targetRef = addItemFieldRefs[primaryField]
   if (targetRef?.current) {
@@ -923,9 +919,6 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
   useEffect(() => {
     return () => {
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current)
-      }
       if (screenFlashTimeoutRef.current) {
         clearTimeout(screenFlashTimeoutRef.current)
       }
@@ -936,6 +929,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     // For quantity field, only allow numeric input
     if (field === 'quantity' && !validateNumericInput(value)) {
       return // Don't update if input is not numeric
+    }
+    
+    // Clear highlight for this field if it now has a value
+    if (value && highlightedFields.includes(field)) {
+      setHighlightedFields(prev => prev.filter(f => f !== field))
     }
     
     setFormData(prev => {
@@ -1025,6 +1023,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     ...prev,
                     uom: backendUom
                   }))
+                  // Clear UOM highlight when it's auto-filled
+                  setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
                 }
               })
             }, 100)
@@ -1047,6 +1047,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 ...prev,
                 uom: backendUom
               }))
+              // Clear UOM highlight when it's auto-filled
+              setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
             }
           })
         }, 100)
@@ -1396,8 +1398,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
 
       if (response.data.success) {
-        // Show detailed log report
-        showDetailedLogReport(response.data)
+        const contextDetails = buildOrderSummaryContext(
+          lastSubmittedOrderId,
+          lastSubmittedOrderData
+        )
+        showDetailedLogReport(response.data, contextDetails)
         alert('Notifications sent successfully!')
         setShowNotificationModal(false)
         setSelectedRecipients([])
@@ -1428,23 +1433,37 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     setOrderId('')
   }
 
+  const buildOrderSummaryContext = (id, data) => {
+    if (!data && !id) {
+      return []
+    }
+    const rows = [
+      { label: 'Order ID', value: id },
+      { label: 'Given By', value: data?.givenBy },
+      { label: 'Type', value: data?.type },
+      { label: 'Importance', value: data?.importance },
+      { label: 'Description', value: data?.description }
+    ]
+    return rows.filter(row => row.value)
+  }
+
+  const openSummaryModal = (stats, contextDetails = []) => {
+    setSummaryModalData({
+      stats,
+      contextDetails
+    })
+    setShowSummaryModal(true)
+  }
+
+  const handleCloseSummaryModal = () => {
+    setShowSummaryModal(false)
+    setSummaryModalData(null)
+  }
+
   // Show detailed log report similar to KR_ReactorReports
-  const showDetailedLogReport = (result) => {
-    const stats = result.delivery_stats || {};
-    
-    // Create simple alert message with basic stats
-    const totalRecipients = stats.total_recipients || 0;
-    const successfulDeliveries = stats.successful_deliveries || 0;
-    const failedDeliveries = stats.failed_deliveries || 0;
-    
-    const alertMessage = `📊 Delivery Summary:
-    
-📋 Total contacts: ${totalRecipients}
-✅ Successful messages: ${successfulDeliveries}
-❌ Failed messages: ${failedDeliveries}
-📊 Success rate: ${totalRecipients > 0 ? ((successfulDeliveries / totalRecipients) * 100).toFixed(1) : 0}%`;
-    
-    alert(alertMessage);
+  const showDetailedLogReport = (result, contextDetails = []) => {
+    const stats = result.delivery_stats || {}
+    openSummaryModal(stats, contextDetails)
   }
 
   const handleSubmit = async (e) => {
@@ -1544,7 +1563,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           uom: '',
           quantity: '',
           givenBy: '',
-          type: '',
+          type: TYPE_OPTIONS[0] || '',
           partyName: '',
           place: '',
           description: '',
@@ -1589,8 +1608,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
             
             if (notifResponse.data.success) {
-              // Show detailed log report
-              showDetailedLogReport(notifResponse.data)
+              const contextDetails = buildOrderSummaryContext(
+                orderId,
+                notificationOrderData
+              )
+              showDetailedLogReport(notifResponse.data, contextDetails)
               alert(`✅ Order ${orderId} Submitted Successfully!\n\nThe order has been placed and all recipients have been notified.`)
             } else {
               alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, notifications failed:\n${notifResponse.data.message}`)
@@ -2073,7 +2095,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               id="category"
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
-              required
+              required={orderItems.length === 0}
               className={`po-form-select ${highlightedFields.includes('category') ? 'po-error-highlight' : ''}`}
               disabled={dataLoading}
               ref={categoryInputRef}
@@ -2116,7 +2138,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               id="materialName"
               value={formData.materialName}
               onChange={(e) => handleInputChange('materialName', e.target.value)}
-              required
+              required={orderItems.length === 0}
               className={`po-form-select ${highlightedFields.includes('materialName') ? 'po-error-highlight' : ''}`}
               disabled={!formData.category || dataLoading}
               ref={materialNameInputRef}
@@ -2190,7 +2212,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               id="quantity"
               value={formData.quantity}
               onChange={(e) => handleInputChange('quantity', e.target.value)}
-              required
+              required={orderItems.length === 0}
               className={`po-form-input po-quantity-input ${highlightedFields.includes('quantity') ? 'po-error-highlight' : ''}`}
               placeholder="Enter quantity"
               pattern="[0-9]*"
@@ -2209,7 +2231,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               id="uom"
               value={formData.uom}
               readOnly
-              required
+              required={orderItems.length === 0}
               className={`po-form-input po-readonly-input ${highlightedFields.includes('uom') ? 'po-error-highlight' : ''}`}
               placeholder="UOM"
               ref={uomInputRef}
@@ -2465,7 +2487,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   partyName: '',
                   place: '',
                   givenBy: '',
-                  type: '',
+                  type: TYPE_OPTIONS[0] || '',
                   description: '',
                   importance: 'Normal'
                 })
@@ -2613,6 +2635,12 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
         </div>
       )}
+      <NotificationSummaryModal
+        isOpen={showSummaryModal}
+        onClose={handleCloseSummaryModal}
+        stats={summaryModalData?.stats}
+        contextDetails={summaryModalData?.contextDetails}
+      />
     </div>
   )
 }

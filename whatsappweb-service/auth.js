@@ -19,7 +19,6 @@ class WhatsAppAuth extends EventEmitter {
         console.log(`Session path: ${this.sessionPath}`);
     }
 
-    // Clean up corrupted session directory and Chrome lock files
     async cleanupCorruptedSession() {
         try {
             console.log(`Cleaning up corrupted session for ${this.clientId}...`);
@@ -29,18 +28,6 @@ class WhatsAppAuth extends EventEmitter {
                 return;
             }
 
-            // Remove SingletonLock files that prevent Chrome from launching
-            const singletonLockPath = path.join(this.sessionPath, 'SingletonLock');
-            if (fs.existsSync(singletonLockPath)) {
-                try {
-                    fs.unlinkSync(singletonLockPath);
-                    console.log(`Removed SingletonLock file: ${singletonLockPath}`);
-                } catch (error) {
-                    console.log(`Could not remove SingletonLock (may be locked): ${error.message}`);
-                }
-            }
-
-            // Remove the entire session directory
             try {
                 fs.rmSync(this.sessionPath, { recursive: true, force: true });
                 console.log(`Successfully removed session directory: ${this.sessionPath}`);
@@ -52,10 +39,21 @@ class WhatsAppAuth extends EventEmitter {
                     for (const file of files) {
                         const filePath = path.join(this.sessionPath, file);
                         try {
-                            fs.unlinkSync(filePath);
+                            if (fs.statSync(filePath).isDirectory()) {
+                                fs.rmSync(filePath, { recursive: true, force: true });
+                            } else {
+                                fs.unlinkSync(filePath);
+                            }
                         } catch (e) {
                             // Ignore individual file errors
                         }
+                    }
+                    // Try to remove directory again after cleaning files
+                    try {
+                        fs.rmdirSync(this.sessionPath);
+                        console.log(`Successfully removed session directory after file cleanup: ${this.sessionPath}`);
+                    } catch (e) {
+                        console.log(`Could not remove directory after file cleanup: ${e.message}`);
                     }
                 } catch (e) {
                     console.log(`Could not clean individual files: ${e.message}`);
@@ -120,10 +118,10 @@ class WhatsAppAuth extends EventEmitter {
                         '--disable-default-apps',
                         '--disable-extensions',
                         '--disable-plugins',
-                        // Removed '--disable-sync' - allows WhatsApp Web to sync Store objects (messages, chats, contacts)
+                        '--disable-sync',
                         '--disable-translate',
-                        // Removed '--disable-background-networking' - CRITICAL: This was preventing WhatsApp Web from syncing Store objects from server
-                        // Removed '--disable-component-extensions-with-background-pages' - allows background processes needed for syncing
+                        '--disable-background-networking',
+                        '--disable-component-extensions-with-background-pages',
                         '--disable-client-side-phishing-detection',
                         '--disable-hang-monitor',
                         '--disable-prompt-on-repost',
@@ -723,17 +721,8 @@ class WhatsAppAuth extends EventEmitter {
     async disconnect() {
         try {
             if (this.client) {
-                try {
-                    // Check if client has a browser instance before destroying
-                    if (this.client.pupBrowser && this.client.pupBrowser.isConnected()) {
-                        await this.client.destroy();
-                        console.log(`WhatsApp client disconnected for ${this.clientId}`);
-                    } else {
-                        console.log(`Client browser already disconnected for ${this.clientId}`);
-                    }
-                } catch (destroyError) {
-                    console.log(`Error during client destroy (may already be closed): ${destroyError.message}`);
-                }
+                await this.client.destroy();
+                console.log(`WhatsApp client disconnected for ${this.clientId}`);
             }
             
             this.client = null;

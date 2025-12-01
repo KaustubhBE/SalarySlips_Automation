@@ -65,12 +65,20 @@ class WhatsAppService {
         try {
             console.log(`Auto-initializing WhatsApp service for clientId: ${this.clientId}`);
             // Don't await - make it non-blocking
-            this.authClient.initialize().then(() => {
-                this.syncAuthState();
-                console.log(`Auto-initialization completed for clientId: ${this.clientId}`);
-            }).catch((error) => {
-                console.error(`Auto-initialization failed for clientId: ${this.clientId}:`, error);
-            });
+            // Add a small delay to prevent conflicts with manual initialization requests
+            setTimeout(() => {
+                this.authClient.initialize().then(() => {
+                    this.syncAuthState();
+                    console.log(`Auto-initialization completed for clientId: ${this.clientId}`);
+                }).catch((error) => {
+                    // Only log if it's not a SingletonLock error (which is expected during concurrent init)
+                    if (!error.message || !error.message.includes('SingletonLock')) {
+                        console.error(`Auto-initialization failed for clientId: ${this.clientId}:`, error);
+                    } else {
+                        console.log(`Auto-initialization skipped for clientId: ${this.clientId} (concurrent initialization in progress)`);
+                    }
+                });
+            }, 1000); // 1 second delay to allow manual initialization to proceed first
         } catch (error) {
             console.error(`Auto-initialization setup failed for clientId: ${this.clientId}:`, error);
         }
