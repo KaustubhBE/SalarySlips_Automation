@@ -3627,24 +3627,272 @@ Please find the detailed order document attached."""
         send_email = method in ['email', 'both']
         send_whatsapp = method in ['whatsapp', 'both']
         
+        # ============================================
+        # EMAIL: Collect all recipients for single email send
+        # ============================================
+        if send_email:
+            logger.info("=" * 60)
+            logger.info("Collecting all email addresses for single email send")
+            logger.info("=" * 60)
+            
+            # Helper function to clean and split emails
+            def clean_and_split_emails(email_str):
+                """Clean email string and return list of individual emails"""
+                if not email_str or not email_str.strip():
+                    return []
+                import re
+                emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
+                return emails
+            
+            # Collect all email addresses
+            all_to_emails = set()  # Use set to automatically deduplicate
+            all_cc_emails = set()
+            all_bcc_emails = set()
+            recipients_with_no_email = []
+            
+            for recipient in recipients:
+                recipient_name = recipient.get('Name', 'Unknown')
+                recipient_to = recipient.get('Email ID - To', '').strip()
+                recipient_cc = recipient.get('Email ID - CC', '').strip()
+                recipient_bcc = recipient.get('Email ID - BCC', '').strip()
+                
+                logger.info(f"Processing recipient for email collection: {recipient_name}")
+                logger.info(f"  Email ID - To: '{recipient_to}' (present: {bool(recipient_to)})")
+                logger.info(f"  Email ID - CC: '{recipient_cc}' (present: {bool(recipient_cc)})")
+                logger.info(f"  Email ID - BCC: '{recipient_bcc}' (present: {bool(recipient_bcc)})")
+                
+                # Collect To emails
+                if recipient_to:
+                    to_emails = clean_and_split_emails(recipient_to)
+                    all_to_emails.update(to_emails)
+                    logger.info(f"  Added {len(to_emails)} To email(s)")
+                
+                # Collect CC emails
+                if recipient_cc:
+                    cc_emails = clean_and_split_emails(recipient_cc)
+                    all_cc_emails.update(cc_emails)
+                    logger.info(f"  Added {len(cc_emails)} CC email(s)")
+                
+                # Collect BCC emails
+                if recipient_bcc:
+                    bcc_emails = clean_and_split_emails(recipient_bcc)
+                    all_bcc_emails.update(bcc_emails)
+                    logger.info(f"  Added {len(bcc_emails)} BCC email(s)")
+                
+                # Track recipients with no email addresses
+                if not recipient_to and not recipient_cc and not recipient_bcc:
+                    recipients_with_no_email.append(recipient_name)
+                    logger.warning(f"  ⚠ No email addresses found for {recipient_name}")
+            
+            # Convert sets to sorted lists for consistent ordering
+            all_to_emails_list = sorted(list(all_to_emails))
+            all_cc_emails_list = sorted(list(all_cc_emails))
+            all_bcc_emails_list = sorted(list(all_bcc_emails))
+            
+            logger.info("=" * 60)
+            logger.info("Email Collection Summary:")
+            logger.info(f"  Total To emails: {len(all_to_emails_list)}")
+            logger.info(f"  Total CC emails: {len(all_cc_emails_list)}")
+            logger.info(f"  Total BCC emails: {len(all_bcc_emails_list)}")
+            logger.info(f"  Recipients with no email: {len(recipients_with_no_email)}")
+            if recipients_with_no_email:
+                logger.warning(f"  Recipients without email: {', '.join(recipients_with_no_email)}")
+            logger.info("=" * 60)
+            
+            # Handle case where no To addresses exist but CC/BCC exists
+            # Gmail API requires a To address, so use sender's email as To
+            final_to_emails = all_to_emails_list
+            if not all_to_emails_list and (all_cc_emails_list or all_bcc_emails_list):
+                final_to_emails = [user_email]
+                logger.warning(f"No To addresses found, using sender's email ({user_email}) as To address")
+                logger.info(f"CC emails will remain in CC: {len(all_cc_emails_list)} email(s)")
+                logger.info(f"BCC emails will remain in BCC: {len(all_bcc_emails_list)} email(s)")
+            
+            # Check if we have any email addresses to send to
+            has_any_email = bool(final_to_emails) or bool(all_cc_emails_list) or bool(all_bcc_emails_list)
+            
+            if has_any_email:
+                # Prepare email content (same for all recipients)
+                email_subject = f"New Material Indent Raised - {order_data.get('givenBy', 'N/A')} - {order_id}"
+                
+                # Parse dateTime to extract separate date and time
+                date_time_str = order_data.get('dateTime', '')
+                date_value = 'N/A'
+                time_value = 'N/A'
+                
+                if date_time_str:
+                    try:
+                        # Format: "DD/MM/YYYY, HH:MM AM/PM" (e.g., "03/12/2025, 06:10 PM")
+                        parts = date_time_str.split(',')
+                        if len(parts) >= 2:
+                            date_value = parts[0].strip()  # Extract date part: "DD/MM/YYYY"
+                            time_value = parts[1].strip()  # Extract time part: "HH:MM AM/PM"
+                    except Exception as e:
+                        logger.warning(f"Error parsing dateTime '{date_time_str}': {e}. Using fallback.")
+                        # Fallback to current date/time if parsing fails
+                        now = datetime.now()
+                        date_value = now.strftime("%d/%m/%Y")
+                        time_value = now.strftime("%I:%M %p")
+                else:
+                    # If dateTime is missing, use current date/time
+                    now = datetime.now()
+                    date_value = now.strftime("%d/%m/%Y")
+                    time_value = now.strftime("%I:%M %p")
+                
+                email_body = f"""
+                    <html>
+                    <body>
+                    <p>Dear Sir/Ma'am,</p>
+                    <p>A new indent has been raised for your review and further processing.</p>
+                    Please find the details below:
+                    
+                    <br><p></p>
+                    <b style="font-size: 1.1rem;">Indent Details</b>
+                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
+                        <tr style="text-align: center;">
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Time</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Description</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{date_value}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{time_value}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{factory}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_id}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('givenBy', 'N/A')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('type', 'N/A')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('importance', 'Normal')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{len(order_items)}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('description', 'N/A')}</td>
+                        </tr>
+                    </table>
+                    <br><p></p>
+                    
+                    <b style="font-size: 1.1rem;">Item Details</b>
+                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
+                        <tr style="text-align: center;">
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>S.No</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Category</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sub Category</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Material Name</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Particulars</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Quantity</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>UOM</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Preferred Vendor</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place</strong></td>
+                        </tr>
+                        {items_table_rows_html}
+                    </table>
+                    
+                    <br><p></p>
+                    Please find the detailed order document attached.
+                    
+                    <br><br><p></p>
+                    Best Regards,<br>{order_data.get('givenBy', 'N/A')} <br> {designation}
+                    </body>
+                    </html>
+                    """
+                
+                # Prepare comma-separated email strings
+                to_emails_str = ','.join(final_to_emails) if final_to_emails else None
+                cc_emails_str = ','.join(all_cc_emails_list) if all_cc_emails_list else None
+                bcc_emails_str = ','.join(all_bcc_emails_list) if all_bcc_emails_list else None
+                
+                logger.info("=" * 60)
+                logger.info("Sending single email to all recipients:")
+                logger.info(f"  All To recipients ({len(final_to_emails)}): {to_emails_str}")
+                logger.info(f"  All CC recipients ({len(all_cc_emails_list)}): {cc_emails_str if cc_emails_str else '(none)'}")
+                logger.info(f"  All BCC recipients ({len(all_bcc_emails_list)}): {bcc_emails_str if bcc_emails_str else '(none)'}")
+                logger.info("=" * 60)
+                
+                try:
+                    # Send single email with all recipients
+                    # Gmail API accepts comma-separated strings for To, CC, and BCC
+                    success = send_email_gmail_api(
+                        user_email=user_email,
+                        recipient_email=to_emails_str,  # Pass all To emails as comma-separated string
+                        subject=email_subject,
+                        body=email_body,
+                        attachment_paths=[notification_file],
+                        cc=cc_emails_str,  # Pass all CC emails as comma-separated string
+                        bcc=bcc_emails_str  # Pass all BCC emails as comma-separated string
+                    )
+                    
+                    if success is True:
+                        # Count all recipients for stats
+                        total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
+                        result["delivery_stats"]["email_successful"] = total_email_recipients
+                        result["delivery_stats"]["successful_deliveries"] += total_email_recipients
+                        
+                        logger.info("=" * 60)
+                        logger.info(f"✓ Single email sent successfully!")
+                        logger.info(f"  Total recipients: {total_email_recipients}")
+                        logger.info(f"    - To: {len(final_to_emails)}")
+                        logger.info(f"    - CC: {len(all_cc_emails_list)}")
+                        logger.info(f"    - BCC: {len(all_bcc_emails_list)}")
+                        logger.info("=" * 60)
+                    else:
+                        failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
+                        total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
+                        result["delivery_stats"]["failed_deliveries"] += total_email_recipients
+                        
+                        logger.error("=" * 60)
+                        logger.error(f"✗ Failed to send single email: {success}")
+                        logger.error(f"  Total recipients affected: {total_email_recipients}")
+                        logger.error(f"    - To: {len(final_to_emails)}")
+                        logger.error(f"    - CC: {len(all_cc_emails_list)}")
+                        logger.error(f"    - BCC: {len(all_bcc_emails_list)}")
+                        logger.error("=" * 60)
+                        
+                        # Add to failed contacts
+                        result["delivery_stats"]["failed_contacts"].append({
+                            "name": f"All recipients (single email)",
+                            "contact": f"To: {to_emails_str}, CC: {cc_emails_str}, BCC: {bcc_emails_str}",
+                            "reason": failure_reason,
+                            "channel_status": {"email": {"status": "failed", "reason": failure_reason}}
+                        })
+                        
+                except Exception as e:
+                    exception_reason = f"Email exception: {str(e)}"
+                    total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
+                    result["delivery_stats"]["failed_deliveries"] += total_email_recipients
+                    
+                    logger.error("=" * 60)
+                    logger.error(f"✗ Error sending single email: {e}")
+                    logger.error(f"  Total recipients affected: {total_email_recipients}")
+                    logger.error("=" * 60)
+                    
+                    # Add to failed contacts
+                    result["delivery_stats"]["failed_contacts"].append({
+                        "name": f"All recipients (single email)",
+                        "contact": f"To: {to_emails_str}, CC: {cc_emails_str}, BCC: {bcc_emails_str}",
+                        "reason": exception_reason,
+                        "channel_status": {"email": {"status": "failed", "reason": exception_reason}}
+                    })
+            else:
+                logger.warning("=" * 60)
+                logger.warning("⚠ No email addresses found in any recipients")
+                logger.warning(f"  Recipients processed: {len(recipients)}")
+                logger.warning(f"  Recipients without email: {len(recipients_with_no_email)}")
+                logger.warning("=" * 60)
+        
+        # ============================================
+        # WHATSAPP: Send individual messages (unchanged)
+        # ============================================
         for recipient in recipients:
             recipient_name = recipient.get('Name', 'Unknown')
-            recipient_email = recipient.get('Email ID - To', '').strip()
-            recipient_cc = recipient.get('Email ID - CC', '').strip()
-            recipient_bcc = recipient.get('Email ID - BCC', '').strip()
             recipient_phone_raw = recipient.get('Contact No.', '')
             country_code = recipient.get('Country Code', '91')
             
-            # Log recipient email details for debugging
-            logger.info(f"Processing recipient: {recipient_name}")
-            logger.info(f"  Email ID - To: '{recipient_email}' (present: {bool(recipient_email)})")
-            logger.info(f"  Email ID - CC: '{recipient_cc}' (present: {bool(recipient_cc)})")
-            logger.info(f"  Email ID - BCC: '{recipient_bcc}' (present: {bool(recipient_bcc)})")
-            logger.info(f"  Contact No.: '{recipient_phone_raw}' (present: {bool(recipient_phone_raw)})")
-            
             # Format phone number
             recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '') if recipient_phone_raw else ''
-            contact_identifiers = [value for value in [recipient_email, recipient_phone] if value]
+            contact_identifiers = [value for value in [recipient_phone] if value]
             contact_display = " | ".join(contact_identifiers) if contact_identifiers else "N/A"
             recipient_success = False
             recipient_fail_reasons = []
@@ -3653,8 +3901,15 @@ Please find the detailed order document attached."""
                 "whatsapp": {"status": "not_enabled", "reason": ""}
             }
             
-            # Send email
+            # Email is already handled above (single email to all)
+            # Skip email processing in the loop
             if send_email:
+                channel_status["email"]["status"] = "handled_bulk"
+            else:
+                channel_status["email"]["status"] = "not_enabled"
+            
+            # Send WhatsApp
+            if send_whatsapp:
                 channel_status["email"]["status"] = "pending"
                 
                 # Clean and format CC/BCC emails (handle comma-separated or newline-separated emails)
@@ -3721,7 +3976,7 @@ Please find the detailed order document attached."""
                         email_body = f"""
                     <html>
                     <body>
-                    <p>Dear {recipient_name},</p>
+                    <p>Dear Sir/Ma'am,</p>
                     <p>A new indent has been raised for your review and further processing.</p>
                     Please find the details below:
                     
