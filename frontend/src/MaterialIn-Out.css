@@ -46,18 +46,30 @@
 /* Form header styles */
 .form-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
   margin-bottom: 30px;
   padding: 0 0 20px 0;
   border-bottom: 2px solid #e9ecef;
+  position: relative;
+  gap: 15px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  order: 2;
+  width: 100%;
 }
 
 .header-center {
-  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
+  order: 1;
+  text-align: center;
+  width: 100%;
 }
 
 .header-center h2 {
@@ -66,6 +78,99 @@
   text-align: center;
   font-size: 28px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.mio-datetime-box {
+  background-color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid #3498db;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+  display: flex;
+  flex-direction: row !important; /* Always side by side for both desktop and mobile */
+  flex-wrap: nowrap !important; /* Prevent wrapping to ensure side by side */
+  gap: 12px;
+  align-items: center;
+  min-width: 300px; /* Base minimum width */
+  max-width: fit-content; /* Prevent box from stretching too wide */
+  position: relative;
+  margin: 0 auto; /* Center the datetime box */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+/* Date and Time Wrappers */
+.mio-date-wrapper,
+.mio-time-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex: 1 1 0; /* Grow and shrink equally, start from 0 basis */
+  min-width: 0;
+  max-width: none; /* Remove any max-width constraints */
+  width: auto; /* Explicitly set to auto to prevent 100% width */
+}
+
+/* Labels */
+.mio-datetime-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mio-date-picker-hidden,
+.mio-time-picker-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mio-date-input,
+.mio-time-input {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  flex: 1;
+  min-width: 100px; /* Minimum width to prevent too narrow inputs */
+  max-width: 180px; /* Maximum width to prevent too wide inputs */
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  text-align: center;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  flex-shrink: 1; /* Allow inputs to shrink if needed */
+}
+
+.mio-date-input:focus,
+.mio-time-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.mio-date-input:hover,
+.mio-time-input:hover {
+  border-color: #3498db;
+}
+
+.mio-date-input::placeholder,
+.mio-time-input::placeholder {
+  color: #999;
+  font-weight: normal;
 }
 
 .mio-material-form {
@@ -98,15 +203,6 @@
 
 /* Form row and group styles are now defined in the vertical alignment fixes section above */
 
-/* Center align specific field labels */
-.mio-form-group label[for="category"],
-.mio-form-group label[for="subCategory"],
-.mio-form-group label[for="materialName"],
-.mio-form-group label[for="specifications"],
-.mio-form-group label[for="quantity"],
-.mio-form-group label[for="uom"] {
-  text-align: center;
-}
 
 .mio-form-group label.required::after {
   content: " *";
@@ -279,6 +375,39 @@
     box-sizing: border-box;
   }
   
+  .form-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .header-center {
+    order: 1;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .header-left {
+    order: 2;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .header-right {
+    order: 3;
+  }
+  
+  .mio-datetime-box {
+    margin: 0 auto; /* Center the datetime box */
+    flex-direction: row !important; /* Ensure side by side */
+    /* Keep same appearance as above 1200px - don't force full width */
+    min-width: 300px; /* Maintain minimum width */
+    max-width: fit-content; /* Prevent stretching too wide */
+    width: auto; /* Let it size based on content */
+    box-sizing: border-box;
+  }
+  
   .mio-form-main-content {
     flex-direction: column;
     width: 100%;
@@ -372,6 +501,10 @@
     box-sizing: border-box;
     padding: 15px 0;
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
   }
   
   .header-center,
@@ -380,11 +513,69 @@
     box-sizing: border-box;
   }
   
+  .header-center {
+    order: 1;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .header-center h2 {
+    font-size: 22px;
+  }
+  
+  .header-left {
+    order: 2;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .header-right {
+    order: 3;
+  }
+  
+  .mio-datetime-box {
+    /* Keep same appearance as above 1200px - don't force full width */
+    min-width: 300px; /* Maintain minimum width */
+    max-width: fit-content; /* Prevent stretching too wide */
+    width: auto; /* Let it size based on content */
+    box-sizing: border-box;
+  }
+  
   .mio-form-main-content {
     gap: 15px;
     width: 100%;
     box-sizing: border-box;
   }
+}
+
+/* Breakpoint for 530px and below to prevent overflow */
+@media (max-width: 530px) {
+  .mio-datetime-box {
+    max-width: 100%; /* Prevent overflow */
+    width: 100%; /* Use full width when container is narrow */
+    min-width: auto; /* Allow shrinking */
+    box-sizing: border-box;
+    gap: 8px; /* Reduce gap to fit better */
+    padding: 8px 10px; /* Reduce padding to fit better */
+  }
+  
+  .mio-date-wrapper,
+  .mio-time-wrapper {
+    gap: 6px; /* Reduce gap between label and input */
+  }
+  
+  .mio-datetime-label {
+    font-size: 11px; /* Slightly smaller label */
+  }
+  
+  .mio-date-input,
+  .mio-time-input {
+    font-size: 13px; /* Slightly smaller input text */
+    padding: 6px 8px; /* Reduce input padding */
+  }
+}
+
+@media (max-width: 480px) {
   
   .mio-form-left-section,
   .mio-form-right-section {
@@ -406,10 +597,19 @@
   }
   
   .mio-form-input,
-  .mio-form-select,
+  .mio-form-select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .mio-form-group label {
+    font-size: 12px;
+  }
+  
   .mio-form-textarea {
     width: 100%;
     box-sizing: border-box;
+    font-size: 12px;
   }
   
   /* Center the Add Item button on mobile just like Place Order */
@@ -480,6 +680,23 @@
   .mio-material-form-wrapper h2 {
     font-size: 20px;
   }
+  
+  .mio-form-group label {
+    font-size: 12px;
+  }
+  
+  .mio-form-textarea {
+    font-size: 12px;
+  }
+  
+  .mio-datetime-box {
+    width: 100%; /* Ensure it fits within container */
+    min-width: auto; /* Allow shrinking */
+    max-width: 100%; /* Prevent overflow */
+    font-size: 12px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+  }
 }
 
 /* ==================== MOBILE (360px) ==================== */
@@ -503,6 +720,22 @@
     padding: 16px;
     box-sizing: border-box;
   }
+  
+  .mio-datetime-box {
+    min-width: 180px;
+    font-size: 12px;
+    padding: 10px 12px;
+    gap: 8px; /* Reduce gap between date and time wrappers */
+  }
+  
+  .mio-date-wrapper,
+  .mio-time-wrapper {
+    gap: 4px; /* Reduce gap between label and input on small screens */
+  }
+  
+  .mio-datetime-label {
+    min-width: auto; /* Remove min-width on small screens */
+  }
 
   .mio-form-row {
     gap: 12px;
@@ -523,8 +756,7 @@
   }
 
   .mio-form-input,
-  .mio-form-select,
-  .mio-form-textarea {
+  .mio-form-select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -535,15 +767,21 @@
     box-sizing: border-box;
   }
   
+  .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 10px;
+    font-size: 12px;
+    min-height: 80px;
+    height: auto;
+    box-sizing: border-box;
+  }
+  
   .mio-form-select {
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-  }
-
-  .mio-form-textarea {
-    min-height: 80px;
-    height: auto;
   }
 
   .mio-add-item-btn,
@@ -597,6 +835,50 @@
     margin-bottom: 15px;
     width: 100%;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .header-center {
+    order: 1;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .header-center h2 {
+    font-size: 18px;
+  }
+  
+  .header-left {
+    order: 2;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .header-right {
+    order: 3;
+  }
+  
+  .mio-datetime-box {
+    width: 100%;
+    min-width: auto;
+    max-width: 100%;
+    font-size: 10px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    gap: 6px; /* Further reduce gap between date and time wrappers */
+  }
+  
+  .mio-date-wrapper,
+  .mio-time-wrapper {
+    gap: 4px; /* Reduce gap between label and input on very small screens */
+  }
+  
+  .mio-datetime-label {
+    min-width: auto; /* Remove min-width on very small screens */
+    font-size: 11px; /* Slightly smaller label font */
   }
   
   .mio-form-row {
@@ -614,13 +896,12 @@
   }
   
   .mio-form-group label {
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: 4px;
   }
   
   .mio-form-input,
-  .mio-form-select,
-  .mio-form-textarea {
+  .mio-form-select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -632,8 +913,14 @@
   }
   
   .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 8px 10px;
+    font-size: 11px;
     min-height: 70px;
     height: auto;
+    box-sizing: border-box;
   }
   
   .mio-form-select {
@@ -697,9 +984,29 @@
   .mio-material-form {
     padding: 12px;
   }
+  
+  .mio-datetime-box {
+    width: 100%;
+    min-width: auto;
+    max-width: 100%;
+    font-size: 10px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    gap: 4px; /* Minimal gap between date and time wrappers on smallest screens */
+  }
+  
+  .mio-date-wrapper,
+  .mio-time-wrapper {
+    gap: 3px; /* Minimal gap between label and input on smallest screens */
+  }
+  
+  .mio-datetime-label {
+    min-width: auto; /* Remove min-width on smallest screens */
+    font-size: 10px; /* Smaller label font */
+  }
 
   .mio-form-group label {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .mio-form-group {
@@ -710,8 +1017,7 @@
   }
   
   .mio-form-input,
-  .mio-form-select,
-  .mio-form-textarea {
+  .mio-form-select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -722,15 +1028,21 @@
     box-sizing: border-box;
   }
   
+  .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 8px;
+    font-size: 11px;
+    min-height: 70px;
+    height: auto;
+    box-sizing: border-box;
+  }
+  
   .mio-form-select {
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-  }
-
-  .mio-form-textarea {
-    min-height: 70px;
-    height: auto;
   }
 
   .mio-add-item-btn,
@@ -773,7 +1085,7 @@
   }
 
   .mio-form-group label {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .mio-form-group {
@@ -784,8 +1096,7 @@
   }
   
   .mio-form-input,
-  .mio-form-select,
-  .mio-form-textarea {
+  .mio-form-select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -796,15 +1107,21 @@
     box-sizing: border-box;
   }
   
+  .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 6px;
+    font-size: 11px;
+    min-height: 60px;
+    height: auto;
+    box-sizing: border-box;
+  }
+  
   .mio-form-select {
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-  }
-
-  .mio-form-textarea {
-    min-height: 60px;
-    height: auto;
   }
 
   .mio-add-item-btn,
@@ -847,7 +1164,7 @@
   }
 
   .mio-form-group label {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .mio-form-group {
@@ -858,8 +1175,7 @@
   }
   
   .mio-form-input,
-  .mio-form-select,
-  .mio-form-textarea {
+  .mio-form-select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -870,15 +1186,21 @@
     box-sizing: border-box;
   }
   
+  .mio-form-textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 5px;
+    font-size: 11px;
+    min-height: 50px;
+    height: auto;
+    box-sizing: border-box;
+  }
+  
   .mio-form-select {
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-  }
-
-  .mio-form-textarea {
-    min-height: 50px;
-    height: auto;
   }
 
   .mio-add-item-btn,
@@ -1149,7 +1471,7 @@
   padding: 12px;
   border: 2px solid #ddd;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   background-color: white;
   transition: border-color 0.3s ease;
   box-sizing: border-box;

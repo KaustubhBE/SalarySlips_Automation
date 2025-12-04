@@ -529,7 +529,9 @@ def add_order(factory, order_data):
                 'materialName': item.get('materialName'),
                 'specifications': item.get('specifications'),
                 'uom': item.get('uom'),
-                'quantity': item.get('quantity')
+                'quantity': item.get('quantity'),
+                'partyName': item.get('partyName', ''),
+                'place': item.get('place', '')
             }
             cleaned_order_items.append(cleaned_item)
         

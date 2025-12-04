@@ -12,6 +12,17 @@ const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
 // Utility Functions
+const formatDateTime = (date) => {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const seconds = date.getSeconds().toString().padStart(2, '0')
+  const ampm = date.getHours() >= 12 ? 'PM' : 'AM'
+  const hours12 = (date.getHours() % 12 || 12).toString().padStart(2, '0')
+  
+  return `${day}/${month}/${year}, ${hours12}:${minutes}:${seconds} ${ampm}`
+}
 
 const KR_MaterialInward = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +38,22 @@ const KR_MaterialInward = () => {
   const [generalFormData, setGeneralFormData] = useState({
     partyName: '',
     place: ''
+  })
+
+  // Date and time state
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date()
+    const day = now.getDate().toString().padStart(2, '0')
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const year = now.getFullYear()
+    return `${day}/${month}/${year}`
+  })
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date()
+    const hours = (now.getHours() % 12 || 12).toString().padStart(2, '0')
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
+    return `${hours}:${minutes} ${ampm}`
   })
 
 
@@ -102,6 +129,8 @@ const addItemFieldRefs = {
   const itemsSheetHistoryPushed = useRef(false)
   const materialInputSectionRef = useRef(null)
   const itemsTableContainerRef = useRef(null)
+  const dateInputRef = useRef(null)
+  const timeInputRef = useRef(null)
   const scrollToMaterialInputs = () => {
     if (typeof window === 'undefined') return
     if (materialInputSectionRef.current) {
@@ -805,7 +834,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       { label: 'Party Name', value: data.partyName },
       { label: 'Place', value: data.place },
       { label: 'Items Count', value: data.inwardItems?.length },
-      { label: 'Recorded At', value: data.dateTime ? new Date(data.dateTime).toLocaleString() : null }
+      { label: 'Recorded At', value: data.dateTime ? formatDateTime(new Date(data.dateTime)) : null }
     ]
     return rows.filter(row => row.value)
   }
@@ -1219,7 +1248,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             quantity: item.quantity,
             partyName: generalFormData.partyName,
             place: generalFormData.place,
-            timestamp: new Date().toISOString(),
+            timestamp: `${currentDate}, ${currentTime}`,
             department: 'KR',
             type: 'inward'
           }
@@ -1266,17 +1295,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           inwardItems,
           partyName: generalFormData.partyName,
           place: generalFormData.place,
-          dateTime: new Date().toISOString(),
+          dateTime: `${currentDate}, ${currentTime}`,
           quantityUpdates
         }
         
-        // Determine notification method
-        const bothEnabled = enableEmailNotification && enableWhatsappNotification
-        const emailOnly = enableEmailNotification && !enableWhatsappNotification
-        const whatsappOnly = !enableEmailNotification && enableWhatsappNotification
+        // Determine notification method - auto-send to all recipients if any method is enabled
+        const notificationMethod = 
+          enableEmailNotification && enableWhatsappNotification ? 'both' :
+          enableEmailNotification ? 'email' :
+          enableWhatsappNotification ? 'whatsapp' : null
         
-        // If both notifications are enabled, auto-send to all recipients
-        if (bothEnabled) {
+        // If any notification method is enabled, auto-send to all recipients
+        if (notificationMethod) {
           try {
             console.log('Auto-sending notifications to all recipients from Google Sheets...')
             
@@ -1291,7 +1321,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               const autoNotificationData = {
                 orderData: notificationData,
                 recipients: [], // Empty array - backend will fetch from Google Sheets
-                method: 'both',
+                method: notificationMethod,
                 factory: 'KR',
                 autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
                 sheetId: sheetId, // Send sheet ID to backend
@@ -1311,16 +1341,6 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           } catch (notifError) {
             console.error('Error sending auto-notifications:', notifError)
           }
-        } 
-        // If only one notification method is enabled, show modal for recipient selection
-        else if (emailOnly || whatsappOnly) {
-          // Save data for notification modal
-          setLastSubmittedData(notificationData)
-          
-          // Set notification method based on toggles
-          setNotificationMethod(emailOnly ? 'email' : 'whatsapp')
-          
-          setShowNotificationModal(true)
         }
         
         setInwardItems([])
@@ -1566,6 +1586,81 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     return (
       <div className="place_order-container">
         <div className="form-header">
+          <div className="header-left">
+            <div className="mio-datetime-box">
+              <input
+                type="date"
+                ref={dateInputRef}
+                className="mio-date-picker-hidden"
+                value={(() => {
+                  const [day, month, year] = currentDate.split('/')
+                  return year && month && day ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : ''
+                })()}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value)
+                    const day = date.getDate().toString().padStart(2, '0')
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+                    const year = date.getFullYear()
+                    setCurrentDate(`${day}/${month}/${year}`)
+                  }
+                }}
+              />
+              <input
+                type="time"
+                ref={timeInputRef}
+                className="mio-time-picker-hidden"
+                value={(() => {
+                  // Convert HH:MM AM/PM to HH:MM for time input
+                  const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
+                  if (match) {
+                    let hour24 = parseInt(match[1])
+                    const minutes = match[2]
+                    const ampm = match[3].toUpperCase()
+                    if (ampm === 'PM' && hour24 !== 12) hour24 += 12
+                    if (ampm === 'AM' && hour24 === 12) hour24 = 0
+                    return `${hour24.toString().padStart(2, '0')}:${minutes}`
+                  }
+                  return ''
+                })()}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [hours, minutes] = e.target.value.split(':')
+                    const hour24 = parseInt(hours)
+                    const hour12 = hour24 % 12 || 12
+                    const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                    setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                  }
+                }}
+              />
+              <div className="mio-date-wrapper">
+                <label htmlFor="mio-date-display" className="mio-datetime-label">Date:</label>
+                <input
+                  type="text"
+                  id="mio-date-display"
+                  value={currentDate}
+                  onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+                  className="mio-date-input"
+                  placeholder="DD/MM/YYYY"
+                  title="Click to select date"
+                  readOnly
+                />
+              </div>
+              <div className="mio-time-wrapper">
+                <label htmlFor="mio-time-display" className="mio-datetime-label">Time:</label>
+                <input
+                  type="text"
+                  id="mio-time-display"
+                  value={currentTime}
+                  onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
+                  className="mio-time-input"
+                  placeholder="HH:MM AM/PM"
+                  title="Click to select time"
+                  readOnly
+                />
+              </div>
+            </div>
+          </div>
           <div className="header-center">
             <h2>Material Inward Form</h2>
           </div>
@@ -1588,6 +1683,77 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       <BackButton label="Back to Store" to="/kerur/kr_store" />
       
       <div className="form-header">
+        <div className="header-left">
+          <div className="mio-datetime-box">
+            <input
+              type="date"
+              ref={dateInputRef}
+              className="mio-date-picker-hidden"
+              onChange={(e) => {
+                if (e.target.value) {
+                  const date = new Date(e.target.value)
+                  const day = date.getDate().toString().padStart(2, '0')
+                  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+                  const year = date.getFullYear()
+                  setCurrentDate(`${day}/${month}/${year}`)
+                }
+              }}
+            />
+            <input
+              type="time"
+              ref={timeInputRef}
+              className="mio-time-picker-hidden"
+              value={(() => {
+                // Convert HH:MM AM/PM to HH:MM for time input
+                const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
+                if (match) {
+                  let hour24 = parseInt(match[1])
+                  const minutes = match[2]
+                  const ampm = match[3].toUpperCase()
+                  if (ampm === 'PM' && hour24 !== 12) hour24 += 12
+                  if (ampm === 'AM' && hour24 === 12) hour24 = 0
+                  return `${hour24.toString().padStart(2, '0')}:${minutes}`
+                }
+                return ''
+              })()}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [hours, minutes] = e.target.value.split(':')
+                  const hour24 = parseInt(hours)
+                  const hour12 = hour24 % 12 || 12
+                  const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                  setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                }
+              }}
+            />
+            <div className="mio-date-wrapper">
+              <label htmlFor="mio-date-display" className="mio-datetime-label">Date:</label>
+              <input
+                type="text"
+                id="mio-date-display"
+                value={currentDate}
+                onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+                className="mio-date-input"
+                placeholder="DD/MM/YYYY"
+                title="Click to select date"
+                readOnly
+              />
+            </div>
+            <div className="mio-time-wrapper">
+              <label htmlFor="mio-time-display" className="mio-datetime-label">Time:</label>
+              <input
+                type="text"
+                id="mio-time-display"
+                value={currentTime}
+                onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
+                className="mio-time-input"
+                placeholder="HH:MM AM/PM"
+                title="Click to select time"
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
         <div className="header-center">
           <h2>Material Inward Form</h2>
         </div>
@@ -1984,7 +2150,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   <strong>Place:</strong> {lastSubmittedData?.place}
                 </div>
                 <div className="po-summary-item">
-                  <strong>Date & Time:</strong> {lastSubmittedData?.dateTime ? new Date(lastSubmittedData.dateTime).toLocaleString() : ''}
+                  <strong>Date & Time:</strong> {lastSubmittedData?.dateTime ? formatDateTime(new Date(lastSubmittedData.dateTime)) : ''}
                 </div>
                 <div className="po-summary-item">
                   <strong>Items Count:</strong> {lastSubmittedData?.inwardItems?.length || 0}

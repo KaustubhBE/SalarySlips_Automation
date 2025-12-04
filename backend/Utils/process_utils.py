@@ -9,7 +9,7 @@ from Utils.whatsapp_utils import (
     get_employee_contact,
     send_whatsapp_message,
 )
-from Utils.drive_utils import upload_to_google_drive
+from Utils.drive_utils import upload_to_google_drive, upload_reactor_report_to_drive
 import shutil
 import subprocess
 import platform
@@ -522,6 +522,117 @@ def clear_salary_slips_folder(output_dir):
     except Exception as e:
         logging.error("Error clearing the folder {}: {}".format(output_dir, e))
 
+def delete_generated_files(file_paths, drive_upload_success=None, logger=None):
+    """
+    Generic function to delete generated files after processing.
+    Only deletes files if Google Drive upload was successful.
+    
+    Args:
+        file_paths: Can be:
+            - Single file path (str): "path/to/file.pdf"
+            - List of file paths (list): ["path1.pdf", "path2.docx"]
+            - Result dictionary with file path keys: {"pdf_path": "...", "docx_path": "...", "output_file": "..."}
+        drive_upload_success: bool or None
+            - True: Delete files (upload succeeded)
+            - False: Skip deletion, keep files (upload failed)
+            - None: Skip deletion, keep files (upload not attempted or unknown)
+        logger: Optional logger instance (uses logging if not provided)
+        
+    Returns:
+        dict: {
+            'success': bool,
+            'deleted_files': list of successfully deleted file paths,
+            'failed_files': list of failed deletions with reasons,
+            'total_deleted': int,
+            'skipped_reason': str or None
+        }
+    """
+    log = logger if logger else logging
+    
+    result = {
+        'success': False,
+        'deleted_files': [],
+        'failed_files': [],
+        'total_deleted': 0,
+        'skipped_reason': None
+    }
+    
+    # Check if we should delete files
+    if drive_upload_success is not True:
+        if drive_upload_success is False:
+            result['skipped_reason'] = "Google Drive upload failed - keeping files for retry"
+            log.info("Skipping file deletion: Google Drive upload failed. Files will be kept for next upload attempt.")
+        else:
+            result['skipped_reason'] = "Google Drive upload not attempted or status unknown - keeping files"
+            log.info("Skipping file deletion: Google Drive upload was not attempted or status is unknown. Files will be kept.")
+        return result
+    
+    # Extract file paths from different input formats
+    files_to_delete = []
+    
+    if isinstance(file_paths, str):
+        # Single file path
+        files_to_delete = [file_paths]
+    elif isinstance(file_paths, list):
+        # List of file paths
+        files_to_delete = file_paths
+    elif isinstance(file_paths, dict):
+        # Result dictionary - extract file paths
+        # Check for common keys: pdf_path, docx_path, output_file
+        if 'pdf_path' in file_paths and file_paths['pdf_path']:
+            files_to_delete.append(file_paths['pdf_path'])
+        if 'docx_path' in file_paths and file_paths['docx_path']:
+            files_to_delete.append(file_paths['docx_path'])
+        if 'output_file' in file_paths and file_paths['output_file']:
+            # Only add if not already in list (output_file might be same as pdf_path)
+            if file_paths['output_file'] not in files_to_delete:
+                files_to_delete.append(file_paths['output_file'])
+    else:
+        error_msg = f"Invalid file_paths type: {type(file_paths)}"
+        log.error(error_msg)
+        result['failed_files'].append({'path': str(file_paths), 'reason': error_msg})
+        return result
+    
+    # Remove duplicates and None/empty values
+    files_to_delete = [f for f in files_to_delete if f and isinstance(f, str)]
+    files_to_delete = list(set(files_to_delete))  # Remove duplicates
+    
+    if not files_to_delete:
+        log.info("No files to delete (no valid file paths provided)")
+        result['skipped_reason'] = "No valid file paths provided"
+        return result
+    
+    log.info(f"Attempting to delete {len(files_to_delete)} file(s) after successful Google Drive upload")
+    
+    # Delete each file
+    for file_path in files_to_delete:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                result['deleted_files'].append(file_path)
+                result['total_deleted'] += 1
+                log.info(f"Successfully deleted file: {file_path}")
+            else:
+                log.info(f"File does not exist, skipping deletion: {file_path}")
+                result['deleted_files'].append(file_path)  # Count as "deleted" since it's already gone
+                result['total_deleted'] += 1
+        except Exception as e:
+            error_msg = f"Failed to delete file {file_path}: {str(e)}"
+            log.warning(error_msg)
+            result['failed_files'].append({'path': file_path, 'reason': str(e)})
+    
+    # Set overall success status
+    if result['total_deleted'] > 0 and len(result['failed_files']) == 0:
+        result['success'] = True
+        log.info(f"File cleanup completed: Successfully deleted {result['total_deleted']} file(s)")
+    elif result['total_deleted'] > 0:
+        result['success'] = True  # Partial success
+        log.warning(f"File cleanup completed with {len(result['failed_files'])} failure(s): Deleted {result['total_deleted']} file(s)")
+    else:
+        log.warning("File cleanup failed: No files were deleted")
+    
+    return result
+
 def format_months_list(months_data):
     """Format the list of months for display in messages."""
     if not months_data:
@@ -620,6 +731,8 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
 
         # Load template and replace placeholders
         output_pdf = None
+        output_docx = None
+        drive_upload_success = None  # Track Drive upload status: None = not attempted, True = success, False = failed
         try:
             template = Document(template_path)
             for paragraph in template.paragraphs:
@@ -653,15 +766,21 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
                     if folder_id:
                         logging.info("Found Google Drive ID '{}' for employee {}".format(folder_id, employee_name))
                         upload_success = upload_to_google_drive(output_pdf, folder_id, employee_name, month, year)
+                        drive_upload_success = upload_success
                         if not upload_success:
                             warnings.append("Failed to upload to Google Drive")
+                            logging.warning("Google Drive upload failed for employee {}".format(employee_name))
+                        else:
+                            logging.info("Google Drive upload succeeded for employee {}".format(employee_name))
                     else:
                         warnings.append("No Google Drive ID found for employee")
-                        logging.error("No Google Drive ID found for employee: {}".format(employee_name))
+                        logging.warning("No Google Drive ID found for employee: {}. Files will be kept.".format(employee_name))
                         logging.error("Available keys in drive_data: {}".format(list(drive_data[0].keys()) if drive_data else []))
+                        # drive_upload_success remains None (not attempted)
                 except Exception as e:
                     warnings.append(f"Error processing Google Drive upload: {str(e)}")
                     logging.error("Error processing Google Drive ID: {} {}".format(folder_id, str(e)))
+                    drive_upload_success = False  # Mark as failed due to exception
 
                 # If this is part of a multi-month process, collect the PDF but continue with notifications
                 if collected_pdfs is not None:
@@ -793,13 +912,23 @@ def process_salary_slip(template_path, output_dir, employee_identifier, employee
     logging.info("Finished process_salary_slip function")
     
     # Return comprehensive result
-    return {
+    result = {
         "success": len(errors) == 0,
         "output_file": output_pdf,
         "errors": errors,
         "warnings": warnings,
         "employee_name": placeholders.get("Name", "Unknown") if 'placeholders' in locals() else "Unknown"
     }
+    
+    # Add Drive upload status and file paths for conditional deletion
+    if 'drive_upload_success' in locals():
+        result["drive_upload_success"] = drive_upload_success
+    if output_pdf:
+        result["pdf_path"] = output_pdf
+    if 'output_docx' in locals() and output_docx:
+        result["docx_path"] = output_docx
+    
+    return result
 
 # Generate and process salary slips for multiple employees (batch processing)
 def process_salary_slips(template_path, output_dir, employees_data, headers, drive_data, email_employees, contact_employees, month, year, full_month, full_year, send_whatsapp, send_email):
@@ -1354,7 +1483,8 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             logger.info(f"Generated PDF filename: {pdf_filename}")
             logger.info(f"Generated PDF path: {pdf_path}")
             logger.info(f"PDF file exists: {os.path.exists(pdf_path)}")
-            if convert_docx_to_pdf(output_path, pdf_path):
+            pdf_conversion_success = convert_docx_to_pdf(output_path, pdf_path)
+            if pdf_conversion_success:
                 logger.info("Successfully converted DOCX to PDF")
                 logger.info(f"PDF file exists after conversion: {os.path.exists(pdf_path)}")
                 result["output_file"] = pdf_path
@@ -1362,6 +1492,10 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 logger.warning("PDF conversion failed, using DOCX file")
                 result["warnings"].append("PDF conversion failed, using DOCX file")
                 result["output_file"] = output_path
+
+            # Store both file paths for later cleanup
+            result["docx_path"] = output_path
+            result["pdf_path"] = pdf_path  # Store path regardless of conversion success
 
             result["generated_files"] = 1
             result["date_range"] = input_date
@@ -1599,6 +1733,72 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
                 logger.info("Log report sent successfully to user")
             except Exception as e:
                 logger.error(f"Error sending log report to user: {e}")
+        
+        # Upload PDF to Google Drive before deletion (only if document was generated and notifications were attempted)
+        if result["generated_files"] > 0 and (send_email or send_whatsapp) and result.get("pdf_path"):
+            try:
+                # Base folder ID for reactor reports
+                base_folder_id = "1cuL5gdl5GncegK2-FItKux7pg-D2sT--"
+                
+                logger.info(f"Uploading reactor report PDF to Google Drive (base folder: {base_folder_id})")
+                upload_success, file_id, folder_id, upload_error = upload_reactor_report_to_drive(
+                    pdf_path=result["pdf_path"],
+                    base_folder_id=base_folder_id,
+                    input_date=input_date,
+                    logger=logger
+                )
+                
+                if upload_success:
+                    logger.info(f"Successfully uploaded reactor report to Google Drive. File ID: {file_id}, Month Folder ID: {folder_id}")
+                    result["drive_upload"] = {
+                        "success": True,
+                        "file_id": file_id,
+                        "folder_id": folder_id
+                    }
+                else:
+                    logger.warning(f"Failed to upload reactor report to Google Drive: {upload_error}")
+                    result["warnings"].append(f"Google Drive upload failed: {upload_error}")
+                    result["drive_upload"] = {
+                        "success": False,
+                        "error": upload_error
+                    }
+            except Exception as e:
+                logger.error(f"Error during Google Drive upload: {e}")
+                result["warnings"].append(f"Error during Google Drive upload: {e}")
+                result["drive_upload"] = {
+                    "success": False,
+                    "error": str(e)
+                }
+        
+        # Delete generated documents after notifications are completed
+        # Only delete if document was generated, notifications were attempted, AND Drive upload succeeded
+        if result["generated_files"] > 0 and (send_email or send_whatsapp):
+            try:
+                # Check Drive upload status
+                drive_upload_status = result.get("drive_upload", {}).get("success")
+                
+                # Use generic deletion function
+                deletion_result = delete_generated_files(
+                    file_paths=result,
+                    drive_upload_success=drive_upload_status,
+                    logger=logger
+                )
+                
+                if deletion_result['success']:
+                    logger.info(f"File cleanup completed: Deleted {deletion_result['total_deleted']} file(s) after successful Drive upload")
+                elif deletion_result['skipped_reason']:
+                    logger.info(f"File deletion skipped: {deletion_result['skipped_reason']}")
+                    result["warnings"].append(deletion_result['skipped_reason'])
+                else:
+                    if deletion_result['failed_files']:
+                        for failed in deletion_result['failed_files']:
+                            warning_msg = f"Failed to delete {failed['path']}: {failed['reason']}"
+                            logger.warning(warning_msg)
+                            result["warnings"].append(warning_msg)
+                    
+            except Exception as e:
+                logger.error(f"Error during document cleanup: {e}")
+                result["warnings"].append(f"Error during document cleanup: {e}")
             
     except Exception as e:
         logger.error(f"Critical error in process_reactor_reports: {e}")
@@ -1905,6 +2105,108 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
         logging.error(f"Error details: {str(e)}")
         logging.error(f"Full traceback: {traceback.format_exc()}")
         return {}
+
+def get_designation_from_authority_sheet(factory, given_by_name, logger=None):
+    """
+    Fetch designation from authority sheet based on givenBy name (authority name).
+    
+    Args:
+        factory: Factory identifier (e.g., 'KR', 'GB', 'HB', etc.)
+        given_by_name: Name of the authority (Given By name)
+        logger: Optional logger instance
+    
+    Returns:
+        str: Designation value or 'N/A' if not found
+    """
+    log = logger if logger else logging
+    
+    try:
+        # Lazy import to avoid circular dependency
+        import sys
+        if 'app' in sys.modules:
+            PLANT_DATA = sys.modules['app'].PLANT_DATA
+        else:
+            from app import PLANT_DATA
+        
+        # Find plant configuration
+        plant_config = None
+        for plant in PLANT_DATA:
+            if plant.get("document_name") == factory:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            log.warning(f"Plant configuration not found for factory: {factory}")
+            return 'N/A'
+        
+        # Get sheet ID and sheet name for authority list
+        sheet_id = plant_config.get("material_sheet_id")
+        if not sheet_id:
+            log.warning(f"No material_sheet_id found for factory: {factory}")
+            return 'N/A'
+        
+        # Get authority sheet name (usually "List")
+        sheet_names = plant_config.get("sheet_name", {})
+        authority_sheet_name = sheet_names.get("AuthorityList", "List")
+        
+        # Import fetch function
+        from Utils.fetch_data import fetch_google_sheet_data
+        
+        # Fetch authority sheet data
+        authority_data = fetch_google_sheet_data(sheet_id, authority_sheet_name)
+        
+        if not authority_data or len(authority_data) < 2:
+            log.warning(f"No authority data found in sheet {authority_sheet_name} for factory {factory}")
+            return 'N/A'
+        
+        # Sheet structure:
+        # - First row is blank
+        # - Second row (index 1) contains headers
+        # - Data starts from third row (index 2)
+        headers = [str(h).strip() for h in authority_data[1]] if len(authority_data) > 1 else []
+        data_rows = authority_data[2:] if len(authority_data) > 2 else []
+        
+        # Find column indices for "Given By" and "Designation"
+        def find_column_index(possible_terms):
+            for term in possible_terms:
+                for idx, h in enumerate(headers):
+                    if str(h).strip().lower() == term.lower():
+                        return idx
+            return None
+        
+        given_by_col_idx = find_column_index(["given by", "authority name", "name"])
+        designation_col_idx = find_column_index(["designation"])
+        
+        if given_by_col_idx is None:
+            log.warning(f"Could not find 'Given By' column in authority sheet for factory {factory}")
+            return 'N/A'
+        
+        if designation_col_idx is None:
+            log.warning(f"Could not find 'Designation' column in authority sheet for factory {factory}")
+            return 'N/A'
+        
+        # Search for the given_by_name and get its designation
+        given_by_name_clean = str(given_by_name).strip() if given_by_name else ""
+        if not given_by_name_clean:
+            return 'N/A'
+        
+        for row in data_rows:
+            if not row or len(row) <= max(given_by_col_idx, designation_col_idx):
+                continue
+            
+            row_given_by = str(row[given_by_col_idx]).strip()
+            row_designation = str(row[designation_col_idx]).strip() if designation_col_idx < len(row) else ""
+            
+            # Case-insensitive comparison
+            if row_given_by.lower() == given_by_name_clean.lower():
+                return row_designation if row_designation else 'N/A'
+        
+        log.warning(f"Designation not found for authority '{given_by_name}' in factory {factory}")
+        return 'N/A'
+        
+    except Exception as e:
+        log.error(f"Error fetching designation from authority sheet for factory {factory}, givenBy {given_by_name}: {e}")
+        return 'N/A'
 
 def sync_plant_material_to_firebase(plant_id, plant_name, plant_data, sync_description, sync_timestamp, synced_by):
     """
@@ -3001,159 +3303,133 @@ def process_order_notification(order_id, order_data, recipients, method, factory
         except Exception as e:
             logger.warning(f"Could not inspect document structure: {e}")
         
-        # Add title
-        try:
-            logger.info("Adding title paragraph...")
-            title_para = doc.add_paragraph()
-            title_run = title_para.add_run(f"🧾 Material Order - {factory}")
-            title_run.bold = True
-            title_run.font.size = Pt(18)
-            title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            logger.info("Title paragraph added successfully")
-        except Exception as e:
-            logger.error(f"Error adding title paragraph: {e}")
-            raise
+        # Parse dateTime to separate Date and Time
+        date_time_str = order_data.get('dateTime', '')
+        date_value = ''
+        time_value = ''
         
-        try:
-            logger.info("Adding spacing paragraph...")
-            doc.add_paragraph()  # Spacing
-            logger.info("Spacing paragraph added successfully")
-        except Exception as e:
-            logger.error(f"Error adding spacing paragraph: {e}")
-            raise
+        if date_time_str:
+            try:
+                # Format: "DD/MM/YYYY, HH:MM:SS AM/PM" or "DD/MM/YYYY, HH:MM AM/PM"
+                parts = date_time_str.split(',')
+                if len(parts) >= 2:
+                    date_value = parts[0].strip()  # "DD/MM/YYYY"
+                    time_value = parts[1].strip()  # "HH:MM:SS AM/PM" or "HH:MM AM/PM"
+            except Exception as e:
+                logger.warning(f"Error parsing dateTime '{date_time_str}': {e}. Using full string.")
+                date_value = date_time_str
+                time_value = ''
         
-        # Add order header information
-        try:
-            logger.info("Adding order header information...")
-            header_para = doc.add_paragraph()
-            header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
-            # Order ID
-            order_id_run = header_para.add_run(f"Order ID: {order_id}")
-            order_id_run.bold = True
-            order_id_run.font.size = Pt(14)
-            logger.info("Order header information added successfully")
-        except Exception as e:
-            logger.error(f"Error adding order header information: {e}")
-            raise
+        if not date_value:
+            date_value = 'N/A'
+        if not time_value:
+            time_value = 'N/A'
         
-        try:
-            logger.info("Adding final spacing paragraph...")
-            doc.add_paragraph()  # Spacing
-            logger.info("Final spacing paragraph added successfully")
-        except Exception as e:
-            logger.error(f"Error adding final spacing paragraph: {e}")
-            raise
+        # Get order items count
+        order_items = order_data.get('orderItems', [])
+        total_items = len(order_items)
         
-        # Prepare order details data
-        details_data = [
-            ("Date & Time", order_data.get('dateTime', 'N/A')),
-            ("Given By", order_data.get('givenBy', 'N/A')),
-            ("Type", order_data.get('type', 'N/A')),
-            ("Preferred Party", order_data.get('partyName', 'N/A')),
-            ("Place", order_data.get('place', 'N/A')),
-            ("Importance", order_data.get('importance', 'Normal')),
-            ("Description", order_data.get('description', 'N/A')),
-            ("Status", "Pending")
-        ]
-
-        # Create Order Details Table
+        # Create Indent Details Table (horizontal format)
         try:
-            logger.info("Creating order details table...")
+            logger.info("Creating indent details table...")
             
             # Add heading paragraph
-            logger.info("Adding details heading paragraph...")
-            details_heading = doc.add_paragraph("Order Details")
+            logger.info("Adding indent details heading paragraph...")
+            details_heading = doc.add_paragraph("Indent Details")
             details_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
             for run in details_heading.runs:
                 run.bold = True
                 run.font.size = Pt(12)
-            logger.info("Details heading paragraph created successfully")
+            logger.info("Indent details heading paragraph created successfully")
             
-            # Create table
-            logger.info("Creating table with dynamic rows and 2 columns...")
+            # Create horizontal table with 9 columns: Date, Time, Factory, Order ID, Given By, Type, Importance, Total Items, Description
+            logger.info("Creating horizontal table with 9 columns...")
             try:
-                details_table = doc.add_table(rows=len(details_data), cols=2)
+                # Create table with 1 header row and 1 data row
+                details_table = doc.add_table(rows=2, cols=9)
                 logger.info(f"Table created with {len(details_table.rows)} rows and {len(details_table.rows[0].cells)} columns")
             except Exception as table_error:
                 logger.warning(f"Error creating table with template, trying fallback approach: {table_error}")
                 # Fallback: create a new document without template
                 logger.info("Creating fallback document without template...")
                 doc = Document()
-                details_table = doc.add_table(rows=len(details_data), cols=2)
+                details_table = doc.add_table(rows=2, cols=9)
                 logger.info("Fallback table created successfully")
             
             # Set table alignment
             logger.info("Setting table alignment...")
             details_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-            logger.info("Order details table created successfully")
+            logger.info("Indent details table created successfully")
+            
+            # Add header row
+            header_cells = details_table.rows[0].cells
+            headers = ['Date', 'Time', 'Factory', 'Order ID', 'Given By', 'Type', 'Importance', 'Total Items', 'Description']
+            for i, header_text in enumerate(headers):
+                header_cells[i].text = header_text
+                header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in header_cells[i].paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.bold = True
+                        run.font.size = Pt(11)
+            
+            # Add data row
+            data_cells = details_table.rows[1].cells
+            data_values = [
+                date_value,
+                time_value,
+                factory,
+                order_id,
+                order_data.get('givenBy', 'N/A'),
+                order_data.get('type', 'N/A'),
+                order_data.get('importance', 'Normal'),
+                str(total_items),
+                order_data.get('description', 'N/A')
+            ]
+            
+            for i, value in enumerate(data_values):
+                data_cells[i].text = str(value)
+                data_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for paragraph in data_cells[i].paragraphs:
+                    if i in [0, 1, 2, 3, 6, 7]:  # Date, Time, Factory, Order ID, Importance, Total Items - center aligned
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    else:  # Given By, Type, Description - left aligned
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    for run in paragraph.runs:
+                        run.font.size = Pt(10)
+            
+            logger.info("Indent details table populated successfully")
             
         except Exception as e:
-            logger.error(f"Error creating order details table: {e}")
+            logger.error(f"Error creating indent details table: {e}")
             import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
         
-        # Add order details
-        try:
-            logger.info("Populating order details table...")
-            
-            for i, (label, value) in enumerate(details_data):
-                logger.info(f"Processing details row {i}: {label} = {value}")
-                row = details_table.rows[i]
-                cells = row.cells
-                cells[0].text = label
-                cells[1].text = str(value)
-            logger.info("Order details table populated successfully")
-        except Exception as e:
-            logger.error(f"Error populating order details table: {e}")
-            raise
-        
-        # Format cells
-        try:
-            logger.info("Formatting details table cells...")
-            for i, (label, value) in enumerate(details_data):
-                row = details_table.rows[i]
-                cells = row.cells
-                for cell in cells:
-                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                    for paragraph in cell.paragraphs:
-                        for run in paragraph.runs:
-                            # Make label cells bold
-                            if i < len(details_data):  # Ensure we're within bounds
-                                run.bold = True
-                            run.font.size = Pt(10)
-            logger.info("Details table cells formatted successfully")
-        except Exception as e:
-            logger.error(f"Error formatting details table cells: {e}")
-            raise
-        
         # Apply professional formatting
         try:
-            format_table_professional(details_table, is_header=False, logger=logger)
+            format_table_professional(details_table, is_header=True, logger=logger)
         except Exception as e:
-            logger.warning(f"Could not apply professional formatting to details table: {e}")
+            logger.warning(f"Could not apply professional formatting to indent details table: {e}")
             # Continue without formatting
         
         doc.add_paragraph()  # Spacing
         
-        # Create Order Items Table
-        items_heading = doc.add_paragraph("Order Items")
+        # Create Item Details Table
+        items_heading = doc.add_paragraph("Item Details")
         items_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
         for run in items_heading.runs:
             run.bold = True
             run.font.size = Pt(12)
         
-        order_items = order_data.get('orderItems', [])
-        
         if order_items:
             # Create table with headers
-            items_table = doc.add_table(rows=1, cols=7)
+            items_table = doc.add_table(rows=1, cols=9)
             items_table.alignment = WD_TABLE_ALIGNMENT.CENTER
             
             # Add header row
             header_cells = items_table.rows[0].cells
-            headers = ['S.No', 'Category', 'Sub Category', 'Material Name', 'Particulars', 'Quantity', 'UOM']
+            headers = ['S.No', 'Category', 'Sub Category', 'Material Name', 'Particulars', 'Quantity', 'UOM', 'Preferred Vendor', 'Place']
             for i, header_text in enumerate(headers):
                 header_cells[i].text = header_text
                 header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
@@ -3170,11 +3446,13 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 
                 cells[0].text = str(idx)
                 cells[1].text = item.get('category', '')
-                cells[2].text = item.get('subCategory', '-')
-                cells[3].text = item.get('specifications', '-')
-                cells[4].text = item.get('materialName', '')
+                cells[2].text = item.get('subCategory') or '-'
+                cells[3].text = item.get('materialName', '')  # Material Name in column 3
+                cells[4].text = item.get('specifications') or '-'  # Particulars in column 4
                 cells[5].text = str(item.get('quantity', ''))
                 cells[6].text = item.get('uom', '')
+                cells[7].text = item.get('partyName') or '-'  # Preferred Vendor in column 7
+                cells[8].text = item.get('place') or '-'  # Place in column 8
                 
                 # Format cells
                 for i, cell in enumerate(cells):
@@ -3197,24 +3475,47 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 logger.warning(f"Could not apply professional formatting to items table: {e}")
                 # Continue without formatting
         
-        # Add footer
-        doc.add_paragraph()
-        footer = doc.add_paragraph(f"Generated by Bajaj Earths - {factory} Store")
-        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for run in footer.runs:
-            run.font.size = Pt(9)
-            run.font.italic = True
+        # Generate filename in format: {FACTORY}_INDT_{Order_ID}_{Day}_{HHMM} {AM/PM}
+        # Parse dateTime to extract day, time, and AM/PM
+        date_time_str = order_data.get('dateTime', '')
+        day = ''
+        time_hhmm_ampm = ''
         
-        # Save document
-        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        docx_filename = f"order_{order_id}_{timestamp_str}.docx"
+        if date_time_str:
+            try:
+                # Format: "DD/MM/YYYY, HH:MM AM/PM" (e.g., "03/12/2025, 06:10 PM")
+                parts = date_time_str.split(',')
+                if len(parts) >= 2:
+                    # Extract day from date part (DD/MM/YYYY)
+                    date_part = parts[0].strip()
+                    date_components = date_part.split('/')
+                    if len(date_components) >= 1:
+                        day = date_components[0].strip()  # Get day (DD)
+                    
+                    # Extract time and AM/PM from time part (HH:MM AM/PM)
+                    time_part = parts[1].strip()  # "06:10 PM"
+                    # Remove colon and keep AM/PM
+                    time_hhmm_ampm = time_part.replace(':', '')  # "0610 PM"
+            except Exception as e:
+                logger.warning(f"Error parsing dateTime '{date_time_str}': {e}. Using fallback.")
+        
+        # Fallback to current date/time if parsing failed
+        if not day or not time_hhmm_ampm:
+            now = datetime.now()
+            day = now.strftime("%d")
+            time_hhmm_ampm = now.strftime("%I%M %p")  # "0610 PM" format
+        
+        # Generate filename: {FACTORY}_INDT_{Order_ID}_{Day}_{HHMM} {AM/PM}
+        base_filename = f"INDT_{order_id}_{day}_{time_hhmm_ampm}"
+        docx_filename = f"{base_filename}.docx"
+        pdf_filename = f"{base_filename}.pdf"
+        
         docx_path = os.path.join(output_dir, docx_filename)
         doc.save(docx_path)
         
         logger.info(f"Order document created: {docx_path}")
         
         # Convert to PDF
-        pdf_filename = f"order_{order_id}_{timestamp_str}.pdf"
         pdf_path = os.path.join(output_dir, pdf_filename)
         
         pdf_created = False
@@ -3229,22 +3530,96 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             # Use DOCX for notifications
             notification_file = docx_path
         
+        # Upload PDF to Google Drive before notifications (only if PDF was created)
+        drive_upload_success = None  # None = not attempted, True = success, False = failed
+        if pdf_created and pdf_path:
+            try:
+                from Utils.drive_utils import upload_store_document_to_drive
+                
+                # Get date string from order_data
+                date_string = order_data.get('dateTime', '')
+                if not date_string:
+                    # Fallback: use current date
+                    date_string = datetime.now().strftime("%d/%m/%Y, %I:%M:%S %p")
+                
+                logger.info(f"Uploading order PDF to Google Drive (factory: {factory}, date: {date_string})")
+                upload_success, file_id, folder_id, upload_error = upload_store_document_to_drive(
+                    pdf_path=pdf_path,
+                    factory=factory,
+                    date_string=date_string,
+                    process_type="place_order",
+                    file_name=pdf_filename,
+                    logger=logger
+                )
+                
+                if upload_success:
+                    logger.info(f"Successfully uploaded order PDF to Google Drive. File ID: {file_id}, Folder ID: {folder_id}")
+                    drive_upload_success = True
+                    result["drive_upload"] = {
+                        "success": True,
+                        "file_id": file_id,
+                        "folder_id": folder_id
+                    }
+                else:
+                    logger.warning(f"Failed to upload order PDF to Google Drive: {upload_error}")
+                    result["warnings"].append(f"Google Drive upload failed: {upload_error}")
+                    drive_upload_success = False
+                    result["drive_upload"] = {
+                        "success": False,
+                        "error": upload_error
+                    }
+            except Exception as e:
+                logger.error(f"Error during Google Drive upload: {e}")
+                result["warnings"].append(f"Error during Google Drive upload: {e}")
+                drive_upload_success = False
+                result["drive_upload"] = {
+                    "success": False,
+                    "error": str(e)
+                }
+        
+        # Extract order items for notifications
+        order_items = order_data.get('orderItems', [])
+        
+        # Fetch designation from authority sheet based on givenBy name
+        given_by_name = order_data.get('givenBy', '')
+        designation = get_designation_from_authority_sheet(factory, given_by_name, logger) if given_by_name else 'N/A'
+        
+        # Generate HTML table rows for order items
+        items_table_rows_html = ''
+        if order_items:
+            items_table_rows_html = ''.join([
+                f'''
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{idx}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{item.get('category', '')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; {'text-align: center;' if not item.get('subCategory') else ''}">{(item.get('subCategory') or '-')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{item.get('materialName', '')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; {'text-align: center;' if not item.get('specifications') else ''}">{(item.get('specifications') or '-')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{item.get('quantity', '')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{item.get('uom', '')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; {'text-align: center;' if not item.get('partyName') else ''}">{(item.get('partyName') or '-')}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; {'text-align: center;' if not item.get('place') else ''}">{(item.get('place') or '-')}</td>
+                        </tr>'''
+                for idx, item in enumerate(order_items, 1)
+            ])
+        else:
+            items_table_rows_html = '<tr><td colspan="9" style="padding: 8px; border: 1px solid #ddd; text-align: center;">No items found</td></tr>'
+        
         # Prepare notification message
-        notification_message = f"""📦 *Material Order Notification*
+        notification_message = f"""📦 *New Material Indent Raised*
 
-*Order ID:* {order_id}
+*Date:* {date_value}
+*Time:* {time_value}
 *Factory:* {factory}
-*Date & Time:* {order_data.get('dateTime', 'N/A')}
+*Order ID:* {order_id}
 *Given By:* {order_data.get('givenBy', 'N/A')}
 *Type:* {order_data.get('type', 'N/A')}
-*Preferred Party:* {order_data.get('partyName', 'N/A')}
-*Place:* {order_data.get('place', 'N/A')}
 *Importance:* {order_data.get('importance', 'Normal')}
+*Total Items:* {len(order_items)}
 
 *Description:*
 {order_data.get('description', 'N/A')}
 
-*Total Items:* {len(order_items)}
 
 Please find the detailed order document attached."""
         
@@ -3254,9 +3629,18 @@ Please find the detailed order document attached."""
         
         for recipient in recipients:
             recipient_name = recipient.get('Name', 'Unknown')
-            recipient_email = recipient.get('Email ID - To', '')
+            recipient_email = recipient.get('Email ID - To', '').strip()
+            recipient_cc = recipient.get('Email ID - CC', '').strip()
+            recipient_bcc = recipient.get('Email ID - BCC', '').strip()
             recipient_phone_raw = recipient.get('Contact No.', '')
             country_code = recipient.get('Country Code', '91')
+            
+            # Log recipient email details for debugging
+            logger.info(f"Processing recipient: {recipient_name}")
+            logger.info(f"  Email ID - To: '{recipient_email}' (present: {bool(recipient_email)})")
+            logger.info(f"  Email ID - CC: '{recipient_cc}' (present: {bool(recipient_cc)})")
+            logger.info(f"  Email ID - BCC: '{recipient_bcc}' (present: {bool(recipient_bcc)})")
+            logger.info(f"  Contact No.: '{recipient_phone_raw}' (present: {bool(recipient_phone_raw)})")
             
             # Format phone number
             recipient_phone = f"{country_code}{recipient_phone_raw}".replace(' ', '') if recipient_phone_raw else ''
@@ -3269,100 +3653,178 @@ Please find the detailed order document attached."""
                 "whatsapp": {"status": "not_enabled", "reason": ""}
             }
             
-            logger.info(f"Processing recipient: {recipient_name}")
-            
             # Send email
             if send_email:
                 channel_status["email"]["status"] = "pending"
+                
+                # Clean and format CC/BCC emails (handle comma-separated or newline-separated emails)
+                def clean_emails(email_str):
+                    if not email_str or not email_str.strip():
+                        return None
+                    import re
+                    emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
+                    return ','.join(emails) if emails else None
+                
+                cc_emails = clean_emails(recipient_cc)
+                bcc_emails = clean_emails(recipient_bcc)
+                
+                # Check if we have any email address (To, CC, or BCC)
+                has_to_email = bool(recipient_email)
+                has_cc_email = bool(cc_emails)
+                has_bcc_email = bool(bcc_emails)
+                has_any_email = has_to_email or has_cc_email or has_bcc_email
+                
+                logger.info(f"  Email validation for {recipient_name}:")
+                logger.info(f"    Has To email: {has_to_email}")
+                logger.info(f"    Has CC email: {has_cc_email} (value: {cc_emails})")
+                logger.info(f"    Has BCC email: {has_bcc_email} (value: {bcc_emails})")
+                logger.info(f"    Has any email: {has_any_email}")
+                
+                # Handle case where only CC/BCC is present (no To address)
+                # Gmail API requires a To address, so we'll use the sender's email as To
+                # This allows CC/BCC emails to remain in their respective fields
+                if not has_to_email and (has_cc_email or has_bcc_email):
+                    # Use sender's email as To address when only CC/BCC is present
+                    recipient_email = user_email
+                    logger.warning(f"  No To email found for {recipient_name}, using sender's email ({user_email}) as To address")
+                    logger.info(f"  CC emails will remain in CC: {cc_emails}")
+                    logger.info(f"  BCC emails will remain in BCC: {bcc_emails}")
+                
                 if recipient_email:
                     try:
-                        email_subject = f"Material Order {order_id} - {factory}"
+                        email_subject = f"New Material Indent Raised - {order_data.get('givenBy', 'N/A')} - {order_id}"
+                        
+                        # Parse dateTime to extract separate date and time
+                        date_time_str = order_data.get('dateTime', '')
+                        date_value = 'N/A'
+                        time_value = 'N/A'
+                        
+                        if date_time_str:
+                            try:
+                                # Format: "DD/MM/YYYY, HH:MM AM/PM" (e.g., "03/12/2025, 06:10 PM")
+                                parts = date_time_str.split(',')
+                                if len(parts) >= 2:
+                                    date_value = parts[0].strip()  # Extract date part: "DD/MM/YYYY"
+                                    time_value = parts[1].strip()  # Extract time part: "HH:MM AM/PM"
+                            except Exception as e:
+                                logger.warning(f"Error parsing dateTime '{date_time_str}': {e}. Using fallback.")
+                                # Fallback to current date/time if parsing fails
+                                now = datetime.now()
+                                date_value = now.strftime("%d/%m/%Y")
+                                time_value = now.strftime("%I:%M %p")
+                        else:
+                            # If dateTime is missing, use current date/time
+                            now = datetime.now()
+                            date_value = now.strftime("%d/%m/%Y")
+                            time_value = now.strftime("%I:%M %p")
+                        
                         email_body = f"""
                     <html>
                     <body>
-                    <h2>Material Order Notification</h2>
-                    <p>Dear <b>{recipient_name}</b>,</p>
-                    <p>A new material order has been placed. Please find the details below:</p>
+                    <p>Dear {recipient_name},</p>
+                    <p>A new indent has been raised for your review and further processing.</p>
+                    Please find the details below:
                     
-                    <table style="border-collapse: collapse; margin: 20px 0;">
+                    <br><p></p>
+                    <b style="font-size: 1.1rem;">Indent Details</b>
+                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
+                        <tr style="text-align: center;">
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Time</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Description</strong></td>
+                        </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Order ID:</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{date_value}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{time_value}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{factory}</td>
                             <td style="padding: 8px; border: 1px solid #ddd;">{order_id}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{factory}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date & Time:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('dateTime', 'N/A')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By:</strong></td>
                             <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('givenBy', 'N/A')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type:</strong></td>
                             <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('type', 'N/A')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Preferred Party:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('partyName', 'N/A')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('place', 'N/A')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance:</strong></td>
                             <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('importance', 'Normal')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{len(order_items)}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{len(order_items)}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('description', 'N/A')}</td>
                         </tr>
                     </table>
+                    <br><p></p>
                     
-                    <p><strong>Description:</strong><br>{order_data.get('description', 'N/A')}</p>
+                    <b style="font-size: 1.1rem;">Item Details</b>
+                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
+                        <tr style="text-align: center;">
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>S.No</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Category</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sub Category</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Material Name</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Particulars</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Quantity</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>UOM</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Preferred Vendor</strong></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place</strong></td>
+                        </tr>
+                        {items_table_rows_html}
+                    </table>
                     
-                    <p>Please find the detailed order document attached.</p>
+                    <br><p></p>
+                    Please find the detailed order document attached.
                     
-                    <p>Best regards,<br>Bajaj Earths - {factory} Store</p>
+                    <br><br><p></p>
+                    Best Regards,<br>{order_data.get('givenBy', 'N/A')} <br> {designation}
                     </body>
                     </html>
                     """
+                        
+                        logger.info(f"  Attempting to send email to {recipient_name}:")
+                        logger.info(f"    To: {recipient_email}")
+                        logger.info(f"    CC: {cc_emails if cc_emails else '(none)'}")
+                        logger.info(f"    BCC: {bcc_emails if bcc_emails else '(none)'}")
                         
                         success = send_email_gmail_api(
                             user_email=user_email,
                             recipient_email=recipient_email,
                             subject=email_subject,
                             body=email_body,
-                            attachment_paths=[notification_file]
+                            attachment_paths=[notification_file],
+                            cc=cc_emails,
+                            bcc=bcc_emails
                         )
                         
                         if success is True:
                             recipient_success = True
                             channel_status["email"]["status"] = "success"
                             result["delivery_stats"]["email_successful"] += 1
-                            logger.info(f"Email sent successfully to {recipient_name} ({recipient_email})")
+                            logger.info(f"  ✓ Email sent successfully to {recipient_name} ({recipient_email})")
+                            if cc_emails:
+                                logger.info(f"    CC recipients: {cc_emails}")
+                            if bcc_emails:
+                                logger.info(f"    BCC recipients: {bcc_emails}")
                         else:
                             failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
                             recipient_fail_reasons.append(failure_reason)
                             channel_status["email"]["status"] = "failed"
                             channel_status["email"]["reason"] = failure_reason
-                            logger.error(f"Failed to send email to {recipient_name}: {success}")
+                            logger.error(f"  ✗ Failed to send email to {recipient_name}: {success}")
+                            logger.error(f"    To: {recipient_email}, CC: {cc_emails}, BCC: {bcc_emails}")
                             
                     except Exception as e:
                         exception_reason = f"Email exception: {str(e)}"
                         recipient_fail_reasons.append(exception_reason)
                         channel_status["email"]["status"] = "failed"
                         channel_status["email"]["reason"] = exception_reason
-                        logger.error(f"Error sending email to {recipient_name}: {e}")
+                        logger.error(f"  ✗ Error sending email to {recipient_name}: {e}")
+                        logger.error(f"    To: {recipient_email}, CC: {cc_emails}, BCC: {bcc_emails}")
                 else:
-                    no_email_reason = "Email: No recipient address provided"
+                    # No email address available (neither To, CC, nor BCC)
+                    no_email_reason = "Email: No recipient address provided (To, CC, or BCC required)"
                     recipient_fail_reasons.append(no_email_reason)
                     channel_status["email"]["status"] = "skipped"
                     channel_status["email"]["reason"] = no_email_reason
+                    logger.warning(f"  ⚠ Skipping email for {recipient_name}: No email address found (To, CC, or BCC)")
+                    logger.warning(f"    Original data - To: '{recipient.get('Email ID - To', '')}', CC: '{recipient.get('Email ID - CC', '')}', BCC: '{recipient.get('Email ID - BCC', '')}'")
             else:
                 channel_status["email"]["status"] = "not_enabled"
             
@@ -3432,13 +3894,38 @@ Please find the detailed order document attached."""
                     "channel_status": channel_status
                 })
         
-        # Clean up temporary files
-        try:
-            if pdf_created and os.path.exists(docx_path):
-                os.remove(docx_path)
-                logger.info(f"Cleaned up temporary DOCX: {docx_path}")
-        except Exception as e:
-            logger.warning(f"Failed to clean up DOCX file: {e}")
+        # Delete generated documents after notifications are completed
+        # Only delete if Drive upload succeeded
+        if pdf_created and pdf_path:
+            try:
+                from Utils.process_utils import delete_generated_files
+                
+                # Check if Drive upload was successful
+                drive_upload_status = result.get("drive_upload", {}).get("success") if "drive_upload" in result else drive_upload_success
+                
+                deletion_result = delete_generated_files(
+                    file_paths=[pdf_path, docx_path],
+                    drive_upload_success=drive_upload_status,
+                    logger=logger
+                )
+                
+                if deletion_result['success']:
+                    logger.info(f"Deleted order documents after successful Drive upload: {pdf_path} and {docx_path}")
+                elif deletion_result['skipped_reason']:
+                    logger.info(f"Kept order documents: {deletion_result['skipped_reason']} - {pdf_path}")
+                else:
+                    if deletion_result['failed_files']:
+                        logger.warning(f"Failed to delete some order files: {deletion_result['failed_files']}")
+            except Exception as e:
+                logger.error(f"Error during order document cleanup: {e}")
+        else:
+            # If PDF wasn't created, still try to clean up DOCX
+            try:
+                if os.path.exists(docx_path):
+                    os.remove(docx_path)
+                    logger.info(f"Cleaned up temporary DOCX: {docx_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up DOCX file: {e}")
         
         # Set final status
         successful = result["delivery_stats"]["successful_deliveries"]
@@ -3625,9 +4112,9 @@ def process_material_notification(material_data, notification_type, recipients, 
                 
                 cells[0].text = str(idx)
                 cells[1].text = item.get('category', '')
-                cells[2].text = item.get('subCategory', '-')
+                cells[2].text = item.get('subCategory') or '-'
                 cells[3].text = item.get('materialName', '')
-                cells[4].text = item.get('specifications', '-')
+                cells[4].text = item.get('specifications') or '-'
                 cells[5].text = str(item.get('quantity', ''))
                 cells[6].text = item.get('uom', '')
                 
@@ -3730,6 +4217,56 @@ def process_material_notification(material_data, notification_type, recipients, 
             logger.warning("PDF conversion failed, using DOCX file")
             result["warnings"].append("PDF conversion failed, using DOCX file")
             notification_file = docx_path
+        
+        # Upload PDF to Google Drive before notifications (only if PDF was created)
+        drive_upload_success = None  # None = not attempted, True = success, False = failed
+        if pdf_created and pdf_path:
+            try:
+                from Utils.drive_utils import upload_store_document_to_drive
+                
+                # Get date string from material_data
+                date_string = material_data.get('dateTime', '')
+                if not date_string:
+                    # Fallback: use current date
+                    date_string = datetime.now().strftime("%d/%m/%Y, %I:%M:%S %p")
+                
+                # Determine process type
+                process_type = "material_inward" if is_inward else "material_outward"
+                
+                logger.info(f"Uploading {notification_type} PDF to Google Drive (factory: {factory}, date: {date_string})")
+                upload_success, file_id, folder_id, upload_error = upload_store_document_to_drive(
+                    pdf_path=pdf_path,
+                    factory=factory,
+                    date_string=date_string,
+                    process_type=process_type,
+                    file_name=pdf_filename,
+                    logger=logger
+                )
+                
+                if upload_success:
+                    logger.info(f"Successfully uploaded {notification_type} PDF to Google Drive. File ID: {file_id}, Folder ID: {folder_id}")
+                    drive_upload_success = True
+                    result["drive_upload"] = {
+                        "success": True,
+                        "file_id": file_id,
+                        "folder_id": folder_id
+                    }
+                else:
+                    logger.warning(f"Failed to upload {notification_type} PDF to Google Drive: {upload_error}")
+                    result["warnings"].append(f"Google Drive upload failed: {upload_error}")
+                    drive_upload_success = False
+                    result["drive_upload"] = {
+                        "success": False,
+                        "error": upload_error
+                    }
+            except Exception as e:
+                logger.error(f"Error during Google Drive upload: {e}")
+                result["warnings"].append(f"Error during Google Drive upload: {e}")
+                drive_upload_success = False
+                result["drive_upload"] = {
+                    "success": False,
+                    "error": str(e)
+                }
         
         # Prepare notification message
         if is_inward:
@@ -3961,13 +4498,38 @@ Please find the detailed outward document attached."""
                     "channel_status": channel_status
                 })
         
-        # Clean up temporary files
-        try:
-            if pdf_created and os.path.exists(docx_path):
-                os.remove(docx_path)
-                logger.info(f"Cleaned up temporary DOCX: {docx_path}")
-        except Exception as e:
-            logger.warning(f"Failed to clean up DOCX file: {e}")
+        # Delete generated documents after notifications are completed
+        # Only delete if Drive upload succeeded
+        if pdf_created and pdf_path:
+            try:
+                from Utils.process_utils import delete_generated_files
+                
+                # Check if Drive upload was successful
+                drive_upload_status = result.get("drive_upload", {}).get("success") if "drive_upload" in result else drive_upload_success
+                
+                deletion_result = delete_generated_files(
+                    file_paths=[pdf_path, docx_path],
+                    drive_upload_success=drive_upload_status,
+                    logger=logger
+                )
+                
+                if deletion_result['success']:
+                    logger.info(f"Deleted {notification_type} documents after successful Drive upload: {pdf_path} and {docx_path}")
+                elif deletion_result['skipped_reason']:
+                    logger.info(f"Kept {notification_type} documents: {deletion_result['skipped_reason']} - {pdf_path}")
+                else:
+                    if deletion_result['failed_files']:
+                        logger.warning(f"Failed to delete some {notification_type} files: {deletion_result['failed_files']}")
+            except Exception as e:
+                logger.error(f"Error during {notification_type} document cleanup: {e}")
+        else:
+            # If PDF wasn't created, still try to clean up DOCX
+            try:
+                if os.path.exists(docx_path):
+                    os.remove(docx_path)
+                    logger.info(f"Cleaned up temporary DOCX: {docx_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up DOCX file: {e}")
         
         # Set final status
         successful = result["delivery_stats"]["successful_deliveries"]

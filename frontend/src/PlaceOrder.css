@@ -180,7 +180,7 @@
     .po-form-header {
       flex-direction: column;
       padding: 15px 0;
-      margin-bottom: 20px;
+      margin-bottom: 35px;
       gap: 12px;
       align-items: stretch;
       width: 100%;
@@ -371,15 +371,7 @@
     font-size: 14px;
   }
   
-  /* Center align specific field labels */
-  .po-form-group label[for="category"],
-  .po-form-group label[for="subCategory"],
-  .po-form-group label[for="materialName"],
-  .po-form-group label[for="specifications"],
-  .po-form-group label[for="quantity"],
-  .po-form-group label[for="uom"] {
-    text-align: center;
-  }
+  
   
   .po-form-group label.required::after {
     content: " *";
@@ -438,6 +430,31 @@
   }
   
   .po-form-input:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+  }
+  
+  .po-form-textarea {
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    background-color: white;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+  }
+  
+  .po-form-textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  }
+  
+  .po-form-textarea:disabled {
     background-color: #f5f5f5;
     color: #999;
     cursor: not-allowed;
@@ -683,10 +700,19 @@
     }
     
     .po-form-input,
-    .po-form-select,
+    .po-form-select {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .po-form-group label {
+      font-size: 12px;
+    }
+    
     .po-form-textarea {
       width: 100%;
       box-sizing: border-box;
+      font-size: 12px;
     }
     
     .po-form-actions {
@@ -717,6 +743,14 @@
     .po-material-form {
       padding: 20px;
     }
+    
+    .po-form-group label {
+      font-size: 12px;
+    }
+    
+    .po-form-textarea {
+      font-size: 12px;
+    }
   }
   
   /* ==================== MOBILE (400px - 301px) ==================== */
@@ -731,10 +765,18 @@
       width: 100%;
       min-width: 100%;
     }
+    
+    .po-form-group label {
+      font-size: 12px;
+    }
   
     .po-form-input,
     .po-form-select {
       width: 100%;
+    }
+    
+    .po-form-textarea {
+      font-size: 12px;
     }
   
     .po-add-item-group {
@@ -763,6 +805,7 @@
     .po-form-header {
       padding: 15px 0;
       gap: 12px;
+      margin-bottom: 30px;
     }
   
     .po-header-center h2 {
@@ -788,12 +831,16 @@
     .po-form-group label {
       font-size: 12px;
     }
-  
+    
     .po-form-input,
     .po-form-select {
       padding: 10px;
       font-size: 13px;
       min-height: 42px;
+    }
+    
+    .po-form-textarea {
+      font-size: 12px;
     }
   
     .po-add-item-section {
@@ -852,6 +899,7 @@
       gap: 8px;
       flex-direction: column;
       align-items: stretch;
+      margin-bottom: 25px;
     }
   
     .po-header-left,
@@ -943,13 +991,12 @@
     }
   
     .po-form-group label {
-      font-size: 10px;
+      font-size: 12px;
       margin-bottom: 4px;
     }
   
     .po-form-input,
-    .po-form-select,
-    .po-form-textarea {
+    .po-form-select {
       width: 100%;
       padding: 8px;
       font-size: 11px;
@@ -958,8 +1005,12 @@
     }
   
     .po-form-textarea {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
       min-height: 60px;
       resize: vertical;
+      box-sizing: border-box;
     }
   
     .po-add-item-section {
@@ -1331,6 +1382,7 @@
     .po-form-header {
       padding: 10px 0;
       gap: 8px;
+      margin-bottom: 20px;
     }
   
     .po-header-center h2 {
@@ -1345,7 +1397,7 @@
     }
   
     .po-form-group label {
-      font-size: 10px;
+      font-size: 12px;
     }
   
     .po-form-input,
@@ -1353,6 +1405,10 @@
       padding: 6px;
       font-size: 11px;
       min-height: 36px;
+    }
+    
+    .po-form-textarea {
+      font-size: 12px;
     }
   
     .po-add-item-section {
@@ -1410,7 +1466,7 @@
     }
   
     .po-form-group label {
-      font-size: 9px;
+      font-size: 12px;
     }
   
     .po-form-input,
@@ -1418,6 +1474,10 @@
       padding: 5px;
       font-size: 10px;
       min-height: 32px;
+    }
+    
+    .po-form-textarea {
+      font-size: 12px;
     }
   
     .po-add-item-section {
@@ -2056,7 +2116,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 50px;
     padding: 20px 0;
     border-bottom: 2px solid #e9ecef;
   }
@@ -2092,16 +2152,112 @@
   
   .po-datetime-box {
     background-color: white;
-    padding: 12px 16px;
+    padding: 8px 12px;
     border-radius: 8px;
     border: 2px solid #3498db;
     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    min-width: 200px;
+  }
+
+  /* Mobile view: side by side */
+  @media (max-width: 768px) {
+    .po-datetime-box {
+      flex-direction: row;
+      align-items: center;
+      min-width: 300px;
+    }
+  }
+
+  /* Date and Time Wrappers */
+  .po-date-wrapper,
+  .po-time-wrapper {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Labels */
+  .po-datetime-label {
+    font-size: 12px;
     font-weight: 600;
     color: #2c3e50;
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Mobile view: adjust wrapper layout */
+  @media (max-width: 768px) {
+    .po-date-wrapper,
+    .po-time-wrapper {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .po-date-picker-hidden,
+  .po-time-picker-hidden {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .po-date-input,
+  .po-time-input {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 12px;
     font-size: 14px;
-    display: inline-block;
-    min-width: 200px;
+    font-weight: 600;
+    color: #2c3e50;
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
     text-align: center;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
+  /* Mobile view: inputs share space side by side */
+  @media (max-width: 768px) {
+    .po-date-input,
+    .po-time-input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .po-date-input:focus,
+  .po-time-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  }
+
+  .po-date-input:hover,
+  .po-time-input:hover {
+    border-color: #3498db;
+  }
+
+  .po-date-input::placeholder,
+  .po-time-input::placeholder {
+    color: #999;
+    font-weight: normal;
   }
   
   .po-order-id-box {
@@ -3532,10 +3688,14 @@
     
     /* Touch-friendly form controls */
     .po-form-select,
-    .po-form-input,
-    .po-form-textarea {
+    .po-form-input {
       min-height: 44px;
       font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .po-form-textarea {
+      min-height: 44px;
+      font-size: 12px !important; /* 1px less than label (12px) - override iOS zoom prevention */
     }
     
     .po-edit-select,

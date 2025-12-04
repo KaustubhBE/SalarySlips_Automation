@@ -69,6 +69,8 @@ PLANT_DATA = [
         "name": "Kerur",
         "document_name": "KR",
         "material_sheet_id": "1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc",
+        "kerur_store_drive_id": "1Mc8-s9hVg4QM6IQCHU30bnzddYO4f4jr",
+        "kerur_reports_drive_id": "1cuL5gdl5GncegK2-FItKux7pg-D2sT--",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -80,6 +82,7 @@ PLANT_DATA = [
         "name": "Gulbarga",
         "document_name": "GB",
         "material_sheet_id": "1EkjLEEMeZTJoMVDpmtxBVQ_LY_5u99J76PPMwodvD5Y",
+        "gulbarga_store_drive_id": "[TO_BE_ASSIGNED]",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -90,6 +93,7 @@ PLANT_DATA = [
         "name": "Humnabad",
         "document_name": "HB",
         "material_sheet_id": "1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw",
+        "humnabad_store_drive_id": "[TO_BE_ASSIGNED]",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -101,6 +105,7 @@ PLANT_DATA = [
         "name": "Omkar",
         "document_name": "OM",
         "material_sheet_id": "15MSsB7qXCyKWHvdJtUJuivlgy6khA2dCXxNXuY-sowg",
+        "omkar_store_drive_id": "[TO_BE_ASSIGNED]",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -111,6 +116,7 @@ PLANT_DATA = [
         "name": "Padmavati",
         "document_name": "PV",
         "material_sheet_id": "",
+        "padmavati_store_drive_id": "[TO_BE_ASSIGNED]",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -121,6 +127,7 @@ PLANT_DATA = [
         "name": "Head Office",
         "document_name": "HO",
         "material_sheet_id": "",
+        "head_office_store_drive_id": "[TO_BE_ASSIGNED]",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -899,6 +906,8 @@ def generate_salary_slip_single():
         drive_employees = None
         email_employees = None
         contact_employees = None
+        # Track Drive upload status for each PDF
+        pdf_upload_status = {}  # {pdf_path: upload_success (True/False/None)}
         
         # First pass: Generate all PDFs
         for month_data in user_inputs["months_data"]:
@@ -1007,13 +1016,21 @@ def generate_salary_slip_single():
                         collected_pdfs=collected_pdfs
                     )
                     if pdf_path and pdf_path.get("success") and pdf_path.get("output_file"):
-                        collected_pdfs.append(pdf_path["output_file"])
+                        pdf_file_path = pdf_path["output_file"]
+                        # Only add to collected_pdfs if not already added by process_salary_slip
+                        if pdf_file_path not in collected_pdfs:
+                            collected_pdfs.append(pdf_file_path)
+                        # Track Drive upload status for this PDF
+                        drive_upload_success = pdf_path.get("drive_upload_success")
+                        pdf_upload_status[pdf_file_path] = drive_upload_success
+                        logging.info(f"Tracked PDF upload status for {pdf_file_path}: {drive_upload_success}")
                         results.append({
                             "month": full_month,
                             "year": full_year,
                             "status": "success",
                             "message": "Salary slip generated successfully",
-                            "pdf_path": pdf_path["output_file"]
+                            "pdf_path": pdf_file_path,
+                            "drive_upload_success": drive_upload_success
                         })
                     else:
                         results.append({
@@ -1157,6 +1174,46 @@ def generate_salary_slip_single():
                     logging.error("Error sending WhatsApp message: {}".format(str(e)))
                     return jsonify({"error": "WHATSAPP_ERROR", "message": f"Error sending WhatsApp message: {str(e)}"}), 500
 
+        # Delete generated files conditionally based on Drive upload success
+        # This should run regardless of whether notifications were sent from endpoint or process_salary_slip
+        # Only delete files that were successfully uploaded to Drive
+        if collected_pdfs:
+            try:
+                from Utils.process_utils import delete_generated_files
+                
+                logging.info(f"Starting file cleanup for {len(collected_pdfs)} PDF(s). Upload status map: {pdf_upload_status}")
+                # Delete each PDF and its corresponding DOCX only if its Drive upload succeeded
+                for pdf_path in collected_pdfs:
+                    upload_success = pdf_upload_status.get(pdf_path)
+                    logging.info(f"Checking deletion for {pdf_path}: upload_success={upload_success}")
+                    
+                    # Try to get DOCX path by replacing .pdf with .docx
+                    docx_path = pdf_path.replace('.pdf', '.docx') if pdf_path.endswith('.pdf') else None
+                    
+                    # Build file paths list with both PDF and DOCX
+                    files_to_delete = [pdf_path]
+                    if docx_path:
+                        files_to_delete.append(docx_path)
+                    
+                    deletion_result = delete_generated_files(
+                        file_paths=files_to_delete,
+                        drive_upload_success=upload_success,
+                        logger=logging
+                    )
+                    
+                    if deletion_result['success']:
+                        logging.info(f"Deleted salary slip files after successful Drive upload: {pdf_path} (and DOCX if present)")
+                    elif deletion_result['skipped_reason']:
+                        logging.info(f"Kept salary slip files: {deletion_result['skipped_reason']} - {pdf_path}")
+                    else:
+                        if deletion_result['failed_files']:
+                            for failed in deletion_result['failed_files']:
+                                logging.warning(f"Failed to delete {failed['path']}: {failed['reason']}")
+            except Exception as e:
+                logging.error(f"Error during salary slip file cleanup: {e}")
+                import traceback
+                logging.error(traceback.format_exc())
+
         # Return results for all processed months
         return jsonify({
             "message": "Processing completed",
@@ -1216,6 +1273,10 @@ def generate_salary_slips_batch():
 
         
        # Generate salary slips for each employee sequentially
+        # Track upload status and file paths for conditional deletion
+        employee_pdf_paths = {}  # {employee_name: pdf_path}
+        employee_upload_status = {}  # {employee_name: upload_success}
+        
         for employee in employees:
             employee_name = employee[4]  # Assuming the employee name is at index 4
             app.logger.info("Processing salary slip for employee: {}".format(employee_name))
@@ -1225,7 +1286,8 @@ def generate_salary_slips_batch():
                 employee_code_index = next((i for i, header in enumerate(salary_headers) if 'Employee' in header and 'Code' in header), 0)
                 employee_identifier = employee[employee_code_index] if employee_code_index < len(employee) else ''
                 
-                process_salary_slips(
+                # Process single employee salary slip
+                result = process_salary_slip(
                     template_path=TEMPLATE_PATH,
                     output_dir=OUTPUT_DIR,
                     employee_identifier=employee_identifier,
@@ -1238,9 +1300,21 @@ def generate_salary_slips_batch():
                     year=str(full_year)[-2:],  # Last two digits of the year
                     full_month=full_month,
                     full_year=full_year,
-                    send_whatsapp=send_whatsapp,
-                    send_email=send_email
+                    send_whatsapp=False,  # Notifications handled separately in batch
+                    send_email=False,  # Notifications handled separately in batch
+                    is_special=False,
+                    months_data=None,
+                    collected_pdfs=None
                 )
+                
+                # Track PDF path and upload status
+                if result and result.get("output_file"):
+                    pdf_path = result["output_file"]
+                    employee_pdf_paths[employee_name] = pdf_path
+                    employee_upload_status[employee_name] = result.get("drive_upload_success")
+                else:
+                    app.logger.warning(f"Failed to generate salary slip for {employee_name}")
+                    continue
                 if send_email:
                     app.logger.info("Sending email to {}".format(employee[5]))  # Assuming email is at index 5
                     user_email = session.get('user', {}).get('email')
@@ -1268,12 +1342,18 @@ def generate_salary_slips_batch():
                         </html>
                         """
                         
+                        # Get PDF path for this employee
+                        pdf_path = employee_pdf_paths.get(employee_name)
+                        if not pdf_path:
+                            app.logger.warning(f"No PDF path found for {employee_name}, skipping email")
+                            continue
+                        
                         success = send_email_gmail_api(
                             user_email=user_email,
                             recipient_email=recipient_email,
                             subject=email_subject,
                             body=email_body,
-                            attachment_paths=[output_pdf] if 'output_pdf' in locals() else []
+                            attachment_paths=[pdf_path]
                         )
                         
                         if success == "TOKEN_EXPIRED":
@@ -1307,12 +1387,18 @@ def generate_salary_slips_batch():
                     contact_name = employee[4]  # Assuming name is at index 4
                     whatsapp_number = get_employee_contact(contact_name, contact_employees)
                     if whatsapp_number:
+                        # Get PDF path for this employee
+                        pdf_path = employee_pdf_paths.get(employee_name)
+                        if not pdf_path:
+                            app.logger.warning(f"No PDF path found for {contact_name}, skipping WhatsApp")
+                            continue
+                        
                         success = handle_whatsapp_notification(
                             contact_name=contact_name,
                             full_month=full_month,
                             full_year=full_year,
                             whatsapp_number=whatsapp_number,
-                            file_path=[output_pdf] if 'output_pdf' in locals() else [],
+                            file_path=[pdf_path],
                             is_special=False
                         )
                         
@@ -1345,6 +1431,33 @@ def generate_salary_slips_batch():
                             return jsonify({"error": "WHATSAPP_SEND_FAILED", "message": "Failed to send WhatsApp message. Please try again."}), 500
                         else:
                             app.logger.info("WhatsApp message sent successfully to {}".format(contact_name))
+                            
+                # Delete generated files conditionally based on Drive upload success
+                # Only delete if Drive upload succeeded
+                if employee_name in employee_pdf_paths and (send_email or send_whatsapp):
+                    try:
+                        from Utils.process_utils import delete_generated_files
+                        
+                        pdf_path = employee_pdf_paths[employee_name]
+                        upload_success = employee_upload_status.get(employee_name)
+                        
+                        deletion_result = delete_generated_files(
+                            file_paths=[pdf_path],
+                            drive_upload_success=upload_success,
+                            logger=logging
+                        )
+                        
+                        if deletion_result['success']:
+                            app.logger.info(f"Deleted salary slip PDF after successful Drive upload: {pdf_path}")
+                        elif deletion_result['skipped_reason']:
+                            app.logger.info(f"Kept salary slip PDF: {deletion_result['skipped_reason']} - {pdf_path}")
+                        else:
+                            if deletion_result['failed_files']:
+                                for failed in deletion_result['failed_files']:
+                                    app.logger.warning(f"Failed to delete {failed['path']}: {failed['reason']}")
+                    except Exception as e:
+                        app.logger.error(f"Error during salary slip file cleanup for {employee_name}: {e}")
+                        
             except Exception as e:
                 error_msg = "Error processing salary slip for employee {}: {}".format(employee_name, e)
                 app.logger.error(error_msg)
@@ -2641,8 +2754,9 @@ def get_recipients_list():
         # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
         headers = [h.strip() for h in recipients_data[1]]  # Row 2 contains headers
         
-        # Expected headers: "Name, Country Code, Contact No., Email ID - To"
-        expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To']
+        # Expected headers: "Name, Country Code, Contact No., Email ID - To, Email ID - CC, Email ID - BCC"
+        # Note: CC and BCC are optional fields
+        expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To', 'Email ID - CC', 'Email ID - BCC']
         logger.info(f"Found headers in recipients sheet: {headers}")
         
         # Build recipients list
@@ -3763,8 +3877,9 @@ def send_order_notification():
                 # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
                 headers = [h.strip() for h in recipients_data[1]]  # Row 2 contains headers
                 
-                # Expected headers: "Name, Country Code, Contact No., Email ID - To"
-                expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To']
+                # Expected headers: "Name, Country Code, Contact No., Email ID - To, Email ID - CC, Email ID - BCC"
+                # Note: CC and BCC are optional fields
+                expected_headers = ['Name', 'Country Code', 'Contact No.', 'Email ID - To', 'Email ID - CC', 'Email ID - BCC']
                 logger.info(f"Found headers in sheet: {headers}")
                 
                 # Process data rows starting from Row 3 (index 2)
@@ -3852,19 +3967,21 @@ def send_order_notification():
         send_email_enabled = method in ['email', 'both']
         send_whatsapp_enabled = method in ['whatsapp', 'both']
         
-        # Send log report to the user who generated the order notification (only if notifications were sent successfully)
-        if result.get('success') and result.get('delivery_stats', {}).get('successful_deliveries', 0) > 0:
-            try:
-                send_log_report_to_user(
-                    user_email, 
-                    result.get('delivery_stats', {}), 
-                    send_email_enabled, 
-                    send_whatsapp_enabled, 
-                    logger
-                )
-                logger.info("Log report sent successfully to user for order notification")
-            except Exception as e:
-                logger.error(f"Error sending log report to user: {e}")
+        # NOTE: Log report sending via email/WhatsApp is disabled for order notifications
+        # The delivery_stats are still returned in the response for frontend display
+        # Uncomment below to re-enable log report sending:
+        # if result.get('success') and result.get('delivery_stats', {}).get('successful_deliveries', 0) > 0:
+        #     try:
+        #         send_log_report_to_user(
+        #             user_email, 
+        #             result.get('delivery_stats', {}), 
+        #             send_email_enabled, 
+        #             send_whatsapp_enabled, 
+        #             logger
+        #         )
+        #         logger.info("Log report sent successfully to user for order notification")
+        #     except Exception as e:
+        #         logger.error(f"Error sending log report to user: {e}")
         
         if result.get('success'):
             return jsonify({

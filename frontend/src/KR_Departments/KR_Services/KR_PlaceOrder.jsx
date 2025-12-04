@@ -16,15 +16,15 @@ const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
 
 // Utility Functions
 const formatDateTime = (date) => {
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  })
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const seconds = date.getSeconds().toString().padStart(2, '0')
+  const ampm = date.getHours() >= 12 ? 'PM' : 'AM'
+  const hours12 = (date.getHours() % 12 || 12).toString().padStart(2, '0')
+  
+  return `${day}/${month}/${year}, ${hours12}:${minutes}:${seconds} ${ampm}`
 }
 
 const generateFallbackOrderId = () => {
@@ -502,7 +502,20 @@ const KR_PlaceOrder = () => {
   })
 
   const [orderItems, setOrderItems] = useState([])
-  const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date()
+    const day = now.getDate().toString().padStart(2, '0')
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const year = now.getFullYear()
+    return `${day}/${month}/${year}`
+  })
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date()
+    const hours = (now.getHours() % 12 || 12).toString().padStart(2, '0')
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
+    return `${hours}:${minutes} ${ampm}`
+  })
   const [orderId, setOrderId] = useState('')
   const [orderIdGenerated, setOrderIdGenerated] = useState(false)
   const [authorityNames, setAuthorityNames] = useState([])
@@ -544,6 +557,7 @@ const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [summaryModalData, setSummaryModalData] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [shouldRefreshOnModalClose, setShouldRefreshOnModalClose] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
   const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
 const [highlightedFields, setHighlightedFields] = useState([])
@@ -553,6 +567,8 @@ const categoryInputRef = useRef(null)
 const materialNameInputRef = useRef(null)
 const quantityInputRef = useRef(null)
 const uomInputRef = useRef(null)
+const dateInputRef = useRef(null)
+const timeInputRef = useRef(null)
 const addItemFieldRefs = {
   category: categoryInputRef,
   materialName: materialNameInputRef,
@@ -795,22 +811,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     fetchRecipientsList()
     fetchPartyPlaceData()
     
-    // Update current date/time
-    const updateDateTime = () => {
-      setCurrentDateTime(new Date())
-    }
-    
     // Clean up old sessions
     cleanupOldSessions()
     
-    updateDateTime()
-    
-    // Update time every second for live clock
-    const interval = setInterval(updateDateTime, 1000)
-    
     // Cleanup on component unmount
     return () => {
-      clearInterval(interval)
       cleanupSession()
     }
   }, [])
@@ -1447,23 +1452,31 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     return rows.filter(row => row.value)
   }
 
-  const openSummaryModal = (stats, contextDetails = []) => {
+  const openSummaryModal = (stats, contextDetails = [], shouldRefresh = false) => {
     setSummaryModalData({
       stats,
       contextDetails
     })
+    setShouldRefreshOnModalClose(shouldRefresh)
     setShowSummaryModal(true)
   }
 
   const handleCloseSummaryModal = () => {
     setShowSummaryModal(false)
     setSummaryModalData(null)
+    
+    // Refresh page if this modal was shown after successful order submission
+    if (shouldRefreshOnModalClose) {
+      window.location.reload()
+    }
+    
+    setShouldRefreshOnModalClose(false)
   }
 
   // Show detailed log report similar to KR_ReactorReports
-  const showDetailedLogReport = (result, contextDetails = []) => {
+  const showDetailedLogReport = (result, contextDetails = [], shouldRefresh = false) => {
     const stats = result.delivery_stats || {}
-    openSummaryModal(stats, contextDetails)
+    openSummaryModal(stats, contextDetails, shouldRefresh)
   }
 
   const handleSubmit = async (e) => {
@@ -1551,7 +1564,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           type: formData.type,
           description: formData.description,
           importance: formData.importance,
-          dateTime: formatDateTime(new Date())
+          dateTime: `${currentDate}, ${currentTime}`
         }
         
         // Reset form after successful submission
@@ -1571,13 +1584,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         })
         setOrderItems([])
         
-        // Determine notification method
-        const bothEnabled = enableEmailNotification && enableWhatsappNotification
-        const emailOnly = enableEmailNotification && !enableWhatsappNotification
-        const whatsappOnly = !enableEmailNotification && enableWhatsappNotification
+        // Determine notification method - auto-send to all recipients if any method is enabled
+        const notificationMethod = 
+          enableEmailNotification && enableWhatsappNotification ? 'both' :
+          enableEmailNotification ? 'email' :
+          enableWhatsappNotification ? 'whatsapp' : null
         
-        // If both notifications are enabled, auto-send to all recipients
-        if (bothEnabled) {
+        // If any notification method is enabled, auto-send to all recipients
+        if (notificationMethod) {
           try {
             console.log('Auto-sending notifications to all recipients from Google Sheets...')
             
@@ -1598,7 +1612,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               orderId,
               orderData: notificationOrderData,
               recipients: [], // Empty array - backend will fetch from Google Sheets
-              method: 'both',
+              method: notificationMethod,
               factory: 'KR',
               autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
               sheetId: sheetId, // Send sheet ID to backend
@@ -1612,7 +1626,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 orderId,
                 notificationOrderData
               )
-              showDetailedLogReport(notifResponse.data, contextDetails)
+              showDetailedLogReport(notifResponse.data, contextDetails, true)
               alert(`✅ Order ${orderId} Submitted Successfully!\n\nThe order has been placed and all recipients have been notified.`)
             } else {
               alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, notifications failed:\n${notifResponse.data.message}`)
@@ -1630,21 +1644,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             setOrderIdGenerated(false)
             setOrderId('')
           }
-        } 
-        // If only one notification method is enabled, show modal for recipient selection
-        else if (emailOnly || whatsappOnly) {
-          // Save order data for notification modal
-          setLastSubmittedOrderId(orderId)
-          setLastSubmittedOrderData(notificationOrderData)
-          
-          // Set notification method based on toggles
-          setNotificationMethod(emailOnly ? 'email' : 'whatsapp')
-          
-          alert(`Order ${orderId} submitted successfully!`)
-          setShowNotificationModal(true)
-        } 
-        // If notifications disabled, just reset order ID
-        else {
+        } else {
+          // If notifications disabled, just show success message and reset order ID
           alert(`Order ${orderId} submitted successfully!`)
           
           // Reset order ID for next order
@@ -1967,7 +1968,78 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         <div className="po-form-header">
           <div className="po-header-left">
             <div className="po-datetime-box">
-              {formatDateTime(currentDateTime)}
+              <input
+                type="date"
+                ref={dateInputRef}
+                className="po-date-picker-hidden"
+                value={(() => {
+                  // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+                  const [day, month, year] = currentDate.split('/')
+                  return year && month && day ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : ''
+                })()}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value)
+                    const day = date.getDate().toString().padStart(2, '0')
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+                    const year = date.getFullYear()
+                    setCurrentDate(`${day}/${month}/${year}`)
+                  }
+                }}
+              />
+              <input
+                type="time"
+                ref={timeInputRef}
+                className="po-time-picker-hidden"
+                value={(() => {
+                  // Convert HH:MM AM/PM to HH:MM for time input
+                  const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
+                  if (match) {
+                    let hour24 = parseInt(match[1])
+                    const minutes = match[2]
+                    const ampm = match[3].toUpperCase()
+                    if (ampm === 'PM' && hour24 !== 12) hour24 += 12
+                    if (ampm === 'AM' && hour24 === 12) hour24 = 0
+                    return `${hour24.toString().padStart(2, '0')}:${minutes}`
+                  }
+                  return ''
+                })()}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [hours, minutes] = e.target.value.split(':')
+                    const hour24 = parseInt(hours)
+                    const hour12 = hour24 % 12 || 12
+                    const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                    setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                  }
+                }}
+              />
+              <div className="po-date-wrapper">
+                <label htmlFor="po-date-display" className="po-datetime-label">Date:</label>
+                <input
+                  type="text"
+                  id="po-date-display"
+                  value={currentDate}
+                  onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+                  className="po-date-input"
+                  placeholder="DD/MM/YYYY"
+                  title="Click to select date"
+                  readOnly
+                />
+              </div>
+              <div className="po-time-wrapper">
+                <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
+                <input
+                  type="text"
+                  id="po-time-display"
+                  value={currentTime}
+                  onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
+                  className="po-time-input"
+                  placeholder="HH:MM AM/PM"
+                  title="Click to select time"
+                  readOnly
+                />
+              </div>
             </div>
           </div>
           <div className="po-header-center">
@@ -2007,7 +2079,78 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       <div className="po-form-header">
         <div className="po-header-left">
           <div className="po-datetime-box">
-            {formatDateTime(currentDateTime)}
+            <input
+              type="date"
+              ref={dateInputRef}
+              className="po-date-picker-hidden"
+              value={(() => {
+                // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+                const [day, month, year] = currentDate.split('/')
+                return year && month && day ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : ''
+              })()}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const date = new Date(e.target.value)
+                  const day = date.getDate().toString().padStart(2, '0')
+                  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+                  const year = date.getFullYear()
+                  setCurrentDate(`${day}/${month}/${year}`)
+                }
+              }}
+            />
+            <input
+              type="time"
+              ref={timeInputRef}
+              className="po-time-picker-hidden"
+              value={(() => {
+                // Convert HH:MM AM/PM to HH:MM for time input
+                const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
+                if (match) {
+                  let hour24 = parseInt(match[1])
+                  const minutes = match[2]
+                  const ampm = match[3].toUpperCase()
+                  if (ampm === 'PM' && hour24 !== 12) hour24 += 12
+                  if (ampm === 'AM' && hour24 === 12) hour24 = 0
+                  return `${hour24.toString().padStart(2, '0')}:${minutes}`
+                }
+                return ''
+              })()}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [hours, minutes] = e.target.value.split(':')
+                  const hour24 = parseInt(hours)
+                  const hour12 = hour24 % 12 || 12
+                  const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                  setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                }
+              }}
+            />
+            <div className="po-date-wrapper">
+              <label htmlFor="po-date-display" className="po-datetime-label">Date:</label>
+              <input
+                type="text"
+                id="po-date-display"
+                value={currentDate}
+                onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+                className="po-date-input"
+                placeholder="DD/MM/YYYY"
+                title="Click to select date"
+                readOnly
+              />
+            </div>
+            <div className="po-time-wrapper">
+              <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
+              <input
+                type="text"
+                id="po-time-display"
+                value={currentTime}
+                onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
+                className="po-time-input"
+                placeholder="HH:MM AM/PM"
+                title="Click to select time"
+                readOnly
+              />
+            </div>
           </div>
         </div>
         <div className="po-header-center">
@@ -2595,7 +2738,19 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                           {recipient['Email ID - To'] && (
                             <div className="po-recipient-detail">
                               <span className="po-recipient-icon">📧</span>
-                              {recipient['Email ID - To']}
+                              <span className="po-recipient-label">To:</span> {recipient['Email ID - To']}
+                            </div>
+                          )}
+                          {recipient['Email ID - CC'] && (
+                            <div className="po-recipient-detail po-recipient-cc">
+                              <span className="po-recipient-icon">📋</span>
+                              <span className="po-recipient-label">CC:</span> {recipient['Email ID - CC']}
+                            </div>
+                          )}
+                          {recipient['Email ID - BCC'] && (
+                            <div className="po-recipient-detail po-recipient-bcc">
+                              <span className="po-recipient-icon">🔒</span>
+                              <span className="po-recipient-label">BCC:</span> {recipient['Email ID - BCC']}
                             </div>
                           )}
                           {recipient['Contact No.'] && (
