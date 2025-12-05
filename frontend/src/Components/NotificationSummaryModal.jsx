@@ -50,6 +50,19 @@ const styles = {
     alignItems: 'center',
     gap: '10px'
   },
+  headerContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flex: 1
+  },
+  subtitle: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: 400,
+    color: '#6b7280',
+    marginTop: '4px'
+  },
   closeBtn: {
     border: 'none',
     background: '#1d4ed8',
@@ -131,6 +144,41 @@ const styles = {
     fontSize: '14px',
     color: '#b91c1c'
   },
+  failedContactsBox: {
+    borderRadius: '12px',
+    border: '1px solid #fecaca',
+    backgroundColor: '#fef2f2',
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  failedContactsHeader: {
+    fontSize: '15px',
+    fontWeight: 600,
+    color: '#b91c1c',
+    marginBottom: '8px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid #fecaca',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  failedChannelRow: {
+    fontSize: '14px',
+    color: '#b91c1c',
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap'
+  },
+  failedChannelLabel: {
+    fontWeight: 600,
+    minWidth: '80px'
+  },
+  failedNamesList: {
+    color: '#991b1b',
+    flex: 1
+  },
   tableWrapper: {
     border: '1px solid #e5e7eb',
     borderRadius: '12px',
@@ -188,7 +236,10 @@ const NotificationSummaryModal = ({
   stats = {},
   title = 'Delivery Summary',
   contextDetails = [],
-  extraContent
+  extraContent,
+  buttonText = 'Close',
+  headerTitle,
+  headerSubtitle
 }) => {
   const [isClient, setIsClient] = useState(false)
 
@@ -199,18 +250,10 @@ const NotificationSummaryModal = ({
 
   const mergedStats = { ...baseStats, ...stats }
   const {
-    total_recipients,
-    successful_deliveries,
-    failed_deliveries,
     email_successful = 0,
     whatsapp_successful = 0,
     failed_contacts = []
   } = mergedStats
-
-  const successRate =
-    total_recipients > 0
-      ? ((successful_deliveries / total_recipients) * 100).toFixed(1)
-      : '0.0'
 
   // Determine which channels are enabled based on successful counts or failed contacts
   const emailEnabled = email_successful > 0 || failed_contacts.some(c => 
@@ -219,6 +262,33 @@ const NotificationSummaryModal = ({
   const whatsappEnabled = whatsapp_successful > 0 || failed_contacts.some(c => 
     c?.channel_status?.whatsapp?.status && c.channel_status.whatsapp.status !== 'not_enabled'
   )
+
+  // Process failed contacts to group by channel
+  // Check each failed contact to see which specific channel(s) failed
+  const emailFailedNames = []
+  const whatsappFailedNames = []
+
+  failed_contacts.forEach(contact => {
+    const name = contact.name || contact.contact || 'Unknown'
+    const emailStatus = contact?.channel_status?.email?.status
+    const whatsappStatus = contact?.channel_status?.whatsapp?.status
+
+    // Check if email channel failed or was skipped (exclude 'not_enabled' and 'success')
+    if (emailStatus === 'failed' || emailStatus === 'skipped') {
+      if (!emailFailedNames.includes(name)) {
+        emailFailedNames.push(name)
+      }
+    }
+
+    // Check if whatsapp channel failed or was skipped (exclude 'not_enabled' and 'success')
+    if (whatsappStatus === 'failed' || whatsappStatus === 'skipped') {
+      if (!whatsappFailedNames.includes(name)) {
+        whatsappFailedNames.push(name)
+      }
+    }
+  })
+
+  const hasFailedDeliveries = emailFailedNames.length > 0 || whatsappFailedNames.length > 0
 
 
   if (!isOpen) {
@@ -229,10 +299,24 @@ const NotificationSummaryModal = ({
     <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose?.()}>
       <div style={styles.modal} role="dialog" aria-modal="true" aria-label={title}>
         <div style={styles.header}>
-          <h3 style={styles.title}>
-            <span role="img" aria-hidden="true">📊</span>
-            {title}
-          </h3>
+          <div style={styles.headerContent}>
+            <h3 style={styles.title}>
+              {headerTitle ? (
+                <>
+                  <span role="img" aria-hidden="true">✅</span>
+                  {headerTitle}
+                </>
+              ) : (
+                <>
+                  <span role="img" aria-hidden="true">📊</span>
+                  {title}
+                </>
+              )}
+            </h3>
+            {headerSubtitle && (
+              <p style={styles.subtitle}>{headerSubtitle}</p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -252,25 +336,6 @@ const NotificationSummaryModal = ({
         </div>
 
         <div style={styles.body}>
-          <div style={styles.metricsGrid}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Total Contacts</span>
-              <span style={styles.metricValue}>{total_recipients}</span>
-            </div>
-            <div style={{ ...styles.metricCard, backgroundColor: '#ecfdf3', borderColor: '#bbf7d0' }}>
-              <span style={{ ...styles.metricLabel, color: '#166534' }}>Successful</span>
-              <span style={{ ...styles.metricValue, color: '#166534' }}>{successful_deliveries}</span>
-            </div>
-            <div style={{ ...styles.metricCard, backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
-              <span style={{ ...styles.metricLabel, color: '#b91c1c' }}>Failed</span>
-              <span style={{ ...styles.metricValue, color: '#b91c1c' }}>{failed_deliveries}</span>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Success Rate</span>
-              <span style={styles.metricValue}>{successRate}%</span>
-            </div>
-          </div>
-
           {contextDetails?.length > 0 && (
             <div style={styles.contextBox}>
               {contextDetails.map(({ label, value }, idx) => (
@@ -314,12 +379,33 @@ const NotificationSummaryModal = ({
             </div>
           )}
 
+          {hasFailedDeliveries && (
+            <div style={styles.failedContactsBox}>
+              <div style={styles.failedContactsHeader}>
+                <span role="img" aria-hidden="true">⚠️</span>
+                <span>Failed Deliveries</span>
+              </div>
+              {emailFailedNames.length > 0 && (
+                <div style={styles.failedChannelRow}>
+                  <span style={styles.failedChannelLabel}>Email:</span>
+                  <span style={styles.failedNamesList}>{emailFailedNames.join(', ')}</span>
+                </div>
+              )}
+              {whatsappFailedNames.length > 0 && (
+                <div style={styles.failedChannelRow}>
+                  <span style={styles.failedChannelLabel}>WhatsApp:</span>
+                  <span style={styles.failedNamesList}>{whatsappFailedNames.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {extraContent}
         </div>
 
         <div style={styles.footer}>
           <button type="button" onClick={onClose} style={styles.actionBtn}>
-            Close
+            {buttonText}
           </button>
         </div>
       </div>

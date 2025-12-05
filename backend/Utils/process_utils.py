@@ -3630,6 +3630,11 @@ Please find the detailed order document attached."""
         # ============================================
         # EMAIL: Collect all recipients for single email send
         # ============================================
+        # Track bulk email result and recipient email status
+        bulk_email_success = None  # None = not attempted, True = success, False = failed
+        bulk_email_failure_reason = None
+        recipients_with_email = set()  # Track which recipients have email addresses
+        
         if send_email:
             logger.info("=" * 60)
             logger.info("Collecting all email addresses for single email send")
@@ -3683,6 +3688,9 @@ Please find the detailed order document attached."""
                 if not recipient_to and not recipient_cc and not recipient_bcc:
                     recipients_with_no_email.append(recipient_name)
                     logger.warning(f"  ⚠ No email addresses found for {recipient_name}")
+                else:
+                    # Track that this recipient has email
+                    recipients_with_email.add(recipient_name)
             
             # Convert sets to sorted lists for consistent ordering
             all_to_emails_list = sorted(list(all_to_emails))
@@ -3829,6 +3837,7 @@ Please find the detailed order document attached."""
                         total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
                         result["delivery_stats"]["email_successful"] = total_email_recipients
                         result["delivery_stats"]["successful_deliveries"] += total_email_recipients
+                        bulk_email_success = True
                         
                         logger.info("=" * 60)
                         logger.info(f"✓ Single email sent successfully!")
@@ -3839,6 +3848,8 @@ Please find the detailed order document attached."""
                         logger.info("=" * 60)
                     else:
                         failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
+                        bulk_email_success = False
+                        bulk_email_failure_reason = failure_reason
                         total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
                         result["delivery_stats"]["failed_deliveries"] += total_email_recipients
                         
@@ -3850,16 +3861,10 @@ Please find the detailed order document attached."""
                         logger.error(f"    - BCC: {len(all_bcc_emails_list)}")
                         logger.error("=" * 60)
                         
-                        # Add to failed contacts
-                        result["delivery_stats"]["failed_contacts"].append({
-                            "name": f"All recipients (single email)",
-                            "contact": f"To: {to_emails_str}, CC: {cc_emails_str}, BCC: {bcc_emails_str}",
-                            "reason": failure_reason,
-                            "channel_status": {"email": {"status": "failed", "reason": failure_reason}}
-                        })
-                        
                 except Exception as e:
                     exception_reason = f"Email exception: {str(e)}"
+                    bulk_email_success = False
+                    bulk_email_failure_reason = exception_reason
                     total_email_recipients = len(final_to_emails) + len(all_cc_emails_list) + len(all_bcc_emails_list)
                     result["delivery_stats"]["failed_deliveries"] += total_email_recipients
                     
@@ -3867,14 +3872,6 @@ Please find the detailed order document attached."""
                     logger.error(f"✗ Error sending single email: {e}")
                     logger.error(f"  Total recipients affected: {total_email_recipients}")
                     logger.error("=" * 60)
-                    
-                    # Add to failed contacts
-                    result["delivery_stats"]["failed_contacts"].append({
-                        "name": f"All recipients (single email)",
-                        "contact": f"To: {to_emails_str}, CC: {cc_emails_str}, BCC: {bcc_emails_str}",
-                        "reason": exception_reason,
-                        "channel_status": {"email": {"status": "failed", "reason": exception_reason}}
-                    })
             else:
                 logger.warning("=" * 60)
                 logger.warning("⚠ No email addresses found in any recipients")
@@ -3901,185 +3898,25 @@ Please find the detailed order document attached."""
                 "whatsapp": {"status": "not_enabled", "reason": ""}
             }
             
-            # Email is already handled above (single email to all)
-            # Skip email processing in the loop
+            # Set email status based on bulk email result
             if send_email:
-                channel_status["email"]["status"] = "handled_bulk"
-            else:
-                channel_status["email"]["status"] = "not_enabled"
-            
-            # Send WhatsApp
-            if send_whatsapp:
-                channel_status["email"]["status"] = "pending"
-                
-                # Clean and format CC/BCC emails (handle comma-separated or newline-separated emails)
-                def clean_emails(email_str):
-                    if not email_str or not email_str.strip():
-                        return None
-                    import re
-                    emails = [e.strip() for e in re.split(r'[\n,]+', email_str) if e.strip()]
-                    return ','.join(emails) if emails else None
-                
-                cc_emails = clean_emails(recipient_cc)
-                bcc_emails = clean_emails(recipient_bcc)
-                
-                # Check if we have any email address (To, CC, or BCC)
-                has_to_email = bool(recipient_email)
-                has_cc_email = bool(cc_emails)
-                has_bcc_email = bool(bcc_emails)
-                has_any_email = has_to_email or has_cc_email or has_bcc_email
-                
-                logger.info(f"  Email validation for {recipient_name}:")
-                logger.info(f"    Has To email: {has_to_email}")
-                logger.info(f"    Has CC email: {has_cc_email} (value: {cc_emails})")
-                logger.info(f"    Has BCC email: {has_bcc_email} (value: {bcc_emails})")
-                logger.info(f"    Has any email: {has_any_email}")
-                
-                # Handle case where only CC/BCC is present (no To address)
-                # Gmail API requires a To address, so we'll use the sender's email as To
-                # This allows CC/BCC emails to remain in their respective fields
-                if not has_to_email and (has_cc_email or has_bcc_email):
-                    # Use sender's email as To address when only CC/BCC is present
-                    recipient_email = user_email
-                    logger.warning(f"  No To email found for {recipient_name}, using sender's email ({user_email}) as To address")
-                    logger.info(f"  CC emails will remain in CC: {cc_emails}")
-                    logger.info(f"  BCC emails will remain in BCC: {bcc_emails}")
-                
-                if recipient_email:
-                    try:
-                        email_subject = f"New Material Indent Raised - {order_data.get('givenBy', 'N/A')} - {order_id}"
-                        
-                        # Parse dateTime to extract separate date and time
-                        date_time_str = order_data.get('dateTime', '')
-                        date_value = 'N/A'
-                        time_value = 'N/A'
-                        
-                        if date_time_str:
-                            try:
-                                # Format: "DD/MM/YYYY, HH:MM AM/PM" (e.g., "03/12/2025, 06:10 PM")
-                                parts = date_time_str.split(',')
-                                if len(parts) >= 2:
-                                    date_value = parts[0].strip()  # Extract date part: "DD/MM/YYYY"
-                                    time_value = parts[1].strip()  # Extract time part: "HH:MM AM/PM"
-                            except Exception as e:
-                                logger.warning(f"Error parsing dateTime '{date_time_str}': {e}. Using fallback.")
-                                # Fallback to current date/time if parsing fails
-                                now = datetime.now()
-                                date_value = now.strftime("%d/%m/%Y")
-                                time_value = now.strftime("%I:%M %p")
-                        else:
-                            # If dateTime is missing, use current date/time
-                            now = datetime.now()
-                            date_value = now.strftime("%d/%m/%Y")
-                            time_value = now.strftime("%I:%M %p")
-                        
-                        email_body = f"""
-                    <html>
-                    <body>
-                    <p>Dear Sir/Ma'am,</p>
-                    <p>A new indent has been raised for your review and further processing.</p>
-                    Please find the details below:
-                    
-                    <br><p></p>
-                    <b style="font-size: 1.1rem;">Indent Details</b>
-                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
-                        <tr style="text-align: center;">
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Time</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Factory</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Given By</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Importance</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Items</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Description</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{date_value}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{time_value}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{factory}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_id}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('givenBy', 'N/A')}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('type', 'N/A')}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('importance', 'Normal')}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{len(order_items)}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">{order_data.get('description', 'N/A')}</td>
-                        </tr>
-                    </table>
-                    <br><p></p>
-                    
-                    <b style="font-size: 1.1rem;">Item Details</b>
-                    <table style="border-collapse: collapse; margin-top: 0.2rem;">
-                        <tr style="text-align: center;">
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>S.No</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Category</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sub Category</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Material Name</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Particulars</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Quantity</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>UOM</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Preferred Vendor</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Place</strong></td>
-                        </tr>
-                        {items_table_rows_html}
-                    </table>
-                    
-                    <br><p></p>
-                    Please find the detailed order document attached.
-                    
-                    <br><br><p></p>
-                    Best Regards,<br>{order_data.get('givenBy', 'N/A')} <br> {designation}
-                    </body>
-                    </html>
-                    """
-                        
-                        logger.info(f"  Attempting to send email to {recipient_name}:")
-                        logger.info(f"    To: {recipient_email}")
-                        logger.info(f"    CC: {cc_emails if cc_emails else '(none)'}")
-                        logger.info(f"    BCC: {bcc_emails if bcc_emails else '(none)'}")
-                        
-                        success = send_email_gmail_api(
-                            user_email=user_email,
-                            recipient_email=recipient_email,
-                            subject=email_subject,
-                            body=email_body,
-                            attachment_paths=[notification_file],
-                            cc=cc_emails,
-                            bcc=bcc_emails
-                        )
-                        
-                        if success is True:
-                            recipient_success = True
-                            channel_status["email"]["status"] = "success"
-                            result["delivery_stats"]["email_successful"] += 1
-                            logger.info(f"  ✓ Email sent successfully to {recipient_name} ({recipient_email})")
-                            if cc_emails:
-                                logger.info(f"    CC recipients: {cc_emails}")
-                            if bcc_emails:
-                                logger.info(f"    BCC recipients: {bcc_emails}")
-                        else:
-                            failure_reason = f"Email error: {success}" if isinstance(success, str) else "Email send failed"
-                            recipient_fail_reasons.append(failure_reason)
-                            channel_status["email"]["status"] = "failed"
-                            channel_status["email"]["reason"] = failure_reason
-                            logger.error(f"  ✗ Failed to send email to {recipient_name}: {success}")
-                            logger.error(f"    To: {recipient_email}, CC: {cc_emails}, BCC: {bcc_emails}")
-                            
-                    except Exception as e:
-                        exception_reason = f"Email exception: {str(e)}"
-                        recipient_fail_reasons.append(exception_reason)
+                if recipient_name in recipients_with_email:
+                    # Recipient has email - set status based on bulk email result
+                    if bulk_email_success is True:
+                        channel_status["email"]["status"] = "success"
+                    elif bulk_email_success is False:
                         channel_status["email"]["status"] = "failed"
-                        channel_status["email"]["reason"] = exception_reason
-                        logger.error(f"  ✗ Error sending email to {recipient_name}: {e}")
-                        logger.error(f"    To: {recipient_email}, CC: {cc_emails}, BCC: {bcc_emails}")
+                        channel_status["email"]["reason"] = bulk_email_failure_reason or "Email send failed"
+                        recipient_fail_reasons.append(bulk_email_failure_reason or "Email send failed")
+                    else:
+                        # Bulk email not attempted (shouldn't happen, but handle it)
+                        channel_status["email"]["status"] = "not_enabled"
                 else:
-                    # No email address available (neither To, CC, nor BCC)
+                    # Recipient has no email address
                     no_email_reason = "Email: No recipient address provided (To, CC, or BCC required)"
-                    recipient_fail_reasons.append(no_email_reason)
                     channel_status["email"]["status"] = "skipped"
                     channel_status["email"]["reason"] = no_email_reason
-                    logger.warning(f"  ⚠ Skipping email for {recipient_name}: No email address found (To, CC, or BCC)")
-                    logger.warning(f"    Original data - To: '{recipient.get('Email ID - To', '')}', CC: '{recipient.get('Email ID - CC', '')}', BCC: '{recipient.get('Email ID - BCC', '')}'")
+                    recipient_fail_reasons.append(no_email_reason)
             else:
                 channel_status["email"]["status"] = "not_enabled"
             
@@ -4134,13 +3971,14 @@ Please find the detailed order document attached."""
             else:
                 result["delivery_stats"]["failed_deliveries"] += 1
 
-            # Only add to failed_contacts if all enabled channels failed or were skipped
-            all_channels_failed_or_skipped = all(
+            # Add to failed_contacts if ANY enabled channel failed or was skipped
+            # This allows the frontend to show which specific channel failed for each contact
+            any_channel_failed_or_skipped = any(
                 channel_status[ch].get("status") in ("failed", "skipped")
                 for ch in enabled_channels
-            ) if enabled_channels else True
+            ) if enabled_channels else False
 
-            if all_channels_failed_or_skipped and not has_success:
+            if any_channel_failed_or_skipped:
                 reason_text = " | ".join(recipient_fail_reasons) if recipient_fail_reasons else "No delivery methods attempted"
                 result["delivery_stats"]["failed_contacts"].append({
                     "name": recipient_name,
@@ -4738,13 +4576,14 @@ Please find the detailed outward document attached."""
             else:
                 result["delivery_stats"]["failed_deliveries"] += 1
 
-            # Only add to failed_contacts if all enabled channels failed or were skipped
-            all_channels_failed_or_skipped = all(
+            # Add to failed_contacts if ANY enabled channel failed or was skipped
+            # This allows the frontend to show which specific channel failed for each contact
+            any_channel_failed_or_skipped = any(
                 channel_status[ch].get("status") in ("failed", "skipped")
                 for ch in enabled_channels
-            ) if enabled_channels else True
+            ) if enabled_channels else False
 
-            if all_channels_failed_or_skipped and not has_success:
+            if any_channel_failed_or_skipped:
                 reason_text = " | ".join(recipient_fail_reasons) if recipient_fail_reasons else "No delivery methods attempted"
                 result["delivery_stats"]["failed_contacts"].append({
                     "name": recipient_name,

@@ -2671,6 +2671,44 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
+  /* Action buttons row - Edit and Delete buttons */
+  .po-action-buttons-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .po-items-table .po-edit-item-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    min-width: 55px;
+    height: 28px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    margin: 0;
+  }
+  
+  .po-items-table .po-edit-item-btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .po-items-table .po-action-buttons-row .po-remove-item-btn {
+    margin: 0;
+  }
+  
   /* Editable cell styles */
   .po-editable-cell {
     cursor: pointer;
@@ -3395,7 +3433,7 @@
     /* Action button styling */
     .po-items-table td:nth-child(10) {
       border: none;
-      padding: 16px;
+      padding: 8px;
       text-align: center;
       background: linear-gradient(135deg, #f8f9fa, #e9ecef);
       border-radius: 0 0 12px 12px;
@@ -3427,14 +3465,61 @@
       box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
     }
     
+    /* Action buttons row - Edit and Delete buttons in mobile */
+    .po-action-buttons-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+    
+    .po-items-table .po-edit-item-btn {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .po-items-table .po-edit-item-btn:hover {
+      background: linear-gradient(135deg, #2980b9, #21618c);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+    }
+    
+    .po-items-table .po-action-buttons-row .po-remove-item-btn {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+    
     /* Edit mode styling */
     .po-items-table tr.po-editing-row {
-      border: 2px solid #f39c12;
-      box-shadow: 0 4px 20px rgba(243, 156, 18, 0.2);
+      border: none;
+      box-shadow: none;
     }
     
     .po-items-table tr.po-editing-row td:nth-child(1) {
-      background: linear-gradient(135deg, #f39c12, #e67e22);
+      background: transparent;
+    }
+    
+    /* Remove inner orange border from editing cells in mobile view */
+    .po-items-table .po-editing-cell {
+      background-color: transparent;
+      box-shadow: none;
     }
     
     /* Edit form controls */
@@ -3462,14 +3547,14 @@
     .po-edit-actions-vertical {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 6px;
       align-items: center;
-      padding: 16px;
+      padding: 8px;
     }
     
     .po-edit-actions-row {
       display: flex;
-      gap: 10px;
+      gap: 6px;
       justify-content: center;
       width: 100%;
     }
@@ -3477,7 +3562,7 @@
     .po-save-edit-btn,
     .po-cancel-edit-btn {
       flex: 1;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border: none;
       border-radius: 8px;
       font-size: 14px;
@@ -3520,7 +3605,7 @@
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 10px 20px;
+      padding: 8px 16px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -3540,9 +3625,9 @@
     .po-items-table-container:has(tr.po-editing-row) {
       overflow-x: auto;
       padding: 12px;
-      border: 2px solid #f39c12;
+      border: none;
       border-radius: 10px;
-      background: #fffdf5;
+      background: transparent;
     }
 
     .po-items-table:has(tr.po-editing-row),
@@ -3584,7 +3669,7 @@
     }
 
     .po-items-table:has(tr.po-editing-row) td:nth-child(10) {
-      background: #fff4df;
+      background: transparent;
     }
 
     .po-items-table:has(tr.po-editing-row) select,

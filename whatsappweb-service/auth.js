@@ -871,8 +871,21 @@ class WhatsAppAuth extends EventEmitter {
                 return null;
             }
             
-            // Prefer cheap, already-populated info
-            const info = this.client.info || {};
+            // Retry mechanism: wait for client.info to be populated (up to 3 attempts with delays)
+            let info = this.client.info;
+            let attempts = 0;
+            const maxAttempts = 3;
+            
+            while ((!info || Object.keys(info).length === 0) && attempts < maxAttempts) {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    // Wait a bit for client.info to be populated
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempts)); // 1s, 2s delays
+                    info = this.client.info;
+                }
+            }
+            
+            info = info || {};
             const wid = info.wid || info.me || {};
             
             // Extract phone number properly
@@ -947,9 +960,28 @@ class WhatsAppAuth extends EventEmitter {
                 }
             }
             
+            // If we still don't have user info but client is ready, return a minimal object
+            // This indicates authentication is successful but user details are still loading
+            if (this.isReady && this.client) {
+                console.log(`User info not fully available yet for ${this.clientId}, but client is ready`);
+                return {
+                    name: 'Loading...',
+                    phoneNumber: 'Checking...',
+                    pushName: 'Loading...'
+                };
+            }
+            
             return null;
         } catch (error) {
             console.log(`Error getting user info for ${this.clientId}:`, error.message);
+            // If client is ready but we got an error, still return a minimal object
+            if (this.isReady && this.client) {
+                return {
+                    name: 'Loading...',
+                    phoneNumber: 'Checking...',
+                    pushName: 'Loading...'
+                };
+            }
             return null;
         }
     }

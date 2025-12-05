@@ -251,7 +251,14 @@ const Navbar = ({ onLogout }) => {
             detail: { isAuthenticated: true, userInfo: data.userInfo }
           }));
           
-          const hasUsableUserInfo = !!(data.userInfo && (data.userInfo.name || data.userInfo.pushName || data.userInfo.phoneNumber));
+          const hasUsableUserInfo = !!(data.userInfo && 
+            data.userInfo.name && 
+            data.userInfo.name !== 'Unknown' && 
+            data.userInfo.name !== 'Loading...' &&
+            data.userInfo.phoneNumber && 
+            data.userInfo.phoneNumber !== 'Unknown' && 
+            data.userInfo.phoneNumber !== 'Checking...');
+          
           if (hasUsableUserInfo) {
             const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');
             setUserInfo({
@@ -261,13 +268,17 @@ const Navbar = ({ onLogout }) => {
             setStatusMsg(`WhatsApp is ready and connected as ${displayName}`);
             setUserInfoRetryCount(0); // Reset retry count on success
           } else {
-            setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
+            // Show loading state
+            setUserInfo({ 
+              name: data.userInfo?.name || 'Loading...', 
+              phoneNumber: data.userInfo?.phoneNumber || 'Checking...' 
+            });
             setStatusMsg(`WhatsApp is ready and connected`);
             
-            // Retry fetching user info if not available and retry count < 3
+            // Retry fetching user info if not available and retry count < 5 (increased from 3)
             const nextRetryCount = currentRetryCount + 1;
-            if (nextRetryCount <= 3) {
-              console.log(`User info incomplete, scheduling retry ${nextRetryCount}/3`);
+            if (nextRetryCount <= 5) {
+              console.log(`User info incomplete, scheduling retry ${nextRetryCount}/5`);
               setUserInfoRetryCount(nextRetryCount);
               
               // Clear any existing retry timeout
@@ -275,10 +286,13 @@ const Navbar = ({ onLogout }) => {
                 clearTimeout(userInfoRetryRef.current);
               }
               
-              // Retry after 2 seconds
+              // Retry after 3 seconds (increased from 2 seconds)
               userInfoRetryRef.current = setTimeout(() => {
                 checkWhatsAppAuthStatus(true, nextRetryCount);
-              }, 2000);
+              }, 3000);
+            } else {
+              // After max retries, show a message that info is still loading
+              setStatusMsg(`WhatsApp is ready and connected (user info still loading)`);
             }
           }
         } else {
@@ -357,7 +371,15 @@ const Navbar = ({ onLogout }) => {
           detail: { isAuthenticated: true, userInfo: data.userInfo }
         }));
         
-        if (data.userInfo && data.userInfo.name && data.userInfo.name !== 'Unknown') {
+        const hasUsableUserInfo = !!(data.userInfo && 
+          data.userInfo.name && 
+          data.userInfo.name !== 'Unknown' && 
+          data.userInfo.name !== 'Loading...' &&
+          data.userInfo.phoneNumber && 
+          data.userInfo.phoneNumber !== 'Unknown' && 
+          data.userInfo.phoneNumber !== 'Checking...');
+        
+        if (hasUsableUserInfo) {
           setUserInfo({
             name: data.userInfo.name || data.userInfo.pushName || 'WhatsApp User',
             phoneNumber: data.userInfo.phoneNumber || 'Connected'
@@ -365,12 +387,15 @@ const Navbar = ({ onLogout }) => {
           setStatusMsg(`Already authenticated as ${data.userInfo.name || data.userInfo.pushName || 'WhatsApp User'}`);
           setUserInfoRetryCount(0); // Reset retry count on success
         } else {
-          setUserInfo({ name: 'Loading...', phoneNumber: 'Checking...' });
+          setUserInfo({ 
+            name: data.userInfo?.name || 'Loading...', 
+            phoneNumber: data.userInfo?.phoneNumber || 'Checking...' 
+          });
           setStatusMsg(`Already authenticated`);
           
           // Retry fetching user info if not available
           const nextRetryCount = 1;
-          console.log(`User info incomplete on login, scheduling retry ${nextRetryCount}/3`);
+          console.log(`User info incomplete on login, scheduling retry ${nextRetryCount}/5`);
           setUserInfoRetryCount(nextRetryCount);
           
           // Clear any existing retry timeout
@@ -378,10 +403,10 @@ const Navbar = ({ onLogout }) => {
             clearTimeout(userInfoRetryRef.current);
           }
           
-          // Retry after 2 seconds
+          // Retry after 3 seconds (increased from 2 seconds)
           userInfoRetryRef.current = setTimeout(() => {
             checkWhatsAppAuthStatus(true, nextRetryCount);
-          }, 2000);
+          }, 3000);
         }
         setQRValue('');
         setIsPolling(false);
@@ -538,7 +563,15 @@ const Navbar = ({ onLogout }) => {
         }));
         
         // Populate user info if available
-        if (data.userInfo && (data.userInfo.name || data.userInfo.pushName || data.userInfo.phoneNumber)) {
+        const hasUsableUserInfo = !!(data.userInfo && 
+          data.userInfo.name && 
+          data.userInfo.name !== 'Unknown' && 
+          data.userInfo.name !== 'Loading...' &&
+          data.userInfo.phoneNumber && 
+          data.userInfo.phoneNumber !== 'Unknown' && 
+          data.userInfo.phoneNumber !== 'Checking...');
+        
+        if (hasUsableUserInfo) {
           const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');
           setUserInfo({
             name: displayName,
@@ -546,7 +579,16 @@ const Navbar = ({ onLogout }) => {
           });
           setStatusMsg(`WhatsApp login successful! Connected as ${displayName}. You can now close this window.`);
         } else {
-          setStatusMsg('WhatsApp login successful! You can now close this window.');
+          // Set loading state if userInfo is not fully available
+          setUserInfo({ 
+            name: data.userInfo?.name || 'Loading...', 
+            phoneNumber: data.userInfo?.phoneNumber || 'Checking...' 
+          });
+          setStatusMsg('WhatsApp login successful! User info is loading...');
+          // Trigger a retry to get user info
+          setTimeout(() => {
+            checkWhatsAppAuthStatus(true, 1);
+          }, 2000);
         }
         setIsPolling(false);
         
@@ -564,12 +606,27 @@ const Navbar = ({ onLogout }) => {
         if (pollingRef.current) {
           clearInterval(pollingRef.current);
         }
-      } else if (data.userInfo && (data.userInfo.name || data.userInfo.pushName || data.userInfo.phoneNumber)) {
-        const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');
-        setUserInfo({
-          name: displayName,
-          phoneNumber: data.userInfo.phoneNumber || 'Connected'
-        });
+      } else if (data.userInfo) {
+        const hasUsableUserInfo = !!(data.userInfo.name && 
+          data.userInfo.name !== 'Unknown' && 
+          data.userInfo.name !== 'Loading...' &&
+          data.userInfo.phoneNumber && 
+          data.userInfo.phoneNumber !== 'Unknown' && 
+          data.userInfo.phoneNumber !== 'Checking...');
+        
+        if (hasUsableUserInfo) {
+          const displayName = (data.userInfo.name && data.userInfo.name !== 'Unknown') ? data.userInfo.name : (data.userInfo.pushName || 'WhatsApp User');
+          setUserInfo({
+            name: displayName,
+            phoneNumber: data.userInfo.phoneNumber || 'Connected'
+          });
+        } else {
+          // Update loading state if userInfo is partially available
+          setUserInfo({ 
+            name: data.userInfo.name || 'Loading...', 
+            phoneNumber: data.userInfo.phoneNumber || 'Checking...' 
+          });
+        }
       } else if (data.connectionStatus) {
         // Show connection status for debugging
         console.log('Connection status:', data.connectionStatus);

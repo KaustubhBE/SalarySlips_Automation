@@ -552,8 +552,8 @@ const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [sendingNotification, setSendingNotification] = useState(false)
   const [lastSubmittedOrderId, setLastSubmittedOrderId] = useState(null)
   const [lastSubmittedOrderData, setLastSubmittedOrderData] = useState(null)
-  const [enableEmailNotification, setEnableEmailNotification] = useState(true)
-  const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
+  const [enableEmailNotification, setEnableEmailNotification] = useState(false)
+  const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(false)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [summaryModalData, setSummaryModalData] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1627,7 +1627,6 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 notificationOrderData
               )
               showDetailedLogReport(notifResponse.data, contextDetails, true)
-              alert(`✅ Order ${orderId} Submitted Successfully!\n\nThe order has been placed and all recipients have been notified.`)
             } else {
               alert(`⚠️ Order ${orderId} submitted to database!\n\nHowever, notifications failed:\n${notifResponse.data.message}`)
             }
@@ -1645,9 +1644,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             setOrderId('')
           }
         } else {
-          // If notifications disabled, just show success message and reset order ID
-          alert(`Order ${orderId} submitted successfully!`)
-          
+          // If notifications disabled, just reset order ID
           // Reset order ID for next order
           setOrderIdGenerated(false)
           setOrderId('')
@@ -1946,14 +1943,24 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveItem(item.id)}
-                  className="po-remove-item-btn"
-                  title="Remove item"
-                >
-                  Delete
-                </button>
+                <div className="po-action-buttons-row">
+                  <button
+                    type="button"
+                    onClick={() => handleEditItem(item)}
+                    className="po-edit-item-btn"
+                    title="Edit item"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="po-remove-item-btn"
+                    title="Remove item"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </td>
           </tr>
@@ -2586,15 +2593,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
         </div>
 
-        {/* Form Validation Errors */}
-        <FormValidationErrors 
-          errors={formValidationErrors} 
-          checkWhatsApp={enableWhatsappNotification}
-          checkEmail={enableEmailNotification}
-          notificationSelectionRequired={true}
-          notificationSelectionMade={enableEmailNotification || enableWhatsappNotification}
-          onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
-        />
+        {/* Form Validation Errors - Hide during submission */}
+        {!isSubmitting && (
+          <FormValidationErrors 
+            errors={formValidationErrors} 
+            checkWhatsApp={enableWhatsappNotification}
+            checkEmail={enableEmailNotification}
+            notificationSelectionRequired={true}
+            notificationSelectionMade={enableEmailNotification || enableWhatsappNotification}
+            onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
+          />
+        )}
 
         {/* Action Buttons */}
         {(() => {
@@ -2795,6 +2804,15 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         onClose={handleCloseSummaryModal}
         stats={summaryModalData?.stats}
         contextDetails={summaryModalData?.contextDetails}
+        buttonText="OK"
+        headerTitle={(() => {
+          const orderIdEntry = summaryModalData?.contextDetails?.find(item => item.label === 'Order ID')
+          return orderIdEntry?.value ? `Order ${orderIdEntry.value} Submitted Successfully!` : undefined
+        })()}
+        headerSubtitle={(() => {
+          const orderIdEntry = summaryModalData?.contextDetails?.find(item => item.label === 'Order ID')
+          return orderIdEntry?.value ? 'The order has been placed and all recipients have been notified.' : undefined
+        })()}
       />
     </div>
   )
