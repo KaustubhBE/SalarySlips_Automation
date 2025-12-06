@@ -630,7 +630,7 @@ export const PLANT_DATA = [
     material_sheet_id: '1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc',
     document_name: 'KR',
     sheet_name: {
-      RecipentsList: 'Recipents List',
+      RecipentsList: 'Recipents List UAT',
       MaterialList: 'Material List',
       PartyList: 'Party List',
       AuthorityList: 'List'
@@ -641,7 +641,7 @@ export const PLANT_DATA = [
     material_sheet_id: '1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw',
     document_name: 'HB',
     sheet_name: {
-      RecipentsList: 'Recipents List',
+      RecipentsList: 'Recipents List UAT',
       MaterialList: 'Material List',
       PartyList: 'Party List',
       AuthorityList: 'List'

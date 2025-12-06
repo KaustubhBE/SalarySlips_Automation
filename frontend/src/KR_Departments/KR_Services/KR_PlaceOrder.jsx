@@ -167,7 +167,7 @@ const getMaterialNameOptions = (categoryData, subCategory) => {
   }
 
   // Remove duplicates and create unique material names
-  const uniqueMaterialNames = [...new Set(materialNameArray)];
+  const uniqueMaterialNames = [...new Set(materialNameArray)].sort();
 
   // Convert to JSX options
   const options = uniqueMaterialNames.map(name => (
@@ -242,7 +242,7 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
     }
   }
 
-  return Array.from(specifications);
+  return Array.from(specifications).sort();
 };
 
 /**
@@ -423,7 +423,7 @@ const useMaterialData = () => {
       
       if (response.data.success) {
         setMaterialData(response.data.data)
-        setCategories(Object.keys(response.data.data))
+        setCategories(Object.keys(response.data.data).sort())
       } else {
         console.error('Failed to load material data:', response.data.message)
       }
@@ -535,7 +535,7 @@ const KR_PlaceOrder = () => {
     const placeData = partyPlaceMapping[partyName]
     // Handle both single string and array of places
     if (Array.isArray(placeData)) {
-      return placeData
+      return [...placeData].sort()
     } else if (typeof placeData === 'string') {
       return [placeData]
     }
@@ -672,12 +672,12 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             })
             .filter(name => !!name)
           if (namesFromRecords.length > 0) {
-            setAuthorityNames(namesFromRecords)
+            setAuthorityNames([...namesFromRecords].sort())
           } else {
-            setAuthorityNames(Array.isArray(authorityData) ? authorityData : [])
+            setAuthorityNames(Array.isArray(authorityData) ? [...authorityData].sort() : [])
           }
         } else {
-          setAuthorityNames(Array.isArray(authorityData) ? authorityData : [])
+          setAuthorityNames(Array.isArray(authorityData) ? [...authorityData].sort() : [])
         }
 
         if (Array.isArray(records)) {
@@ -751,7 +751,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
           factory: 'KR',
-          sheet_name: 'Recipents List',
+          sheet_name: 'Recipents List UAT',
           sheet_id: sheetId
         }
       })
@@ -1397,7 +1397,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         factory: 'KR',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
-        sheetName: 'Recipents List' // Send sheet name to backend
+        sheetName: 'Recipents List UAT' // Send sheet name to backend
       }
 
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
@@ -1616,7 +1616,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               factory: 'KR',
               autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
               sheetId: sheetId, // Send sheet ID to backend
-              sheetName: 'Recipents List' // Send sheet name to backend
+              sheetName: 'Recipents List UAT' // Send sheet name to backend
             }
             
             const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
@@ -1722,7 +1722,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   disabled={!editFormData.category}
                 >
                   <option value="">Select Sub Category</option>
-                  {editFormData.category && materialData[editFormData.category]?.subCategories?.map(subCat => (
+                  {editFormData.category && materialData[editFormData.category]?.subCategories?.slice().sort().map(subCat => (
                     <option key={subCat} value={subCat}>{subCat}</option>
                   ))}
                 </select>
@@ -2272,7 +2272,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                  !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
                  'No subcategories available' : 'Select Sub Category'}
               </option>
-              {formData.category && materialData[formData.category]?.subCategories?.map(subCat => (
+              {formData.category && materialData[formData.category]?.subCategories?.slice().sort().map(subCat => (
                 <option key={subCat} value={subCat}>{subCat}</option>
               ))}
             </select>
@@ -2593,8 +2593,8 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
         </div>
 
-        {/* Form Validation Errors - Hide during submission */}
-        {!isSubmitting && (
+        {/* Form Validation Errors - Hide during submission and when summary modal is open */}
+        {!isSubmitting && !showSummaryModal && (
           <FormValidationErrors 
             errors={formValidationErrors} 
             checkWhatsApp={enableWhatsappNotification}

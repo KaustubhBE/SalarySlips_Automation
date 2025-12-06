@@ -894,7 +894,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         factory: 'KR',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
-        sheetName: 'Recipents List', // Send sheet name to backend
+        sheetName: 'Recipents List UAT', // Send sheet name to backend
         type: 'material_outward' // Specify the type
       }
 
@@ -1005,7 +1005,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
           factory: 'KR',
-          sheet_name: 'Recipents List',
+          sheet_name: 'Recipents List UAT',
           sheet_id: sheetId
         }
       })
@@ -1429,7 +1429,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 factory: 'KR',
                 autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
                 sheetId: sheetId, // Send sheet ID to backend
-                sheetName: 'Recipents List', // Send sheet name to backend
+                sheetName: 'Recipents List UAT', // Send sheet name to backend
                 type: 'material_outward' // Specify the type
               }
               

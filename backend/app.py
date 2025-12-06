@@ -75,7 +75,7 @@ PLANT_DATA = [
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List"
+            "RecipentsList": "Recipents List UAT"
         }
     },
     {
@@ -98,7 +98,7 @@ PLANT_DATA = [
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List"
+            "RecipentsList": "Recipents List UAT"
         }
     },
     {
@@ -2732,7 +2732,7 @@ def get_recipients_list():
         
         # Get parameters
         factory = request.args.get('factory', 'KR')
-        sheet_name = request.args.get('sheet_name', 'Recipents List')
+        sheet_name = request.args.get('sheet_name', 'Recipents List UAT')
         sheet_id = request.args.get('sheet_id')
         
         if not sheet_id:
@@ -3851,7 +3851,7 @@ def send_order_notification():
         factory = data.get('factory', 'KR')
         auto_send = data.get('autoSend', False)
         sheet_id = data.get('sheetId')
-        sheet_name = data.get('sheetName', 'Recipents List')
+        sheet_name = data.get('sheetName', 'Recipents List UAT')
         
         # If autoSend is True and no recipients provided, fetch from Google Sheets
         if auto_send and (not recipients or len(recipients) == 0):
