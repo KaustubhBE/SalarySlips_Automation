@@ -35,6 +35,34 @@ const generateFallbackOrderId = () => {
   return `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
 }
 
+// Get today's date in YYYY-MM-DD format for date input max attribute
+const getTodayDateString = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const day = now.getDate().toString().padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Parse time string to get hour, minute, and AM/PM
+const parseTimeString = (timeString) => {
+  const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  if (match) {
+    return {
+      hour: parseInt(match[1]),
+      minute: parseInt(match[2]),
+      ampm: match[3].toUpperCase()
+    }
+  }
+  // Default to current time
+  const now = new Date()
+  return {
+    hour: now.getHours() % 12 || 12,
+    minute: now.getMinutes(),
+    ampm: now.getHours() >= 12 ? 'PM' : 'AM'
+  }
+}
+
 // ================================
 // CLEAN CASCADING DROPDOWN HELPERS
 // ================================
@@ -181,10 +209,15 @@ const getMaterialNameOptions = (categoryData, subCategory) => {
  * Returns array of specification names where the material exists
  */
 const getSpecificationsForMaterial = (categoryData, materialName, subCategory) => {
-  if (!categoryData || !materialName || !categoryData.materialNames) return [];
+  if (!categoryData || !materialName || !categoryData.materialNames) {
+    console.log('[getSpecificationsForMaterial] Missing required data:', { categoryData: !!categoryData, materialName, hasMaterialNames: !!categoryData?.materialNames });
+    return [];
+  }
 
   const materialNames = categoryData.materialNames;
   const specifications = new Set();
+  
+  console.log('[getSpecificationsForMaterial] Input:', { materialName, subCategory, materialNamesType: Array.isArray(materialNames) ? 'array' : typeof materialNames });
 
   // Structure 1: Simple Array (no specifications)
   if (Array.isArray(materialNames)) {
@@ -197,8 +230,28 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
     if (subCategory && materialNames[subCategory]) {
       const subCategoryData = materialNames[subCategory];
       
-      // If subcategory has specifications (object)
-      if (typeof subCategoryData === 'object') {
+      // Case 1: subCategoryData is an array of material objects
+      // Structure: { "Steam": [{ name: "...", specifications: "...", uom: "..." }] }
+      // This happens when backend groups by subcategory first
+      if (Array.isArray(subCategoryData)) {
+        console.log('[getSpecificationsForMaterial] subCategoryData is array, length:', subCategoryData.length);
+        subCategoryData.forEach(material => {
+          const matName = typeof material === 'string' ? material : material.name;
+          if (matName === materialName) {
+            // Extract specifications from material object's specifications property
+            if (material.specifications && material.specifications.trim()) {
+              console.log('[getSpecificationsForMaterial] Found specification:', material.specifications);
+              specifications.add(material.specifications);
+            } else {
+              console.log('[getSpecificationsForMaterial] Material found but no specifications:', material);
+            }
+          }
+        });
+      }
+      // Case 2: subCategoryData is an object with specification keys
+      // Structure: { "Steam": { "Size: 2\"": [{ name: "...", uom: "..." }] } }
+      // This happens when backend groups by subcategory then by specifications
+      else if (typeof subCategoryData === 'object') {
         Object.keys(subCategoryData).forEach(spec => {
           const materials = subCategoryData[spec];
           if (Array.isArray(materials)) {
@@ -242,7 +295,9 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
     }
   }
 
-  return Array.from(specifications).sort();
+  const result = Array.from(specifications).sort();
+  console.log('[getSpecificationsForMaterial] Result:', { materialName, subCategory, specifications: result });
+  return result;
 };
 
 /**
@@ -343,6 +398,7 @@ const getUomForMaterial = (materialData, category, materialName, subCategory = '
 };
 
 // Function to fetch UOM from backend for exact material match
+// Tries multiple combinations systematically: all four → without specs → without subcategory → without both
 const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
   try {
     const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
@@ -352,49 +408,54 @@ const fetchMaterialUomFromBackend = async (category, subCategory, specifications
         ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
         : kerurPlant?.sheet_name || 'Material List'
 
-    const payload = {
-      category: category,
-      subCategory: subCategory || '',
-      specifications: specifications || '',
-      materialName: materialName,
-      department: 'KR',
-      sheet_id: sheetId,
-      sheet_name: sheetName
-    }
+    // Define all combinations to try in order of specificity
+    const combinations = [
+      // 1. Try with all four values (most specific)
+      { category, subCategory: subCategory || '', specifications: specifications || '', materialName },
+      // 2. Try without specifications (if specifications were provided)
+      ...(specifications ? [{ category, subCategory: subCategory || '', specifications: '', materialName }] : []),
+      // 3. Try without subcategory (if subcategory was provided)
+      ...(subCategory ? [{ category, subCategory: '', specifications: specifications || '', materialName }] : []),
+      // 4. Try without both subcategory and specifications (if both were provided)
+      ...(subCategory && specifications ? [{ category, subCategory: '', specifications: '', materialName }] : [])
+    ]
 
-    console.log('Fetching UOM from backend with payload:', payload)
-    const response = await axios.post(getApiUrl('get_material_details'), payload)
-    console.log('UOM fetch response:', response.data)
-    
-    if (response.data.success) {
-      const material = response.data.material
-      return material.uom
-    } else {
-      console.warn('Material not found in database for UOM fetch:', response.data.message)
-      // If material not found, try to find it without specifications
-      if (specifications) {
-        console.log('Retrying UOM fetch without specifications...')
-        const retryPayload = {
-          category: category,
-          subCategory: subCategory || '',
-          specifications: '',
-          materialName: materialName,
-          department: 'KR',
-          sheet_id: sheetId,
-          sheet_name: sheetName
-        }
+    // Try each combination in order
+    for (let i = 0; i < combinations.length; i++) {
+      const combo = combinations[i]
+      const payload = {
+        category: combo.category,
+        subCategory: combo.subCategory,
+        specifications: combo.specifications,
+        materialName: combo.materialName,
+        department: 'KR',
+        sheet_id: sheetId,
+        sheet_name: sheetName
+      }
+
+      console.log(`Fetching UOM from backend (attempt ${i + 1}/${combinations.length}) with payload:`, payload)
+      
+      try {
+        const response = await axios.post(getApiUrl('get_material_details'), payload)
+        console.log(`UOM fetch response (attempt ${i + 1}):`, response.data)
         
-        const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
-        if (retryResponse.data.success) {
-          const material = retryResponse.data.material
+        if (response.data.success) {
+          const material = response.data.material
+          console.log(`✅ UOM found with combination ${i + 1}:`, material.uom)
           return material.uom
         }
+      } catch (comboError) {
+        console.warn(`Attempt ${i + 1} failed:`, comboError.message)
+        // Continue to next combination
       }
     }
+
+    console.warn('Material not found in database for UOM fetch with any combination')
+    return null
   } catch (error) {
     console.error('Error fetching UOM from backend:', error)
+    return null
   }
-  return null
 }
 
 // Custom Hook for Material Data
@@ -516,6 +577,8 @@ const KR_PlaceOrder = () => {
     const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
     return `${hours}:${minutes} ${ampm}`
   })
+  const [showTimePicker, setShowTimePicker] = useState(false)
+  const timePickerRef = useRef(null)
   const [orderId, setOrderId] = useState('')
   const [orderIdGenerated, setOrderIdGenerated] = useState(false)
   const [authorityNames, setAuthorityNames] = useState([])
@@ -568,7 +631,6 @@ const materialNameInputRef = useRef(null)
 const quantityInputRef = useRef(null)
 const uomInputRef = useRef(null)
 const dateInputRef = useRef(null)
-const timeInputRef = useRef(null)
 const addItemFieldRefs = {
   category: categoryInputRef,
   materialName: materialNameInputRef,
@@ -803,6 +865,22 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     }
   }
 
+  // Close time picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (timePickerRef.current && !timePickerRef.current.contains(event.target)) {
+        setShowTimePicker(false)
+      }
+    }
+
+    if (showTimePicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showTimePicker])
+
   // Effects
   useEffect(() => {
     // Fetch material data first
@@ -1003,60 +1081,109 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         })())
       }
 
-      // NEW UOM LOGIC:
-      // 1. When material name is selected, check if specifications exist
-      //    - If NO specifications: Fetch UOM immediately (without specifications)
-      //    - If specifications exist: Wait for user to select specification
-      // 2. When specification is manually selected: Fetch UOM with the selected specification
-      
-      if (field === 'materialName' && value && newFormData.category) {
-        const categoryData = materialData[newFormData.category]
-        if (categoryData) {
-          const availableSpecs = getSpecificationsForMaterial(categoryData, value, newFormData.subCategory)
-          
-          // If NO specifications available, fetch UOM immediately (without specifications)
-          if (availableSpecs.length === 0) {
-            setTimeout(() => {
-              fetchMaterialUomFromBackend(
-                newFormData.category,
-                newFormData.subCategory || '',
-                '',
-                value
-              ).then(backendUom => {
-                if (backendUom) {
-                  setFormData(prev => ({
-                    ...prev,
-                    uom: backendUom
-                  }))
-                  // Clear UOM highlight when it's auto-filled
-                  setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
-                }
-              })
-            }, 100)
-          }
-          // If specifications exist, don't fetch yet - wait for user to select specification
+      // ENHANCED UOM LOGIC:
+      // Unified function to determine if UOM should be fetched
+      const shouldFetchUom = (formDataToCheck) => {
+        // Minimum required: category + material name
+        if (!formDataToCheck.category || !formDataToCheck.materialName) {
+          return false
         }
+        
+        // Valid combinations:
+        // 1. category + material name (2 fields) ✅
+        // 2. category + sub-category + material name (3 fields) ✅
+        // 3. category + material name + specifications (3 fields) ✅
+        // 4. category + sub-category + material name + specifications (4 fields) ✅
+        
+        // All combinations are valid as long as category + material name are present
+        return true
       }
-      
-      // When specifications are manually selected, fetch UOM from backend
-      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+
+      // Unified function to trigger UOM fetch
+      const triggerUomFetch = (formDataToCheck) => {
+        console.log('[triggerUomFetch] Called with:', { 
+          category: formDataToCheck.category, 
+          subCategory: formDataToCheck.subCategory, 
+          materialName: formDataToCheck.materialName, 
+          specifications: formDataToCheck.specifications,
+          uom: formDataToCheck.uom 
+        });
+        
+        if (!shouldFetchUom(formDataToCheck)) {
+          console.log('[triggerUomFetch] Minimum requirements not met, skipping');
+          return // Don't fetch if minimum requirements not met
+        }
+        
+        // Only fetch if UOM is not already set (avoid unnecessary fetches)
+        if (formDataToCheck.uom) {
+          console.log('[triggerUomFetch] UOM already set, skipping');
+          return
+        }
+        
+        // Check if specifications are available for this material
+        const categoryData = materialData[formDataToCheck.category]
+        if (categoryData) {
+          const availableSpecs = getSpecificationsForMaterial(
+            categoryData,
+            formDataToCheck.materialName,
+            formDataToCheck.subCategory
+          )
+          
+          console.log('[triggerUomFetch] Available specs:', availableSpecs, 'Selected spec:', formDataToCheck.specifications);
+          
+          // If specifications are available but not yet selected, WAIT for user to select
+          if (availableSpecs.length > 0 && !formDataToCheck.specifications) {
+            console.log('[triggerUomFetch] Specifications available but not selected, waiting...');
+            return // Don't fetch yet - wait for specifications selection
+          }
+        }
+        
+        console.log('[triggerUomFetch] Proceeding to fetch UOM');
+        
+        // Determine which fields to use for fetch
+        const category = formDataToCheck.category
+        const subCategory = formDataToCheck.subCategory || ''
+        const specifications = formDataToCheck.specifications || ''
+        const materialName = formDataToCheck.materialName
+        
+        // Fetch UOM with available fields (backend will try multiple combinations)
         setTimeout(() => {
           fetchMaterialUomFromBackend(
-            newFormData.category,
-            newFormData.subCategory || '',
-            value,
-            newFormData.materialName
+            category,
+            subCategory,
+            specifications,
+            materialName
           ).then(backendUom => {
             if (backendUom) {
               setFormData(prev => ({
                 ...prev,
                 uom: backendUom
               }))
-              // Clear UOM highlight when it's auto-filled
               setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
             }
           })
         }, 100)
+      }
+
+      // Trigger UOM fetch when any of the four fields change
+      if (['category', 'subCategory', 'materialName', 'specifications'].includes(field)) {
+        console.log('[handleInputChange] Field changed:', field, 'Value:', value, 'New formData:', {
+          category: newFormData.category,
+          subCategory: newFormData.subCategory,
+          materialName: newFormData.materialName,
+          specifications: newFormData.specifications,
+          uom: newFormData.uom
+        });
+        
+        // Check if minimum requirements are met and UOM is not already set
+        if (shouldFetchUom(newFormData) && !newFormData.uom) {
+          triggerUomFetch(newFormData)
+        } else {
+          console.log('[handleInputChange] Not triggering UOM fetch:', {
+            shouldFetch: shouldFetchUom(newFormData),
+            hasUom: !!newFormData.uom
+          });
+        }
       }
 
       return newFormData
@@ -1707,7 +1834,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Sub Category"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.subCategory || item.subCategory === '-') ? 'po-empty-value' : ''}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
               onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
@@ -1732,7 +1859,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Specifications"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.specifications || item.specifications === '-') ? 'po-empty-value' : ''}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
               onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
@@ -1834,7 +1961,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Preferred Vendor"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.partyName || item.partyName === '-') ? 'po-empty-value' : ''}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'partyName')}
               onTouchStart={(e) => handleTouchStart(e, item, 'partyName')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'partyName')}
@@ -1863,7 +1990,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Place"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.place || item.place === '-') ? 'po-empty-value' : ''}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'place')}
               onTouchStart={(e) => handleTouchStart(e, item, 'place')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'place')}
@@ -1979,6 +2106,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 type="date"
                 ref={dateInputRef}
                 className="po-date-picker-hidden"
+                max={getTodayDateString()}
                 value={(() => {
                   // Convert DD/MM/YYYY to YYYY-MM-DD for date input
                   const [day, month, year] = currentDate.split('/')
@@ -1986,38 +2114,23 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 })()}
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const day = date.getDate().toString().padStart(2, '0')
-                    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-                    const year = date.getFullYear()
-                    setCurrentDate(`${day}/${month}/${year}`)
-                  }
-                }}
-              />
-              <input
-                type="time"
-                ref={timeInputRef}
-                className="po-time-picker-hidden"
-                value={(() => {
-                  // Convert HH:MM AM/PM to HH:MM for time input
-                  const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
-                  if (match) {
-                    let hour24 = parseInt(match[1])
-                    const minutes = match[2]
-                    const ampm = match[3].toUpperCase()
-                    if (ampm === 'PM' && hour24 !== 12) hour24 += 12
-                    if (ampm === 'AM' && hour24 === 12) hour24 = 0
-                    return `${hour24.toString().padStart(2, '0')}:${minutes}`
-                  }
-                  return ''
-                })()}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const [hours, minutes] = e.target.value.split(':')
-                    const hour24 = parseInt(hours)
-                    const hour12 = hour24 % 12 || 12
-                    const ampm = hour24 >= 12 ? 'PM' : 'AM'
-                    setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                    const selectedDate = new Date(e.target.value)
+                    const today = new Date()
+                    today.setHours(23, 59, 59, 999) // Set to end of today for comparison
+                    
+                    // Only allow dates up to today
+                    if (selectedDate <= today) {
+                      const day = selectedDate.getDate().toString().padStart(2, '0')
+                      const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0')
+                      const year = selectedDate.getFullYear()
+                      setCurrentDate(`${day}/${month}/${year}`)
+                    } else {
+                      // If future date selected, reset to today
+                      const day = today.getDate().toString().padStart(2, '0')
+                      const month = (today.getMonth() + 1).toString().padStart(2, '0')
+                      const year = today.getFullYear()
+                      setCurrentDate(`${day}/${month}/${year}`)
+                    }
                   }
                 }}
               />
@@ -2034,18 +2147,78 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   readOnly
                 />
               </div>
-              <div className="po-time-wrapper">
+              <div className="po-time-wrapper" ref={timePickerRef}>
                 <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-                <input
-                  type="text"
-                  id="po-time-display"
-                  value={currentTime}
-                  onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
-                  className="po-time-input"
-                  placeholder="HH:MM AM/PM"
-                  title="Click to select time"
-                  readOnly
-                />
+                <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'visible' }}>
+                  <input
+                    type="text"
+                    id="po-time-display"
+                    value={currentTime}
+                    onClick={() => setShowTimePicker(!showTimePicker)}
+                    className="po-time-input"
+                    placeholder="HH:MM AM/PM"
+                    title="Click to select time"
+                    readOnly
+                  />
+                  {showTimePicker && (() => {
+                    const { hour, minute, ampm } = parseTimeString(currentTime)
+                    return (
+                      <div className="po-custom-time-picker">
+                        <div className="po-time-picker-column">
+                          <div className="po-time-picker-label">Hour</div>
+                          <div className="po-time-picker-list">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
+                              <div
+                                key={h}
+                                className={`po-time-picker-item ${hour === h ? 'po-time-picker-selected' : ''}`}
+                                onClick={() => {
+                                  const newTime = `${h.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
+                                  setCurrentTime(newTime)
+                                }}
+                              >
+                                {h}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="po-time-picker-column">
+                          <div className="po-time-picker-label">Minute</div>
+                          <div className="po-time-picker-list">
+                            {Array.from({ length: 60 }, (_, i) => i).map(m => (
+                              <div
+                                key={m}
+                                className={`po-time-picker-item ${minute === m ? 'po-time-picker-selected' : ''}`}
+                                onClick={() => {
+                                  const newTime = `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
+                                  setCurrentTime(newTime)
+                                }}
+                              >
+                                {m.toString().padStart(2, '0')}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="po-time-picker-column">
+                          <div className="po-time-picker-label">AM/PM</div>
+                          <div className="po-time-picker-list">
+                            {['AM', 'PM'].map(ap => (
+                              <div
+                                key={ap}
+                                className={`po-time-picker-item po-time-picker-ampm ${ampm === ap ? 'po-time-picker-selected' : ''}`}
+                                onClick={() => {
+                                  const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ap}`
+                                  setCurrentTime(newTime)
+                                }}
+                              >
+                                {ap}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
             </div>
           </div>
@@ -2090,6 +2263,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               type="date"
               ref={dateInputRef}
               className="po-date-picker-hidden"
+              max={getTodayDateString()}
               value={(() => {
                 // Convert DD/MM/YYYY to YYYY-MM-DD for date input
                 const [day, month, year] = currentDate.split('/')
@@ -2097,38 +2271,23 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               })()}
               onChange={(e) => {
                 if (e.target.value) {
-                  const date = new Date(e.target.value)
-                  const day = date.getDate().toString().padStart(2, '0')
-                  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-                  const year = date.getFullYear()
-                  setCurrentDate(`${day}/${month}/${year}`)
-                }
-              }}
-            />
-            <input
-              type="time"
-              ref={timeInputRef}
-              className="po-time-picker-hidden"
-              value={(() => {
-                // Convert HH:MM AM/PM to HH:MM for time input
-                const match = currentTime.match(/(\d{2}):(\d{2})\s*(AM|PM)/i)
-                if (match) {
-                  let hour24 = parseInt(match[1])
-                  const minutes = match[2]
-                  const ampm = match[3].toUpperCase()
-                  if (ampm === 'PM' && hour24 !== 12) hour24 += 12
-                  if (ampm === 'AM' && hour24 === 12) hour24 = 0
-                  return `${hour24.toString().padStart(2, '0')}:${minutes}`
-                }
-                return ''
-              })()}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const [hours, minutes] = e.target.value.split(':')
-                  const hour24 = parseInt(hours)
-                  const hour12 = hour24 % 12 || 12
-                  const ampm = hour24 >= 12 ? 'PM' : 'AM'
-                  setCurrentTime(`${hour12.toString().padStart(2, '0')}:${minutes || '00'} ${ampm}`)
+                  const selectedDate = new Date(e.target.value)
+                  const today = new Date()
+                  today.setHours(23, 59, 59, 999) // Set to end of today for comparison
+                  
+                  // Only allow dates up to today
+                  if (selectedDate <= today) {
+                    const day = selectedDate.getDate().toString().padStart(2, '0')
+                    const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0')
+                    const year = selectedDate.getFullYear()
+                    setCurrentDate(`${day}/${month}/${year}`)
+                  } else {
+                    // If future date selected, reset to today
+                    const day = today.getDate().toString().padStart(2, '0')
+                    const month = (today.getMonth() + 1).toString().padStart(2, '0')
+                    const year = today.getFullYear()
+                    setCurrentDate(`${day}/${month}/${year}`)
+                  }
                 }
               }}
             />
@@ -2145,18 +2304,78 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 readOnly
               />
             </div>
-            <div className="po-time-wrapper">
+            <div className="po-time-wrapper" ref={timePickerRef}>
               <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-              <input
-                type="text"
-                id="po-time-display"
-                value={currentTime}
-                onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
-                className="po-time-input"
-                placeholder="HH:MM AM/PM"
-                title="Click to select time"
-                readOnly
-              />
+              <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'visible' }}>
+                <input
+                  type="text"
+                  id="po-time-display"
+                  value={currentTime}
+                  onClick={() => setShowTimePicker(!showTimePicker)}
+                  className="po-time-input"
+                  placeholder="HH:MM AM/PM"
+                  title="Click to select time"
+                  readOnly
+                />
+                {showTimePicker && (() => {
+                  const { hour, minute, ampm } = parseTimeString(currentTime)
+                  return (
+                    <div className="po-custom-time-picker">
+                      <div className="po-time-picker-column">
+                        <div className="po-time-picker-label">Hour</div>
+                        <div className="po-time-picker-list">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
+                            <div
+                              key={h}
+                              className={`po-time-picker-item ${hour === h ? 'po-time-picker-selected' : ''}`}
+                              onClick={() => {
+                                const newTime = `${h.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
+                                setCurrentTime(newTime)
+                              }}
+                            >
+                              {h}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="po-time-picker-column">
+                        <div className="po-time-picker-label">Minute</div>
+                        <div className="po-time-picker-list">
+                          {Array.from({ length: 60 }, (_, i) => i).map(m => (
+                            <div
+                              key={m}
+                              className={`po-time-picker-item ${minute === m ? 'po-time-picker-selected' : ''}`}
+                              onClick={() => {
+                                const newTime = `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
+                                setCurrentTime(newTime)
+                              }}
+                            >
+                              {m.toString().padStart(2, '0')}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="po-time-picker-column">
+                        <div className="po-time-picker-label">AM/PM</div>
+                        <div className="po-time-picker-list">
+                          {['AM', 'PM'].map(ap => (
+                            <div
+                              key={ap}
+                              className={`po-time-picker-item po-time-picker-ampm ${ampm === ap ? 'po-time-picker-selected' : ''}`}
+                              onClick={() => {
+                                const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ap}`
+                                setCurrentTime(newTime)
+                              }}
+                            >
+                              {ap}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
           </div>
         </div>
@@ -2317,10 +2536,23 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
                 return materialSpecs && materialSpecs.length > 0;
               })() ? 'po-optional-field-red' : formData.specifications ? 'po-optional-field-green' : ''}`}
-              disabled={!formData.category || !formData.materialName || dataLoading || (() => {
+              disabled={(() => {
+                // Disable if category or material name is missing
+                if (!formData.category || !formData.materialName || dataLoading) {
+                  return true;
+                }
+                
+                // Check if specifications are available
                 const categoryData = materialData[formData.category];
                 if (!categoryData) return true;
-                const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
+                
+                const materialSpecs = getSpecificationsForMaterial(
+                  categoryData, 
+                  formData.materialName, 
+                  formData.subCategory
+                );
+                
+                // Only disable if NO specifications are available
                 return !materialSpecs || materialSpecs.length === 0;
               })()}
             >

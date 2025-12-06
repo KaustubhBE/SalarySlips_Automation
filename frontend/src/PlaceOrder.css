@@ -1825,6 +1825,11 @@
     .po-items-table-container.po-mobile-table .po-items-table td:nth-child(7) {
       text-align: center;
     }
+    
+    /* Center-align cells with "-" value in mobile view */
+    .po-items-table-container.po-mobile-table .po-items-table td.po-empty-value {
+      text-align: center;
+    }
   
     .po-items-table-container.po-mobile-table .po-items-table .po-remove-item-btn {
       min-width: 80px;
@@ -2169,6 +2174,29 @@
       flex-direction: row;
       align-items: center;
       min-width: 300px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  /* Mobile view under 630px: prevent overflow */
+  @media (max-width: 630px) {
+    .po-datetime-box {
+      min-width: auto;
+      width: 100%;
+      max-width: 100%;
+      padding: 6px 8px;
+      gap: 6px;
+      box-sizing: border-box;
+      overflow: visible;
+    }
+
+    .po-date-wrapper,
+    .po-time-wrapper {
+      gap: 4px;
+      min-width: 0;
+      overflow: visible;
     }
   }
 
@@ -2181,6 +2209,8 @@
     align-items: center;
     flex: 1;
     min-width: 0;
+    position: relative;
+    overflow: visible;
   }
 
   /* Labels */
@@ -2258,6 +2288,194 @@
   .po-time-input::placeholder {
     color: #999;
     font-weight: normal;
+  }
+
+  /* Custom Time Picker Styles */
+  .po-custom-time-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: flex;
+    gap: 0;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow: hidden;
+  }
+
+  .po-time-picker-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #eee;
+    overflow-y: auto;
+    max-height: 300px;
+  }
+
+  .po-time-picker-column:last-child {
+    border-right: none;
+  }
+
+  .po-time-picker-label {
+    padding: 8px;
+    background: #f8f9fa;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: center;
+    color: #2c3e50;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .po-time-picker-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: #ccc #f0f0f0;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-track {
+    background: #f0f0f0;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-thumb:hover {
+    background: #999;
+  }
+
+  .po-time-picker-item {
+    padding: 8px 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #2c3e50;
+    transition: background-color 0.2s ease;
+    user-select: none;
+  }
+
+  .po-time-picker-item:hover {
+    background-color: #e8f4f8;
+  }
+
+  .po-time-picker-item.po-time-picker-selected {
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+  }
+
+  .po-time-picker-ampm {
+    padding: 10px 12px;
+    font-weight: 600;
+  }
+
+  /* Mobile adjustments for time picker */
+  @media (max-width: 768px) {
+    .po-custom-time-picker {
+      max-height: 250px;
+    }
+
+    .po-time-picker-column {
+      max-height: 250px;
+    }
+
+    .po-time-picker-item {
+      padding: 10px 8px;
+      font-size: 13px;
+    }
+  }
+
+  /* Mobile adjustments for screens under 630px */
+  @media (max-width: 630px) {
+    .po-time-wrapper {
+      position: relative;
+      overflow: visible;
+    }
+
+    .po-custom-time-picker {
+      position: fixed;
+      left: 10px !important;
+      right: 10px !important;
+      width: auto !important;
+      max-width: calc(100vw - 20px);
+      max-height: 40vh;
+      z-index: 10000;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .po-time-picker-column {
+      max-height: 40vh;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .po-time-picker-item {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+
+    .po-time-picker-label {
+      padding: 6px 4px;
+      font-size: 11px;
+    }
+
+    /* Ensure datetime box doesn't overflow */
+    .po-datetime-box {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: visible;
+    }
+
+    .po-time-input {
+      min-width: 0;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+
+    .po-date-input {
+      min-width: 0;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+
+    .po-datetime-label {
+      font-size: 11px;
+    }
+  }
+
+  /* Extra small mobile adjustments */
+  @media (max-width: 480px) {
+    .po-custom-time-picker {
+      left: 5px !important;
+      right: 5px !important;
+      max-width: calc(100vw - 10px);
+      max-height: 35vh;
+    }
+
+    .po-time-picker-column {
+      max-height: 35vh;
+    }
+
+    .po-time-picker-item {
+      padding: 6px 4px;
+      font-size: 11px;
+    }
   }
   
   .po-order-id-box {
@@ -2623,6 +2841,11 @@
     white-space: normal;
     line-height: 1.5;
     position: relative;
+  }
+  
+  /* Center-align cells with "-" value */
+  .po-items-table td.po-empty-value {
+    text-align: center;
   }
   
   .po-items-table td:nth-child(10) {
@@ -3212,6 +3435,11 @@
       min-width: 100px;
       text-align: center;
     }
+    
+    /* Center-align cells with "-" value in mobile view */
+    .po-items-table td.po-empty-value {
+      text-align: center;
+    }
 
   /* Ensure action buttons shrink appropriately on mobile */
   .po-items-table .po-remove-item-btn,
@@ -3421,6 +3649,11 @@
     /* Center quantity & UOM values inside mobile cards */
     .po-items-table td:nth-child(6),
     .po-items-table td:nth-child(7) {
+      text-align: center;
+    }
+    
+    /* Center-align cells with "-" value in mobile card layout */
+    .po-items-table td.po-empty-value {
       text-align: center;
     }
     

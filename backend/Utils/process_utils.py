@@ -3750,7 +3750,7 @@ Please find the detailed order document attached."""
                 email_body = f"""
                     <html>
                     <body>
-                    <p>Dear Sir/Ma'am,</p>
+                    <p>Dear Sir,</p>
                     <p>A new indent has been raised for your review and further processing.</p>
                     Please find the details below:
                     
