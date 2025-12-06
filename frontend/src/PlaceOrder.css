@@ -2210,7 +2210,11 @@
     flex: 1;
     min-width: 0;
     position: relative;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
+    width: 100%;
+    box-sizing: border-box;
+    pointer-events: auto;
   }
 
   /* Labels */
@@ -2254,6 +2258,8 @@
     color: #2c3e50;
     flex: 1;
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
@@ -2261,6 +2267,11 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: normal;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(52, 152, 219, 0.3);
+    pointer-events: auto !important;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Mobile view: inputs share space side by side */
@@ -2269,6 +2280,24 @@
     .po-time-input {
       flex: 1;
       min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .po-time-wrapper > div {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: visible;
+      pointer-events: auto;
+    }
+
+    .po-time-wrapper > div > input {
+      pointer-events: auto !important;
+      cursor: pointer !important;
+      -webkit-tap-highlight-color: rgba(52, 152, 219, 0.5);
     }
   }
 
@@ -2404,7 +2433,25 @@
   @media (max-width: 630px) {
     .po-time-wrapper {
       position: relative;
-      overflow: visible;
+      overflow-x: hidden;
+      overflow-y: visible;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .po-time-wrapper > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+      pointer-events: auto !important;
+    }
+
+    .po-time-wrapper > div > input {
+      pointer-events: auto !important;
+      cursor: pointer !important;
     }
 
     .po-custom-time-picker {
@@ -2439,19 +2486,27 @@
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      overflow: visible;
+      overflow-x: hidden;
+      overflow-y: visible;
     }
 
     .po-time-input {
-      min-width: 0;
+      min-width: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
       font-size: 12px;
       padding: 6px 8px;
+      box-sizing: border-box !important;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(52, 152, 219, 0.3);
     }
 
     .po-date-input {
       min-width: 0;
       font-size: 12px;
       padding: 6px 8px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .po-datetime-label {

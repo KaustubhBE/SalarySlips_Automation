@@ -232,15 +232,14 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
       
       // Case 1: subCategoryData is an array of material objects
       // Structure: { "Steam": [{ name: "...", specifications: "...", uom: "..." }] }
-      // This happens when backend groups by subcategory first
       if (Array.isArray(subCategoryData)) {
-        console.log('[getSpecificationsForMaterial] subCategoryData is array, length:', subCategoryData.length);
+        console.log('[getSpecificationsForMaterial] Found array structure for subCategory:', subCategory, 'with', subCategoryData.length, 'materials');
         subCategoryData.forEach(material => {
           const matName = typeof material === 'string' ? material : material.name;
           if (matName === materialName) {
-            // Extract specifications from material object's specifications property
-            if (material.specifications && material.specifications.trim()) {
-              console.log('[getSpecificationsForMaterial] Found specification:', material.specifications);
+            // Extract specifications from material object
+            if (material && typeof material === 'object' && material.specifications && material.specifications.trim()) {
+              console.log('[getSpecificationsForMaterial] Found specification for', materialName, ':', material.specifications);
               specifications.add(material.specifications);
             } else {
               console.log('[getSpecificationsForMaterial] Material found but no specifications:', material);
@@ -250,7 +249,6 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
       }
       // Case 2: subCategoryData is an object with specification keys
       // Structure: { "Steam": { "Size: 2\"": [{ name: "...", uom: "..." }] } }
-      // This happens when backend groups by subcategory then by specifications
       else if (typeof subCategoryData === 'object') {
         Object.keys(subCategoryData).forEach(spec => {
           const materials = subCategoryData[spec];
@@ -296,7 +294,7 @@ const getSpecificationsForMaterial = (categoryData, materialName, subCategory) =
   }
 
   const result = Array.from(specifications).sort();
-  console.log('[getSpecificationsForMaterial] Result:', { materialName, subCategory, specifications: result });
+  console.log('[getSpecificationsForMaterial] Result for', materialName, ':', result);
   return result;
 };
 
@@ -865,18 +863,41 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     }
   }
 
+  // Handler for time input click/touch
+  const handleTimeInputClick = (e) => {
+    e.stopPropagation();
+    setShowTimePicker(prev => !prev);
+  }
+
   // Close time picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (timePickerRef.current && !timePickerRef.current.contains(event.target)) {
+      // Don't close if clicking on the time input itself, its wrapper, or the time picker
+      const target = event.target
+      if (target && (
+        target.id === 'po-time-display' || 
+        target.closest('.po-time-wrapper') || 
+        target.closest('.po-custom-time-picker') ||
+        target.closest('#po-time-display')
+      )) {
+        return
+      }
+      if (timePickerRef.current && !timePickerRef.current.contains(target)) {
         setShowTimePicker(false)
       }
     }
 
     if (showTimePicker) {
-      document.addEventListener('mousedown', handleClickOutside)
+      // Use capture phase and a slight delay to ensure input click fires first
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside, true)
+        document.addEventListener('touchstart', handleClickOutside, true)
+      }, 100)
+      
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside, true)
+        document.removeEventListener('touchstart', handleClickOutside, true)
       }
     }
   }, [showTimePicker])
@@ -1101,22 +1122,12 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
       // Unified function to trigger UOM fetch
       const triggerUomFetch = (formDataToCheck) => {
-        console.log('[triggerUomFetch] Called with:', { 
-          category: formDataToCheck.category, 
-          subCategory: formDataToCheck.subCategory, 
-          materialName: formDataToCheck.materialName, 
-          specifications: formDataToCheck.specifications,
-          uom: formDataToCheck.uom 
-        });
-        
         if (!shouldFetchUom(formDataToCheck)) {
-          console.log('[triggerUomFetch] Minimum requirements not met, skipping');
           return // Don't fetch if minimum requirements not met
         }
         
         // Only fetch if UOM is not already set (avoid unnecessary fetches)
         if (formDataToCheck.uom) {
-          console.log('[triggerUomFetch] UOM already set, skipping');
           return
         }
         
@@ -1129,16 +1140,21 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             formDataToCheck.subCategory
           )
           
-          console.log('[triggerUomFetch] Available specs:', availableSpecs, 'Selected spec:', formDataToCheck.specifications);
+          console.log('[triggerUomFetch] Available specs:', availableSpecs.length, 'Selected spec:', formDataToCheck.specifications);
           
           // If specifications are available but not yet selected, WAIT for user to select
           if (availableSpecs.length > 0 && !formDataToCheck.specifications) {
-            console.log('[triggerUomFetch] Specifications available but not selected, waiting...');
+            console.log('[triggerUomFetch] Waiting for specifications selection before fetching UOM');
             return // Don't fetch yet - wait for specifications selection
           }
         }
         
-        console.log('[triggerUomFetch] Proceeding to fetch UOM');
+        console.log('[triggerUomFetch] Proceeding to fetch UOM with:', {
+          category: formDataToCheck.category,
+          subCategory: formDataToCheck.subCategory || '(none)',
+          specifications: formDataToCheck.specifications || '(none)',
+          materialName: formDataToCheck.materialName
+        });
         
         // Determine which fields to use for fetch
         const category = formDataToCheck.category
@@ -1167,22 +1183,20 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
       // Trigger UOM fetch when any of the four fields change
       if (['category', 'subCategory', 'materialName', 'specifications'].includes(field)) {
-        console.log('[handleInputChange] Field changed:', field, 'Value:', value, 'New formData:', {
+        console.log('[handleInputChange] Field changed:', field, 'Value:', value, 'FormData:', {
           category: newFormData.category,
-          subCategory: newFormData.subCategory,
+          subCategory: newFormData.subCategory || '(none)',
           materialName: newFormData.materialName,
-          specifications: newFormData.specifications,
-          uom: newFormData.uom
+          specifications: newFormData.specifications || '(none)',
+          uom: newFormData.uom || '(none)'
         });
         
         // Check if minimum requirements are met and UOM is not already set
         if (shouldFetchUom(newFormData) && !newFormData.uom) {
+          console.log('[handleInputChange] Triggering UOM fetch');
           triggerUomFetch(newFormData)
         } else {
-          console.log('[handleInputChange] Not triggering UOM fetch:', {
-            shouldFetch: shouldFetchUom(newFormData),
-            hasUom: !!newFormData.uom
-          });
+          console.log('[handleInputChange] Not triggering UOM fetch - shouldFetchUom:', shouldFetchUom(newFormData), 'hasUom:', !!newFormData.uom);
         }
       }
 
@@ -1834,7 +1848,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Sub Category"
-              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.subCategory || item.subCategory === '-') ? 'po-empty-value' : ''}`}
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
               onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
               onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
@@ -1859,7 +1873,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Specifications"
-              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.specifications || item.specifications === '-') ? 'po-empty-value' : ''}`}
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
               onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
               onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
@@ -1961,7 +1975,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Preferred Vendor"
-              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.partyName || item.partyName === '-') ? 'po-empty-value' : ''}`}
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
               onDoubleClick={() => handleDoubleClickEdit(item, 'partyName')}
               onTouchStart={(e) => handleTouchStart(e, item, 'partyName')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'partyName')}
@@ -1990,7 +2004,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </td>
             <td 
               data-label="Place"
-              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${(!item.place || item.place === '-') ? 'po-empty-value' : ''}`}
+              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
               onDoubleClick={() => handleDoubleClickEdit(item, 'place')}
               onTouchStart={(e) => handleTouchStart(e, item, 'place')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'place')}
@@ -2149,16 +2163,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               </div>
               <div className="po-time-wrapper" ref={timePickerRef}>
                 <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-                <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'visible' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
                   <input
                     type="text"
                     id="po-time-display"
                     value={currentTime}
-                    onClick={() => setShowTimePicker(!showTimePicker)}
+                    onClick={handleTimeInputClick}
                     className="po-time-input"
                     placeholder="HH:MM AM/PM"
                     title="Click to select time"
                     readOnly
+                    style={{ width: '100%', boxSizing: 'border-box', pointerEvents: 'auto', cursor: 'pointer' }}
                   />
                   {showTimePicker && (() => {
                     const { hour, minute, ampm } = parseTimeString(currentTime)
@@ -2306,16 +2321,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </div>
             <div className="po-time-wrapper" ref={timePickerRef}>
               <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-              <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'visible' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
                 <input
                   type="text"
                   id="po-time-display"
                   value={currentTime}
-                  onClick={() => setShowTimePicker(!showTimePicker)}
+                  onClick={handleTimeInputClick}
                   className="po-time-input"
                   placeholder="HH:MM AM/PM"
                   title="Click to select time"
                   readOnly
+                  style={{ width: '100%', boxSizing: 'border-box', pointerEvents: 'auto', cursor: 'pointer' }}
                 />
                 {showTimePicker && (() => {
                   const { hour, minute, ampm } = parseTimeString(currentTime)
