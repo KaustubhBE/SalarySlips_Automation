@@ -6,9 +6,6 @@ const DateTimePicker = ({
   maxDate = null,
   disabled = false 
 }) => {
-  const [showTimePicker, setShowTimePicker] = useState(false)
-  const [timeInput, setTimeInput] = useState({ hour: '', minute: '', ampm: 'AM' })
-  
   const timePickerRef = useRef(null)
   const dateInputRef = useRef(null)
 
@@ -45,15 +42,28 @@ const DateTimePicker = ({
 
   // Parse time from HH:MM AM/PM format
   const parseTime = (timeString) => {
-    if (!timeString) return { hour: '', minute: '', ampm: 'AM' }
+    console.log('[DateTimePicker] parseTime() called with:', timeString)
+    if (!timeString) {
+      console.log('[DateTimePicker] parseTime() - empty timeString, returning default')
+      return { hour: '', minute: '', ampm: 'AM' }
+    }
     const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
     if (match) {
-      return {
-        hour: match[1],
-        minute: match[2],
+      // Normalize hour: remove leading zeros to match dropdown format (1-12, not 01-12)
+      const hourNum = parseInt(match[1], 10)
+      const hour = hourNum.toString()
+      // Normalize minute: remove leading zeros to match dropdown format
+      const minuteNum = parseInt(match[2], 10)
+      const minute = minuteNum.toString()
+      const result = {
+        hour: hour,
+        minute: minute,
         ampm: match[3].toUpperCase()
       }
+      console.log('[DateTimePicker] parseTime() - match found:', { match, result })
+      return result
     }
+    console.log('[DateTimePicker] parseTime() - no match, returning default')
     return { hour: '', minute: '', ampm: 'AM' }
   }
 
@@ -75,21 +85,116 @@ const DateTimePicker = ({
     return `${year}-${month}-${day}`
   }
 
+  // Helper function to get current time
+  const getCurrentTime = () => {
+    const now = new Date()
+    const hours12 = (now.getHours() % 12 || 12).toString()
+    // Round minutes to nearest 5 (since minutes dropdown has 5-minute increments)
+    const minutesRaw = now.getMinutes()
+    // Cap at 55 to ensure it matches an available option
+    const minutesRounded = Math.min(55, Math.round(minutesRaw / 5) * 5)
+    const minutes = minutesRounded.toString()
+    const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
+    const result = { hour: hours12, minute: minutes, ampm }
+    console.log('[DateTimePicker] getCurrentTime() called:', {
+      now: now.toLocaleTimeString(),
+      hours12,
+      minutesRaw,
+      minutesRounded,
+      minutes,
+      ampm,
+      result
+    })
+    return result
+  }
+
+  const [showTimePicker, setShowTimePicker] = useState(false)
+  
+  const [timeInput, setTimeInput] = useState(() => {
+    console.log('[DateTimePicker] Initial state setup - value.time:', value.time)
+    // Initialize with current time if no value.time, otherwise parse the value
+    if (value.time) {
+      const parsed = parseTime(value.time)
+      console.log('[DateTimePicker] Initial state - parsed from value.time:', parsed)
+      if (parsed.hour) {
+        // Check if minute is valid for dropdown
+        const minuteNum = parseInt(parsed.minute)
+        const validMinutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+        if (!validMinutes.includes(minuteNum)) {
+          const roundedMinute = validMinutes.reduce((prev, curr) => 
+            Math.abs(curr - minuteNum) < Math.abs(prev - minuteNum) ? curr : prev
+          )
+          console.log('[DateTimePicker] Initial state - minute', minuteNum, 'not valid, rounding to:', roundedMinute)
+          parsed.minute = roundedMinute.toString()
+        }
+        console.log('[DateTimePicker] Initial state - returning parsed:', parsed)
+        return parsed
+      } else {
+        const currentTime = getCurrentTime()
+        console.log('[DateTimePicker] Initial state - parsed.hour empty, returning current time:', currentTime)
+        return currentTime
+      }
+    }
+    const currentTime = getCurrentTime()
+    console.log('[DateTimePicker] Initial state - no value.time, returning current time:', currentTime)
+    return currentTime
+  })
+
   // Initialize time input from value prop
   useEffect(() => {
+    console.log('[DateTimePicker] useEffect [value.time] triggered:', { 'value.time': value.time })
     if (value.time) {
-      setTimeInput(parseTime(value.time))
+      const parsed = parseTime(value.time)
+      // Check if minute is valid for dropdown and round if needed
+      const minuteNum = parseInt(parsed.minute)
+      const validMinutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+      if (!validMinutes.includes(minuteNum)) {
+        const roundedMinute = validMinutes.reduce((prev, curr) => 
+          Math.abs(curr - minuteNum) < Math.abs(prev - minuteNum) ? curr : prev
+        )
+        console.log('[DateTimePicker] useEffect [value.time] - minute', minuteNum, 'not valid, rounding to:', roundedMinute)
+        parsed.minute = roundedMinute.toString()
+      }
+      console.log('[DateTimePicker] useEffect [value.time] - setting timeInput to parsed:', parsed)
+      setTimeInput(parsed)
     } else {
-      // If no time value, initialize to empty (will show "Select" in dropdowns)
-      setTimeInput({ hour: '', minute: '', ampm: 'AM' })
+      // If no time value, initialize to current time
+      const currentTime = getCurrentTime()
+      console.log('[DateTimePicker] useEffect [value.time] - no value.time, setting to current time:', currentTime)
+      setTimeInput(currentTime)
     }
   }, [value.time])
 
-  // Initialize time input when time picker opens (always start from placeholder)
+  // Initialize time input when time picker opens (use current time from value or exact current time)
   useEffect(() => {
-    if (!showTimePicker) return
-    // Always start with empty fields so dropdowns show "Select" by default
-    setTimeInput({ hour: '', minute: '', ampm: 'AM' })
+    console.log('[DateTimePicker] useEffect [showTimePicker] triggered:', { showTimePicker, 'value.time': value.time })
+    if (!showTimePicker) {
+      console.log('[DateTimePicker] useEffect [showTimePicker] - picker not open, returning')
+      return
+    }
+    // If there's a time value displayed outside, use it; otherwise use exact current time
+    if (value.time) {
+      const parsed = parseTime(value.time)
+      console.log('[DateTimePicker] useEffect [showTimePicker] - value.time exists, parsed result:', parsed)
+      // Check if parsed minute exists in dropdown options (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+      const minuteNum = parseInt(parsed.minute)
+      const validMinutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+      if (!validMinutes.includes(minuteNum)) {
+        // Round to nearest valid minute
+        const roundedMinute = validMinutes.reduce((prev, curr) => 
+          Math.abs(curr - minuteNum) < Math.abs(prev - minuteNum) ? curr : prev
+        )
+        console.log('[DateTimePicker] useEffect [showTimePicker] - minute', minuteNum, 'not in valid options, rounding to:', roundedMinute)
+        parsed.minute = roundedMinute.toString()
+      }
+      console.log('[DateTimePicker] useEffect [showTimePicker] - setting timeInput to:', parsed)
+      setTimeInput(parsed)
+    } else {
+      // If no time value, initialize to exact current time
+      const currentTime = getCurrentTime()
+      console.log('[DateTimePicker] useEffect [showTimePicker] - no value.time, setting to current time:', currentTime)
+      setTimeInput(currentTime)
+    }
   }, [showTimePicker])
 
   // Get today's date
@@ -145,14 +250,7 @@ const DateTimePicker = ({
 
   // Handle time reset to current time
   const handleTimeReset = () => {
-    const now = new Date()
-    const hours12 = (now.getHours() % 12 || 12).toString()
-    // Round minutes to nearest 5
-    const minutesRaw = now.getMinutes()
-    const minutesRounded = Math.round(minutesRaw / 5) * 5
-    const minutes = minutesRounded.toString()
-    const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
-    setTimeInput({ hour: hours12, minute: minutes, ampm })
+    setTimeInput(getCurrentTime())
   }
 
   // Close time picker on outside click
@@ -557,7 +655,7 @@ const DateTimePicker = ({
             type="text"
             className="dt-picker-input"
             value={value.time || ''}
-            placeholder="HH:MM AM/PM"
+            placeholder="HH:MM AM / PM"
             onClick={() => !disabled && setShowTimePicker(true)}
             readOnly
             disabled={disabled}
@@ -572,16 +670,29 @@ const DateTimePicker = ({
             <div className="dt-time-picker-modal" ref={timePickerRef}>
               <div className="dt-time-picker-header">Set time</div>
               <div className="dt-time-picker-body">
+                {(() => {
+                  console.log('[DateTimePicker] Time picker modal rendering - timeInput state:', timeInput)
+                  console.log('[DateTimePicker] Time picker modal rendering - value.time:', value.time)
+                  return null
+                })()}
                 <div className="dt-time-picker-instruction">Type in time</div>
                 
                 <div className="dt-time-picker-inputs">
                   <div className="dt-time-picker-input-group">
+                    {(() => {
+                      console.log('[DateTimePicker] Rendering hours select - timeInput.hour:', timeInput.hour)
+                      const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1)
+                      console.log('[DateTimePicker] Available hour options:', hourOptions.map(h => h.toString()))
+                      const hourValue = timeInput.hour || ''
+                      const hourExists = hourOptions.some(h => h.toString() === hourValue)
+                      console.log('[DateTimePicker] Hour value exists in options?', hourExists, 'value:', hourValue)
+                      return null
+                    })()}
                     <select
                       className="dt-time-picker-select"
                       value={timeInput.hour || ''}
                       onChange={(e) => handleTimeInputChange('hour', e.target.value)}
                     >
-                      <option value="" disabled>Select</option>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
                         <option key={hour} value={hour.toString()}>
                           {hour.toString().padStart(2, '0')}
@@ -594,12 +705,20 @@ const DateTimePicker = ({
                   <div className="dt-time-picker-separator">:</div>
                   
                   <div className="dt-time-picker-input-group">
+                    {(() => {
+                      console.log('[DateTimePicker] Rendering minutes select - timeInput.minute:', timeInput.minute)
+                      const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5)
+                      console.log('[DateTimePicker] Available minute options:', minuteOptions.map(m => m.toString()))
+                      const minuteValue = timeInput.minute || ''
+                      const minuteExists = minuteOptions.some(m => m.toString() === minuteValue)
+                      console.log('[DateTimePicker] Minute value exists in options?', minuteExists, 'value:', minuteValue)
+                      return null
+                    })()}
                     <select
                       className="dt-time-picker-select"
                       value={timeInput.minute || ''}
                       onChange={(e) => handleTimeInputChange('minute', e.target.value)}
                     >
-                      <option value="" disabled>Select</option>
                       {Array.from({ length: 12 }, (_, i) => i * 5).map(minute => (
                         <option key={minute} value={minute.toString()}>
                           {minute.toString().padStart(2, '0')}
@@ -618,7 +737,7 @@ const DateTimePicker = ({
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
                     </select>
-                    <div className="dt-time-picker-label">AM/PM</div>
+                    <div className="dt-time-picker-label">AM / PM</div>
                   </div>
                 </div>
 

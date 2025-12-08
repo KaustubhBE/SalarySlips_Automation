@@ -911,6 +911,10 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       errors.push('Please generate an Order ID before placing order')
     }
     
+    if (!currentDate || currentDate.trim() === '') {
+      errors.push('Please select a Date')
+    }
+    
     if (orderItems.length === 0) {
       errors.push('Please add at least one item to the order')
     }
@@ -934,7 +938,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   useEffect(() => {
     const errors = validateForm()
     setFormValidationErrors(errors)
-  }, [orderIdGenerated, orderId, orderItems, formData.givenBy, formData.type, formData.description])
+  }, [orderIdGenerated, orderId, currentDate, orderItems, formData.givenBy, formData.type, formData.description])
 
   // Handle browser back button when items sheet modal is open
   useEffect(() => {
