@@ -703,6 +703,7 @@
     .po-form-select {
       width: 100%;
       box-sizing: border-box;
+      font-size: 12px;
     }
     
     .po-form-group label {
@@ -745,6 +746,11 @@
     }
     
     .po-form-group label {
+      font-size: 12px;
+    }
+
+    .po-form-input,
+    .po-form-select {
       font-size: 12px;
     }
     
@@ -835,7 +841,7 @@
     .po-form-input,
     .po-form-select {
       padding: 10px;
-      font-size: 13px;
+      font-size: 12px;
       min-height: 42px;
     }
     
@@ -999,7 +1005,7 @@
     .po-form-select {
       width: 100%;
       padding: 8px;
-      font-size: 11px;
+      font-size: 12px;
       min-height: 36px;
       box-sizing: border-box;
     }
@@ -2129,8 +2135,10 @@
   .po-header-left {
     flex: 1;
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
+    padding-left: 20px;
+    padding-right: 20px;
   }
   
   .po-header-center {
@@ -2192,7 +2200,6 @@
       overflow: visible;
     }
 
-    .po-date-wrapper,
     .po-time-wrapper {
       gap: 4px;
       min-width: 0;
@@ -2200,8 +2207,7 @@
     }
   }
 
-  /* Date and Time Wrappers */
-  .po-date-wrapper,
+  /* Time Wrapper (date wrapper removed - using DateTimePicker) */
   .po-time-wrapper {
     display: flex;
     flex-direction: row;
@@ -2217,28 +2223,14 @@
     pointer-events: auto;
   }
 
-  /* Labels */
-  .po-datetime-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #2c3e50;
-    text-align: left;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
   /* Mobile view: adjust wrapper layout */
   @media (max-width: 768px) {
-    .po-date-wrapper,
     .po-time-wrapper {
       flex: 1;
       min-width: 0;
     }
   }
 
-  .po-date-picker-hidden,
   .po-time-picker-hidden {
     position: absolute;
     opacity: 0;
@@ -2247,7 +2239,6 @@
     pointer-events: none;
   }
 
-  .po-date-input,
   .po-time-input {
     background-color: white;
     border: 1px solid #ddd;
@@ -2276,7 +2267,6 @@
 
   /* Mobile view: inputs share space side by side */
   @media (max-width: 768px) {
-    .po-date-input,
     .po-time-input {
       flex: 1;
       min-width: 0;
@@ -2301,19 +2291,16 @@
     }
   }
 
-  .po-date-input:focus,
   .po-time-input:focus {
     outline: none;
     border-color: #3498db;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
   }
 
-  .po-date-input:hover,
   .po-time-input:hover {
     border-color: #3498db;
   }
 
-  .po-date-input::placeholder,
   .po-time-input::placeholder {
     color: #999;
     font-weight: normal;
@@ -2501,17 +2488,6 @@
       -webkit-tap-highlight-color: rgba(52, 152, 219, 0.3);
     }
 
-    .po-date-input {
-      min-width: 0;
-      font-size: 12px;
-      padding: 6px 8px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .po-datetime-label {
-      font-size: 11px;
-    }
   }
 
   /* Extra small mobile adjustments */
@@ -4063,12 +4039,12 @@
     .po-form-select,
     .po-form-input {
       min-height: 44px;
-      font-size: 16px; /* Prevents zoom on iOS */
+      font-size: 12px; /* Match label size */
     }
     
     .po-form-textarea {
       min-height: 44px;
-      font-size: 12px !important; /* 1px less than label (12px) - override iOS zoom prevention */
+      font-size: 12px; /* Match label size */
     }
     
     .po-edit-select,

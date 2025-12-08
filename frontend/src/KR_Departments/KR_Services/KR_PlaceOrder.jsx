@@ -6,6 +6,7 @@ import LoadingSpinner from '../../LoadingSpinner'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
 import NotificationSummaryModal from '../../Components/NotificationSummaryModal'
+import DateTimePicker from '../../Components/DateTimePicker'
 
 // Constants
 const IMPORTANCE_OPTIONS = ['Normal', 'Urgent']
@@ -44,24 +45,6 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`
 }
 
-// Parse time string to get hour, minute, and AM/PM
-const parseTimeString = (timeString) => {
-  const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
-  if (match) {
-    return {
-      hour: parseInt(match[1]),
-      minute: parseInt(match[2]),
-      ampm: match[3].toUpperCase()
-    }
-  }
-  // Default to current time
-  const now = new Date()
-  return {
-    hour: now.getHours() % 12 || 12,
-    minute: now.getMinutes(),
-    ampm: now.getHours() >= 12 ? 'PM' : 'AM'
-  }
-}
 
 // ================================
 // CLEAN CASCADING DROPDOWN HELPERS
@@ -575,8 +558,6 @@ const KR_PlaceOrder = () => {
     const ampm = now.getHours() >= 12 ? 'PM' : 'AM'
     return `${hours}:${minutes} ${ampm}`
   })
-  const [showTimePicker, setShowTimePicker] = useState(false)
-  const timePickerRef = useRef(null)
   const [orderId, setOrderId] = useState('')
   const [orderIdGenerated, setOrderIdGenerated] = useState(false)
   const [authorityNames, setAuthorityNames] = useState([])
@@ -628,7 +609,6 @@ const categoryInputRef = useRef(null)
 const materialNameInputRef = useRef(null)
 const quantityInputRef = useRef(null)
 const uomInputRef = useRef(null)
-const dateInputRef = useRef(null)
 const addItemFieldRefs = {
   category: categoryInputRef,
   materialName: materialNameInputRef,
@@ -864,43 +844,15 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   }
 
   // Handler for time input click/touch
-  const handleTimeInputClick = (e) => {
-    e.stopPropagation();
-    setShowTimePicker(prev => !prev);
+  // Handle date/time change from DateTimePicker
+  const handleDateTimeChange = ({ date, time }) => {
+    if (date !== undefined) {
+      setCurrentDate(date)
+    }
+    if (time !== undefined) {
+      setCurrentTime(time)
+    }
   }
-
-  // Close time picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Don't close if clicking on the time input itself, its wrapper, or the time picker
-      const target = event.target
-      if (target && (
-        target.id === 'po-time-display' || 
-        target.closest('.po-time-wrapper') || 
-        target.closest('.po-custom-time-picker') ||
-        target.closest('#po-time-display')
-      )) {
-        return
-      }
-      if (timePickerRef.current && !timePickerRef.current.contains(target)) {
-        setShowTimePicker(false)
-      }
-    }
-
-    if (showTimePicker) {
-      // Use capture phase and a slight delay to ensure input click fires first
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside, true)
-        document.addEventListener('touchstart', handleClickOutside, true)
-      }, 100)
-      
-      return () => {
-        clearTimeout(timeoutId)
-        document.removeEventListener('mousedown', handleClickOutside, true)
-        document.removeEventListener('touchstart', handleClickOutside, true)
-      }
-    }
-  }, [showTimePicker])
 
   // Effects
   useEffect(() => {
@@ -2115,127 +2067,12 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       <div className="po-place_order-container">
         <div className="po-form-header">
           <div className="po-header-left">
-            <div className="po-datetime-box">
-              <input
-                type="date"
-                ref={dateInputRef}
-                className="po-date-picker-hidden"
-                max={getTodayDateString()}
-                value={(() => {
-                  // Convert DD/MM/YYYY to YYYY-MM-DD for date input
-                  const [day, month, year] = currentDate.split('/')
-                  return year && month && day ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : ''
-                })()}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const selectedDate = new Date(e.target.value)
-                    const today = new Date()
-                    today.setHours(23, 59, 59, 999) // Set to end of today for comparison
-                    
-                    // Only allow dates up to today
-                    if (selectedDate <= today) {
-                      const day = selectedDate.getDate().toString().padStart(2, '0')
-                      const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0')
-                      const year = selectedDate.getFullYear()
-                      setCurrentDate(`${day}/${month}/${year}`)
-                    } else {
-                      // If future date selected, reset to today
-                      const day = today.getDate().toString().padStart(2, '0')
-                      const month = (today.getMonth() + 1).toString().padStart(2, '0')
-                      const year = today.getFullYear()
-                      setCurrentDate(`${day}/${month}/${year}`)
-                    }
-                  }
-                }}
-              />
-              <div className="po-date-wrapper">
-                <label htmlFor="po-date-display" className="po-datetime-label">Date:</label>
-                <input
-                  type="text"
-                  id="po-date-display"
-                  value={currentDate}
-                  onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
-                  className="po-date-input"
-                  placeholder="DD/MM/YYYY"
-                  title="Click to select date"
-                  readOnly
-                />
-              </div>
-              <div className="po-time-wrapper" ref={timePickerRef}>
-                <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-                <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
-                  <input
-                    type="text"
-                    id="po-time-display"
-                    value={currentTime}
-                    onClick={handleTimeInputClick}
-                    className="po-time-input"
-                    placeholder="HH:MM AM/PM"
-                    title="Click to select time"
-                    readOnly
-                    style={{ width: '100%', boxSizing: 'border-box', pointerEvents: 'auto', cursor: 'pointer' }}
-                  />
-                  {showTimePicker && (() => {
-                    const { hour, minute, ampm } = parseTimeString(currentTime)
-                    return (
-                      <div className="po-custom-time-picker">
-                        <div className="po-time-picker-column">
-                          <div className="po-time-picker-label">Hour</div>
-                          <div className="po-time-picker-list">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
-                              <div
-                                key={h}
-                                className={`po-time-picker-item ${hour === h ? 'po-time-picker-selected' : ''}`}
-                                onClick={() => {
-                                  const newTime = `${h.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
-                                  setCurrentTime(newTime)
-                                }}
-                              >
-                                {h}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="po-time-picker-column">
-                          <div className="po-time-picker-label">Minute</div>
-                          <div className="po-time-picker-list">
-                            {Array.from({ length: 60 }, (_, i) => i).map(m => (
-                              <div
-                                key={m}
-                                className={`po-time-picker-item ${minute === m ? 'po-time-picker-selected' : ''}`}
-                                onClick={() => {
-                                  const newTime = `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
-                                  setCurrentTime(newTime)
-                                }}
-                              >
-                                {m.toString().padStart(2, '0')}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="po-time-picker-column">
-                          <div className="po-time-picker-label">AM/PM</div>
-                          <div className="po-time-picker-list">
-                            {['AM', 'PM'].map(ap => (
-                              <div
-                                key={ap}
-                                className={`po-time-picker-item po-time-picker-ampm ${ampm === ap ? 'po-time-picker-selected' : ''}`}
-                                onClick={() => {
-                                  const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ap}`
-                                  setCurrentTime(newTime)
-                                }}
-                              >
-                                {ap}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            </div>
+            <DateTimePicker
+              value={{ date: currentDate, time: currentTime }}
+              onChange={handleDateTimeChange}
+              maxDate={getTodayDateString()}
+              disabled={dataLoading}
+            />
           </div>
           <div className="po-header-center">
             <h2>Material Order Form</h2>
@@ -2273,127 +2110,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       
       <div className="po-form-header">
         <div className="po-header-left">
-          <div className="po-datetime-box">
-            <input
-              type="date"
-              ref={dateInputRef}
-              className="po-date-picker-hidden"
-              max={getTodayDateString()}
-              value={(() => {
-                // Convert DD/MM/YYYY to YYYY-MM-DD for date input
-                const [day, month, year] = currentDate.split('/')
-                return year && month && day ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : ''
-              })()}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const selectedDate = new Date(e.target.value)
-                  const today = new Date()
-                  today.setHours(23, 59, 59, 999) // Set to end of today for comparison
-                  
-                  // Only allow dates up to today
-                  if (selectedDate <= today) {
-                    const day = selectedDate.getDate().toString().padStart(2, '0')
-                    const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0')
-                    const year = selectedDate.getFullYear()
-                    setCurrentDate(`${day}/${month}/${year}`)
-                  } else {
-                    // If future date selected, reset to today
-                    const day = today.getDate().toString().padStart(2, '0')
-                    const month = (today.getMonth() + 1).toString().padStart(2, '0')
-                    const year = today.getFullYear()
-                    setCurrentDate(`${day}/${month}/${year}`)
-                  }
-                }
-              }}
-            />
-            <div className="po-date-wrapper">
-              <label htmlFor="po-date-display" className="po-datetime-label">Date:</label>
-              <input
-                type="text"
-                id="po-date-display"
-                value={currentDate}
-                onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
-                className="po-date-input"
-                placeholder="DD/MM/YYYY"
-                title="Click to select date"
-                readOnly
-              />
-            </div>
-            <div className="po-time-wrapper" ref={timePickerRef}>
-              <label htmlFor="po-time-display" className="po-datetime-label">Time:</label>
-              <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
-                <input
-                  type="text"
-                  id="po-time-display"
-                  value={currentTime}
-                  onClick={handleTimeInputClick}
-                  className="po-time-input"
-                  placeholder="HH:MM AM/PM"
-                  title="Click to select time"
-                  readOnly
-                  style={{ width: '100%', boxSizing: 'border-box', pointerEvents: 'auto', cursor: 'pointer' }}
-                />
-                {showTimePicker && (() => {
-                  const { hour, minute, ampm } = parseTimeString(currentTime)
-                  return (
-                    <div className="po-custom-time-picker">
-                      <div className="po-time-picker-column">
-                        <div className="po-time-picker-label">Hour</div>
-                        <div className="po-time-picker-list">
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
-                            <div
-                              key={h}
-                              className={`po-time-picker-item ${hour === h ? 'po-time-picker-selected' : ''}`}
-                              onClick={() => {
-                                const newTime = `${h.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
-                                setCurrentTime(newTime)
-                              }}
-                            >
-                              {h}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="po-time-picker-column">
-                        <div className="po-time-picker-label">Minute</div>
-                        <div className="po-time-picker-list">
-                          {Array.from({ length: 60 }, (_, i) => i).map(m => (
-                            <div
-                              key={m}
-                              className={`po-time-picker-item ${minute === m ? 'po-time-picker-selected' : ''}`}
-                              onClick={() => {
-                                const newTime = `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
-                                setCurrentTime(newTime)
-                              }}
-                            >
-                              {m.toString().padStart(2, '0')}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="po-time-picker-column">
-                        <div className="po-time-picker-label">AM/PM</div>
-                        <div className="po-time-picker-list">
-                          {['AM', 'PM'].map(ap => (
-                            <div
-                              key={ap}
-                              className={`po-time-picker-item po-time-picker-ampm ${ampm === ap ? 'po-time-picker-selected' : ''}`}
-                              onClick={() => {
-                                const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ap}`
-                                setCurrentTime(newTime)
-                              }}
-                            >
-                              {ap}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-          </div>
+          <DateTimePicker
+            value={{ date: currentDate, time: currentTime }}
+            onChange={handleDateTimeChange}
+            maxDate={getTodayDateString()}
+          />
         </div>
         <div className="po-header-center">
           <h2>Material Order Form</h2>
