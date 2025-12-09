@@ -84,7 +84,7 @@ def set_table_borders_professional(table, logger=None):
             'w:sz': '16',  # Level 2 thickness (2pt)
             'w:color': 'e69138'
         }
-        
+
         # Internal borders: thin black
         inner_border_props = {
             'w:val': 'single',
@@ -1076,7 +1076,15 @@ def process_reactor_reports(sheet_id_mapping_data, sheet_recipients_data, table_
             "total_recipients": 0,
             "successful_deliveries": 0,
             "failed_deliveries": 0,
-            "failed_contacts": []
+            "failed_contacts": [],
+            "channel_logs": {
+                "email": [],
+                "whatsapp": []
+            },
+            "successful_contacts": {
+                "email": [],
+                "whatsapp": []
+            }
         },
         "output_file": None,
         "errors": [],
@@ -2451,7 +2459,15 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
                 "total_recipients": 0,
                 "successful_deliveries": 0,
                 "failed_deliveries": 0,
-                "failed_contacts": []
+                "failed_contacts": [],
+                "channel_logs": {
+                    "email": [],
+                    "whatsapp": []
+                },
+                "successful_contacts": {
+                    "email": [],
+                    "whatsapp": []
+                }
             },
             "errors": [],
             "warnings": []
@@ -2505,7 +2521,11 @@ def process_general_reports(template_files, attachment_files, file_sequence, she
             "total_recipients": len(data_rows),
             "successful_deliveries": 0,
             "failed_deliveries": 0,
-            "failed_contacts": []
+            "failed_contacts": [],
+            "channel_logs": {
+                "email": [],
+                "whatsapp": []
+            }
         }
 
         # STEP 1: Pre-process all template files and extract their content
@@ -3258,7 +3278,15 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 "failed_deliveries": 0,
                 "email_successful": 0,
                 "whatsapp_successful": 0,
-                "failed_contacts": []
+                "failed_contacts": [],
+                "channel_logs": {
+                    "email": [],
+                    "whatsapp": []
+                },
+                "successful_contacts": {
+                    "email": [],
+                    "whatsapp": []
+                }
             },
             "errors": [],
             "warnings": []
@@ -3971,6 +3999,12 @@ Please find the detailed order document attached."""
             else:
                 result["delivery_stats"]["failed_deliveries"] += 1
 
+            # Track per-channel successes for frontend display
+            if channel_status.get("email", {}).get("status") == "success":
+                result["delivery_stats"]["channel_logs"]["email"].append(recipient_name)
+            if channel_status.get("whatsapp", {}).get("status") == "success":
+                result["delivery_stats"]["channel_logs"]["whatsapp"].append(recipient_name)
+
             # Add to failed_contacts if ANY enabled channel failed or was skipped
             # This allows the frontend to show which specific channel failed for each contact
             any_channel_failed_or_skipped = any(
@@ -4020,6 +4054,12 @@ Please find the detailed order document attached."""
             except Exception as e:
                 logger.warning(f"Failed to clean up DOCX file: {e}")
         
+        # Expose channel_logs as successful_contacts for frontend compatibility
+        result["delivery_stats"]["successful_contacts"] = result["delivery_stats"].get("channel_logs", {"email": [], "whatsapp": []})
+
+        # Expose channel_logs as successful_contacts for frontend compatibility
+        result["delivery_stats"]["successful_contacts"] = result["delivery_stats"].get("channel_logs", {"email": [], "whatsapp": []})
+
         # Set final status
         successful = result["delivery_stats"]["successful_deliveries"]
         total = result["delivery_stats"]["total_recipients"]
@@ -4046,7 +4086,15 @@ Please find the detailed order document attached."""
                 "failed_deliveries": len(recipients),
                 "email_successful": 0,
                 "whatsapp_successful": 0,
-                "failed_contacts": []
+                "failed_contacts": [],
+                "channel_logs": {
+                    "email": [],
+                    "whatsapp": []
+                },
+                "successful_contacts": {
+                    "email": [],
+                    "whatsapp": []
+                }
             }
         }
 
@@ -4651,6 +4699,14 @@ Please find the detailed outward document attached."""
                 "failed_deliveries": len(recipients),
                 "email_successful": 0,
                 "whatsapp_successful": 0,
-                "failed_contacts": []
+                "failed_contacts": [],
+                "channel_logs": {
+                    "email": [],
+                    "whatsapp": []
+                },
+                "successful_contacts": {
+                    "email": [],
+                    "whatsapp": []
+                }
             }
         }

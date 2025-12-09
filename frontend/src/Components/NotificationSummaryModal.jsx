@@ -65,7 +65,7 @@ const styles = {
   },
   closeBtn: {
     border: 'none',
-    background: '#1d4ed8',
+    background: '#dc2626',
     color: '#fff',
     width: '32px',
     height: '32px',
@@ -119,8 +119,9 @@ const styles = {
   },
   contextRow: {
     display: 'flex',
-    justifyContent: 'space-between',
-    gap: '16px',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: '8px',
     fontSize: '14px',
     color: '#1f2937',
     flexWrap: 'wrap'
@@ -141,8 +142,15 @@ const styles = {
   channelRow: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
     fontSize: '14px',
     color: '#b91c1c'
+  },
+  channelCount: {
+    fontWeight: 700,
+    color: '#166534',
+    marginLeft: 'auto'
   },
   failedContactsBox: {
     borderRadius: '12px',
@@ -168,16 +176,39 @@ const styles = {
     fontSize: '14px',
     color: '#b91c1c',
     display: 'flex',
+    alignItems: 'center',
     gap: '8px',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    justifyContent: 'space-between'
   },
   failedChannelLabel: {
-    fontWeight: 600,
-    minWidth: '80px'
+    fontWeight: 600
+  },
+  failedCount: {
+    fontWeight: 700,
+    color: '#b91c1c',
+    marginLeft: 'auto'
   },
   failedNamesList: {
     color: '#991b1b',
     flex: 1
+  },
+  nameList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    paddingLeft: '16px',
+    marginTop: '4px'
+  },
+  nameListItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '8px',
+    color: '#991b1b'
+  },
+  nameListIndex: {
+    fontWeight: 700,
+    minWidth: '18px'
   },
   tableWrapper: {
     border: '1px solid #e5e7eb',
@@ -252,8 +283,18 @@ const NotificationSummaryModal = ({
   const {
     email_successful = 0,
     whatsapp_successful = 0,
-    failed_contacts = []
+    failed_contacts = [],
+    // Optional arrays for showing successful recipient names
+    email_successful_contacts = [],
+    whatsapp_successful_contacts = [],
+    successful_contacts = {},
+    recipients = []
   } = mergedStats
+
+  // Compute unique failed names per channel
+  const emailFailedNames = []
+  const whatsappFailedNames = []
+  const failedNameSet = new Set()
 
   // Determine which channels are enabled based on successful counts or failed contacts
   const emailEnabled = email_successful > 0 || failed_contacts.some(c => 
@@ -264,12 +305,11 @@ const NotificationSummaryModal = ({
   )
 
   // Process failed contacts to group by channel
-  // Check each failed contact to see which specific channel(s) failed
-  const emailFailedNames = []
-  const whatsappFailedNames = []
-
   failed_contacts.forEach(contact => {
     const name = contact.name || contact.contact || 'Unknown'
+    if (name) {
+      failedNameSet.add(name)
+    }
     const emailStatus = contact?.channel_status?.email?.status
     const whatsappStatus = contact?.channel_status?.whatsapp?.status
 
@@ -289,6 +329,52 @@ const NotificationSummaryModal = ({
   })
 
   const hasFailedDeliveries = emailFailedNames.length > 0 || whatsappFailedNames.length > 0
+
+  // Determine total recipients: prefer provided total, otherwise infer from counts and known names
+  const inferredTotal = Math.max(
+    email_successful,
+    whatsapp_successful,
+    failed_contacts.length,
+    failedNameSet.size || 0
+  )
+  const totalRecipients = mergedStats.total_recipients || inferredTotal || 0
+
+  // Derive successful names per channel (fallbacks)
+  const deriveSuccessfulNames = (channel) => {
+    // 1) explicit channel arrays
+    const direct =
+      channel === 'email'
+        ? email_successful_contacts
+        : whatsapp_successful_contacts
+    if (Array.isArray(direct) && direct.length > 0) return direct
+
+    // 2) successful_contacts object: { email: [], whatsapp: [] }
+    const fromObj =
+      successful_contacts &&
+      Array.isArray(successful_contacts[channel]) &&
+      successful_contacts[channel].length > 0
+        ? successful_contacts[channel]
+        : null
+    if (fromObj) return fromObj
+
+    // 3) derive from recipients list where channel status is success
+    if (Array.isArray(recipients) && recipients.length > 0) {
+      const names = []
+      recipients.forEach(r => {
+        const name = r.name || r.contact || r.recipient || r.Name || 'Unknown'
+        const status = r?.channel_status?.[channel]?.status
+        if (status === 'success' && name) {
+          names.push(name)
+        }
+      })
+      if (names.length > 0) return names
+    }
+
+    return []
+  }
+
+  const emailSuccessNames = deriveSuccessfulNames('email')
+  const whatsappSuccessNames = deriveSuccessfulNames('whatsapp')
 
 
   if (!isOpen) {
@@ -323,12 +409,14 @@ const NotificationSummaryModal = ({
             style={styles.closeBtn}
             aria-label="Close summary"
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb'
-              e.currentTarget.style.transform = 'scale(1.05)'
+              e.currentTarget.style.backgroundColor = '#b91c1c'
+              e.currentTarget.style.transform = 'scale(1.1)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#1d4ed8'
+              e.currentTarget.style.backgroundColor = '#dc2626'
               e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.boxShadow = 'none'
             }}
           >
             ×
@@ -340,7 +428,7 @@ const NotificationSummaryModal = ({
             <div style={styles.contextBox}>
               {contextDetails.map(({ label, value }, idx) => (
                 <div key={`${label}-${idx}`} style={styles.contextRow}>
-                  <span style={styles.contextLabel}>{label}</span>
+                  <span style={styles.contextLabel}>{label}:</span>
                   <span>{value || '—'}</span>
                 </div>
               ))}
@@ -362,18 +450,38 @@ const NotificationSummaryModal = ({
                 paddingBottom: '8px',
                 borderBottom: '1px solid #bbf7d0'
               }}>
-                <span>Channel Success Summary</span>
+                <span>Successfull Deliveries</span>
               </div>
               {emailEnabled && (
                 <div style={{ ...styles.channelRow, color: '#166534' }}>
-                  <span>📧 Emails sent successfully</span>
-                  <strong style={{ fontSize: '16px' }}>{email_successful}</strong>
+                  <span>Email:</span>
+                  <span style={styles.channelCount}>{email_successful}/{totalRecipients || 0}</span>
+                </div>
+              )}
+              {emailEnabled && emailSuccessNames.length > 0 && (
+                <div style={styles.nameList}>
+                  {emailSuccessNames.map((name, idx) => (
+                    <div key={`success-email-${idx}`} style={{ ...styles.nameListItem, color: '#166534' }}>
+                      <span style={styles.nameListIndex}>{idx + 1}.</span>
+                      <span>{name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               {whatsappEnabled && (
                 <div style={{ ...styles.channelRow, color: '#166534' }}>
-                  <span>📱 WhatsApp messages sent successfully</span>
-                  <strong style={{ fontSize: '16px' }}>{whatsapp_successful}</strong>
+                  <span>WhatsApp:</span>
+                  <span style={styles.channelCount}>{whatsapp_successful}/{totalRecipients || 0}</span>
+                </div>
+              )}
+              {whatsappEnabled && whatsappSuccessNames.length > 0 && (
+                <div style={styles.nameList}>
+                  {whatsappSuccessNames.map((name, idx) => (
+                    <div key={`success-whatsapp-${idx}`} style={{ ...styles.nameListItem, color: '#166534' }}>
+                      <span style={styles.nameListIndex}>{idx + 1}.</span>
+                      <span>{name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -382,19 +490,38 @@ const NotificationSummaryModal = ({
           {hasFailedDeliveries && (
             <div style={styles.failedContactsBox}>
               <div style={styles.failedContactsHeader}>
-                <span role="img" aria-hidden="true">⚠️</span>
                 <span>Failed Deliveries</span>
               </div>
               {emailFailedNames.length > 0 && (
                 <div style={styles.failedChannelRow}>
                   <span style={styles.failedChannelLabel}>Email:</span>
-                  <span style={styles.failedNamesList}>{emailFailedNames.join(', ')}</span>
+                  <span style={styles.failedCount}>{emailFailedNames.length}/{totalRecipients || 0}</span>
+                </div>
+              )}
+              {emailFailedNames.length > 0 && (
+                <div style={styles.nameList}>
+                  {emailFailedNames.map((name, idx) => (
+                    <div key={`email-${idx}`} style={styles.nameListItem}>
+                      <span style={styles.nameListIndex}>{idx + 1}.</span>
+                      <span style={styles.failedNamesList}>{name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               {whatsappFailedNames.length > 0 && (
                 <div style={styles.failedChannelRow}>
                   <span style={styles.failedChannelLabel}>WhatsApp:</span>
-                  <span style={styles.failedNamesList}>{whatsappFailedNames.join(', ')}</span>
+                  <span style={styles.failedCount}>{whatsappFailedNames.length}/{totalRecipients || 0}</span>
+                </div>
+              )}
+              {whatsappFailedNames.length > 0 && (
+                <div style={styles.nameList}>
+                  {whatsappFailedNames.map((name, idx) => (
+                    <div key={`whatsapp-${idx}`} style={styles.nameListItem}>
+                      <span style={styles.nameListIndex}>{idx + 1}.</span>
+                      <span style={styles.failedNamesList}>{name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
