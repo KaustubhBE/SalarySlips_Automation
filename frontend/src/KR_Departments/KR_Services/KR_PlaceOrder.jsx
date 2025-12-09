@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
+import Select from 'react-select'
 import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../PlaceOrder.css'
 import LoadingSpinner from '../../LoadingSpinner'
@@ -14,6 +15,93 @@ const TYPE_OPTIONS = ['Regular', 'Project']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
+
+// Shared select helpers (react-select) to match existing styling
+const createSelectOptions = (values = []) =>
+  values
+    .filter(Boolean)
+    .map((val) => (typeof val === 'string' ? { value: val, label: val } : val))
+
+const poSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 45,
+    height: 45,
+    borderWidth: 2,
+    borderColor: state.isFocused ? '#3498db' : '#ddd',
+    boxShadow: state.isFocused ? '0 0 0 3px rgba(52, 152, 219, 0.1)' : 'none',
+    '&:hover': {
+      borderColor: state.isFocused ? '#3498db' : '#ccc'
+    }
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#777',
+    fontSize: 14
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: 14,
+    color: '#333'
+  }),
+  input: (base) => ({
+    ...base,
+    fontSize: 14
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 14,
+    backgroundColor: state.isSelected ? '#3498db' : state.isFocused ? '#f2f7fd' : 'white',
+    color: state.isSelected ? '#fff' : '#333'
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 20
+  }),
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 40
+  }),
+  indicatorSeparator: () => ({
+    display: 'none'
+  })
+}
+
+const SearchableSelect = ({
+  id,
+  value,
+  onChange,
+  options = [],
+  placeholder,
+  isDisabled = false,
+  isLoading = false,
+  isClearable = true,
+  className = '',
+  required = false
+}) => {
+  const normalizedOptions = createSelectOptions(options)
+  const selectedOption =
+    normalizedOptions.find((opt) => opt.value === value) || (value ? { value, label: value } : null)
+
+  return (
+    <Select
+      inputId={id}
+      value={selectedOption}
+      onChange={(selected) => onChange(selected ? selected.value : '')}
+      options={normalizedOptions}
+      placeholder={placeholder}
+      isDisabled={isDisabled}
+      isLoading={isLoading}
+      isClearable={isClearable}
+      className={`po-searchable-select ${className || ''}`}
+      classNamePrefix="po-select"
+      styles={poSelectStyles}
+      menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+      menuPosition="fixed"
+      required={required}
+    />
+  )
+}
 
 // Utility Functions
 const formatDateTime = (date) => {
@@ -58,11 +146,11 @@ const getTodayDateString = () => {
  */
 const getMaterialNameOptions = (categoryData, subCategory) => {
   if (!categoryData || !categoryData.materialNames) {
-    return null;
+    return []
   }
 
-  const materialNames = categoryData.materialNames;
-  const materialNameArray = []; // Collect material names first
+  const materialNames = categoryData.materialNames
+  const materialNameArray = [] // Collect material names first
 
   // Structure 1: Simple Array (no subcategories, no specifications)
   if (Array.isArray(materialNames)) {
@@ -70,70 +158,70 @@ const getMaterialNameOptions = (categoryData, subCategory) => {
     // If subcategory is selected but data is simple array, return empty (invalid subcategory)
     if (!subCategory) {
       materialNames.forEach(material => {
-        const name = typeof material === 'string' ? material : material.name;
+        const name = typeof material === 'string' ? material : material.name
         if (name) {
-          materialNameArray.push(name);
+          materialNameArray.push(name)
         }
-      });
+      })
     }
   }
   // Structure 2 & 3: Object-based (has specifications or subcategories)
   else if (typeof materialNames === 'object') {
     // STRICT FILTERING: If subcategory is selected, show ONLY materials from that subcategory
     if (subCategory && subCategory.trim() !== '' && materialNames[subCategory]) {
-      const subCategoryData = materialNames[subCategory];
+      const subCategoryData = materialNames[subCategory]
       
       // If subcategory data is an array (direct materials under subcategory)
       if (Array.isArray(subCategoryData)) {
         subCategoryData.forEach(material => {
-          const name = typeof material === 'string' ? material : material.name;
+          const name = typeof material === 'string' ? material : material.name
           if (name) {
-            materialNameArray.push(name);
+            materialNameArray.push(name)
           }
-        });
+        })
       }
       // If subcategory data is an object (has specifications under subcategory)
       else if (typeof subCategoryData === 'object') {
         Object.values(subCategoryData).forEach(specMaterials => {
           if (Array.isArray(specMaterials)) {
             specMaterials.forEach(material => {
-              const name = typeof material === 'string' ? material : material.name;
+              const name = typeof material === 'string' ? material : material.name
               if (name) {
-                materialNameArray.push(name);
+                materialNameArray.push(name)
               }
-            });
+            })
           }
-        });
+        })
       }
     } else {
       // STRICT FILTERING: If no subcategory selected, show ONLY materials NOT under any subcategory
       if (!subCategory || subCategory.trim() === '') {
       // Check for materials directly under category (not under any subcategory)
       // Look for empty string key or 'default' key that might contain top-level materials
-      const topLevelKeys = ['', 'default', 'others', 'general'];
+      const topLevelKeys = ['', 'default', 'others', 'general']
       
       for (const key of topLevelKeys) {
         if (materialNames[key]) {
-          const topLevelData = materialNames[key];
+          const topLevelData = materialNames[key]
           
           if (Array.isArray(topLevelData)) {
             topLevelData.forEach(material => {
-              const name = typeof material === 'string' ? material : material.name;
+              const name = typeof material === 'string' ? material : material.name
               if (name) {
-                materialNameArray.push(name);
+                materialNameArray.push(name)
               }
-            });
+            })
           } else if (typeof topLevelData === 'object') {
             Object.values(topLevelData).forEach(specMaterials => {
               if (Array.isArray(specMaterials)) {
                 specMaterials.forEach(material => {
-                  const name = typeof material === 'string' ? material : material.name;
+                  const name = typeof material === 'string' ? material : material.name
                   if (name) {
-                    materialNameArray.push(name);
+                    materialNameArray.push(name)
                   }
-                });
+                })
               }
-            });
+            })
           }
         }
       }
@@ -146,45 +234,41 @@ const getMaterialNameOptions = (categoryData, subCategory) => {
         Object.keys(materialNames).forEach(key => {
           // Skip the top-level keys we already checked
           if (!topLevelKeys.includes(key)) {
-            const materials = materialNames[key];
+            const materials = materialNames[key]
             
             // If this key contains an array of materials (direct specification -> materials)
             if (Array.isArray(materials)) {
               materials.forEach(material => {
-                const name = typeof material === 'string' ? material : material.name;
+                const name = typeof material === 'string' ? material : material.name
                 if (name) {
-                  materialNameArray.push(name);
+                  materialNameArray.push(name)
                 }
-              });
+              })
             }
             // If this key contains nested objects (specification -> more specifications -> materials)
             else if (typeof materials === 'object') {
               Object.values(materials).forEach(specMaterials => {
                 if (Array.isArray(specMaterials)) {
                   specMaterials.forEach(material => {
-                    const name = typeof material === 'string' ? material : material.name;
+                    const name = typeof material === 'string' ? material : material.name
                     if (name) {
-                      materialNameArray.push(name);
+                      materialNameArray.push(name)
                     }
-                  });
+                  })
                 }
-              });
+              })
             }
           }
-        });
+        })
       }
       }
     }
   }
 
   // Remove duplicates and create unique material names
-  const uniqueMaterialNames = [...new Set(materialNameArray)].sort();
+  const uniqueMaterialNames = [...new Set(materialNameArray)].sort()
 
-  // Convert to JSX options
-  const options = uniqueMaterialNames.map(name => (
-    <option key={name} value={name}>{name}</option>
-  ));
-  return options.length > 0 ? options : null;
+  return uniqueMaterialNames
 };
 
 /**
@@ -623,6 +707,11 @@ const addItemFieldRefs = {
   // Mobile items sheet modal
   const [showItemsSheet, setShowItemsSheet] = useState(false)
   const itemsSheetHistoryPushed = useRef(false)
+  const closeItemsSheet = () => {
+    setShowItemsSheet(false)
+    setEditingItem(null)
+    setEditFormData({})
+  }
   
   // Touch functionality for mobile
   const [touchStartTime, setTouchStartTime] = useState(null)
@@ -665,8 +754,12 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const targetRef = addItemFieldRefs[primaryField]
   if (targetRef?.current) {
     targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (typeof targetRef.current.focus === 'function') {
-      targetRef.current.focus({ preventScroll: true })
+    const focusable =
+      typeof targetRef.current.querySelector === 'function'
+        ? targetRef.current.querySelector('input, select, textarea, button')
+        : targetRef.current
+    if (focusable && typeof focusable.focus === 'function') {
+      focusable.focus({ preventScroll: true })
     }
   }
 }
@@ -1788,16 +1881,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               title={editingItem === item.id ? "" : "Double-click or long press to edit"}
             >
               {editingItem === item.id ? (
-                <select
+                <SearchableSelect
                   value={editFormData.category}
-                  onChange={(e) => handleEditInputChange('category', e.target.value)}
+                  onChange={(val) => handleEditInputChange('category', val)}
+                  options={categories}
+                  placeholder="Select Category"
                   className="po-edit-select"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
+                  isLoading={dataLoading}
+                />
               ) : (
                 item.category
               )}
@@ -1812,17 +1903,26 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               title={editingItem === item.id ? "" : "Double-click or long press to edit"}
             >
               {editingItem === item.id ? (
-                <select
+                <SearchableSelect
                   value={editFormData.subCategory}
-                  onChange={(e) => handleEditInputChange('subCategory', e.target.value)}
+                  onChange={(val) => handleEditInputChange('subCategory', val)}
+                  options={
+                    editFormData.category
+                      ? materialData[editFormData.category]?.subCategories?.slice().sort() || []
+                      : []
+                  }
+                  placeholder={
+                    !editFormData.category
+                      ? 'Select Category first'
+                      : !materialData[editFormData.category]?.subCategories ||
+                        materialData[editFormData.category].subCategories.length === 0
+                      ? 'No subcategories available'
+                      : 'Select Sub Category'
+                  }
                   className="po-edit-select"
-                  disabled={!editFormData.category}
-                >
-                  <option value="">Select Sub Category</option>
-                  {editFormData.category && materialData[editFormData.category]?.subCategories?.slice().sort().map(subCat => (
-                    <option key={subCat} value={subCat}>{subCat}</option>
-                  ))}
-                </select>
+                  isDisabled={!editFormData.category}
+                  isLoading={dataLoading}
+                />
               ) : (
                 item.subCategory || '-'
               )}
@@ -1837,29 +1937,27 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               title={editingItem === item.id ? "" : "Double-click or long press to edit"}
             >
               {editingItem === item.id ? (
-                <select
+                <SearchableSelect
                   value={editFormData.specifications}
-                  onChange={(e) => handleEditInputChange('specifications', e.target.value)}
+                  onChange={(val) => handleEditInputChange('specifications', val)}
+                  options={
+                    editFormData.materialName
+                      ? getSpecificationsForMaterial(
+                          materialData[editFormData.category],
+                          editFormData.materialName,
+                          editFormData.subCategory
+                        )
+                      : []
+                  }
+                  placeholder={
+                    !editFormData.materialName
+                      ? 'Select Material Name first'
+                      : 'Select Specifications'
+                  }
                   className="po-edit-select"
-                  disabled={!editFormData.materialName}
-                >
-                  <option value="">Select Specifications</option>
-                  {editFormData.materialName && (() => {
-                    const categoryData = materialData[editFormData.category];
-                    if (!categoryData) return null;
-                    
-                    // Get specifications based on selected material name
-                    const materialSpecs = getSpecificationsForMaterial(
-                      categoryData,
-                      editFormData.materialName,
-                      editFormData.subCategory
-                    );
-                    
-                    return materialSpecs?.map(specification => (
-                      <option key={specification} value={specification}>{specification}</option>
-                    ));
-                  })()}
-                </select>
+                  isDisabled={!editFormData.materialName}
+                  isLoading={dataLoading}
+                />
               ) : (
                 item.specifications || '-'
               )}
@@ -1874,18 +1972,22 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               title={editingItem === item.id ? "" : "Double-click or long press to edit"}
             >
               {editingItem === item.id ? (
-                <select
+                <SearchableSelect
                   value={editFormData.materialName}
-                  onChange={(e) => handleEditInputChange('materialName', e.target.value)}
+                  onChange={(val) => handleEditInputChange('materialName', val)}
+                  options={
+                    editFormData.category
+                      ? getMaterialNameOptions(
+                          materialData[editFormData.category],
+                          editFormData.subCategory
+                        )
+                      : []
+                  }
+                  placeholder={editFormData.category ? 'Select Material Name' : 'Select Category first'}
                   className="po-edit-select"
-                  disabled={!editFormData.category}
-                >
-                  <option value="">Select Material Name</option>
-                  {editFormData.category && getMaterialNameOptions(
-                    materialData[editFormData.category],
-                    editFormData.subCategory
-                  )}
-                </select>
+                  isDisabled={!editFormData.category}
+                  isLoading={dataLoading}
+                />
               ) : (
                 item.materialName
               )}
@@ -1939,21 +2041,15 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
               title={editingItem === item.id ? "" : "Double-click or long press to edit"}
             >
               {editingItem === item.id ? (
-                <select
+                <SearchableSelect
                   value={editFormData.partyName || ''}
-                  onChange={(e) => handleEditInputChange('partyName', e.target.value)}
+                  onChange={(val) => handleEditInputChange('partyName', val)}
+                  options={partyNames}
+                  placeholder={partyLoading ? 'Loading...' : 'Select Preferred Vendor'}
                   className="po-edit-select"
-                  disabled={partyLoading}
-                >
-                  <option value="">
-                    {partyLoading ? 'Loading...' : 'Select Preferred Vendor'}
-                  </option>
-                  {partyNames.map((party) => (
-                    <option key={party} value={party}>
-                      {party}
-                    </option>
-                  ))}
-                </select>
+                  isDisabled={partyLoading}
+                  isLoading={partyLoading}
+                />
               ) : (
                 item.partyName || '-'
               )}
@@ -2016,16 +2112,20 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                       onClick={handleSaveEdit}
                       className="po-save-edit-btn"
                       title="Save changes"
+                      aria-label="Save"
                     >
-                      Save
+                      <span className="po-btn-icon" aria-hidden="true">✔</span>
+                      <span className="po-sr-only">Save</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleCancelEdit}
                       className="po-cancel-edit-btn"
                       title="Cancel edit"
+                      aria-label="Cancel"
                     >
-                      Cancel
+                      <span className="po-btn-icon" aria-hidden="true">✖</span>
+                      <span className="po-sr-only">Cancel</span>
                     </button>
                   </div>
                   <div className="po-remove-actions-row">
@@ -2034,8 +2134,10 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                       onClick={() => handleRemoveItem(item.id)}
                       className="po-remove-item-btn"
                       title="Remove item"
+                      aria-label="Delete"
                     >
-                      Delete
+                      <span className="po-btn-icon" aria-hidden="true">🗑</span>
+                      <span className="po-sr-only">Delete</span>
                     </button>
                   </div>
                 </div>
@@ -2046,16 +2148,20 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     onClick={() => handleEditItem(item)}
                     className="po-edit-item-btn"
                     title="Edit item"
+                    aria-label="Edit"
                   >
-                    Edit
+                    <span className="po-btn-icon" aria-hidden="true">✎</span>
+                    <span className="po-sr-only">Edit</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRemoveItem(item.id)}
                     className="po-remove-item-btn"
                     title="Remove item"
+                    aria-label="Delete"
                   >
-                    Delete
+                    <span className="po-btn-icon" aria-hidden="true">🗑</span>
+                    <span className="po-sr-only">Delete</span>
                   </button>
                 </div>
               )}
@@ -2158,14 +2264,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
         {/* Mobile Full-Screen Items Sheet */}
         {showItemsSheet && orderItems.length > 0 && (
-          <div className="po-items-sheet-overlay" onClick={() => setShowItemsSheet(false)}>
+          <div className="po-items-sheet-overlay" onClick={closeItemsSheet}>
             <div className="po-items-sheet" onClick={(e) => e.stopPropagation()}>
               <div className="po-items-sheet-header">
                 <h3>Added Items ({orderItems.length})</h3>
                 <button
                   type="button"
                   className="po-items-sheet-close-btn"
-                  onClick={() => setShowItemsSheet(false)}
+                  onClick={closeItemsSheet}
                   title="Close"
                 >
                   ×
@@ -2197,68 +2303,84 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             )}
             <div className="po-form-row">
               {/* Category - Required only if no items exist */}
-              <div className="po-form-group">
+              <div className="po-form-group" ref={categoryInputRef}>
             <label htmlFor="category" className="required">
               Category
             </label>
-            <select
+            <SearchableSelect
               id="category"
               value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
+              onChange={(val) => handleInputChange('category', val)}
+              options={categories}
+              placeholder={dataLoading ? 'Loading categories...' : 'Select Category'}
+              isDisabled={dataLoading}
+              isLoading={dataLoading}
               required={orderItems.length === 0}
-              className={`po-form-select ${highlightedFields.includes('category') ? 'po-error-highlight' : ''}`}
-              disabled={dataLoading}
-              ref={categoryInputRef}
-            >
-              <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
+              className={highlightedFields.includes('category') ? 'po-error-highlight' : ''}
+            />
           </div>
 
           {/* Sub Category - Optional */}
           <div className="po-form-group">
             <label htmlFor="subCategory">Sub Category</label>
-            <select
+            <SearchableSelect
               id="subCategory"
               value={formData.subCategory}
-              onChange={(e) => handleInputChange('subCategory', e.target.value)}
-              className={`po-form-select ${!formData.subCategory && formData.category && materialData[formData.category]?.subCategories && materialData[formData.category].subCategories.length > 0 ? 'po-optional-field-red' : formData.subCategory ? 'po-optional-field-green' : ''}`}
-              disabled={!formData.category || dataLoading || !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0}
-            >
-              <option value="">
-                {!formData.category ? 'Select Category first' : 
-                 !materialData[formData.category]?.subCategories || materialData[formData.category].subCategories.length === 0 ? 
-                 'No subcategories available' : 'Select Sub Category'}
-              </option>
-              {formData.category && materialData[formData.category]?.subCategories?.slice().sort().map(subCat => (
-                <option key={subCat} value={subCat}>{subCat}</option>
-              ))}
-            </select>
+              onChange={(val) => handleInputChange('subCategory', val)}
+              options={
+                formData.category
+                  ? materialData[formData.category]?.subCategories?.slice().sort() || []
+                  : []
+              }
+              placeholder={
+                !formData.category
+                  ? 'Select Category first'
+                  : !materialData[formData.category]?.subCategories ||
+                    materialData[formData.category].subCategories.length === 0
+                  ? 'No subcategories available'
+                  : 'Select Sub Category'
+              }
+              isDisabled={
+                !formData.category ||
+                dataLoading ||
+                !materialData[formData.category]?.subCategories ||
+                materialData[formData.category].subCategories.length === 0
+              }
+              isLoading={dataLoading}
+              className={
+                !formData.subCategory &&
+                formData.category &&
+                materialData[formData.category]?.subCategories &&
+                materialData[formData.category].subCategories.length > 0
+                  ? 'po-optional-field-red'
+                  : formData.subCategory
+                  ? 'po-optional-field-green'
+                  : ''
+              }
+            />
           </div>
 
 
           {/* Material Name - Required only if no items exist */}
-          <div className="po-form-group">
+          <div className="po-form-group" ref={materialNameInputRef}>
             <label htmlFor="materialName" className="required">
               Material Name
             </label>
-            <select
+            <SearchableSelect
               id="materialName"
               value={formData.materialName}
-              onChange={(e) => handleInputChange('materialName', e.target.value)}
+              onChange={(val) => handleInputChange('materialName', val)}
+              options={
+                formData.category
+                  ? getMaterialNameOptions(materialData[formData.category], formData.subCategory)
+                  : []
+              }
+              placeholder={dataLoading ? 'Loading materials...' : 'Select Material Name'}
+              isDisabled={!formData.category || dataLoading}
+              isLoading={dataLoading}
               required={orderItems.length === 0}
-              className={`po-form-select ${highlightedFields.includes('materialName') ? 'po-error-highlight' : ''}`}
-              disabled={!formData.category || dataLoading}
-              ref={materialNameInputRef}
-            >
-              <option value="">{dataLoading ? 'Loading materials...' : 'Select Material Name'}</option>
-              {formData.category && getMaterialNameOptions(
-                materialData[formData.category],
-                formData.subCategory
-              )}
-            </select>
+              className={highlightedFields.includes('materialName') ? 'po-error-highlight' : ''}
+            />
           </div>
         </div>
 
@@ -2267,62 +2389,71 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           {/* Specifications - Optional */}
           <div className="po-form-group">
             <label htmlFor="specifications">Specifications</label>
-            <select
+            <SearchableSelect
               id="specifications"
               value={formData.specifications}
-              onChange={(e) => handleInputChange('specifications', e.target.value)}
-              className={`po-form-select ${!formData.specifications && formData.category && formData.materialName && (() => {
-                const categoryData = materialData[formData.category];
-                if (!categoryData) return false;
-                const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
-                return materialSpecs && materialSpecs.length > 0;
-              })() ? 'po-optional-field-red' : formData.specifications ? 'po-optional-field-green' : ''}`}
-              disabled={(() => {
-                // Disable if category or material name is missing
+              onChange={(val) => handleInputChange('specifications', val)}
+              options={
+                formData.materialName
+                  ? getSpecificationsForMaterial(
+                      materialData[formData.category],
+                      formData.materialName,
+                      formData.subCategory
+                    )
+                  : []
+              }
+              placeholder={
+                !formData.category
+                  ? 'Select Category first'
+                  : !formData.materialName
+                  ? 'Select Material Name first'
+                  : (() => {
+                      const categoryData = materialData[formData.category]
+                      if (!categoryData) return 'No specifications available'
+                      const materialSpecs = getSpecificationsForMaterial(
+                        categoryData,
+                        formData.materialName,
+                        formData.subCategory
+                      )
+                      return !materialSpecs || materialSpecs.length === 0
+                        ? 'No specifications available'
+                        : 'Select Specifications'
+                    })()
+              }
+              isDisabled={(() => {
                 if (!formData.category || !formData.materialName || dataLoading) {
-                  return true;
+                  return true
                 }
-                
-                // Check if specifications are available
-                const categoryData = materialData[formData.category];
-                if (!categoryData) return true;
-                
-                const materialSpecs = getSpecificationsForMaterial(
-                  categoryData, 
-                  formData.materialName, 
-                  formData.subCategory
-                );
-                
-                // Only disable if NO specifications are available
-                return !materialSpecs || materialSpecs.length === 0;
-              })()}
-            >
-              <option value="">
-                {!formData.category ? 'Select Category first' : 
-                 !formData.materialName ? 'Select Material Name first' : 
-                 (() => {
-                   const categoryData = materialData[formData.category];
-                   if (!categoryData) return 'No specifications available';
-                   const materialSpecs = getSpecificationsForMaterial(categoryData, formData.materialName, formData.subCategory);
-                   return !materialSpecs || materialSpecs.length === 0 ? 'No specifications available' : 'Select Specifications';
-                 })()}
-              </option>
-              {formData.materialName && (() => {
-                const categoryData = materialData[formData.category];
-                if (!categoryData) return null;
-                
-                // Get specifications based on selected material name
+                const categoryData = materialData[formData.category]
+                if (!categoryData) return true
                 const materialSpecs = getSpecificationsForMaterial(
                   categoryData,
                   formData.materialName,
                   formData.subCategory
-                );
-                
-                return materialSpecs?.map(specification => (
-                  <option key={specification} value={specification}>{specification}</option>
-                ));
+                )
+                return !materialSpecs || materialSpecs.length === 0
               })()}
-            </select>
+              isLoading={dataLoading}
+              className={
+                !formData.specifications &&
+                formData.category &&
+                formData.materialName &&
+                (() => {
+                  const categoryData = materialData[formData.category]
+                  if (!categoryData) return false
+                  const materialSpecs = getSpecificationsForMaterial(
+                    categoryData,
+                    formData.materialName,
+                    formData.subCategory
+                  )
+                  return materialSpecs && materialSpecs.length > 0
+                })()
+                  ? 'po-optional-field-red'
+                  : formData.specifications
+                  ? 'po-optional-field-green'
+                  : ''
+              }
+            />
           </div>
 
           {/* Quantity - Required only if no items exist */}
@@ -2367,22 +2498,21 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           {/* Preferred Vendor - Optional */}
           <div className="po-form-group">
             <label htmlFor="partyName">Preferred Vendor</label>
-            <select
+            <SearchableSelect
               id="partyName"
               value={formData.partyName}
-              onChange={(e) => handleInputChange('partyName', e.target.value)}
-              className="po-form-select"
-              disabled={partyLoading}
-            >
-              <option value="">
-                {partyLoading ? 'Loading party names...' : partyNames.length === 0 ? 'No party names available' : 'Select Preferred Vendor'}
-              </option>
-              {partyNames.map((party) => (
-                <option key={party} value={party}>
-                  {party}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => handleInputChange('partyName', val)}
+              options={partyNames}
+              placeholder={
+                partyLoading
+                  ? 'Loading party names...'
+                  : partyNames.length === 0
+                  ? 'No party names available'
+                  : 'Select Preferred Vendor'
+              }
+              isDisabled={partyLoading}
+              isLoading={partyLoading}
+            />
           </div>
 
           {/* Place - Optional */}
@@ -2466,23 +2596,16 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           {/* Given By - Required */}
           <div className="po-form-group">
             <label htmlFor="givenBy" className="required">Given By</label>
-            <select
+            <SearchableSelect
               id="givenBy"
               value={formData.givenBy}
-              onChange={(e) => handleInputChange('givenBy', e.target.value)}
+              onChange={(val) => handleInputChange('givenBy', val)}
+              options={authorityNames}
+              placeholder={authorityLoading ? 'Loading authority names...' : 'Select Authority Name'}
+              isDisabled={authorityLoading}
+              isLoading={authorityLoading}
               required
-              className="po-form-select"
-              disabled={authorityLoading}
-            >
-              <option value="">
-                {authorityLoading ? 'Loading authority names...' : 'Select Authority Name'}
-              </option>
-              {authorityNames.map((authority, index) => (
-                <option key={index} value={authority}>
-                  {authority}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Type - Required */}
