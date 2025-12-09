@@ -535,8 +535,16 @@ const DateTimePicker = ({
           font-size: 24px;
           font-weight: 500;
           color: #333;
-          align-self: center;
+          align-self: flex-start;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 34px;
+          line-height: 1;
           margin-top: 0;
+          padding: 0;
+          position: relative;
+          top: -1px;
         }
 
         .dt-time-picker-label {
