@@ -118,15 +118,20 @@ const styles = {
     gap: '8px'
   },
   contextRow: {
-    display: 'flex',
-    justifyContent: 'flex-start',
+    display: 'grid',
+    gridTemplateColumns: '140px 12px 1fr',
     alignItems: 'flex-start',
-    gap: '8px',
+    gap: '4px',
     fontSize: '14px',
     color: '#1f2937',
     flexWrap: 'wrap'
   },
   contextLabel: {
+    fontWeight: 600,
+    color: '#4b5563',
+    textAlign: 'left'
+  },
+  contextSeparator: {
     fontWeight: 600,
     color: '#4b5563'
   },
@@ -428,7 +433,8 @@ const NotificationSummaryModal = ({
             <div style={styles.contextBox}>
               {contextDetails.map(({ label, value }, idx) => (
                 <div key={`${label}-${idx}`} style={styles.contextRow}>
-                  <span style={styles.contextLabel}>{label}:</span>
+                  <span style={styles.contextLabel}>{label}</span>
+                  <span style={styles.contextSeparator}>:</span>
                   <span>{value || '—'}</span>
                 </div>
               ))}
