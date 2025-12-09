@@ -3357,91 +3357,55 @@ def process_order_notification(order_id, order_data, recipients, method, factory
         order_items = order_data.get('orderItems', [])
         total_items = len(order_items)
         
-        # Create Indent Details Table (horizontal format)
+        # Add Indent Details as text block (no table)
         try:
-            logger.info("Creating indent details table...")
+            logger.info("Adding indent details text block...")
             
-            # Add heading paragraph
-            logger.info("Adding indent details heading paragraph...")
             details_heading = doc.add_paragraph("Indent Details")
             details_heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
             for run in details_heading.runs:
                 run.bold = True
                 run.font.size = Pt(12)
-            logger.info("Indent details heading paragraph created successfully")
             
-            # Create horizontal table with 9 columns: Date, Time, Factory, Order ID, Given By, Type, Importance, Total Items, Description
-            logger.info("Creating horizontal table with 9 columns...")
-            try:
-                # Create table with 1 header row and 1 data row
-                details_table = doc.add_table(rows=2, cols=9)
-                logger.info(f"Table created with {len(details_table.rows)} rows and {len(details_table.rows[0].cells)} columns")
-            except Exception as table_error:
-                logger.warning(f"Error creating table with template, trying fallback approach: {table_error}")
-                # Fallback: create a new document without template
-                logger.info("Creating fallback document without template...")
-                doc = Document()
-                details_table = doc.add_table(rows=2, cols=9)
-                logger.info("Fallback table created successfully")
+            # Helper to add a single detail line with optional second column; labels/colons bold
+            def add_detail_line(label_left, value_left, label_right=None, value_right=None, tab_inch_left=2.0, tab_inch_right=5.0):
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                # Set tab stops to align values
+                para.paragraph_format.tab_stops.add_tab_stop(Inches(tab_inch_left))
+                para.paragraph_format.tab_stops.add_tab_stop(Inches(tab_inch_right))
+                
+                def add_part(label, value):
+                    run_label = para.add_run(label)
+                    run_label.bold = True
+                    run_label.font.size = Pt(10)
+                    run_colon = para.add_run(" :")
+                    run_colon.bold = True
+                    run_colon.font.size = Pt(10)
+                    para.add_run(" ")
+                    run_val = para.add_run(value)
+                    run_val.font.size = Pt(10)
+                
+                add_part(label_left, value_left)
+                
+                if label_right:
+                    para.add_run("\t")
+                    add_part(label_right, value_right or "N/A")
             
-            # Set table alignment
-            logger.info("Setting table alignment...")
-            details_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-            logger.info("Indent details table created successfully")
+            # Two-column lines
+            add_detail_line("Date", date_value, "Given By", order_data.get('givenBy', 'N/A'))
+            add_detail_line("Time", time_value, "Type", order_data.get('type', 'N/A'))
+            add_detail_line("Factory", factory, "Importance", order_data.get('importance', 'Normal'))
+            add_detail_line("Order ID", order_id, "Total Items", str(total_items))
+            # Single-column line for description
+            add_detail_line("Description", order_data.get('description', 'N/A'), None, None, tab_inch_left=1.6)
             
-            # Add header row
-            header_cells = details_table.rows[0].cells
-            headers = ['Date', 'Time', 'Factory', 'Order ID', 'Given By', 'Type', 'Importance', 'Total Items', 'Description']
-            for i, header_text in enumerate(headers):
-                header_cells[i].text = header_text
-                header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                for paragraph in header_cells[i].paragraphs:
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in paragraph.runs:
-                        run.bold = True
-                        run.font.size = Pt(11)
-            
-            # Add data row
-            data_cells = details_table.rows[1].cells
-            data_values = [
-                date_value,
-                time_value,
-                factory,
-                order_id,
-                order_data.get('givenBy', 'N/A'),
-                order_data.get('type', 'N/A'),
-                order_data.get('importance', 'Normal'),
-                str(total_items),
-                order_data.get('description', 'N/A')
-            ]
-            
-            for i, value in enumerate(data_values):
-                data_cells[i].text = str(value)
-                data_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                for paragraph in data_cells[i].paragraphs:
-                    if i in [0, 1, 2, 3, 6, 7]:  # Date, Time, Factory, Order ID, Importance, Total Items - center aligned
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    else:  # Given By, Type, Description - left aligned
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    for run in paragraph.runs:
-                        run.font.size = Pt(10)
-            
-            logger.info("Indent details table populated successfully")
+            doc.add_paragraph()  # Spacing before item table
+            logger.info("Indent details text block added successfully")
             
         except Exception as e:
-            logger.error(f"Error creating indent details table: {e}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
+            logger.error(f"Error adding indent details text block: {e}")
             raise
-        
-        # Apply professional formatting
-        try:
-            format_table_professional(details_table, is_header=True, logger=logger)
-        except Exception as e:
-            logger.warning(f"Could not apply professional formatting to indent details table: {e}")
-            # Continue without formatting
-        
-        doc.add_paragraph()  # Spacing
         
         # Create Item Details Table
         items_heading = doc.add_paragraph("Item Details")
@@ -3454,18 +3418,21 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             # Create table with headers
             items_table = doc.add_table(rows=1, cols=9)
             items_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            items_table.autofit = True
+            items_table.allow_autofit = True
             
             # Add header row
             header_cells = items_table.rows[0].cells
-            headers = ['S.No', 'Category', 'Sub Category', 'Material Name', 'Particulars', 'Quantity', 'UOM', 'Preferred Vendor', 'Place']
+            headers = ['SN', 'Category', 'Sub Category', 'Material Name', 'Particular', 'Quantity', 'UOM', 'Preferred Vendor', 'Place']
             for i, header_text in enumerate(headers):
                 header_cells[i].text = header_text
                 header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 for paragraph in header_cells[i].paragraphs:
                     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    paragraph.paragraph_format.keep_together = True
                     for run in paragraph.runs:
                         run.bold = True
-                        run.font.size = Pt(11)
+                        run.font.size = Pt(8.5)
             
             # Add data rows
             for idx, item in enumerate(order_items, 1):
@@ -3494,7 +3461,24 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
                         
                         for run in paragraph.runs:
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(9)
+
+            # Ensure all cells (including headers) are vertically centered
+            for row in items_table.rows:
+                for cell in row.cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+            # Set a comfortable width for the "Particulars" column to avoid header/value wrapping
+            try:
+                desired_width = Inches(1.6)
+                particulars_col = items_table.columns[4]
+                for cell in particulars_col.cells:
+                    cell.width = desired_width
+                    for paragraph in cell.paragraphs:
+                        paragraph.paragraph_format.keep_together = True
+                particulars_col.width = desired_width
+            except Exception as e:
+                logger.warning(f"Could not set width for Particulars column: {e}")
             
             # Apply professional formatting
             try:

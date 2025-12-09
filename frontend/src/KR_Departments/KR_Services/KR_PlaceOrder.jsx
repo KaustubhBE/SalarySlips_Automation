@@ -1632,11 +1632,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     if (!data && !id) {
       return []
     }
+    const itemCount =
+      data?.orderItems?.length ??
+      data?.order_items?.length ??
+      data?.items?.length ??
+      null
     const rows = [
       { label: 'Order ID', value: id },
       { label: 'Given By', value: data?.givenBy },
       { label: 'Type', value: data?.type },
       { label: 'Importance', value: data?.importance },
+      { label: 'Total items', value: itemCount },
       { label: 'Description', value: data?.description }
     ]
     return rows.filter(row => row.value)

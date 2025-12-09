@@ -296,6 +296,70 @@ const NotificationSummaryModal = ({
     recipients = []
   } = mergedStats
 
+  // Derive item count for contextual details if provided by caller
+  const derivedItemCount = useMemo(() => {
+    const numericCount =
+      mergedStats?.total_items ??
+      mergedStats?.items_count ??
+      mergedStats?.item_count
+    if (typeof numericCount === 'number') {
+      return numericCount
+    }
+
+    const arraySources = [
+      mergedStats?.items,
+      mergedStats?.orderItems,
+      mergedStats?.order_items
+    ]
+    for (const source of arraySources) {
+      if (Array.isArray(source)) {
+        return source.length
+      }
+    }
+
+    return null
+  }, [mergedStats])
+
+  // Ensure "Total items" appears between importance and description
+  const enhancedContextDetails = useMemo(() => {
+    const details = Array.isArray(contextDetails) ? [...contextDetails] : []
+    const totalIdx = details.findIndex(
+      (item) => item?.label?.toLowerCase() === 'total items'
+    )
+    const importanceIdx = details.findIndex(
+      (item) => item?.label?.toLowerCase() === 'importance'
+    )
+    const descriptionIdx = details.findIndex(
+      (item) => item?.label?.toLowerCase() === 'description'
+    )
+
+    if (derivedItemCount !== null) {
+      const totalRow = { label: 'Total items', value: derivedItemCount }
+
+      if (totalIdx === -1) {
+        const insertAt =
+          importanceIdx !== -1
+            ? importanceIdx + 1
+            : descriptionIdx !== -1
+              ? descriptionIdx
+              : details.length
+        details.splice(insertAt, 0, totalRow)
+      } else {
+        details[totalIdx] = { ...details[totalIdx], value: derivedItemCount }
+        if (
+          importanceIdx !== -1 &&
+          totalIdx !== importanceIdx + 1 &&
+          totalIdx > -1
+        ) {
+          const [row] = details.splice(totalIdx, 1)
+          details.splice(importanceIdx + 1, 0, row)
+        }
+      }
+    }
+
+    return details
+  }, [contextDetails, derivedItemCount])
+
   // Compute unique failed names per channel
   const emailFailedNames = []
   const whatsappFailedNames = []
@@ -429,9 +493,9 @@ const NotificationSummaryModal = ({
         </div>
 
         <div style={styles.body}>
-          {contextDetails?.length > 0 && (
+          {enhancedContextDetails?.length > 0 && (
             <div style={styles.contextBox}>
-              {contextDetails.map(({ label, value }, idx) => (
+              {enhancedContextDetails.map(({ label, value }, idx) => (
                 <div key={`${label}-${idx}`} style={styles.contextRow}>
                   <span style={styles.contextLabel}>{label}</span>
                   <span style={styles.contextSeparator}>:</span>
