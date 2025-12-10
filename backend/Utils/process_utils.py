@@ -3357,7 +3357,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
         order_items = order_data.get('orderItems', [])
         total_items = len(order_items)
         
-        # Add Indent Details as text block (no table)
+        # Add Indent Details as a table with invisible borders
         try:
             logger.info("Adding indent details text block...")
             
@@ -3367,38 +3367,85 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                 run.bold = True
                 run.font.size = Pt(12)
             
-            # Helper to add a single detail line with optional second column; labels/colons bold
-            def add_detail_line(label_left, value_left, label_right=None, value_right=None, tab_inch_left=2.0, tab_inch_right=5.0):
-                para = doc.add_paragraph()
-                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                # Set tab stops to align values
-                para.paragraph_format.tab_stops.add_tab_stop(Inches(tab_inch_left))
-                para.paragraph_format.tab_stops.add_tab_stop(Inches(tab_inch_right))
-                
-                def add_part(label, value):
-                    run_label = para.add_run(label)
-                    run_label.bold = True
-                    run_label.font.size = Pt(10)
-                    run_colon = para.add_run(" :")
-                    run_colon.bold = True
-                    run_colon.font.size = Pt(10)
-                    para.add_run(" ")
-                    run_val = para.add_run(value)
-                    run_val.font.size = Pt(10)
-                
-                add_part(label_left, value_left)
-                
-                if label_right:
-                    para.add_run("\t")
-                    add_part(label_right, value_right or "N/A")
+            # Create a table with invisible borders for two-column layout
+            details_table = doc.add_table(rows=4, cols=2)
+            details_table.alignment = WD_TABLE_ALIGNMENT.CENTER
             
-            # Two-column lines
-            add_detail_line("Date", date_value, "Given By", order_data.get('givenBy', 'N/A'))
-            add_detail_line("Time", time_value, "Type", order_data.get('type', 'N/A'))
-            add_detail_line("Factory", factory, "Importance", order_data.get('importance', 'Normal'))
-            add_detail_line("Order ID", order_id, "Total Items", str(total_items))
-            # Single-column line for description
-            add_detail_line("Description", order_data.get('description', 'N/A'), None, None, tab_inch_left=1.6)
+            # Remove all borders (make them invisible)
+            tbl = details_table._tbl
+            tblPr = tbl.xpath('w:tblPr')
+            if not tblPr:
+                tblPr = OxmlElement('w:tblPr')
+                tbl.insert(0, tblPr)
+            else:
+                tblPr = tblPr[0]
+            
+            # Remove any existing borders
+            for border in tblPr.xpath('w:tblBorders'):
+                tblPr.remove(border)
+            
+            # Create borders element with all borders set to nil (invisible)
+            borders = OxmlElement('w:tblBorders')
+            border_types = ['w:top', 'w:bottom', 'w:left', 'w:right', 'w:insideH', 'w:insideV']
+            for border_type in border_types:
+                border = OxmlElement(border_type)
+                border.set(qn('w:val'), 'nil')
+                borders.append(border)
+            tblPr.append(borders)
+            
+            # Helper function to add formatted text to cell
+            def add_formatted_text(cell, label, value):
+                para = cell.paragraphs[0]
+                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                para.clear()
+                
+                run_label = para.add_run(label)
+                run_label.bold = True
+                run_label.font.size = Pt(10)
+                
+                run_colon = para.add_run(" :")
+                run_colon.bold = True
+                run_colon.font.size = Pt(10)
+                
+                para.add_run(" ")
+                
+                run_val = para.add_run(str(value))
+                run_val.font.size = Pt(10)
+            
+            # Populate table rows
+            details_table.rows[0].cells[0].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            details_table.rows[0].cells[1].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            add_formatted_text(details_table.rows[0].cells[0], "Date", date_value)
+            add_formatted_text(details_table.rows[0].cells[1], "Given By", order_data.get('givenBy', 'N/A'))
+            
+            details_table.rows[1].cells[0].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            details_table.rows[1].cells[1].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            add_formatted_text(details_table.rows[1].cells[0], "Time", time_value)
+            add_formatted_text(details_table.rows[1].cells[1], "Type", order_data.get('type', 'N/A'))
+            
+            details_table.rows[2].cells[0].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            details_table.rows[2].cells[1].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            add_formatted_text(details_table.rows[2].cells[0], "Factory", factory)
+            add_formatted_text(details_table.rows[2].cells[1], "Importance", order_data.get('importance', 'Normal'))
+            
+            details_table.rows[3].cells[0].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            details_table.rows[3].cells[1].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            add_formatted_text(details_table.rows[3].cells[0], "Order ID", order_id)
+            add_formatted_text(details_table.rows[3].cells[1], "Total Items", str(total_items))
+            
+            # Add description as a single paragraph (left-aligned)
+            doc.add_paragraph()
+            desc_para = doc.add_paragraph()
+            desc_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            desc_label = desc_para.add_run("Description")
+            desc_label.bold = True
+            desc_label.font.size = Pt(10)
+            desc_colon = desc_para.add_run(" :")
+            desc_colon.bold = True
+            desc_colon.font.size = Pt(10)
+            desc_para.add_run(" ")
+            desc_val = desc_para.add_run(str(order_data.get('description', 'N/A')))
+            desc_val.font.size = Pt(10)
             
             doc.add_paragraph()  # Spacing before item table
             logger.info("Indent details text block added successfully")
@@ -3423,7 +3470,9 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             
             # Add header row
             header_cells = items_table.rows[0].cells
-            headers = ['SN', 'Category', 'Sub Category', 'Material Name', 'Particular', 'Quantity', 'UOM', 'Preferred Vendor', 'Place']
+            headers = ['SN', 'Category', 'Sub Category', 'Material Name', 'Particulars', 'Quantity', 'UOM', 'Preferred Vendor', 'Place']
+            # Headers: always centered
+            center_aligned_cols = [0, 5, 6]  # SN, Quantity, UOM (used later for data rows)
             for i, header_text in enumerate(headers):
                 header_cells[i].text = header_text
                 header_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
@@ -3435,33 +3484,42 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                         run.font.size = Pt(8.5)
             
             # Add data rows
+            # Column indices: SN=0, Quantity=5, UOM=6 should be center-aligned, rest left-aligned
+            center_aligned_cols = [0, 5, 6]  # SN, Quantity, UOM
             for idx, item in enumerate(order_items, 1):
                 row = items_table.add_row()
                 cells = row.cells
                 
-                cells[0].text = str(idx)
-                cells[1].text = item.get('category', '')
-                cells[2].text = item.get('subCategory') or '-'
-                cells[3].text = item.get('materialName', '')  # Material Name in column 3
-                cells[4].text = item.get('specifications') or '-'  # Particulars in column 4
-                cells[5].text = str(item.get('quantity', ''))
-                cells[6].text = item.get('uom', '')
-                cells[7].text = item.get('partyName') or '-'  # Preferred Vendor in column 7
-                cells[8].text = item.get('place') or '-'  # Place in column 8
+                # Helper function to set cell text with proper alignment
+                def set_cell_text_with_alignment(cell, text, is_center):
+                    # Clear existing content
+                    cell.text = ''
+                    # Get or create first paragraph
+                    para = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+                    para.clear()
+                    # Normalize text and decide alignment
+                    text_str = '' if text is None else str(text)
+                    is_dash = text_str.strip() == '-'
+                    align_center = is_center or is_dash
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER if align_center else WD_ALIGN_PARAGRAPH.LEFT
+                    # Add text
+                    run = para.add_run(text_str)
+                    run.font.size = Pt(9)
                 
-                # Format cells
-                for i, cell in enumerate(cells):
+                # Set cell values with proper alignment
+                set_cell_text_with_alignment(cells[0], idx, True)  # SN - center
+                set_cell_text_with_alignment(cells[1], item.get('category', ''), False)  # Category - left
+                set_cell_text_with_alignment(cells[2], item.get('subCategory') or '-', False)  # Sub Category - left
+                set_cell_text_with_alignment(cells[3], item.get('materialName', ''), False)  # Material Name - left
+                set_cell_text_with_alignment(cells[4], item.get('specifications') or '-', False)  # Particulars - left
+                set_cell_text_with_alignment(cells[5], item.get('quantity', ''), True)  # Quantity - center
+                set_cell_text_with_alignment(cells[6], item.get('uom', ''), True)  # UOM - center
+                set_cell_text_with_alignment(cells[7], item.get('partyName') or '-', False)  # Preferred Vendor - left
+                set_cell_text_with_alignment(cells[8], item.get('place') or '-', False)  # Place - left
+                
+                # Set vertical alignment for all cells
+                for cell in cells:
                     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                    for paragraph in cell.paragraphs:
-                        if i == 0:  # S.No
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        elif i in [5, 6]:  # Quantity and UOM
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        else:
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                        
-                        for run in paragraph.runs:
-                            run.font.size = Pt(9)
 
             # Ensure all cells (including headers) are vertically centered
             for row in items_table.rows:
@@ -3486,6 +3544,28 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             except Exception as e:
                 logger.warning(f"Could not apply professional formatting to items table: {e}")
                 # Continue without formatting
+            
+            # Re-apply alignment preferences (format_table_professional centers most columns)
+            try:
+                for row_idx, row in enumerate(items_table.rows):
+                    for col_idx, cell in enumerate(row.cells):
+                        for paragraph in cell.paragraphs:
+                            para_text = ''.join(run.text for run in paragraph.runs).strip()
+                            is_dash_only = para_text == '-'
+                            if row_idx == 0:
+                                # Headers stay centered
+                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            else:
+                                if is_dash_only:
+                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                elif col_idx in center_aligned_cols:
+                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                else:
+                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        # Ensure vertical alignment stays centered after formatting tweaks
+                        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            except Exception as e:
+                logger.warning(f"Could not re-apply alignment preferences: {e}")
         
         # Generate filename in format: {FACTORY}_INDT_{Order_ID}_{Day}_{HHMM} {AM/PM}
         # Parse dateTime to extract day, time, and AM/PM
