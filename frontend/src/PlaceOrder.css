@@ -1,12 +1,13 @@
 :root {
-  --po-error-border: #ff4d4f;
-  --po-error-glow: rgba(255, 77, 79, 0.25);
+  --po-error-border: #d90429;              /* Stronger red */
+  --po-error-glow: rgba(217, 4, 41, 0.55); /* Brighter / thicker glow */
 }
 
 .po-error-highlight {
-  border-color: var(--po-error-border) !important;
-  box-shadow: 0 0 0 2px var(--po-error-glow);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.45) !important;
+  background-color: #ffe6ea !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 .po-place_order-container {
     padding: 20px;
@@ -420,11 +421,6 @@
     box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
   }
   
-  .po-optional-field-green {
-    border-color: #28a745 !important;
-    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1) !important;
-  }
-  
   .po-form-input {
     padding: 12px;
     border: 2px solid #ddd;
@@ -476,19 +472,61 @@
   z-index: 20;
 }
 
+/* Unified error styling for both add-item and edit-item fields */
 .po-searchable-select.po-error-highlight .po-select__control {
-  border-color: #dc3545 !important;
-  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.45) !important;
+  background-color: #ffe6ea !important;
+}
+
+.po-edit-select.po-error-highlight .po-select__control {
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.45) !important;
+  background-color: #ffe6ea !important;
+}
+
+.po-edit-select.po-error-highlight .po-select__control--is-focused {
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.45) !important;
+  background-color: #ffe6ea !important;
 }
 
 .po-searchable-select.po-optional-field-red .po-select__control {
   border-color: #dc3545 !important;
-  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25) !important;
 }
 
-.po-searchable-select.po-optional-field-green .po-select__control {
-  border-color: #28a745 !important;
-  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1) !important;
+/* Fix for edit-select: Make container match control size exactly to prevent double borders */
+.po-searchable-select.po-edit-select {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+.po-searchable-select.po-edit-select .po-select__control {
+  width: 100% !important;
+  min-height: 45px !important;
+  height: 45px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 2px solid #ddd !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.po-searchable-select.po-edit-select .po-select__control--is-focused {
+  border-color: #3498db !important;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1) !important;
+}
+
+.po-searchable-select.po-edit-select .po-select__control--is-disabled {
+  background-color: #f5f5f5 !important;
+  color: #999 !important;
+  cursor: not-allowed !important;
 }
   
   .po-form-textarea {
@@ -1320,22 +1358,13 @@
     }
   
     .po-save-edit-btn,
-    .po-cancel-edit-btn {
+    .po-cancel-edit-btn,
+    .po-edit-actions-row .po-remove-item-btn {
       flex: 1;
       padding: 8px;
       font-size: 10px;
       min-width: auto;
       height: 32px;
-    }
-  
-    .po-remove-actions-row {
-      width: 100%;
-    }
-  
-    .po-remove-actions-row .po-remove-item-btn {
-      width: 100%;
-      padding: 8px;
-      font-size: 10px;
     }
   
     .po-edit-select,
@@ -1790,6 +1819,15 @@
     border-radius: 8px;
   }
   
+  /* Ensure react-select dropdowns work properly inside items sheet modal */
+  .po-items-sheet .po-select__menu-portal {
+    z-index: 10010 !important; /* Higher than items sheet overlay (10000) */
+  }
+  
+  .po-items-sheet .po-select__menu {
+    z-index: 10010 !important; /* Higher than items sheet overlay (10000) */
+  }
+  
   @media (max-width: 1200px) {
     .po-items-table-container.po-mobile-table .po-items-table {
       min-width: 1000px;
@@ -1926,11 +1964,12 @@
     transform: translateY(-2px);
   }
   
-  .po-items-sheet-card.po-editing-card {
-    border-color: #ff9800;
-    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
-    background-color: #fff3e0;
-  }
+.po-items-sheet-card.po-editing-card {
+  /* Remove orange highlight in edit mode */
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
   
   /* Card Header */
   .po-item-card-header {
@@ -2065,36 +2104,36 @@
   }
   
   .po-item-card-actions .po-save-edit-btn {
-    background: linear-gradient(135deg, #27ae60, #229954);
+    background-color: #4CAF50;
     color: white;
   }
   
   .po-item-card-actions .po-save-edit-btn:hover {
-    background: linear-gradient(135deg, #229954, #1e8449);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    background-color: #45a049;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
   .po-item-card-actions .po-cancel-edit-btn {
-    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    background-color: #F44336;
     color: white;
   }
   
   .po-item-card-actions .po-cancel-edit-btn:hover {
-    background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+    background-color: #e53935;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
   .po-item-card-actions .po-remove-item-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    background-color: #E91E63;
     color: white;
   }
   
   .po-item-card-actions .po-remove-item-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #a93226);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    background-color: #d81b60;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
   /* Responsive adjustments for sheet */
@@ -2808,7 +2847,7 @@
   /* Ensure Action column has enough width for inline buttons */
   .po-items-table th:last-child,
   .po-items-table td:last-child {
-    min-width: 190px;
+    width: auto;
   }
   
   .po-items-table thead {
@@ -2837,74 +2876,54 @@
   .po-items-table th:nth-child(1),
   .po-items-table td:nth-child(1) {
     width: 4%;
-    min-width: 50px;
-    max-width: 60px;
     text-align: center;
   }
   
   .po-items-table th:nth-child(2),
   .po-items-table td:nth-child(2) {
     width: 16%;
-    min-width: 120px;
-    max-width: 200px;
   }
   
   .po-items-table th:nth-child(3),
   .po-items-table td:nth-child(3) {
     width: 16%;
-    min-width: 120px;
-    max-width: 200px;
   }
   
   .po-items-table th:nth-child(4),
   .po-items-table td:nth-child(4) {
     width: 18%;
-    min-width: 150px;
-    max-width: 250px;
   }
   
   .po-items-table th:nth-child(5),
   .po-items-table td:nth-child(5) {
     width: 22%;
-    min-width: 180px;
-    max-width: 300px;
   }
   
   .po-items-table th:nth-child(6),
   .po-items-table td:nth-child(6) {
     width: 8%;
-    min-width: 80px;
-    max-width: 100px;
     text-align: center;
   }
   
   .po-items-table th:nth-child(7),
   .po-items-table td:nth-child(7) {
     width: 6%;
-    min-width: 70px;
-    max-width: 90px;
     text-align: center;
   }
   
   .po-items-table th:nth-child(8),
   .po-items-table td:nth-child(8) {
     width: 12%;
-    min-width: 120px;
-    max-width: 180px;
   }
   
   .po-items-table th:nth-child(9),
   .po-items-table td:nth-child(9) {
     width: 10%;
-    min-width: 100px;
-    max-width: 150px;
   }
   
 .po-items-table th:nth-child(10),
 .po-items-table td:nth-child(10) {
-    width: 8%;
-    min-width: 120px;
-    max-width: 150px;
+    width: auto;
     text-align: center;
   border-left: 2px solid #e9ecef;
     position: sticky;
@@ -2953,8 +2972,9 @@
   }
   
   .po-items-table tbody tr.po-editing-row {
-    background-color: #fff3e0;
-    box-shadow: 0 0 0 2px #ff9800;
+  /* Remove outer orange highlight on edit */
+  background-color: transparent;
+  box-shadow: none;
   }
   
   .po-items-table tbody tr:last-child td {
@@ -2962,7 +2982,7 @@
   }
   
 .po-items-table .po-remove-item-btn {
-  background-color: #dc3545;
+  background-color: #E91E63;
   color: white;
   border: none;
   border-radius: 6px;
@@ -2982,7 +3002,7 @@
 }
   
   .po-items-table .po-remove-item-btn:hover {
-    background-color: #c82333;
+    background-color: #d81b60;
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
@@ -3042,8 +3062,9 @@
   }
   
   .po-editing-cell {
-    background-color: #fff3e0;
-    box-shadow: inset 0 0 0 2px #ff9800;
+  /* Remove inner orange highlight on edit */
+  background-color: transparent;
+  box-shadow: none;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
@@ -3063,7 +3084,6 @@
   gap: 6px;
     align-items: center;
   justify-content: center;
-  min-width: 150px;
   padding: 5px 4px;
   flex-wrap: nowrap;
   width: 100%;
@@ -3077,16 +3097,8 @@
   flex-wrap: nowrap;
   }
   
-  .po-remove-actions-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  }
-  
   .po-save-edit-btn {
-    background-color: #27ae60;
+    background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 6px;
@@ -3098,7 +3110,6 @@
     font-size: 11px;
     font-weight: bold;
     transition: all 0.3s ease;
-    min-width: 55px;
     height: 28px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
@@ -3109,27 +3120,86 @@
 .po-remove-item-btn {
   word-break: normal;
   overflow-wrap: normal;
-  min-width: 48px;
 }
 
 /* Larger icon visuals while keeping button size the same */
 .po-btn-icon {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 900;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.5px;
+}
+
+/* Slightly larger icons inside the items table buttons */
+.po-items-table .po-btn-icon {
+  font-size: 22px;
+}
+
+/* Consistent pencil icon across devices */
+.po-icon-edit {
+  width: 20px;
+  height: 20px;
+  font-size: 0; /* hide fallback glyph */
+  display: block;
+  flex-shrink: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'><path d='M12.5 5l6.5 6.5-7.5 7.5H5v-6.5L12.5 5z'/><path d='M14 3l7 7'/></svg>");
+}
+
+.po-items-table .po-icon-edit {
+  width: 22px;
+  height: 22px;
+}
+
+/* Mobile: bump size further for legibility */
+@media (max-width: 768px) {
+  .po-btn-icon {
+    font-size: 22px;
+  }
+
+  .po-icon-edit {
+    width: 22px;
+    height: 22px;
+  }
+
+  .po-items-table .po-icon-edit {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Extra small screens: boost icon size further for clarity */
+@media (max-width: 576px) {
+  .po-btn-icon {
+    font-size: 24px;
+  }
+
+  .po-icon-edit {
+    width: 24px;
+    height: 24px;
+  }
+
+  .po-items-table .po-icon-edit {
+    width: 26px;
+    height: 26px;
+  }
 }
   
   .po-save-edit-btn:hover {
-    background-color: #229954;
+    background-color: #45a049;
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
   .po-cancel-edit-btn {
-    background-color: #e74c3c;
+    background-color: #F44336;
     color: white;
     border: none;
     border-radius: 6px;
@@ -3141,14 +3211,13 @@
     font-size: 11px;
     font-weight: bold;
     transition: all 0.3s ease;
-    min-width: 55px;
     height: 28px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
   }
   
   .po-cancel-edit-btn:hover {
-    background-color: #c0392b;
+    background-color: #e53935;
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
@@ -3198,6 +3267,88 @@
     background-color: #95a5a6;
     transform: none;
   }
+
+  /* Desktop view (above 768px) - Flexible edit cells with min-width for specific columns */
+  @media (min-width: 769px) {
+    .po-editing-cell {
+      min-width: 0 !important;
+      max-width: none !important;
+      width: auto;
+      overflow: hidden;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    
+    .po-edit-select,
+    .po-edit-input {
+      min-width: 0 !important;
+      max-width: none !important;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .po-items-table td.po-editing-cell {
+      min-width: 0 !important;
+      max-width: none !important;
+      width: auto;
+      overflow: hidden;
+    }
+    
+    /* Min-width for specific columns in edit mode - Desktop view */
+    .po-items-table tbody tr.po-editing-row td:nth-child(2) {
+      /* Category */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(3) {
+      /* Sub Category */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(4) {
+      /* Material Name */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(5) {
+      /* Specifications */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(6) {
+      /* Quantity */
+      min-width: 80px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(7) {
+      /* UOM */
+      min-width: 70px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(8) {
+      /* Preferred Vendor */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(9) {
+      /* Place */
+      min-width: 200px !important;
+    }
+    
+    /* Ensure edit cells can expand to fit content */
+    .po-items-table tbody tr.po-editing-row td {
+      max-width: none !important;
+    }
+    
+    /* Remove min-width from edit action buttons in desktop view */
+    .po-edit-actions-row .po-remove-item-btn {
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+  }
   
   /* Critical breakpoint for 1300px and below - Fix overlapping */
   @media (max-width: 1300px) {
@@ -3210,7 +3361,7 @@
     
     .po-items-table {
       min-width: 1400px;
-      table-layout: fixed;
+      table-layout: auto;
     }
     
     .po-items-table th,
@@ -3229,61 +3380,92 @@
     .po-items-table th:nth-child(1),
     .po-items-table td:nth-child(1) {
       width: 3%;
-      min-width: 50px;
     }
     
     .po-items-table th:nth-child(2),
     .po-items-table td:nth-child(2) {
       width: 12%;
-      min-width: 100px;
     }
     
     .po-items-table th:nth-child(3),
     .po-items-table td:nth-child(3) {
       width: 12%;
-      min-width: 100px;
     }
     
     .po-items-table th:nth-child(4),
     .po-items-table td:nth-child(4) {
       width: 14%;
-      min-width: 120px;
     }
     
     .po-items-table th:nth-child(5),
     .po-items-table td:nth-child(5) {
       width: 16%;
-      min-width: 130px;
     }
     
     .po-items-table th:nth-child(6),
     .po-items-table td:nth-child(6) {
       width: 6%;
-      min-width: 60px;
     }
     
     .po-items-table th:nth-child(7),
     .po-items-table td:nth-child(7) {
       width: 5%;
-      min-width: 60px;
     }
     
     .po-items-table th:nth-child(8),
     .po-items-table td:nth-child(8) {
       width: 12%;
-      min-width: 110px;
     }
     
     .po-items-table th:nth-child(9),
     .po-items-table td:nth-child(9) {
       width: 10%;
-      min-width: 90px;
     }
     
     .po-items-table th:nth-child(10),
     .po-items-table td:nth-child(10) {
-      width: 10%;
-      min-width: 120px;
+      width: auto;
+    }
+    
+    /* Min-width for specific columns in edit mode - 1300px and below */
+    .po-items-table tbody tr.po-editing-row td:nth-child(2) {
+      /* Category */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(3) {
+      /* Sub Category */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(4) {
+      /* Material Name */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(5) {
+      /* Specifications */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(6) {
+      /* Quantity */
+      min-width: 80px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(7) {
+      /* UOM */
+      min-width: 70px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(8) {
+      /* Preferred Vendor */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(9) {
+      /* Place */
+      min-width: 200px !important;
     }
   }
   
@@ -3294,18 +3476,6 @@
       padding: 12px 10px;
       font-size: 13px;
       vertical-align: middle !important;
-    }
-    
-    .po-items-table th:nth-child(3),
-    .po-items-table th:nth-child(4),
-    .po-items-table td:nth-child(3),
-    .po-items-table td:nth-child(4) {
-      min-width: 130px;
-    }
-    
-    .po-items-table th:nth-child(5),
-    .po-items-table td:nth-child(5) {
-      min-width: 200px;
     }
   }
   
@@ -3331,56 +3501,64 @@
     
     .po-items-table th:nth-child(1),
     .po-items-table td:nth-child(1) {
-      min-width: 50px;
       text-align: center;
-    }
-    
-    .po-items-table th:nth-child(2),
-    .po-items-table td:nth-child(2) {
-      min-width: 100px;
-    }
-    
-    .po-items-table th:nth-child(3),
-    .po-items-table td:nth-child(3) {
-      min-width: 100px;
-    }
-    
-    .po-items-table th:nth-child(4),
-    .po-items-table td:nth-child(4) {
-      min-width: 120px;
-    }
-    
-    .po-items-table th:nth-child(5),
-    .po-items-table td:nth-child(5) {
-      min-width: 130px;
     }
     
     .po-items-table th:nth-child(6),
     .po-items-table td:nth-child(6) {
-      min-width: 60px;
       text-align: center;
     }
     
     .po-items-table th:nth-child(7),
     .po-items-table td:nth-child(7) {
-      min-width: 60px;
       text-align: center;
-    }
-    
-    .po-items-table th:nth-child(8),
-    .po-items-table td:nth-child(8) {
-      min-width: 110px;
-    }
-    
-    .po-items-table th:nth-child(9),
-    .po-items-table td:nth-child(9) {
-      min-width: 90px;
     }
     
     .po-items-table th:nth-child(10),
     .po-items-table td:nth-child(10) {
-      min-width: 120px;
+      width: auto;
       text-align: center;
+    }
+    
+    /* Min-width for specific columns in edit mode - 1300px and below */
+    .po-items-table tbody tr.po-editing-row td:nth-child(2) {
+      /* Category */
+      min-width: 120px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(3) {
+      /* Sub Category */
+      min-width: 120px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(4) {
+      /* Material Name */
+      min-width: 150px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(5) {
+      /* Specifications */
+      min-width: 140px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(6) {
+      /* Quantity */
+      min-width: 80px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(7) {
+      /* UOM */
+      min-width: 70px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(8) {
+      /* Preferred Vendor */
+      min-width: 140px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(9) {
+      /* Place */
+      min-width: 100px !important;
     }
   }
   
@@ -3396,29 +3574,45 @@
       vertical-align: middle !important;
     }
     
-    .po-items-table th:nth-child(3),
-    .po-items-table td:nth-child(3) {
-      min-width: 100px;
+    /* Min-width for specific columns in edit mode - 1200px and below */
+    .po-items-table tbody tr.po-editing-row td:nth-child(2) {
+      /* Category */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(4),
-    .po-items-table td:nth-child(4) {
-      min-width: 110px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(3) {
+      /* Sub Category */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(5),
-    .po-items-table td:nth-child(5) {
-      min-width: 120px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(4) {
+      /* Material Name */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(8),
-    .po-items-table td:nth-child(8) {
-      min-width: 100px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(5) {
+      /* Specifications */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(9),
-    .po-items-table td:nth-child(9) {
-      min-width: 80px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(6) {
+      /* Quantity */
+      min-width: 80px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(7) {
+      /* UOM */
+      min-width: 70px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(8) {
+      /* Preferred Vendor */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(9) {
+      /* Place */
+      min-width: 200px !important;
     }
   }
   
@@ -3443,29 +3637,45 @@
       vertical-align: middle !important;
     }
     
-    .po-items-table th:nth-child(3),
-    .po-items-table td:nth-child(3) {
-      min-width: 90px;
+    /* Min-width for specific columns in edit mode - 992px and below (but above 768px) */
+    .po-items-table tbody tr.po-editing-row td:nth-child(2) {
+      /* Category */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(4),
-    .po-items-table td:nth-child(4) {
-      min-width: 100px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(3) {
+      /* Sub Category */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(5),
-    .po-items-table td:nth-child(5) {
-      min-width: 110px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(4) {
+      /* Material Name */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(8),
-    .po-items-table td:nth-child(8) {
-      min-width: 90px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(5) {
+      /* Specifications */
+      min-width: 200px !important;
     }
     
-    .po-items-table th:nth-child(9),
-    .po-items-table td:nth-child(9) {
-      min-width: 70px;
+    .po-items-table tbody tr.po-editing-row td:nth-child(6) {
+      /* Quantity */
+      min-width: 150px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(7) {
+      /* UOM */
+      min-width: 100px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(8) {
+      /* Preferred Vendor */
+      min-width: 200px !important;
+    }
+    
+    .po-items-table tbody tr.po-editing-row td:nth-child(9) {
+      /* Place */
+      min-width: 200px !important;
     }
   }
   
@@ -3562,18 +3772,18 @@
   }
 
   /* Keep mobile delete button consistent with other action buttons */
-  .po-items-table .po-remove-item-btn {
-    width: auto !important;
-    min-width: 44px !important;
-    max-width: none !important;
-    height: 30px !important;
-    padding: 6px 10px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    line-height: 1 !important;
-    background: #dc3545 !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-  }
+    .po-items-table .po-remove-item-btn {
+      width: auto !important;
+      min-width: 44px !important;
+      max-width: none !important;
+      height: 30px !important;
+      padding: 6px 10px !important;
+      border-radius: 6px !important;
+      font-size: 11px !important;
+      line-height: 1 !important;
+      background-color: #E91E63 !important;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    }
   }
   
   @media (max-width: 576px) {
@@ -3788,23 +3998,23 @@
     
     /* Enhanced action buttons */
     .po-items-table .po-remove-item-btn {
-      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      background-color: #E91E63;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 12px 20px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       min-width: 120px;
     }
     
     .po-items-table .po-remove-item-btn:hover {
-      background: linear-gradient(135deg, #c0392b, #a93226);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+      background-color: #d81b60;
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
     
     /* Action buttons row - Edit and Delete buttons in mobile */
@@ -3912,64 +4122,64 @@
       padding: 8px 12px;
       min-width: 52px;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .po-save-edit-btn {
-      background: linear-gradient(135deg, #27ae60, #229954);
+      background-color: #4CAF50;
       color: white;
     }
     
     .po-save-edit-btn:hover {
-      background: linear-gradient(135deg, #229954, #1e8449);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      background-color: #45a049;
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
     
     .po-cancel-edit-btn {
-      background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+      background-color: #F44336;
       color: white;
     }
     
     .po-cancel-edit-btn:hover {
-      background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
+      background-color: #e53935;
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
     
-    .po-remove-actions-row {
-      width: auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: nowrap;
-    }
-    
-    .po-remove-actions-row .po-remove-item-btn {
-      background: linear-gradient(135deg, #e74c3c, #c0392b);
+    .po-edit-actions-row .po-remove-item-btn {
+      background-color: #E91E63;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 8px 12px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       width: auto;
       min-width: 44px;
       max-width: none;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
-    .po-remove-actions-row .po-remove-item-btn:hover {
-      background: linear-gradient(135deg, #c0392b, #a93226);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    .po-edit-actions-row .po-remove-item-btn:hover {
+      background-color: #d81b60;
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
     /* Revert to horizontal desktop layout while editing */
@@ -4114,15 +4324,9 @@
       flex-wrap: nowrap;
     }
     
-    .po-remove-actions-row {
-      margin-top: 0;
-      gap: 6px;
-      flex-wrap: nowrap;
-    }
-    
     .po-save-edit-btn,
     .po-cancel-edit-btn,
-    .po-remove-item-btn {
+    .po-edit-actions-row .po-remove-item-btn {
       padding: 8px 12px;
       font-size: 12px;
       min-height: 36px;

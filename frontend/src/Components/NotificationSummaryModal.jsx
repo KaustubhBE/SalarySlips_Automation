@@ -508,7 +508,7 @@ const NotificationSummaryModal = ({
           {(emailEnabled || whatsappEnabled) && (
             <div style={{
               ...styles.channelBox,
-              border: '1px solid #dcfce7',
+              border: '1px solid #bbf7d0',
               backgroundColor: '#f0fdf4'
             }}>
               <div style={{
@@ -528,30 +528,10 @@ const NotificationSummaryModal = ({
                   <span style={styles.channelCount}>{email_successful}/{totalRecipients || 0}</span>
                 </div>
               )}
-              {emailEnabled && emailSuccessNames.length > 0 && (
-                <div style={styles.nameList}>
-                  {emailSuccessNames.map((name, idx) => (
-                    <div key={`success-email-${idx}`} style={{ ...styles.nameListItem, color: '#166534' }}>
-                      <span style={styles.nameListIndex}>{idx + 1}.</span>
-                      <span>{name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
               {whatsappEnabled && (
                 <div style={{ ...styles.channelRow, color: '#166534' }}>
                   <span>WhatsApp:</span>
                   <span style={styles.channelCount}>{whatsapp_successful}/{totalRecipients || 0}</span>
-                </div>
-              )}
-              {whatsappEnabled && whatsappSuccessNames.length > 0 && (
-                <div style={styles.nameList}>
-                  {whatsappSuccessNames.map((name, idx) => (
-                    <div key={`success-whatsapp-${idx}`} style={{ ...styles.nameListItem, color: '#166534' }}>
-                      <span style={styles.nameListIndex}>{idx + 1}.</span>
-                      <span>{name}</span>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
