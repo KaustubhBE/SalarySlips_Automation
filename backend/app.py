@@ -9,6 +9,7 @@ from flask_cors import CORS
 from logging.handlers import RotatingFileHandler
 from Utils.fetch_data import fetch_google_sheet_data
 from Utils.process_utils import *
+from Utils.write_data import write_order_to_indent_sheet
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from Utils.config import CLIENT_SECRETS_FILE, drive, creds
@@ -75,7 +76,8 @@ PLANT_DATA = [
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List UAT"
+            "RecipentsList": "Recipents List UAT",
+            "IndentList": "Indent List"
         }
     },
     {
@@ -3459,6 +3461,7 @@ def submit_order():
             'orderId': data.get('orderId'),
             'orderItems': data.get('orderItems'),
             'givenBy': data.get('givenBy'),
+            'type': data.get('type'),
             'description': data.get('description'),
             'importance': data.get('importance'),
             'factory': factory,
@@ -3466,17 +3469,34 @@ def submit_order():
             'status': 'Pending'
         }
         
+        # Add date and time if provided in request (for Indent List sheet)
+        if data.get('date'):
+            order_data['date'] = data.get('date')
+        if data.get('time'):
+            order_data['time'] = data.get('time')
+        
         # Use the new add_order function with factory initials
         success = add_order(factory, order_data)
         
         if success:
             logger.info(f"Order submitted successfully: {order_data['orderId']} to factory {factory}")
+            
+            # Write order to Indent List Google Sheet
+            indent_result = write_order_to_indent_sheet(factory, order_data, logger=logger)
+            if indent_result['success']:
+                logger.info(f"Order {order_data['orderId']} written to Indent List: {indent_result['rows_written']} row(s)")
+            else:
+                # Log warning but don't fail the order submission
+                logger.warning(f"Failed to write order {order_data['orderId']} to Indent List: {indent_result['message']}")
+            
             return jsonify({
                 "success": True,
                 "message": "Order submitted successfully",
                 "orderId": order_data['orderId'],
                 "factory": factory,
-                "factoryDocument": get_factory_initials(factory)
+                "factoryDocument": get_factory_initials(factory),
+                "indentSheetWritten": indent_result.get('success', False),
+                "indentSheetMessage": indent_result.get('message', '')
             }), 200
         else:
             return jsonify({

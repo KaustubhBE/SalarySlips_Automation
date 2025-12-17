@@ -1050,7 +1050,13 @@ const hasEditSpecOptions = useMemo(
   )
 
   // Check if any add-item fields have values but item not added
+  // Only show this error if there are already items in the order
   const hasPendingItemDetails = useMemo(() => {
+    // Don't show this error if there are no items in the order
+    if (orderItems.length === 0) {
+      return false
+    }
+    
     return !!(
       formData.category ||
       formData.subCategory ||
@@ -1062,6 +1068,7 @@ const hasEditSpecOptions = useMemo(
       formData.place
     )
   }, [
+    orderItems.length,
     formData.category,
     formData.subCategory,
     formData.materialName,
