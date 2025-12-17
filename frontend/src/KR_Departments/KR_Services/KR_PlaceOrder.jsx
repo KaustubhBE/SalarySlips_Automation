@@ -77,8 +77,7 @@ const SearchableSelect = ({
   isLoading = false,
   isClearable = true,
   className = '',
-  required = false,
-  statusVariant = 'default' // 'default' | 'warning'
+  required = false
 }) => {
   const normalizedOptions = createSelectOptions(options)
   const selectedOption =
@@ -92,25 +91,6 @@ const SearchableSelect = ({
     return window.innerWidth > 768 ? 'absolute' : 'fixed'
   }, [])
 
-  const selectStyles = useMemo(() => {
-    return {
-      ...poSelectStyles,
-      control: (base, state) => {
-        const baseStyles = poSelectStyles.control(base, state)
-        if (statusVariant === 'warning') {
-          return {
-            ...baseStyles,
-            borderColor: '#dc3545',
-            borderWidth: '3px',
-            boxShadow: '0 0 0 5px rgba(220, 53, 69, 0.45)',
-            backgroundColor: '#ffe6ea'
-          }
-        }
-        return baseStyles
-      }
-    }
-  }, [statusVariant])
-
   return (
     <Select
       inputId={id}
@@ -123,7 +103,7 @@ const SearchableSelect = ({
       isClearable={isClearable}
       className={`po-searchable-select ${className || ''}`}
       classNamePrefix="po-select"
-      styles={selectStyles}
+      styles={poSelectStyles}
       menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
       menuPosition={menuPosition}
       getOptionValue={(option) => option.value} // Explicitly define how to get option value
@@ -987,28 +967,23 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     [formData.category, formData.materialName, formData.subCategory, materialData]
   )
 
-  const categoryStatusVariant = useMemo(
-    () => (!formData.category && categories.length > 0 ? 'warning' : 'default'),
-    [categories.length, formData.category]
-  )
-
-  const subCategoryStatusVariant = useMemo(
-    () => (!formData.subCategory && availableSubCategories.length > 0 ? 'warning' : 'default'),
+  // Determine if fields should show error highlight when options are available but not selected
+  // NOTE: Category field is excluded - it only shows red border on validation errors
+  const shouldHighlightSubCategory = useMemo(
+    () => !formData.subCategory && availableSubCategories.length > 0,
     [formData.subCategory, availableSubCategories.length]
   )
 
-  const materialNameStatusVariant = useMemo(
-    () => (!formData.materialName && availableMaterialNames.length > 0 ? 'warning' : 'default'),
+  const shouldHighlightMaterialName = useMemo(
+    () => !formData.materialName && availableMaterialNames.length > 0,
     [formData.materialName, availableMaterialNames.length]
   )
 
-  const specificationsStatusVariant = useMemo(
-    () =>
-      !formData.specifications && availableSpecifications.length > 0 ? 'warning' : 'default',
+  const shouldHighlightSpecifications = useMemo(
+    () => !formData.specifications && availableSpecifications.length > 0,
     [formData.specifications, availableSpecifications.length]
   )
 
-  // Log warning states related to red border/highlight logic
   // Derived availability for edit mode
   const editAvailableSubCategories = useMemo(
     () =>
@@ -1057,31 +1032,46 @@ const hasEditSpecOptions = useMemo(
   [editAvailableSpecifications.length]
 )
 
-  const editCategoryStatusVariant = useMemo(
-    () =>
-    editingItem && !editFormData.category && hasEditCategoryOptions ? 'warning' : 'default',
-  [editingItem, editFormData.category, hasEditCategoryOptions]
+  // Determine if edit mode fields should show error highlight when options are available but not selected
+  // NOTE: Category field is excluded - it only shows red border on validation errors
+  const shouldHighlightEditSubCategory = useMemo(
+    () => editingItem && !editFormData.subCategory && hasEditSubCategoryOptions,
+    [editingItem, editFormData.subCategory, hasEditSubCategoryOptions]
   )
 
-  const editSubCategoryStatusVariant = useMemo(
-    () =>
-    editingItem && !editFormData.subCategory && hasEditSubCategoryOptions ? 'warning' : 'default',
-  [editingItem, editFormData.subCategory, hasEditSubCategoryOptions]
+  const shouldHighlightEditMaterialName = useMemo(
+    () => editingItem && !editFormData.materialName && hasEditMaterialOptions,
+    [editingItem, editFormData.materialName, hasEditMaterialOptions]
   )
 
-  const editMaterialNameStatusVariant = useMemo(
-    () =>
-    editingItem && !editFormData.materialName && hasEditMaterialOptions ? 'warning' : 'default',
-  [editingItem, editFormData.materialName, hasEditMaterialOptions]
+  const shouldHighlightEditSpecifications = useMemo(
+    () => editingItem && !editFormData.specifications && hasEditSpecOptions,
+    [editingItem, editFormData.specifications, hasEditSpecOptions]
   )
 
-  const editSpecificationsStatusVariant = useMemo(
-    () =>
-    editingItem && !editFormData.specifications && hasEditSpecOptions ? 'warning' : 'default',
-  [editingItem, editFormData.specifications, hasEditSpecOptions]
-  )
+  // Check if any add-item fields have values but item not added
+  const hasPendingItemDetails = useMemo(() => {
+    return !!(
+      formData.category ||
+      formData.subCategory ||
+      formData.materialName ||
+      formData.specifications ||
+      formData.quantity ||
+      formData.uom ||
+      formData.partyName ||
+      formData.place
+    )
+  }, [
+    formData.category,
+    formData.subCategory,
+    formData.materialName,
+    formData.specifications,
+    formData.quantity,
+    formData.uom,
+    formData.partyName,
+    formData.place
+  ])
 
-  // Log warning states for edit mode red border logic
   // Effects
   useEffect(() => {
     // Fetch material data first
@@ -1365,6 +1355,25 @@ const hasEditSpecOptions = useMemo(
 
       return newFormData
     })
+  }
+
+  const handleResetAddItemFields = () => {
+    // Reset only the add item fields: category, subCategory, materialName, specifications, quantity, uom, partyName, place
+    setFormData(prev => ({
+      ...prev,
+      category: '',
+      subCategory: '',
+      materialName: '',
+      specifications: '',
+      uom: '',
+      quantity: '',
+      partyName: '',
+      place: ''
+      // Keep givenBy, description, type, and importance unchanged
+    }))
+    
+    // Clear any highlighted fields
+    setHighlightedFields([])
   }
 
   const handleAddItem = () => {
@@ -1985,12 +1994,11 @@ const hasEditSpecOptions = useMemo(
                   options={categories}
                   placeholder="Select Category"
                   className={
-                    editingItem && !editFormData.category && hasEditCategoryOptions
+                    highlightedFields.includes('category')
                       ? 'po-edit-select po-error-highlight'
                       : 'po-edit-select'
                   }
                   isLoading={dataLoading}
-                  statusVariant={editCategoryStatusVariant}
                 />
               ) : (
                 item.category
@@ -2018,7 +2026,7 @@ const hasEditSpecOptions = useMemo(
                       : 'Select Sub Category'
                   }
                   className={
-                    editingItem && !editFormData.subCategory && hasEditSubCategoryOptions
+                    highlightedFields.includes('subCategory') || shouldHighlightEditSubCategory
                       ? 'po-edit-select po-error-highlight'
                       : 'po-edit-select'
                   }
@@ -2028,7 +2036,6 @@ const hasEditSpecOptions = useMemo(
                     editAvailableSubCategories.length === 0
                   }
                   isLoading={dataLoading}
-                  statusVariant={editSubCategoryStatusVariant}
                 />
               ) : (
                 item.subCategory || '-'
@@ -2050,7 +2057,7 @@ const hasEditSpecOptions = useMemo(
                   options={editAvailableMaterialNames}
                   placeholder={editFormData.category ? 'Select Material Name' : 'Select Category first'}
                   className={
-                    editingItem && !editFormData.materialName && hasEditMaterialOptions
+                    highlightedFields.includes('materialName') || shouldHighlightEditMaterialName
                       ? 'po-edit-select po-error-highlight'
                       : 'po-edit-select'
                   }
@@ -2060,7 +2067,6 @@ const hasEditSpecOptions = useMemo(
                     (!editFormData.category && !editFormData.subCategory)
                   }
                   isLoading={dataLoading}
-                  statusVariant={editMaterialNameStatusVariant}
                 />
               ) : (
                 item.materialName
@@ -2086,7 +2092,7 @@ const hasEditSpecOptions = useMemo(
                       : 'Select Specifications'
                   }
                   className={
-                    editingItem && !editFormData.specifications && hasEditSpecOptions
+                    highlightedFields.includes('specifications') || shouldHighlightEditSpecifications
                       ? 'po-edit-select po-error-highlight'
                       : 'po-edit-select'
                   }
@@ -2096,7 +2102,6 @@ const hasEditSpecOptions = useMemo(
                     (!editFormData.materialName && !editFormData.subCategory)
                   }
                   isLoading={dataLoading}
-                  statusVariant={editSpecificationsStatusVariant}
                 />
               ) : (
                 item.specifications || '-'
@@ -2234,7 +2239,7 @@ const hasEditSpecOptions = useMemo(
                       title="Cancel edit"
                       aria-label="Cancel"
                     >
-                      <span className="po-btn-icon" aria-hidden="true">−</span>
+                      <span className="po-btn-icon" aria-hidden="true">×</span>
                       <span className="po-sr-only">Cancel</span>
                     </button>
                     <button
@@ -2244,7 +2249,7 @@ const hasEditSpecOptions = useMemo(
                       title="Remove item"
                       aria-label="Delete"
                     >
-                      <span className="po-btn-icon" aria-hidden="true">✖</span>
+                      <span className="po-btn-icon po-icon-trash" aria-hidden="true"></span>
                       <span className="po-sr-only">Delete</span>
                     </button>
                   </div>
@@ -2268,7 +2273,7 @@ const hasEditSpecOptions = useMemo(
                     title="Remove item"
                     aria-label="Delete"
                   >
-                    <span className="po-btn-icon" aria-hidden="true">✖</span>
+                    <span className="po-btn-icon po-icon-trash" aria-hidden="true"></span>
                     <span className="po-sr-only">Delete</span>
                   </button>
                 </div>
@@ -2425,7 +2430,6 @@ const hasEditSpecOptions = useMemo(
               isLoading={dataLoading}
               required={orderItems.length === 0}
               className={highlightedFields.includes('category') ? 'po-error-highlight' : ''}
-              statusVariant={categoryStatusVariant}
             />
           </div>
 
@@ -2451,15 +2455,12 @@ const hasEditSpecOptions = useMemo(
               }
               isLoading={dataLoading}
               className={
-                !formData.subCategory &&
-                formData.category &&
-                availableSubCategories.length > 0
-                  ? 'po-optional-field-red'
+                highlightedFields.includes('subCategory') || shouldHighlightSubCategory
+                  ? 'po-error-highlight'
                   : formData.subCategory
                   ? 'po-optional-field-green'
                   : ''
               }
-              statusVariant={subCategoryStatusVariant}
             />
           </div>
 
@@ -2483,8 +2484,11 @@ const hasEditSpecOptions = useMemo(
               }
               isLoading={dataLoading}
               required={orderItems.length === 0}
-              className={highlightedFields.includes('materialName') ? 'po-error-highlight' : ''}
-              statusVariant={materialNameStatusVariant}
+              className={
+                highlightedFields.includes('materialName') || shouldHighlightMaterialName
+                  ? 'po-error-highlight'
+                  : ''
+              }
             />
           </div>
         </div>
@@ -2517,16 +2521,12 @@ const hasEditSpecOptions = useMemo(
               })()}
               isLoading={dataLoading}
               className={
-                !formData.specifications &&
-                formData.category &&
-                formData.materialName &&
-                availableSpecifications.length > 0
-                  ? 'po-optional-field-red'
+                highlightedFields.includes('specifications') || shouldHighlightSpecifications
+                  ? 'po-error-highlight'
                   : formData.specifications
                   ? 'po-optional-field-green'
                   : ''
               }
-              statusVariant={specificationsStatusVariant}
             />
           </div>
 
@@ -2633,18 +2633,28 @@ const hasEditSpecOptions = useMemo(
           </div>
         </div>
 
-        {/* Fourth Row: Add Item Button */}
+        {/* Fourth Row: Add Item Button and Reset Button */}
         <div className="po-form-row">
           {/* Add Item Button */}
           <div className="po-form-group po-add-item-group">
             <label>&nbsp;</label>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="po-add-item-btn"
-            >
-              Add Item
-            </button>
+            <div className="po-add-item-buttons-container">
+              <button
+                type="button"
+                onClick={handleResetAddItemFields}
+                className="po-reset-item-btn"
+                title="Reset add item fields"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="po-add-item-btn"
+              >
+                Add Item
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2771,6 +2781,7 @@ const hasEditSpecOptions = useMemo(
             checkEmail={enableEmailNotification}
             notificationSelectionRequired={true}
             notificationSelectionMade={enableEmailNotification || enableWhatsappNotification}
+            hasPendingItemDetails={hasPendingItemDetails}
             onErrorsChange={(errors) => setFormHasBlockingErrors(errors.length > 0)}
           />
         )}

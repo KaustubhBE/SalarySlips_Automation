@@ -16,6 +16,7 @@ import { DEFAULT_WHATSAPP_URL, getApiUrl } from '../config';
  * @param {string} [props.className] - Optional additional CSS class names
  * @param {boolean} [props.checkWhatsApp] - Optional flag to check WhatsApp authentication status (default: false)
  * @param {boolean} [props.checkEmail] - Optional flag to check Email authentication status (default: false)
+ * @param {boolean} [props.hasPendingItemDetails] - Optional flag to check if item details are in queue but not added (default: false)
  */
 const FormValidationErrors = ({ 
   errors = [], 
@@ -27,6 +28,7 @@ const FormValidationErrors = ({
   checkEmail = false,
   notificationSelectionRequired = false,
   notificationSelectionMade = true,
+  hasPendingItemDetails = false,
   onErrorsChange
 }) => {
   const { user } = useAuth();
@@ -238,6 +240,10 @@ const FormValidationErrors = ({
     if (notificationSelectionRequired && !notificationSelectionMade) {
       combinedErrors.push('No notification method selected. Please enable Email or WhatsApp notifications.');
     }
+
+    if (hasPendingItemDetails) {
+      combinedErrors.push('Item Details in queue but not added');
+    }
     
     setAllErrors(combinedErrors);
     if (typeof onErrorsChange === 'function') {
@@ -253,6 +259,7 @@ const FormValidationErrors = ({
     emailAuthenticated,
     notificationSelectionRequired,
     notificationSelectionMade,
+    hasPendingItemDetails,
     onErrorsChange
   ]);
 
