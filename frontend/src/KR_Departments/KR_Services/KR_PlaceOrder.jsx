@@ -881,7 +881,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
           factory: 'KR',
-          sheet_name: 'Recipents List UAT',
+          sheet_name: 'Recipents List',
           sheet_id: sheetId
         }
       })
@@ -1717,7 +1717,7 @@ const hasEditSpecOptions = useMemo(
         factory: 'KR',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
-        sheetName: 'Recipents List UAT' // Send sheet name to backend
+        sheetName: 'Recipents List' // Send sheet name to backend
       }
 
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
@@ -1920,7 +1920,7 @@ const hasEditSpecOptions = useMemo(
               factory: 'KR',
               autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
               sheetId: sheetId, // Send sheet ID to backend
-              sheetName: 'Recipents List UAT' // Send sheet name to backend
+              sheetName: 'Recipents List' // Send sheet name to backend
             }
             
             const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
@@ -2013,7 +2013,7 @@ const hasEditSpecOptions = useMemo(
             </td>
             <td 
               data-label="Sub Category"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${!item.subCategory ? "po-empty-value" : ""}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'subCategory')}
               onTouchStart={(e) => handleTouchStart(e, item, 'subCategory')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'subCategory')}
@@ -2081,7 +2081,7 @@ const hasEditSpecOptions = useMemo(
             </td>
             <td 
               data-label="Specifications"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${!item.specifications ? "po-empty-value" : ""}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'specifications')}
               onTouchStart={(e) => handleTouchStart(e, item, 'specifications')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'specifications')}
@@ -2155,7 +2155,7 @@ const hasEditSpecOptions = useMemo(
             </td>
             <td 
               data-label="Preferred Vendor"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${!item.partyName ? "po-empty-value" : ""}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'partyName')}
               onTouchStart={(e) => handleTouchStart(e, item, 'partyName')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'partyName')}
@@ -2178,7 +2178,7 @@ const hasEditSpecOptions = useMemo(
             </td>
             <td 
               data-label="Place"
-              className={editingItem === item.id ? "po-editing-cell" : "po-editable-cell"}
+              className={`${editingItem === item.id ? "po-editing-cell" : "po-editable-cell"} ${!item.place ? "po-empty-value" : ""}`}
               onDoubleClick={() => handleDoubleClickEdit(item, 'place')}
               onTouchStart={(e) => handleTouchStart(e, item, 'place')}
               onTouchEnd={(e) => handleTouchEnd(e, item, 'place')}

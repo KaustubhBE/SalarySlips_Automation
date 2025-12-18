@@ -4352,6 +4352,17 @@
 
     .po-items-table:has(tr.po-editing-row) td:nth-child(10) {
       background: transparent;
+      min-width: auto !important;  /* Override the 220px min-width */
+      max-width: 140px !important; /* Limit maximum width */
+      width: auto;
+      padding: 8px 4px !important;  /* Reduce padding */
+    }
+
+    .po-items-table:has(tr.po-editing-row) th:nth-child(10) {
+      min-width: auto !important;  /* Override the 220px min-width */
+      max-width: 140px !important; /* Limit maximum width */
+      width: auto;
+      padding: 8px 4px !important;  /* Reduce padding */
     }
 
     .po-items-table:has(tr.po-editing-row) select,
@@ -4361,6 +4372,255 @@
       max-width: none;
       font-size: 14px;
       white-space: normal;
+    }
+  }
+  
+  /* Fix for editing mode between 769px-850px - ensures headers are visible */
+  @media (min-width: 769px) and (max-width: 850px) {
+    /* Ensure table uses proper layout in this range */
+    .po-items-table-container {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Reset any mobile card layout pseudo-elements */
+    .po-items-table td:before {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* Ensure table uses table layout (not mobile card layout) */
+    .po-items-table {
+      display: table !important;
+      width: auto !important;
+      min-width: 1200px !important;
+      table-layout: auto;
+    }
+
+    .po-items-table thead {
+      display: table-header-group !important;
+      position: static !important;
+      visibility: visible !important;
+    }
+
+    .po-items-table thead tr {
+      display: table-row !important;
+      position: static !important;
+      visibility: visible !important;
+    }
+
+    .po-items-table thead th {
+      display: table-cell !important;
+      position: static !important;
+      visibility: visible !important;
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+      color: white !important;
+    }
+
+    .po-items-table tbody {
+      display: table-row-group !important;
+    }
+
+    .po-items-table tr {
+      display: table-row !important;
+    }
+
+    .po-items-table th,
+    .po-items-table td {
+      display: table-cell !important;
+      position: static !important;
+    }
+
+    /* Fix first column (SN) - ensure proper display */
+    .po-items-table th:nth-child(1),
+    .po-items-table td:nth-child(1) {
+      position: static !important;
+      width: 4% !important;
+      min-width: 40px !important;
+      text-align: center !important;
+      background: white !important;
+      color: inherit !important;
+      border-radius: 0 !important;
+      font-weight: inherit !important;
+      z-index: auto !important;
+    }
+
+    .po-items-table th:nth-child(1) {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+      color: white !important;
+      font-weight: 600 !important;
+    }
+
+    .po-items-table td:nth-child(1):before {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* Ensure all columns have proper widths for normal view */
+    .po-items-table th:nth-child(2),
+    .po-items-table td:nth-child(2) {
+      width: 16% !important;
+    }
+
+    .po-items-table th:nth-child(3),
+    .po-items-table td:nth-child(3) {
+      width: 16% !important;
+    }
+
+    .po-items-table th:nth-child(4),
+    .po-items-table td:nth-child(4) {
+      width: 18% !important;
+      min-width: 150px !important;
+    }
+
+    .po-items-table th:nth-child(5),
+    .po-items-table td:nth-child(5) {
+      width: 22% !important;
+      min-width: 160px !important;
+    }
+
+    .po-items-table th:nth-child(6),
+    .po-items-table td:nth-child(6) {
+      width: 8% !important;
+      text-align: center !important;
+    }
+
+    .po-items-table th:nth-child(7),
+    .po-items-table td:nth-child(7) {
+      width: 6% !important;
+      text-align: center !important;
+    }
+
+    .po-items-table th:nth-child(8),
+    .po-items-table td:nth-child(8) {
+      width: 12% !important;
+      min-width: 120px !important;
+    }
+
+    .po-items-table th:nth-child(9),
+    .po-items-table td:nth-child(9) {
+      width: 10% !important;
+      min-width: 100px !important;
+    }
+
+    .po-items-table th:nth-child(10),
+    .po-items-table td:nth-child(10) {
+      width: auto !important;
+    }
+
+    /* Ensure table uses table layout in editing mode */
+    .po-items-table-container:has(tr.po-editing-row) {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .po-items-table:has(tr.po-editing-row) {
+      display: table !important;
+      width: auto !important;
+      min-width: 1200px;
+      table-layout: auto;
+    }
+
+    .po-items-table:has(tr.po-editing-row) thead {
+      display: table-header-group !important;
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      visibility: visible !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) thead tr {
+      display: table-row !important;
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      visibility: visible !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) tbody {
+      display: table-row-group !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) tr {
+      display: table-row !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) th,
+    .po-items-table:has(tr.po-editing-row) td {
+      display: table-cell !important;
+      position: static !important;
+      padding: 10px 8px;
+      vertical-align: middle !important;
+    }
+
+    /* Ensure all headers are visible and properly styled */
+    .po-items-table:has(tr.po-editing-row) th {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+      color: white !important;
+      font-weight: 600;
+      text-align: center;
+      white-space: normal;
+    }
+
+    /* Reset any mobile card layout styles */
+    .po-items-table:has(tr.po-editing-row) td:before {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* Fix first column (SN) - ensure proper display and styling */
+    .po-items-table:has(tr.po-editing-row) th:nth-child(1),
+    .po-items-table:has(tr.po-editing-row) td:nth-child(1) {
+      position: static !important;
+      background: white !important;
+      color: inherit !important;
+      width: 4% !important;
+      min-width: 40px !important;
+      text-align: center !important;
+      padding: 10px 8px !important;
+      border-radius: 0 !important;
+      font-weight: inherit !important;
+      font-size: inherit !important;
+      z-index: auto !important;
+      vertical-align: middle !important;
+    }
+
+    /* Ensure header for first column has proper styling */
+    .po-items-table:has(tr.po-editing-row) th:nth-child(1) {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+      color: white !important;
+      font-weight: 600 !important;
+    }
+
+    /* Ensure first column doesn't have pseudo-element content */
+    .po-items-table:has(tr.po-editing-row) td:nth-child(1):before {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* Ensure editing mode columns have proper min-widths */
+    .po-items-table:has(tr.po-editing-row) td:nth-child(2),
+    .po-items-table:has(tr.po-editing-row) td:nth-child(3),
+    .po-items-table:has(tr.po-editing-row) td:nth-child(4),
+    .po-items-table:has(tr.po-editing-row) td:nth-child(5) {
+      min-width: 150px !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(6) {
+      min-width: 80px !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(7) {
+      min-width: 70px !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(8) {
+      min-width: 140px !important;
+    }
+
+    .po-items-table:has(tr.po-editing-row) td:nth-child(9) {
+      /* Place */
+      min-width: 120px !important;
     }
   }
   

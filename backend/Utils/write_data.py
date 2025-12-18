@@ -145,11 +145,30 @@ def write_order_to_indent_sheet(factory, order_data, logger=None):
         
         # Get current date and time if not provided
         if order_data.get('date'):
-            order_date = order_data.get('date')
+            # Parse the provided date string and convert to YYYY-MM-DD format
+            date_str = order_data.get('date')
+            try:
+                # Try to parse common date formats
+                date_formats = ['%d/%m/%Y', '%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y', '%d/%m/%y', '%Y/%m/%d']
+                parsed_date = None
+                for fmt in date_formats:
+                    try:
+                        parsed_date = datetime.strptime(date_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+                if parsed_date:
+                    order_date = parsed_date.strftime('%Y-%m-%d')  # Use YYYY-MM-DD format
+                else:
+                    # If parsing fails, use as-is (fallback)
+                    order_date = date_str
+            except Exception as e:
+                log.warning(f"Could not parse date '{date_str}', using as-is: {e}")
+                order_date = date_str
         else:
-            # Generate date in DD/MM/YYYY format
+            # Generate date in YYYY-MM-DD format (more universally recognized)
             now = datetime.now()
-            order_date = now.strftime('%d/%m/%Y')
+            order_date = now.strftime('%Y-%m-%d')
         
         if order_data.get('time'):
             order_time = order_data.get('time')
@@ -203,29 +222,28 @@ def write_order_to_indent_sheet(factory, order_data, logger=None):
             all_values = worksheet.get_all_values()
             
             # Find the last row with data in the Date column (column index 0)
+            # Note: Headers are always on row 2
             last_row_with_data = 0
             for row_idx, row in enumerate(all_values, start=1):
                 # Check if Date column (first column) has data
-                if len(row) > 0 and row[0].strip():
+                # Skip row 2 (headers) when looking for data rows
+                if len(row) > 0 and row[0].strip() and row_idx != 2:
                     last_row_with_data = row_idx
             
-            # Check if headers exist (row 1)
-            has_headers = len(all_values) > 0 and len(all_values[0]) > 0
+            # Check if headers exist (row 2)
+            has_headers = len(all_values) >= 2 and len(all_values[1]) > 0
             
             # Calculate the next available row
             if last_row_with_data == 0:
-                # No data found
+                # No data rows found (only headers on row 2 exist)
+                # Start from row 3 (right after headers on row 2, no blank row)
                 if has_headers:
-                    # Headers exist, start from row 2
-                    next_row = 2
+                    next_row = 3
                 else:
                     # No headers, start from row 1
                     next_row = 1
-            elif last_row_with_data == 1:
-                # Only headers exist (row 1), no actual data yet
-                next_row = 2
             else:
-                # There is existing data beyond headers
+                # There is existing data beyond row 2 (actual data rows exist)
                 # Skip one row to leave a blank separator between different orders
                 next_row = last_row_with_data + 2
             

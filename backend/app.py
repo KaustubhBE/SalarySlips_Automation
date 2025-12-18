@@ -69,14 +69,14 @@ PLANT_DATA = [
     {
         "name": "Kerur",
         "document_name": "KR",
-        "material_sheet_id": "1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc",
+        "material_sheet_id": "13kLQEyVi22fFdUNJEATw4DQdKQRkR-D-SJ_NzTlTLVo",
         "kerur_store_drive_id": "1Mc8-s9hVg4QM6IQCHU30bnzddYO4f4jr",
         "kerur_reports_drive_id": "1cuL5gdl5GncegK2-FItKux7pg-D2sT--",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List UAT",
+            "RecipentsList": "Recipents List",
             "IndentList": "Indent List"
         }
     },
@@ -100,7 +100,7 @@ PLANT_DATA = [
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List UAT"
+            "RecipentsList": "Recipents List"
         }
     },
     {
@@ -2734,7 +2734,7 @@ def get_recipients_list():
         
         # Get parameters
         factory = request.args.get('factory', 'KR')
-        sheet_name = request.args.get('sheet_name', 'Recipents List UAT')
+        sheet_name = request.args.get('sheet_name', 'Recipents List')
         sheet_id = request.args.get('sheet_id')
         
         if not sheet_id:
@@ -3871,7 +3871,7 @@ def send_order_notification():
         factory = data.get('factory', 'KR')
         auto_send = data.get('autoSend', False)
         sheet_id = data.get('sheetId')
-        sheet_name = data.get('sheetName', 'Recipents List UAT')
+        sheet_name = data.get('sheetName', 'Recipents List')
         
         # If autoSend is True and no recipients provided, fetch from Google Sheets
         if auto_send and (not recipients or len(recipients) == 0):
