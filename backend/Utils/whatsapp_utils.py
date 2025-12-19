@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 class WhatsAppNodeClient:
     """Client to interact with Node.js WhatsApp service"""
     
-    def __init__(self, node_service_url: str = "http://uatwhatsapp.bajajearths.com", user_email: str = None):
+    def __init__(self, node_service_url: str = "http://whatsapp.bajajearths.com", user_email: str = None):
         self.base_url = node_service_url.rstrip('/')
         self.timeout = 3600  # 1 hour timeout for WhatsApp operations (QR scanning, login, etc.)
         # Use provided user_email or fall back to session
@@ -69,7 +69,7 @@ class WhatsAppNodeClient:
                 return False
         except requests.exceptions.ConnectionError as e:
             logging.error(f"Connection error to WhatsApp service: {e}")
-            logging.error("This usually means the service is not running on port 7083")
+            logging.error("This usually means the service is not running on port 7093")
             return False
         except requests.exceptions.Timeout as e:
             logging.error(f"Timeout error connecting to WhatsApp service: {e}")
@@ -897,7 +897,7 @@ def prepare_file_paths(file_paths, user_email=None, base_output_dir=None, is_upl
 
 
 # Configuration
-WHATSAPP_NODE_SERVICE_URL = os.getenv('WHATSAPP_NODE_SERVICE_URL', 'https://uatwhatsapp.bajajearths.com')
+WHATSAPP_NODE_SERVICE_URL = os.getenv('WHATSAPP_NODE_SERVICE_URL', 'https://whatsapp.bajajearths.com')
 
 def get_user_email_from_session(user_email: str = None) -> str:
     """

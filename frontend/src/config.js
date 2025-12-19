@@ -6,9 +6,9 @@ import axios from 'axios';
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // Default backend URL
-const DEFAULT_BACKEND_URL = 'https://uatbackendadmin.bajajearths.com';
+const DEFAULT_BACKEND_URL = 'https://adminbackend.bajajearths.com';
 
-const DEFAULT_WHATSAPP_URL = 'https://uatwhatsapp.bajajearths.com';
+const DEFAULT_WHATSAPP_URL = 'https://whatsapp.bajajearths.com';
 
 // Determine the base API URL
 const getApiBaseUrl = () => {
@@ -647,7 +647,7 @@ export const PLANT_DATA = [
   },
   { 
     name: 'Kerur', 
-    material_sheet_id: '13kLQEyVi22fFdUNJEATw4DQdKQRkR-D-SJ_NzTlTLVo',
+    material_sheet_id: '1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc',
     document_name: 'KR',
     sheet_name: {
       RecipentsList: 'Recipents List',

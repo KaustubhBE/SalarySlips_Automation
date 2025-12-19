@@ -69,7 +69,7 @@ PLANT_DATA = [
     {
         "name": "Kerur",
         "document_name": "KR",
-        "material_sheet_id": "13kLQEyVi22fFdUNJEATw4DQdKQRkR-D-SJ_NzTlTLVo",
+        "material_sheet_id": "1IcgUtCOah9Vi5Z3lI4wxhXoXSTQTWvYkXhSxHt7-5oc",
         "kerur_store_drive_id": "1Mc8-s9hVg4QM6IQCHU30bnzddYO4f4jr",
         "kerur_reports_drive_id": "1cuL5gdl5GncegK2-FItKux7pg-D2sT--",
         "sheet_name": {
@@ -536,7 +536,7 @@ app.config.update(
 logger.info("Flask app initialized")
 
 # Frontend URL
-# FRONTEND_URL = "http://uatadmin.bajajearths.com"
+# FRONTEND_URL = "http://admin.bajajearths.com"
 # _frontend_opened = False
 
 # Load configurations from environment variables
@@ -575,9 +575,9 @@ from flask_cors import CORS
 # CORS Configuration
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_ORIGINS'] = [
-    "https://uatadmin.bajajearths.com",
-    "https://uatwhatsapp.bajajearths.com",
-    "http://uatadmin.bajajearths.com",
+    "https://admin.bajajearths.com",
+    "https://whatsapp.bajajearths.com",
+    "http://admin.bajajearths.com",
 ]
 app.config['CORS_METHODS'] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 app.config['CORS_ALLOW_HEADERS'] = ["Content-Type", "Authorization", "X-User-Role", "X-User-Email", "Accept", "Origin", "X-Requested-With"]
@@ -624,7 +624,7 @@ def handle_options(endpoint):
     logger.info(f"Request headers: {dict(request.headers)}")
     
     response = make_response()
-    response.headers.add("Access-Control-Allow-Origin", "https://uatadmin.bajajearths.com")
+    response.headers.add("Access-Control-Allow-Origin", "https://admin.bajajearths.com")
     response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-User-Email, Accept, Origin, X-Requested-With")
     response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
     response.headers.add("Access-Control-Allow-Credentials", "true")
@@ -4316,7 +4316,7 @@ if __name__ == "__main__":
         logger.info("Directories ensured")
         
         # Start Flask app
-        app.run(host="0.0.0.0", port=7082, debug=True, use_reloader=False)
+        app.run(host="0.0.0.0", port=7092, debug=True, use_reloader=False)
     except Exception as e:
         logger.error("Failed to start server: {}".format(str(e)), exc_info=True)
         sys.exit(1)
