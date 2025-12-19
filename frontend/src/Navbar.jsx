@@ -107,17 +107,18 @@ const Navbar = ({ onLogout }) => {
     const factoryShortCodes = {
       'gulbarga': 'gb',
       'kerur': 'kr',
-      'humnabad': 'hb',
+      'newplant': 'np',
       'omkar': 'om',
       'padmavati': 'pv',
-      'headoffice': 'ho'
+      'headoffice': 'ho',
+      'fertilizer': 'ft'
     };
     const shortCode = factoryShortCodes[factoryKey] || '';
     
     // Convert to the format expected by the navbar
     return userDepartments.map(deptKey => {
       // Remove factory prefix to get base department key
-      const baseDeptKey = deptKey.replace(/^(gb|kr|hb|om|pv|ho)_/, '');
+      const baseDeptKey = deptKey.replace(/^(gb|kr|np|om|pv|ho)_/, '');
       
       // Store both the base key and the prefixed key
       const prefixedDeptKey = `${shortCode}_${baseDeptKey}`;
@@ -140,10 +141,11 @@ const Navbar = ({ onLogout }) => {
     const factoryShortCodes = {
       'gulbarga': 'gb',
       'kerur': 'kr',
-      'humnabad': 'hb',
+      'newplant': 'np',
       'omkar': 'om',
       'padmavati': 'pv',
-      'headoffice': 'ho'
+      'headoffice': 'ho',
+      'fertilizer': 'ft'
     };
     const shortCode = factoryShortCodes[factoryKey] || '';
     

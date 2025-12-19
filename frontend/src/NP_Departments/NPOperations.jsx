@@ -4,16 +4,16 @@ import { useAuth } from '../Components/AuthContext';
 import '../App.css';
 import BackButton from '../Components/BackButton';
 
-const HBOperations = () => {
+const NPOperations = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HB Operations department (only existing services)
-  const krOperationsServices = [
-    { key: 'hb_general_reports', name: 'General Reports', route: '/humnabad/hb_operations/hb_general_reports' }
+  // Static services for NP Operations department (only existing services)
+  const npOperationsServices = [
+    { key: 'np_general_reports', name: 'General Reports', route: '/newplant/np_operations/np_general_reports' }
   ];
 
   // Get accessible services based on user permissions
@@ -22,12 +22,12 @@ const HBOperations = () => {
     
     // Admin has access to everything
     if (isAdmin) {
-      return krOperationsServices;
+      return npOperationsServices;
     }
     
     // For regular users, check which services they can access
-    return krOperationsServices.filter(service => 
-      canAccessService(service.key, 'humnabad', 'operations')
+    return npOperationsServices.filter(service => 
+      canAccessService(service.key, 'newplant', 'operations')
     );
   };
 
@@ -42,7 +42,7 @@ const HBOperations = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/humnabad');
+    navigate('/newplant');
   };
 
   if (!user) {
@@ -89,14 +89,14 @@ const HBOperations = () => {
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
             <strong>Debug Info:</strong><br/>
             User Role: {user?.role}<br/>
-            Factory: Humnabad<br/>
+            Factory: New Plant<br/>
             Department: Operations<br/>
             Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
             User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
             Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
           </div>
         )}
-        <h2>Operations - Humnabad</h2>
+        <h2>Operations - New Plant</h2>
         <h3>Available Services ({accessibleServices.length}):</h3>
         
         {/* Service Navigation Buttons */}
@@ -118,4 +118,4 @@ const HBOperations = () => {
   );
 };
 
-export default HBOperations;
+export default NPOperations;

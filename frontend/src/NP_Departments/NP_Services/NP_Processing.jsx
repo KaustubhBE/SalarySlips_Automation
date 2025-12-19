@@ -11,11 +11,11 @@ import { getApiUrl, makeApiCall, ENDPOINTS } from '../../config.js';
 import { useAuth } from '../../Components/AuthContext.jsx';
 import axios from 'axios';
 import AttachmentSequence from '../../Components/AttachmentSequence.jsx';
-import BackButton from '../../Components/BackButton';
+import BackButton from '../../Components/BackButton.jsx';
 
 const plantData = [
   { 
-    name: 'Humnabad', 
+    name: 'New Plant', 
     employee_drive_id: '1gAHUISFRUvxoskWia9WLoJw-UGzyH_TFO8yDZ9ifqMc', 
     employee_salary_sheet_id_2024_25: '15ouV8H0JGCHD1CTeVaQgOgIODMsI6dXolRyEJOju53U', 
     employee_salary_sheet_id_2025_26: ''
@@ -351,8 +351,8 @@ function Processing({ mode = 'single' }) {
     if (userRole === 'admin') return true;
     
     // Check for specific processing permissions using the enhanced hasPermission function
-    const requiredPermission = mode === 'single' ? 'hb_single_processing' : 'hb_batch_processing';
-    return hasPermission(requiredPermission, 'humnabad', 'humanresource');
+    const requiredPermission = mode === 'single' ? 'np_single_processing' : 'np_batch_processing';
+    return hasPermission(requiredPermission, 'newplant', 'humanresource');
   };
 
   // If user doesn't have permission, show access denied message
@@ -380,7 +380,7 @@ function Processing({ mode = 'single' }) {
         <Route path="" element={
           <div className="input-elements">
             {/* Back Button Section - Always at top-left */}
-            <BackButton label="Back to Department" to="/humnabad/hb_humanresource" />
+            <BackButton label="Back to Department" to="/newplant/np_humanresource" />
             {mode === 'single' && (
               <>
                 <label htmlFor="employeeDetails">Enter Employee Code:</label>

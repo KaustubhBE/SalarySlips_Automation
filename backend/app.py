@@ -84,45 +84,52 @@ PLANT_DATA = [
         "name": "Gulbarga",
         "document_name": "GB",
         "material_sheet_id": "1EkjLEEMeZTJoMVDpmtxBVQ_LY_5u99J76PPMwodvD5Y",
-        "gulbarga_store_drive_id": "[TO_BE_ASSIGNED]",
-        "sheet_name": {
-            "MaterialList": "Material List",
-            "PartyList": "Party List",
-            "AuthorityList": "List"
-        }
-    },
-    {
-        "name": "Humnabad",
-        "document_name": "HB",
-        "material_sheet_id": "1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw",
-        "humnabad_store_drive_id": "[TO_BE_ASSIGNED]",
+        "gulbarga_store_drive_id": "1aD3NlDKHTe0KLwRIZC1yr-V2HJiMQrRZ",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List",
-            "RecipentsList": "Recipents List"
+            "RecipentsList": "Recipents List",
+            "IndentList": "Indent List"
+        }
+    },
+    {
+        "name": "New Plant",
+        "document_name": "NP",
+        "material_sheet_id": "1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw",
+        "newplant_store_drive_id": "1ci36TH4sWGmxzeeu5Wh68yRsPFBlmtRZ",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List",
+            "IndentList": "Indent List"
         }
     },
     {
         "name": "Omkar",
         "document_name": "OM",
         "material_sheet_id": "15MSsB7qXCyKWHvdJtUJuivlgy6khA2dCXxNXuY-sowg",
-        "omkar_store_drive_id": "[TO_BE_ASSIGNED]",
+        "omkar_store_drive_id": "1h_mCh9B_3NbH-XuJ13r3LFMxHIN_9_ZY",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
-            "AuthorityList": "List"
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List",
+            "IndentList": "Indent List"
         }
     },
     {
         "name": "Padmavati",
         "document_name": "PV",
-        "material_sheet_id": "",
-        "padmavati_store_drive_id": "[TO_BE_ASSIGNED]",
+        "material_sheet_id": "1or2svgyGemGxTpb2SG5z7XLYnXgIbZ1gzogKZaAUixE",
+        "padmavati_store_drive_id": "11rC1g4qBGKSHC5p1CUgxPW2Qzi7h16ks",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
-            "AuthorityList": "List"
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List",
+            "IndentList": "Indent List"
         }
     },
     {
@@ -134,6 +141,19 @@ PLANT_DATA = [
             "MaterialList": "Material List",
             "PartyList": "Party List",
             "AuthorityList": "List"
+        }
+    },
+    {
+        "name": "Fertilizer",
+        "document_name": "FT",
+        "material_sheet_id": "",
+        "fertilizer_store_drive_id": "[TO_BE_ASSIGNED]",
+        "sheet_name": {
+            "MaterialList": "Material List",
+            "PartyList": "Party List",
+            "AuthorityList": "List",
+            "RecipentsList": "Recipents List",
+            "IndentList": "Indent List"
         }
     }
 ]
@@ -219,7 +239,7 @@ FACTORY_RBAC_CONFIG = {
             'store': {
                 'name': 'Store',
                 'services': {
-                    'gb_place_order': {'name': 'Place Order', 'permission': 'gb_place_order'},
+                    'gb_purchase_indent': {'name': 'Purchase Indent', 'permission': 'gb_purchase_indent'},
                     'gb_add_material_list': {'name': 'Add Material', 'permission': 'gb_add_material_list'},
                     'gb_delete_material_list': {'name': 'Material List', 'permission': 'gb_delete_material_list'},
                     'gb_material_inward': {'name': 'Material Inward', 'permission': 'gb_material_inward'},
@@ -248,7 +268,7 @@ FACTORY_RBAC_CONFIG = {
             'store': {
                 'name': 'Store',
                 'services': {
-                    'kr_place_order': {'name': 'Place Order', 'permission': 'kr_place_order'},
+                    'kr_purchase_indent': {'name': 'Purchase Indent', 'permission': 'kr_purchase_indent'},
                     'kr_add_material_list': {'name': 'Material List', 'permission': 'kr_add_material_list'},
                     'kr_delete_material_list': {'name': 'Material List', 'permission': 'kr_delete_material_list'},
                     'kr_material_inward': {'name': 'Material Inward', 'permission': 'kr_material_inward'},
@@ -272,31 +292,31 @@ FACTORY_RBAC_CONFIG = {
             }
         }
     },
-    'humnabad': {
-        'name': 'Humnabad',
-        'document_name': 'HB',
+    'newplant': {
+        'name': 'New Plant',
+        'document_name': 'NP',
         'departments': {
             'store': {
                 'name': 'Store',
                 'services': {
-                    'hb_place_order': {'name': 'Place Order', 'permission': 'hb_place_order'},
-                    'hb_add_material_list': {'name': 'Add Material', 'permission': 'hb_add_material_list'},
-                    'hb_delete_material_list': {'name': 'Material List', 'permission': 'hb_delete_material_list'},
-                    'hb_material_inward': {'name': 'Material Inward', 'permission': 'hb_material_inward'},
-                    'hb_material_outward': {'name': 'Material Outward', 'permission': 'hb_material_outward'}
+                    'np_purchase_indent': {'name': 'Purchase Indent', 'permission': 'np_purchase_indent'},
+                    'np_add_material_list': {'name': 'Add Material', 'permission': 'np_add_material_list'},
+                    'np_delete_material_list': {'name': 'Material List', 'permission': 'np_delete_material_list'},
+                    'np_material_inward': {'name': 'Material Inward', 'permission': 'np_material_inward'},
+                    'np_material_outward': {'name': 'Material Outward', 'permission': 'np_material_outward'}
                 }
             },
             'humanresource': {
                 'name': 'Human Resource',
                 'services': {
-                    'hb_single_processing': {'name': 'Single Processing', 'permission': 'hb_single_processing'},
-                    'hb_batch_processing': {'name': 'Batch Processing', 'permission': 'hb_batch_processing'}
+                    'np_single_processing': {'name': 'Single Processing', 'permission': 'np_single_processing'},
+                    'np_batch_processing': {'name': 'Batch Processing', 'permission': 'np_batch_processing'}
                 }
             },
             'operations': {
                 'name': 'Operations',
                 'services': {
-                    'hb_general_reports': {'name': 'General Reports', 'permission': 'hb_general_reports'}
+                    'np_general_reports': {'name': 'General Reports', 'permission': 'np_general_reports'}
                 }
             }
         }
@@ -308,7 +328,7 @@ FACTORY_RBAC_CONFIG = {
             'store': {
                 'name': 'Store',
                 'services': {
-                    'om_place_order': {'name': 'Place Order', 'permission': 'om_place_order'},
+                    'om_purchase_indent': {'name': 'Purchase Indent', 'permission': 'om_purchase_indent'},
                     'om_add_material_list': {'name': 'Add Material', 'permission': 'om_add_material_list'},
                     'om_delete_material_list': {'name': 'Material List', 'permission': 'om_delete_material_list'},
                     'om_material_inward': {'name': 'Material Inward', 'permission': 'om_material_inward'},
@@ -337,7 +357,7 @@ FACTORY_RBAC_CONFIG = {
             'store': {
                 'name': 'Store',
                 'services': {
-                    'pv_place_order': {'name': 'Place Order', 'permission': 'pv_place_order'},
+                    'pv_purchase_indent': {'name': 'Purchase Indent', 'permission': 'pv_purchase_indent'},
                     'pv_add_material_list': {'name': 'Add Material', 'permission': 'pv_add_material_list'},
                     'pv_delete_material_list': {'name': 'Material List', 'permission': 'pv_delete_material_list'},
                     'pv_material_inward': {'name': 'Material Inward', 'permission': 'pv_material_inward'},
@@ -395,6 +415,35 @@ FACTORY_RBAC_CONFIG = {
                 }
             }
         }
+    },
+    'fertilizer': {
+        'name': 'Fertilizer',
+        'document_name': 'FT',
+        'departments': {
+            'store': {
+                'name': 'Store',
+                'services': {
+                    'ft_purchase_indent': {'name': 'Purchase Indent', 'permission': 'ft_purchase_indent'},
+                    'ft_add_material_list': {'name': 'Add Material', 'permission': 'ft_add_material_list'},
+                    'ft_delete_material_list': {'name': 'Material List', 'permission': 'ft_delete_material_list'},
+                    'ft_material_inward': {'name': 'Material Inward', 'permission': 'ft_material_inward'},
+                    'ft_material_outward': {'name': 'Material Outward', 'permission': 'ft_material_outward'}
+                }
+            },
+            'humanresource': {
+                'name': 'Human Resource',
+                'services': {
+                    'ft_single_processing': {'name': 'Single Processing', 'permission': 'ft_single_processing'},
+                    'ft_batch_processing': {'name': 'Batch Processing', 'permission': 'ft_batch_processing'}
+                }
+            },
+            'operations': {
+                'name': 'Operations',
+                'services': {
+                    'ft_general_reports': {'name': 'General Reports', 'permission': 'ft_general_reports'}
+                }
+            }
+        }
     }
 }
 
@@ -413,7 +462,7 @@ def generate_permission_metadata(role, user_permission_metadata=None):
         
         for factory in all_factories:
             factory_config = FACTORY_RBAC_CONFIG[factory]
-            factory_short_form = factory_config['document_name'].lower()  # e.g., 'gb', 'kr', 'hb'
+            factory_short_form = factory_config['document_name'].lower()  # e.g., 'gb', 'kr', 'np'
             
             factory_departments = list(factory_config['departments'].keys())
             # Store departments with factory short form prefix (e.g., gb_store, kr_humanresource)

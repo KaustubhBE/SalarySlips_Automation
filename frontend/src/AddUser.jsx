@@ -264,14 +264,14 @@ function AddUser() {
       services: {}
     };
 
-    // Process each tree permission key (e.g., "kerur.store.kr_place_order")
+    // Process each tree permission key (e.g., "kerur.store.kr_purchase_indent")
     Object.keys(treePermissions).forEach(key => {
       if (treePermissions[key] === true) {
         const parts = key.split('.');
         if (parts.length >= 3) {
           const factory = parts[0];
           const department = parts[1];
-          const serviceKey = parts[2]; // This is the full service key like "kr_place_order"
+          const serviceKey = parts[2]; // This is the full service key like "kr_purchase_indent"
 
           // Add factory to factories array
           if (!permissionMetadata.factories.includes(factory)) {

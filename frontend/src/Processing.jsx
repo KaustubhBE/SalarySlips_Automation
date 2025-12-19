@@ -32,7 +32,7 @@ const plantData = [
     employee_salary_sheet_id_2025_26: ''
   },
   { 
-    name: 'Humnabad', 
+    name: 'New Plant', 
     employee_drive_id: '1gAHUISFRUvxoskWia9WLoJw-UGzyH_TFO8yDZ9ifqMc', 
     employee_salary_sheet_id_2024_25: '15ouV8H0JGCHD1CTeVaQgOgIODMsI6dXolRyEJOju53U', 
     employee_salary_sheet_id_2025_26: ''

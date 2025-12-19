@@ -12,7 +12,7 @@ const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
 // Utility Functions
 
-const HB_MaterialInward = () => {
+const NP_MaterialInward = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -354,7 +354,7 @@ const HB_MaterialInward = () => {
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Fetching UOM from backend with payload:', payload)
@@ -379,7 +379,7 @@ const HB_MaterialInward = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'HB'
+            department: 'NP'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -642,20 +642,20 @@ const HB_MaterialInward = () => {
       setPartyLoading(true)
       setPlacesLoading(true)
       
-      // Find the Humnabad plant data to get the sheet ID
-      const humnabadPlant = PLANT_DATA.find(plant => plant.document_name === 'HB')
-      const sheetId = humnabadPlant?.material_sheet_id
+      // Find the New Plant plant data to get the sheet ID
+      const newplantPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = newplantPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Humnabad plant')
-        setMessage('No Google Sheet configuration found for Humnabad plant')
+        console.error('No sheet ID found for New Plant plant')
+        setMessage('No Google Sheet configuration found for New Plant plant')
         setMessageType('error')
         return
       }
       
       const response = await axios.get(getApiUrl('get_party_place_data'), {
         params: { 
-          factory: 'HB',
+          factory: 'NP',
           sheet_name: 'Party List',
           sheet_id: sheetId
         }
@@ -689,7 +689,7 @@ const HB_MaterialInward = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'HB' }
+          params: { factory: 'NP' }
         })
         
         if (response.data.success) {
@@ -847,7 +847,7 @@ const HB_MaterialInward = () => {
             partyName: generalFormData.partyName,
             place: generalFormData.place,
             timestamp: new Date().toISOString(),
-            department: 'HB',
+            department: 'NP',
             type: 'inward'
           }
 
@@ -915,7 +915,7 @@ const HB_MaterialInward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Inward Form</h2>
@@ -929,9 +929,9 @@ const HB_MaterialInward = () => {
   }
 
   return (
-    <div className="place_order-container">
+    <div className="purchase_indent-container">
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/humnabad/hb_store" />
+      <BackButton label="Back to Store" to="/newplant/np_store" />
       
       <div className="form-header">
         <div className="header-center">
@@ -1400,4 +1400,4 @@ const HB_MaterialInward = () => {
   )
 }
 
-export default HB_MaterialInward
+export default NP_MaterialInward

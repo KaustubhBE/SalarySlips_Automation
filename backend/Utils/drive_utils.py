@@ -122,17 +122,7 @@ def upload_file_to_drive(file_path, folder_id, file_name, mime_type='application
 
 
 def get_or_create_folder(parent_folder_id, folder_name, logger=None):
-    """
-    Get existing folder or create new one in parent folder.
     
-    Args:
-        parent_folder_id: Parent folder ID
-        folder_name: Name of the folder to get/create
-        logger: Optional logger instance (uses logging if not provided)
-        
-    Returns:
-        tuple: (success: bool, folder_id: str or None, error_message: str or None)
-    """
     log = logger if logger else logging
     
     try:
@@ -196,16 +186,7 @@ def get_or_create_folder(parent_folder_id, folder_name, logger=None):
 
 
 def list_folders_in_parent(parent_folder_id, logger=None):
-    """
-    List all folders in a parent folder.
     
-    Args:
-        parent_folder_id: Parent folder ID
-        logger: Optional logger instance (uses logging if not provided)
-        
-    Returns:
-        list: List of folder dicts with 'id' and 'name', or empty list on error
-    """
     log = logger if logger else logging
     
     try:
@@ -230,17 +211,7 @@ def list_folders_in_parent(parent_folder_id, logger=None):
 
 
 def get_month_folder_id(base_folder_id, date_input, logger=None):
-    """
-    Get or create month-wise folder (e.g., "Aug 25", "Jul 25").
     
-    Args:
-        base_folder_id: Base folder ID (e.g., "S1 RR Reports")
-        date_input: Date string (e.g., "25/08/25", "2025-08-25") or datetime object
-        logger: Optional logger instance (uses logging if not provided)
-        
-    Returns:
-        tuple: (success: bool, folder_id: str or None, error_message: str or None)
-    """
     log = logger if logger else logging
     
     try:
@@ -283,18 +254,7 @@ def get_month_folder_id(base_folder_id, date_input, logger=None):
 
 
 def upload_reactor_report_to_drive(pdf_path, base_folder_id, input_date, logger=None):
-    """
-    Upload reactor report PDF to month-wise folder in Google Drive.
     
-    Args:
-        pdf_path: Path to the PDF file
-        base_folder_id: Base folder ID (e.g., "1cuL5gdl5GncegK2-FItKux7pg-D2sT--")
-        input_date: Date string (e.g., "25/08/25", "2025-08-25")
-        logger: Optional logger instance (uses logging if not provided)
-        
-    Returns:
-        tuple: (success: bool, file_id: str or None, folder_id: str or None, error_message: str or None)
-    """
     log = logger if logger else logging
     
     try:
@@ -421,17 +381,7 @@ def get_financial_year_from_date(date_string):
 
 
 def get_month_sequence_and_name(date_string):
-    """
-    Get month sequence (1-12 for financial year) and formatted month name.
-    Financial year months: April (1), May (2), ..., March (12)
-    
-    Args:
-        date_string: Date string in format "DD/MM/YYYY, HH:MM:SS AM/PM" or similar
-        
-    Returns:
-        tuple: (sequence: int, month_abbr: str, year_2digit: str) or (None, None, None) if parsing fails
-        Example: (4, "Jul", "24") for July 2024
-    """
+   
     try:
         # Parse date string
         date_formats = [
@@ -479,13 +429,13 @@ def get_process_folder_name(process_type):
     Get process-specific folder name.
     
     Args:
-        process_type: "place_order", "material_inward", or "material_outward"
+        process_type: "purchase_indent", "material_inward", or "material_outward"
         
     Returns:
         str: Folder name (e.g., "1. Indents") or None if invalid
     """
     process_folder_map = {
-        "place_order": "1. Indents",
+        "purchase_indent": "1. Indents",
         "material_inward": "2. Material Inward",
         "material_outward": "3. Material Outward"
     }
@@ -494,22 +444,7 @@ def get_process_folder_name(process_type):
 
 
 def get_or_create_hierarchical_folders(base_drive_id, financial_year, month_sequence, month_abbr, year_2digit, process_folder_name, logger=None):
-    """
-    Get or create hierarchical folder structure:
-    Base Drive ID -> Financial Year -> Month Folder -> Process Folder
     
-    Args:
-        base_drive_id: Base Drive ID (e.g., "KR Store")
-        financial_year: Financial year string (e.g., "2024 - 2025")
-        month_sequence: Month sequence in FY (1-12)
-        month_abbr: Month abbreviation (e.g., "Jul")
-        year_2digit: 2-digit year (e.g., "24")
-        process_folder_name: Process folder name (e.g., "1. Indents")
-        logger: Optional logger instance
-        
-    Returns:
-        tuple: (success: bool, final_folder_id: str or None, error_message: str or None)
-    """
     log = logger if logger else logging
     
     try:
@@ -557,23 +492,7 @@ def get_or_create_hierarchical_folders(base_drive_id, financial_year, month_sequ
 
 
 def upload_store_document_to_drive(pdf_path, factory, date_string, process_type, file_name=None, logger=None):
-    """
-    Upload store process document (Place Order, Material Inward, Material Outward) to hierarchical Drive structure.
     
-    Folder structure: {Base Drive ID}/{Financial Year}/{Month Sequence. Month YY}/{Process Folder}/{PDF}
-    Example: KR Store/2024 - 2025/4. Jul 24/1. Indents/order_KR_12345.pdf
-    
-    Args:
-        pdf_path: Path to the PDF file
-        factory: Factory code (KR, GB, HB, OM, PV, HO)
-        date_string: Date string (e.g., "15/07/2024, 10:30:45 AM")
-        process_type: "place_order", "material_inward", or "material_outward"
-        file_name: Custom file name (optional, will use default if not provided)
-        logger: Optional logger instance
-        
-    Returns:
-        tuple: (success: bool, file_id: str or None, folder_id: str or None, error_message: str or None)
-    """
     log = logger if logger else logging
     
     try:
@@ -585,14 +504,35 @@ def upload_store_document_to_drive(pdf_path, factory, date_string, process_type,
             from app import PLANT_DATA
         
         # Get plant configuration
+        # Try to match by document_name (case-insensitive) or by plant name (case-insensitive)
         plant_config = None
+        factory_normalized = str(factory).strip().upper() if factory else ""
+        
         for plant in PLANT_DATA:
-            if plant.get("document_name") == factory:
+            document_name = str(plant.get("document_name", "")).strip().upper()
+            plant_name = str(plant.get("name", "")).strip().upper()
+            
+            # Match by document_name (case-insensitive)
+            if document_name == factory_normalized:
                 plant_config = plant
+                log.info(f"Matched factory '{factory}' to plant '{plant.get('name')}' by document_name")
+                break
+            # Also try matching by plant name (case-insensitive)
+            elif plant_name == factory_normalized:
+                plant_config = plant
+                log.info(f"Matched factory '{factory}' to plant '{plant.get('name')}' by plant name")
                 break
         
         if not plant_config:
-            error_msg = f"Plant configuration not found for factory: {factory}"
+            # Generate helpful error message with available options
+            available_factories = []
+            for plant in PLANT_DATA:
+                doc_name = plant.get("document_name", "")
+                plant_name = plant.get("name", "")
+                if doc_name:
+                    available_factories.append(f"{doc_name} ({plant_name})")
+            
+            error_msg = f"Plant configuration not found for factory: '{factory}'. Available factories: {', '.join(available_factories)}"
             log.error(error_msg)
             return False, None, None, error_msg
         
@@ -604,13 +544,43 @@ def upload_store_document_to_drive(pdf_path, factory, date_string, process_type,
             log.error(error_msg)
             return False, None, None, error_msg
         
-        # Convert plant name to lowercase and replace spaces with underscores
-        plant_name_key = plant_name.lower().replace(" ", "_")
-        store_drive_id_key = f"{plant_name_key}_store_drive_id"
-        base_drive_id = plant_config.get(store_drive_id_key)
+        # Try multiple key variations to handle different naming conventions
+        # 1. Replace spaces with underscores: "New Plant" -> "new_plant_store_drive_id"
+        # 2. Remove all spaces: "New Plant" -> "newplant_store_drive_id"
+        # 3. Fallback: Search all keys matching *_store_drive_id pattern
+        plant_name_lower = plant_name.lower()
+        key_variations = [
+            f"{plant_name_lower.replace(' ', '_')}_store_drive_id",  # "new_plant_store_drive_id"
+            f"{plant_name_lower.replace(' ', '')}_store_drive_id",   # "newplant_store_drive_id"
+        ]
+        
+        base_drive_id = None
+        matched_key = None
+        
+        # Try each key variation
+        for key_variant in key_variations:
+            drive_id = plant_config.get(key_variant)
+            if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                base_drive_id = drive_id
+                matched_key = key_variant
+                log.info(f"Found store drive ID using key: {matched_key}")
+                break
+        
+        # Fallback: Search all keys in plant_config for *_store_drive_id pattern
+        if not base_drive_id:
+            for key in plant_config.keys():
+                if key.endswith("_store_drive_id"):
+                    drive_id = plant_config.get(key)
+                    if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                        base_drive_id = drive_id
+                        matched_key = key
+                        log.info(f"Found store drive ID using fallback key: {matched_key}")
+                        break
         
         if not base_drive_id or base_drive_id == "[TO_BE_ASSIGNED]":
-            error_msg = f"Store Drive ID not configured for factory: {factory} (plant: {plant_name}). Please configure {store_drive_id_key} in PLANT_DATA"
+            # Generate helpful error message with available keys
+            available_keys = [k for k in plant_config.keys() if k.endswith("_store_drive_id")]
+            error_msg = f"Store Drive ID not configured for factory: {factory} (plant: {plant_name}). Tried keys: {key_variations}. Available store_drive_id keys in PLANT_DATA: {available_keys}"
             log.error(error_msg)
             return False, None, None, error_msg
         

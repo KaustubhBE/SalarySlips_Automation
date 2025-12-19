@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './HB_Services/HB_Processing';
+import Processing from './NP_Services/NP_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
@@ -9,36 +9,36 @@ import Inventory from '../Inventory';
 import '../App.css';
 import BackButton from '../Components/BackButton';
 
-const HBHumanResource = () => {
+const NPHumanResource = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HB Human Resource department (only existing services)
-  const hbHRServices = [
-    { key: 'hb_single_processing', name: 'Single Processing', route: '/humnabad/hb_humanresource/hb_single_processing' },
-    { key: 'hb_batch_processing', name: 'Batch Processing', route: '/humnabad/hb_humanresource/hb_batch_processing' }
+  // Static services for NP Human Resource department (only existing services)
+  const npHRServices = [
+    { key: 'np_single_processing', name: 'Single Processing', route: '/newplant/np_humanresource/np_single_processing' },
+    { key: 'np_batch_processing', name: 'Batch Processing', route: '/newplant/np_humanresource/np_batch_processing' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBHumanResource.jsx - getAccessibleServices called:', {
+    console.log('NPHumanResource.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hbHRServices;
+      return npHRServices;
     }
     
     // For regular users, check which services they can access
-    return hbHRServices.filter(service => 
-      canAccessService(service.key, 'humnabad', 'humanresource')
+    return npHRServices.filter(service => 
+      canAccessService(service.key, 'newplant', 'humanresource')
     );
   };
 
@@ -52,7 +52,7 @@ const HBHumanResource = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'humnabad', 'humanresource');
+    return canAccessService(serviceKey, 'newplant', 'humanresource');
   };
 
   // Check if user is authenticated
@@ -61,8 +61,8 @@ const HBHumanResource = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for HB HR services
-      console.log('HBHumanResource.jsx - Navigating to service:', {
+      // Use new navigation pattern for NP HR services
+      console.log('NPHumanResource.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -72,7 +72,7 @@ const HBHumanResource = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/humnabad');
+    navigate('/newplant');
   };
 
   if (!user) {
@@ -109,16 +109,16 @@ const HBHumanResource = () => {
 
   return (
     <Routes>
-      <Route path="hb_single_processing/*" element={
-        isAuthenticated && hasUserPermission('hb_single_processing') ? 
+      <Route path="np_single_processing/*" element={
+        isAuthenticated && hasUserPermission('np_single_processing') ? 
           <Processing mode="single" /> : 
-          <Navigate to="/humnabad" replace />
+          <Navigate to="/newplant" replace />
       } />
 
-      <Route path="hb_batch_processing/*" element={
-        isAuthenticated && hasUserPermission('hb_batch_processing') ? 
+      <Route path="np_batch_processing/*" element={
+        isAuthenticated && hasUserPermission('np_batch_processing') ? 
           <Processing mode="batch" /> : 
-          <Navigate to="/humnabad" replace />
+          <Navigate to="/newplant" replace />
       } />
       
       {/* Default Department View */}
@@ -134,14 +134,14 @@ const HBHumanResource = () => {
               <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
                 <strong>Debug Info:</strong><br/>
                 User Role: {user?.role}<br/>
-                Factory: Humnabad<br/>
+                Factory: New Plant<br/>
                 Department: Human Resource<br/>
                 Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
                 User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
                 Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
               </div>
             )}
-            <h2>Human Resource - Humnabad</h2>
+            <h2>Human Resource - New Plant</h2>
             <h3>Available Services ({accessibleServices.length}):</h3>
             
             {/* Service Navigation Buttons */}
@@ -165,4 +165,4 @@ const HBHumanResource = () => {
   );
 };
 
-export default HBHumanResource;
+export default NPHumanResource;

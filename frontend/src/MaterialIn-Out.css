@@ -18,7 +18,7 @@
 }
 
 /* Container for material forms (used by KR_MaterialInward) */
-.place_order-container {
+.purchase_indent-container {
   padding: 0;
   max-width: 1200px;
   margin: 0 auto;
@@ -360,7 +360,7 @@
     box-sizing: border-box;
   }
   
-  .place_order-container {
+  .purchase_indent-container {
     max-width: 100%;
     box-sizing: border-box;
   }
@@ -460,7 +460,7 @@
     box-sizing: border-box;
   }
   
-  .place_order-container {
+  .purchase_indent-container {
     padding: 0;
     max-width: 100%;
     box-sizing: border-box;
@@ -612,7 +612,7 @@
     font-size: 12px;
   }
   
-  /* Center the Add Item button on mobile just like Place Order */
+  /* Center the Add Item button on mobile just like Purchase Indent */
   .mio-add-item-group {
     width: 100%;
     justify-content: center;
@@ -814,7 +814,7 @@
     box-sizing: border-box;
   }
   
-  .place_order-container {
+  .purchase_indent-container {
     padding: 0;
     max-width: 100%;
     box-sizing: border-box;

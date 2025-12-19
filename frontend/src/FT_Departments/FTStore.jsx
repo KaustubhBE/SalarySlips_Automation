@@ -1,43 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
+import FT_PurchaseIndent from './FT_Services/FT_PurchaseIndent';
+import FT_MaterialInward from './FT_Services/FT_MaterialInward';
+import FT_MaterialOutward from './FT_Services/FT_MaterialOutward';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 import BackButton from '../Components/BackButton';
 
-const PVStore = () => {
+const FTStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for PV Store department (only existing services)
-  const pvStoreServices = [
-    { key: 'pv_purchase_indent', name: 'Purchase Indent', route: '/padmavati/pv_store/pv_purchase_indent' },
-    // { key: 'pv_add_material_list', name: 'Add Material', route: '/padmavati/pv_store/pv_add_material_list' },
-    // { key: 'pv_delete_material_list', name: 'Delete Material', route: '/padmavati/pv_store/pv_delete_material_list' },
-    // { key: 'pv_material_inward', name: 'Material Inward', route: '/padmavati/pv_store/pv_material_inward' },
-    // { key: 'pv_material_outward', name: 'Material Outward', route: '/padmavati/pv_store/pv_material_outward' }
+  // Static services for FT Store department (only existing services)
+  const ftStoreServices = [
+    { key: 'ft_purchase_indent', name: 'Purchase Indent', route: '/fertilizer/ft_store/ft_purchase_indent' },
+    // { key: 'ft_material_inward', name: 'Material Inward', route: '/fertilizer/ft_store/ft_material_inward' },
+    // { key: 'ft_material_outward', name: 'Material Outward', route: '/fertilizer/ft_store/ft_material_outward' },
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('PVStore.jsx - getAccessibleServices called:', {
+    console.log('FTStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return pvStoreServices;
+      return ftStoreServices;
     }
     
     // For regular users, check which services they can access
-    return pvStoreServices.filter(service => 
-      canAccessService(service.key, 'padmavati', 'store')
+    return ftStoreServices.filter(service => 
+      canAccessService(service.key, 'fertilizer', 'store')
     );
   };
 
@@ -51,7 +52,7 @@ const PVStore = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'padmavati', 'store');
+    return canAccessService(serviceKey, 'fertilizer', 'store');
   };
 
   // Check if user is authenticated
@@ -60,8 +61,8 @@ const PVStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for PV Store services
-      console.log('PVStore.jsx - Navigating to service:', {
+      // Use new navigation pattern for FT Store services
+      console.log('FTStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -71,7 +72,7 @@ const PVStore = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/padmavati');
+    navigate('/fertilizer');
   };
 
   if (!user) {
@@ -81,6 +82,7 @@ const PVStore = () => {
   if (accessibleServices.length === 0) {
     return (
       <div>
+        {/* Back to Factory Button - Top Left (on brown box) */}
         <BackButton 
           label="Back to Factory" 
           onClick={handleBackToFactory}
@@ -108,10 +110,19 @@ const PVStore = () => {
 
   return (
     <Routes>
+      {/* FT Purchase Indent Service Route */}
+      <Route path="ft_purchase_indent" element={<FT_PurchaseIndent />} />
+      
+      {/* FT Material Inward Service Route */}
+      <Route path="ft_material_inward" element={<FT_MaterialInward />} />
+      
+      {/* FT Material Outward Service Route */}
+      <Route path="ft_material_outward" element={<FT_MaterialOutward />} />
       
       {/* Default Department View */}
       <Route path="" element={
         <div>
+          {/* Back to Factory Button - Top Left (on brown box) */}
           <BackButton 
             label="Back to Factory" 
             onClick={handleBackToFactory}
@@ -122,14 +133,14 @@ const PVStore = () => {
               <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
                 <strong>Debug Info:</strong><br/>
                 User Role: {user?.role}<br/>
-                Factory: Padmavati<br/>
+                Factory: Fertilizer<br/>
                 Department: Store<br/>
                 Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
                 User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
                 Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
               </div>
             )}
-            <h2>Store - Padmavati</h2>
+            <h2>Store - Fertilizer</h2>
             <h3>Available Services ({accessibleServices.length}):</h3>
             
             {/* Service Navigation Buttons */}
@@ -153,4 +164,5 @@ const PVStore = () => {
   );
 };
 
-export default PVStore;
+export default FTStore;
+

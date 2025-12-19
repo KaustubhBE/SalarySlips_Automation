@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import axios from 'axios'
 import Select from 'react-select'
 import { getApiUrl, PLANT_DATA } from '../../config'
-import '../../PlaceOrder.css'
+import '../../PurchaseIndent.css'
 import LoadingSpinner from '../../LoadingSpinner'
 import BackButton from '../../Components/BackButton'
 import FormValidationErrors from '../../Components/FormValidationErrors'
@@ -131,7 +131,7 @@ const generateFallbackOrderId = () => {
   const month = now.getMonth() + 1
   const year = now.getFullYear() % 100
   const timestamp = now.getTime()
-  return `KR_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
+  return `NP_${month.toString().padStart(2, '0')}${year.toString().padStart(2, '0')}-${(timestamp % 10000).toString().padStart(4, '0')}`
 }
 
 // Get today's date in YYYY-MM-DD format for date input max attribute
@@ -469,12 +469,12 @@ const getUomForMaterial = (materialData, category, materialName, subCategory = '
 // Tries multiple combinations systematically: all four → without specs → without subcategory → without both
 const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
   try {
-    const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-    const sheetId = kerurPlant?.material_sheet_id
+    const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+    const sheetId = currentPlant?.material_sheet_id
     const sheetName =
-      typeof kerurPlant?.sheet_name === 'object'
-        ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-        : kerurPlant?.sheet_name || 'Material List'
+      typeof currentPlant?.sheet_name === 'object'
+        ? currentPlant?.sheet_name?.MaterialList || 'Material List'
+        : currentPlant?.sheet_name || 'Material List'
 
     // Define all combinations to try in order of specificity
     const combinations = [
@@ -496,7 +496,7 @@ const fetchMaterialUomFromBackend = async (category, subCategory, specifications
         subCategory: combo.subCategory,
         specifications: combo.specifications,
         materialName: combo.materialName,
-        department: 'KR',
+        department: 'NP',
         sheet_id: sheetId,
         sheet_name: sheetName
       }
@@ -529,16 +529,16 @@ const useMaterialData = () => {
   const fetchMaterialData = async () => {
     try {
       setDataLoading(true)
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = currentPlant?.material_sheet_id
       const sheetName =
-        typeof kerurPlant?.sheet_name === 'object'
-          ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-          : kerurPlant?.sheet_name || 'Material List'
+        typeof currentPlant?.sheet_name === 'object'
+          ? currentPlant?.sheet_name?.MaterialList || 'Material List'
+          : currentPlant?.sheet_name || 'Material List'
 
       const response = await axios.get(getApiUrl('get_material_data'), {
         params: {
-          factory: 'KR',
+          factory: 'NP',
           sheet_id: sheetId,
           sheet_name: sheetName
         }
@@ -566,12 +566,12 @@ const useSessionManagement = () => {
 
   const registerSession = (orderId) => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('np_active_sessions') || '{}')
       activeSessions[sessionId] = {
         timestamp: Date.now(),
         orderId: orderId
       }
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('np_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error registering session:', error)
     }
@@ -579,9 +579,9 @@ const useSessionManagement = () => {
 
   const cleanupSession = () => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('np_active_sessions') || '{}')
       delete activeSessions[sessionId]
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('np_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error cleaning up session:', error)
     }
@@ -589,7 +589,7 @@ const useSessionManagement = () => {
 
   const cleanupOldSessions = () => {
     try {
-      const activeSessions = JSON.parse(localStorage.getItem('kr_active_sessions') || '{}')
+      const activeSessions = JSON.parse(localStorage.getItem('np_active_sessions') || '{}')
       const now = Date.now()
       
       Object.keys(activeSessions).forEach(sessionKey => {
@@ -598,7 +598,7 @@ const useSessionManagement = () => {
         }
       })
       
-      localStorage.setItem('kr_active_sessions', JSON.stringify(activeSessions))
+      localStorage.setItem('np_active_sessions', JSON.stringify(activeSessions))
     } catch (error) {
       console.error('Error cleaning up old sessions:', error)
     }
@@ -607,7 +607,7 @@ const useSessionManagement = () => {
   return { sessionId, registerSession, cleanupSession, cleanupOldSessions }
 }
 
-const KR_PlaceOrder = () => {
+const NP_PurchaseIndent = () => {
   // State Management
   const [formData, setFormData] = useState({
     category: '',
@@ -765,18 +765,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const fetchAuthorityList = async () => {
     try {
       setAuthorityLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the New Plant plant data to get the sheet ID
+      const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = currentPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for New Plant plant')
         return
       }
       
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'NP',
           sheet_name: 'List',
           sheet_id: sheetId
         }
@@ -832,17 +832,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       setPartyLoading(true)
       setPlacesLoading(true)
 
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = currentPlant?.material_sheet_id
 
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for New Plant plant')
         return
       }
 
       const response = await axios.get(getApiUrl('get_party_place_data'), {
         params: {
-          factory: 'KR',
+          factory: 'NP',
           sheet_name: 'Party List',
           sheet_id: sheetId
         }
@@ -869,18 +869,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const fetchRecipientsList = async () => {
     try {
       setRecipientsLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the New Plant plant data to get the sheet ID
+      const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = currentPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for New Plant plant')
         return
       }
       
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'NP',
           sheet_name: 'Recipents List',
           sheet_id: sheetId
         }
@@ -906,7 +906,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     
     try {
       const response = await axios.post(getApiUrl('get_next_order_id'), {
-        factory: 'KR'
+        factory: 'NP'
       })
       
       if (response.data.success) {
@@ -1706,18 +1706,21 @@ const hasEditSpecOptions = useMemo(
       setSendingNotification(true)
       
       // Get sheet ID from PLANT_DATA
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = currentPlant?.material_sheet_id
+      const sheetName = typeof currentPlant?.sheet_name === 'object'
+        ? currentPlant?.sheet_name?.RecipentsList || 'Recipents List'
+        : 'Recipents List'
       
       const notificationData = {
         orderId: lastSubmittedOrderId,
         orderData: lastSubmittedOrderData,
         recipients: selectedRecipients,
         method: notificationMethod,
-        factory: 'KR',
+        factory: 'NP',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
-        sheetName: 'Recipents List' // Send sheet name to backend
+        sheetName: sheetName // Send sheet name to backend
       }
 
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
@@ -1799,7 +1802,7 @@ const hasEditSpecOptions = useMemo(
     setShouldRefreshOnModalClose(false)
   }
 
-  // Show detailed log report similar to KR_ReactorReports
+  // Show detailed log report similar to NP_ReactorReports
   const showDetailedLogReport = (result, contextDetails = [], shouldRefresh = false) => {
     const stats = result.delivery_stats || {}
     openSummaryModal(stats, contextDetails, shouldRefresh)
@@ -1834,7 +1837,7 @@ const hasEditSpecOptions = useMemo(
         type: formData.type,
         description: formData.description,
         importance: formData.importance,
-        factory: 'KR'
+        factory: 'NP'
       }
       
       const response = await axios.post(getApiUrl('submit_order'), orderData)
@@ -1842,7 +1845,7 @@ const hasEditSpecOptions = useMemo(
       if (response.data.success) {
         // Mark order as completed in localStorage for backup
         try {
-          const completedOrders = JSON.parse(localStorage.getItem('kr_completed_orders') || '[]')
+          const completedOrders = JSON.parse(localStorage.getItem('np_completed_orders') || '[]')
           completedOrders.push({
             orderId,
             timestamp: Date.now(),
@@ -1855,7 +1858,7 @@ const hasEditSpecOptions = useMemo(
               importance: formData.importance
             }
           })
-          localStorage.setItem('kr_completed_orders', JSON.stringify(completedOrders))
+          localStorage.setItem('np_completed_orders', JSON.stringify(completedOrders))
         } catch (error) {
           console.error('Error saving completed order to localStorage:', error)
         }
@@ -1900,11 +1903,14 @@ const hasEditSpecOptions = useMemo(
         if (notificationMethod) {
           try {
             // Get sheet ID and sheet name from PLANT_DATA
-            const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-            const sheetId = kerurPlant?.material_sheet_id
+            const currentPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+            const sheetId = currentPlant?.material_sheet_id
+            const sheetName = typeof currentPlant?.sheet_name === 'object'
+              ? currentPlant?.sheet_name?.RecipentsList || 'Recipents List'
+              : 'Recipents List'
             
             if (!sheetId) {
-              alert('❌ Error: No sheet ID found for Kerur plant configuration')
+              alert('❌ Error: No sheet ID found for New Plant plant configuration')
               // Reset order ID for next order
               setOrderIdGenerated(false)
               setOrderId('')
@@ -1917,10 +1923,10 @@ const hasEditSpecOptions = useMemo(
               orderData: notificationOrderData,
               recipients: [], // Empty array - backend will fetch from Google Sheets
               method: notificationMethod,
-              factory: 'KR',
+              factory: 'NP',
               autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
               sheetId: sheetId, // Send sheet ID to backend
-              sheetName: 'Recipents List' // Send sheet name to backend
+              sheetName: sheetName // Send sheet name to backend
             }
             
             const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
@@ -2294,7 +2300,7 @@ const hasEditSpecOptions = useMemo(
 
   if (dataLoading) {
     return (
-      <div className="po-place_order-container">
+      <div className="po-purchase_indent-container">
         <div className="po-form-header">
           <div className="po-header-left">
             <DateTimePicker
@@ -2329,14 +2335,14 @@ const hasEditSpecOptions = useMemo(
   }
 
   return (
-    <div className="po-place_order-container">
+    <div className="po-purchase_indent-container">
       {/* Screen Flash Overlay */}
       {showScreenFlash && <div className="po-screen-flash-overlay" />}
       {/* Loading Spinner */}
       {isSubmitting && <LoadingSpinner />}
       
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/kerur/kr_store" />
+      <BackButton label="Back to Store" to="/newplant/np_store" />
       
       <div className="po-form-header">
         <div className="po-header-left">
@@ -2813,7 +2819,7 @@ const hasEditSpecOptions = useMemo(
                 disabled={isSubmitDisabled}
                 title={buttonTitle}
               >
-                Place Order {!isSubmitDisabled ? '✓' : ''}
+                Purchase Indent {!isSubmitDisabled ? '✓' : ''}
               </button>
               <button type="button" className="po-reset-btn" onClick={() => {
                 // Reset form but keep the same order ID
@@ -3006,5 +3012,5 @@ const hasEditSpecOptions = useMemo(
   )
 }
 
-export default KR_PlaceOrder
+export default NP_PurchaseIndent
 

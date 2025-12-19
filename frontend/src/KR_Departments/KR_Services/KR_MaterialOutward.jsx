@@ -1689,7 +1689,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
         <div className="form-header">
           <div className="header-left">
             <div className="mio-datetime-box">
@@ -1780,7 +1780,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   return (
     <>
       {(loading || sendingNotification) && <LoadingSpinner />}
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
       {/* Screen Flash Overlay */}
       {showScreenFlash && <div className="mio-screen-flash-overlay" />}
       

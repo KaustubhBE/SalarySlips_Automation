@@ -4,18 +4,18 @@ import { useAuth } from '../Components/AuthContext';
 import '../App.css';
 import BackButton from '../Components/BackButton';
 
-const GulbargaFactory = () => {
+const NewPlantFactory = () => {
   const navigate = useNavigate();
   const { user, canAccessFactoryDepartment } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
 
-  // Static departments for Gulbarga factory with hardcoded navigation (only existing departments)
-  const gulbargaDepartments = [
-    { key: 'gb_store', name: 'Store', route: '/gulbarga/gb_store' },
-    // { key: 'gb_humanresource', name: 'Human Resource', route: '/gulbarga/gb_humanresource' },
-    // { key: 'gb_operations', name: 'Operations', route: '/gulbarga/gb_operations' }
+  // Static departments for New Plant factory with hardcoded navigation (only existing departments)
+  const newPlantDepartments = [
+    { key: 'np_store', name: 'Store', route: '/newplant/np_store' },
+    // { key: 'np_humanresource', name: 'Human Resource', route: '/newplant/np_humanresource' },
+    // { key: 'np_operations', name: 'Operations', route: '/newplant/np_operations' }
   ];
 
   // Filter departments based on user permissions
@@ -23,27 +23,12 @@ const GulbargaFactory = () => {
     if (!user) return [];
     
     if (isAdmin) {
-      return gulbargaDepartments;
+      return newPlantDepartments;
     }
     
-    return gulbargaDepartments.filter(dept => {
-      // Use the full prefixed department key (gb_store, gb_humanresource, etc.)
-      console.log(`Gulbarga factory checking department:`, {
-        dept: dept,
-        deptKey: dept.key,
-        factory: 'gulbarga',
-        user: user
-      });
-      
-      // Check if dept.key is undefined
-      if (!dept || !dept.key) {
-        console.error('Gulbarga factory: dept or dept.key is undefined:', dept);
-        return false;
-      }
-      
-      const hasAccess = canAccessFactoryDepartment('gulbarga', dept.key);
-      console.log(`Gulbarga factory department access result:`, hasAccess);
-      return hasAccess;
+    return newPlantDepartments.filter(dept => {
+      // Use the full prefixed department key (np_store, np_humanresource, etc.)
+      return canAccessFactoryDepartment('newplant', dept.key);
     });
   };
 
@@ -97,14 +82,14 @@ const GulbargaFactory = () => {
         {process.env.NODE_ENV === 'development' && (
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
             <strong>Debug Info:</strong><br/>
-            Factory: Gulbarga<br/>
+            Factory: New Plant<br/>
             User Role: {user?.role}<br/>
             User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
             Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
           </div>
         )}
         
-        <h2>Available Departments - Gulbarga</h2>
+        <h2>Available Departments - New Plant</h2>
         <h3>Select a department to access its services:</h3>
         
         {/* Department Navigation Buttons */}
@@ -126,4 +111,4 @@ const GulbargaFactory = () => {
   );
 };
 
-export default GulbargaFactory;
+export default NewPlantFactory;

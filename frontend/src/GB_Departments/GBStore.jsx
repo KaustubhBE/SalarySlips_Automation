@@ -18,11 +18,11 @@ const GBStore = () => {
   
   // Static services for GB Store department (only existing services)
   const gbStoreServices = [
-    { key: 'gb_place_order', name: 'Place Order', route: '/gulbarga/gb_store/gb_place_order' },
+    { key: 'gb_purchase_indent', name: 'Purchase Indent', route: '/gulbarga/gb_store/gb_purchase_indent' },
     // { key: 'gb_add_material_list', name: 'Add Material', route: '/gulbarga/gb_store/gb_add_material_list' },
     // { key: 'gb_delete_material_list', name: 'Delete Material', route: '/gulbarga/gb_store/gb_delete_material_list' },
-    { key: 'gb_material_inward', name: 'Material Inward', route: '/gulbarga/gb_store/gb_material_inward' },
-    { key: 'gb_material_outward', name: 'Material Outward', route: '/gulbarga/gb_store/gb_material_outward' }
+    // { key: 'gb_material_inward', name: 'Material Inward', route: '/gulbarga/gb_store/gb_material_inward' },
+    // { key: 'gb_material_outward', name: 'Material Outward', route: '/gulbarga/gb_store/gb_material_outward' }
   ];
 
   // Get accessible services based on user permissions

@@ -10,7 +10,7 @@ const UOM_OPTIONS = ['kgs', 'nos', 'meters', 'pieces', 'liters']
 const LONG_PRESS_DURATION = 500 // 500ms for long press
 const TOUCH_MOVE_THRESHOLD = 10 // pixels
 
-const HB_MaterialOutward = () => {
+const NP_MaterialOutward = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -64,7 +64,7 @@ const HB_MaterialOutward = () => {
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Fetching current quantity with payload:', payload)
@@ -86,7 +86,7 @@ const HB_MaterialOutward = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'HB'
+            department: 'NP'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -409,7 +409,7 @@ const HB_MaterialOutward = () => {
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Fetching UOM from backend with payload:', payload)
@@ -434,7 +434,7 @@ const HB_MaterialOutward = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'HB'
+            department: 'NP'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -748,20 +748,20 @@ const HB_MaterialOutward = () => {
   const fetchAuthorityList = async () => {
     try {
       setAuthorityLoading(true)
-      // Find the Humnabad plant data to get the sheet ID
-      const humnabadPlant = PLANT_DATA.find(plant => plant.document_name === 'HB')
-      const sheetId = humnabadPlant?.material_sheet_id
+      // Find the New Plant plant data to get the sheet ID
+      const newplantPlant = PLANT_DATA.find(plant => plant.document_name === 'NP')
+      const sheetId = newplantPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Humnabad plant')
-        setMessage('No Google Sheet configuration found for Humnabad plant')
+        console.error('No sheet ID found for New Plant plant')
+        setMessage('No Google Sheet configuration found for New Plant plant')
         setMessageType('error')
         return
       }
       
       const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'HB',
+          factory: 'NP',
           sheet_name: 'List',
           sheet_id: sheetId
         }
@@ -789,7 +789,7 @@ const HB_MaterialOutward = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'HB' }
+          params: { factory: 'NP' }
         })
         
         if (response.data.success) {
@@ -996,7 +996,7 @@ const HB_MaterialOutward = () => {
             givenTo: generalFormData.givenTo,
             description: generalFormData.description,
             timestamp: new Date().toISOString(),
-            department: 'HB',
+            department: 'NP',
             type: 'outward'
           }
 
@@ -1067,7 +1067,7 @@ const HB_MaterialOutward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Outward Form</h2>
@@ -1081,9 +1081,9 @@ const HB_MaterialOutward = () => {
   }
 
   return (
-    <div className="place_order-container">
+    <div className="purchase_indent-container">
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/humnabad/hb_store" />
+      <BackButton label="Back to Store" to="/newplant/np_store" />
       
       <div className="form-header">
         <div className="header-center">
@@ -1578,4 +1578,4 @@ const HB_MaterialOutward = () => {
   )
 }
 
-export default HB_MaterialOutward
+export default NP_MaterialOutward

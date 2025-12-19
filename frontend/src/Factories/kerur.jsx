@@ -14,8 +14,8 @@ const KerurFactory = () => {
   // Static departments for Kerur factory with hardcoded navigation (only existing departments)
   const kerurDepartments = [
     { key: 'kr_store', name: 'Store', route: '/kerur/kr_store' },
-    { key: 'kr_humanresource', name: 'Human Resource', route: '/kerur/kr_humanresource' },
-    { key: 'kr_operations', name: 'Operations', route: '/kerur/kr_operations' }
+    // { key: 'kr_humanresource', name: 'Human Resource', route: '/kerur/kr_humanresource' },
+    // { key: 'kr_operations', name: 'Operations', route: '/kerur/kr_operations' }
   ];
 
   // Filter departments based on user permissions

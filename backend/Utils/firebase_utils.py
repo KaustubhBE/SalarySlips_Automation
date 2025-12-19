@@ -294,7 +294,7 @@ def get_material_data():
         return {}
 
 def get_material_data_by_factory(factory_name):
-    """Get material data for a specific factory in the format expected by KR_PlaceOrder.jsx"""
+    """Get material data for a specific factory in the format expected by KR_PurchaseIndent.jsx"""
     try:
         factory_ref = db.collection('MATERIAL').document(factory_name)
         factory_doc = factory_ref.get()
@@ -318,7 +318,7 @@ def get_material_data_by_factory(factory_name):
             if category:
                 categories.add(category)
         
-        # Second pass: organize data by category in the format expected by KR_PlaceOrder.jsx
+        # Second pass: organize data by category in the format expected by KR_PurchaseIndent.jsx
         for category in categories:
             material_data[category] = {
                 'subCategories': [],
@@ -412,7 +412,7 @@ def get_factory_initials(factory_name):
         'KR': 'KR',
         'Kerur': 'KR', 
         'Gulbarga': 'GB',
-        'Humnabad': 'HB',
+        'New Plant': 'NP',
         'Omkar': 'OM',
         'Padmavati': 'PV',
         'Head Office': 'HO'

@@ -28,7 +28,7 @@
 .po-items-table .po-editing-cell .po-edit-select .po-select__control {
   border-radius: 6px !important;
 }
-.po-place_order-container {
+.po-purchase_indent-container {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
@@ -36,7 +36,7 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  .po-place_order-container h2 {
+  .po-purchase_indent-container h2 {
     color: #333;
     margin-bottom: 30px;
     text-align: center;
@@ -87,7 +87,7 @@
   
   /* Responsive Design */
   @media (max-width: 1200px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 15px;
       max-width: 100%;
       box-sizing: border-box;
@@ -179,7 +179,7 @@
 }
   
   @media (max-width: 768px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 12px;
       max-width: 100%;
       box-sizing: border-box;
@@ -895,7 +895,7 @@
   }
   
   @media (max-width: 480px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 10px;
     }
     
@@ -958,7 +958,7 @@
   
   /* ==================== MOBILE (360px) ==================== */
   @media (max-width: 360px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 8px;
     }
   
@@ -1050,7 +1050,7 @@
   
 /* ==================== MOBILE (300px) ==================== */
 @media (max-width: 300px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 4px;
     }
   
@@ -1527,7 +1527,7 @@
   
   /* ==================== MOBILE (250px) ==================== */
   @media (max-width: 250px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 4px;
     }
   
@@ -1598,7 +1598,7 @@
   
   /* ==================== MOBILE (200px) ==================== */
   @media (max-width: 200px) {
-    .po-place_order-container {
+    .po-purchase_indent-container {
       padding: 2px;
     }
   

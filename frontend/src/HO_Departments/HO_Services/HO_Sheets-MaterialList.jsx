@@ -290,7 +290,7 @@ const [showAlert, setShowAlert] = useState(false)
               <p><strong>Total Materials:</strong> {
                 Object.values(materialData).reduce((total, category) => {
                   if (typeof category === 'object' && category.materialNames) {
-                    // Count materials in nested structure compatible with KR_PlaceOrder.jsx
+                    // Count materials in nested structure compatible with KR_PurchaseIndent.jsx
                     let count = 0
                     const materialNames = category.materialNames
                     

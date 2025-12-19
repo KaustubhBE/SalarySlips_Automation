@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import Processing from './HB_Services/HB_Processing';
+import Processing from './NP_Services/NP_Processing';
 import Reports from '../Reports';
 import ReactorReports from '../ReactorReports';
 import Inventory from '../Inventory';
@@ -9,39 +9,39 @@ import Inventory from '../Inventory';
 import '../App.css';
 import BackButton from '../Components/BackButton';
 
-const HBStore = () => {
+const NPStore = () => {
   const navigate = useNavigate();
   const { user, canAccessService } = useAuth();
   
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
   
-  // Static services for HB Store department (only existing services)
-  const hbStoreServices = [
-    { key: 'hb_place_order', name: 'Place Order', route: '/humnabad/hb_store/hb_place_order' },
-    // { key: 'hb_add_material_list', name: 'Add Material', route: '/humnabad/hb_store/hb_add_material_list' },
-    // { key: 'hb_delete_material_list', name: 'Delete Material', route: '/humnabad/hb_store/hb_delete_material_list' },
-    { key: 'hb_material_inward', name: 'Material Inward', route: '/humnabad/hb_store/hb_material_inward' },
-    { key: 'hb_material_outward', name: 'Material Outward', route: '/humnabad/hb_store/hb_material_outward' }
+  // Static services for NP Store department (only existing services)
+  const npStoreServices = [
+    { key: 'np_purchase_indent', name: 'Purchase Indent', route: '/newplant/np_store/np_purchase_indent' },
+    // { key: 'np_add_material_list', name: 'Add Material', route: '/newplant/np_store/np_add_material_list' },
+    // { key: 'np_delete_material_list', name: 'Delete Material', route: '/newplant/np_store/np_delete_material_list' },
+    // { key: 'np_material_inward', name: 'Material Inward', route: '/newplant/np_store/np_material_inward' },
+    // { key: 'np_material_outward', name: 'Material Outward', route: '/newplant/np_store/np_material_outward' }
   ];
 
   // Get accessible services based on user permissions
   const getAccessibleServices = () => {
     if (!user) return [];
     
-    console.log('HBStore.jsx - getAccessibleServices called:', {
+    console.log('NPStore.jsx - getAccessibleServices called:', {
       userRole: user.role,
       userPermissions: user.permissions
     });
     
     // Admin has access to everything
     if (isAdmin) {
-      return hbStoreServices;
+      return npStoreServices;
     }
     
     // For regular users, check which services they can access
-    return hbStoreServices.filter(service => 
-      canAccessService(service.key, 'humnabad', 'store')
+    return npStoreServices.filter(service => 
+      canAccessService(service.key, 'newplant', 'store')
     );
   };
 
@@ -55,7 +55,7 @@ const HBStore = () => {
     if (isAdmin) return true;
     
     // Check if user has the specific service permission in this factory and department
-    return canAccessService(serviceKey, 'humnabad', 'store');
+    return canAccessService(serviceKey, 'newplant', 'store');
   };
 
   // Check if user is authenticated
@@ -64,8 +64,8 @@ const HBStore = () => {
   // Handle service navigation
   const handleServiceNavigation = (service) => {
     if (service.route) {
-      // Use new navigation pattern for HB Store services
-      console.log('HBStore.jsx - Navigating to service:', {
+      // Use new navigation pattern for NP Store services
+      console.log('NPStore.jsx - Navigating to service:', {
         service: service.key,
         serviceRoute: service.route
       });
@@ -75,7 +75,7 @@ const HBStore = () => {
 
   // Handle back to factory navigation
   const handleBackToFactory = () => {
-    navigate('/humnabad');
+    navigate('/newplant');
   };
 
   if (!user) {
@@ -126,14 +126,14 @@ const HBStore = () => {
               <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
                 <strong>Debug Info:</strong><br/>
                 User Role: {user?.role}<br/>
-                Factory: Humnabad<br/>
+                Factory: New Plant<br/>
                 Department: Store<br/>
                 Accessible Services: {JSON.stringify(accessibleServices.map(s => s.key))}<br/>
                 User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
                 Has Permission Metadata: {user?.permission_metadata && Object.keys(user.permission_metadata).length > 0 ? 'Yes' : 'No'}
               </div>
             )}
-            <h2>Store - Humnabad</h2>
+            <h2>Store - New Plant</h2>
             <h3>Available Services ({accessibleServices.length}):</h3>
             
             {/* Service Navigation Buttons */}
@@ -157,4 +157,4 @@ const HBStore = () => {
   );
 };
 
-export default HBStore;
+export default NPStore;

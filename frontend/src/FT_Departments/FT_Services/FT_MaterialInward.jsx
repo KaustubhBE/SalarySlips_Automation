@@ -24,7 +24,7 @@ const formatDateTime = (date) => {
   return `${day}/${month}/${year}, ${hours12}:${minutes}:${seconds} ${ampm}`
 }
 
-const KR_MaterialInward = () => {
+const FT_MaterialInward = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
@@ -464,19 +464,19 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   // Function to fetch UOM from backend for exact material match
   const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
     try {
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       const sheetName =
-        typeof kerurPlant?.sheet_name === 'object'
-          ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-          : kerurPlant?.sheet_name || 'Material List'
+        typeof fertilizerPlant?.sheet_name === 'object'
+          ? fertilizerPlant?.sheet_name?.MaterialList || 'Material List'
+          : fertilizerPlant?.sheet_name || 'Material List'
 
       const payload = {
         category: category,
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'KR',
+        department: 'FT',
         sheet_id: sheetId,
         sheet_name: sheetName
       }
@@ -505,7 +505,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'KR',
+            department: 'FT',
             sheet_id: sheetId,
             sheet_name: sheetName
           }
@@ -785,14 +785,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       setSendingNotification(true)
       
       // Get sheet ID from PLANT_DATA
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       const notificationData = {
         orderData: lastSubmittedData,
         recipients: selectedRecipients,
         method: notificationMethod,
-        factory: 'KR',
+        factory: 'fertilizer',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
         sheetName: 'Recipents List', // Send sheet name to backend
@@ -897,18 +897,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const fetchRecipientsList = async () => {
     try {
       setRecipientsLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the Fertilizer plant data to get the sheet ID
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for Fertilizer plant')
         return
       }
       
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'fertilizer',
           sheet_name: 'Recipents List',
           sheet_id: sheetId
         }
@@ -932,20 +932,20 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       setPartyLoading(true)
       setPlacesLoading(true)
       
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the Fertilizer plant data to get the sheet ID
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
-        setMessage('No Google Sheet configuration found for Kerur plant')
+        console.error('No sheet ID found for Fertilizer plant')
+        setMessage('No Google Sheet configuration found for Fertilizer plant')
         setMessageType('error')
         return
       }
       
       const response = await axios.get(getApiUrl('get_party_place_data'), {
         params: { 
-          factory: 'KR',
+          factory: 'fertilizer',
           sheet_name: 'Party List',
           sheet_id: sheetId
         }
@@ -978,16 +978,16 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     const fetchMaterialData = async () => {
       try {
         setDataLoading(true)
-        const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-        const sheetId = kerurPlant?.material_sheet_id
+        const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+        const sheetId = fertilizerPlant?.material_sheet_id
         const sheetName =
-          typeof kerurPlant?.sheet_name === 'object'
-            ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-            : kerurPlant?.sheet_name || 'Material List'
+          typeof fertilizerPlant?.sheet_name === 'object'
+            ? fertilizerPlant?.sheet_name?.MaterialList || 'Material List'
+            : fertilizerPlant?.sheet_name || 'Material List'
 
         const response = await axios.get(getApiUrl('get_material_data'), {
           params: {
-            factory: 'KR',
+            factory: 'fertilizer',
             sheet_id: sheetId,
             sheet_name: sheetName
           }
@@ -1249,7 +1249,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             partyName: generalFormData.partyName,
             place: generalFormData.place,
             timestamp: `${currentDate}, ${currentTime}`,
-            department: 'KR',
+            department: 'FT',
             type: 'inward'
           }
 
@@ -1311,18 +1311,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             console.log('Auto-sending notifications to all recipients from Google Sheets...')
             
             // Get sheet ID and sheet name from PLANT_DATA
-            const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-            const sheetId = kerurPlant?.material_sheet_id
+            const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+            const sheetId = fertilizerPlant?.material_sheet_id
             
             if (!sheetId) {
-              console.error('No sheet ID found for Kerur plant configuration')
+              console.error('No sheet ID found for Fertilizer plant configuration')
             } else {
               // Send notifications automatically - backend will fetch all recipients from Google Sheets
               const autoNotificationData = {
                 orderData: notificationData,
                 recipients: [], // Empty array - backend will fetch from Google Sheets
                 method: notificationMethod,
-                factory: 'KR',
+                factory: 'fertilizer',
                 autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
                 sheetId: sheetId, // Send sheet ID to backend
                 sheetName: 'Recipents List', // Send sheet name to backend
@@ -1680,7 +1680,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       {showScreenFlash && <div className="mio-screen-flash-overlay" />}
       
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/kerur/kr_store" />
+      <BackButton label="Back to Store" to="/fertilizer/ft_store" />
       
       <div className="form-header">
         <div className="header-left">
@@ -2263,4 +2263,4 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   )
 }
 
-export default KR_MaterialInward
+export default FT_MaterialInward

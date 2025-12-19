@@ -14,8 +14,8 @@ const OmkarFactory = () => {
   // Static departments for Omkar factory with hardcoded navigation (only existing departments)
   const omkarDepartments = [
     { key: 'om_store', name: 'Store', route: '/omkar/om_store' },
-    { key: 'om_humanresource', name: 'Human Resource', route: '/omkar/om_humanresource' },
-    { key: 'om_operations', name: 'Operations', route: '/omkar/om_operations' }
+    // { key: 'om_humanresource', name: 'Human Resource', route: '/omkar/om_humanresource' },
+    // { key: 'om_operations', name: 'Operations', route: '/omkar/om_operations' }
   ];
 
   // Filter departments based on user permissions

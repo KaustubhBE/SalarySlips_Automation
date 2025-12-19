@@ -364,19 +364,6 @@ def should_start_table_on_new_page(doc, table_rows, table_name_length=0, logger=
         return False  # Default to current page if estimation fails
 
 def prepare_file_paths(file_paths, user_email=None, base_output_dir=None, is_upload=False):
-    """
-    Prepare file paths for processing, handling both uploaded files and existing file paths.
-    This function validates file paths and saves uploaded files to user-specific temporary directory.
-    
-    Args:
-        file_paths: List of file paths or uploaded file objects
-        user_email: User's email address for user-specific temp directory
-        base_output_dir: Base output directory path
-        is_upload: Boolean indicating if files are uploaded (need to be saved)
-        
-    Returns:
-        list: List of valid file paths ready for processing
-    """
     try:
         # Import temp_manager here to avoid circular imports
         from .temp_manager import get_user_temp_dir
@@ -523,30 +510,7 @@ def clear_salary_slips_folder(output_dir):
         logging.error("Error clearing the folder {}: {}".format(output_dir, e))
 
 def delete_generated_files(file_paths, drive_upload_success=None, logger=None):
-    """
-    Generic function to delete generated files after processing.
-    Only deletes files if Google Drive upload was successful.
     
-    Args:
-        file_paths: Can be:
-            - Single file path (str): "path/to/file.pdf"
-            - List of file paths (list): ["path1.pdf", "path2.docx"]
-            - Result dictionary with file path keys: {"pdf_path": "...", "docx_path": "...", "output_file": "..."}
-        drive_upload_success: bool or None
-            - True: Delete files (upload succeeded)
-            - False: Skip deletion, keep files (upload failed)
-            - None: Skip deletion, keep files (upload not attempted or unknown)
-        logger: Optional logger instance (uses logging if not provided)
-        
-    Returns:
-        dict: {
-            'success': bool,
-            'deleted_files': list of successfully deleted file paths,
-            'failed_files': list of failed deletions with reasons,
-            'total_deleted': int,
-            'skipped_reason': str or None
-        }
-    """
     log = logger if logger else logging
     
     result = {
@@ -2026,7 +1990,7 @@ def get_plant_material_data_from_sheets(plant_id, plant_data):
                 logging.warning(f"Error processing row: {e}")
                 continue
         
-        # Convert sets to lists and restructure materialNames for KR_PlaceOrder.jsx compatibility
+        # Convert sets to lists and restructure materialNames for KR_PurchaseIndent.jsx compatibility
         for category, category_data in material_data.items():
             sub_categories_list = list(category_data['subCategories'])
             specifications_list = list(category_data['specifications'])
@@ -2119,7 +2083,7 @@ def get_designation_from_authority_sheet(factory, given_by_name, logger=None):
     Fetch designation from authority sheet based on givenBy name (authority name).
     
     Args:
-        factory: Factory identifier (e.g., 'KR', 'GB', 'HB', etc.)
+        factory: Factory identifier (e.g., 'KR', 'GB', 'NP', etc.)
         given_by_name: Name of the authority (Given By name)
         logger: Optional logger instance
     
@@ -3639,7 +3603,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                     pdf_path=pdf_path,
                     factory=factory,
                     date_string=date_string,
-                    process_type="place_order",
+                    process_type="purchase_indent",
                     file_name=pdf_filename,
                     logger=logger
                 )
@@ -3698,7 +3662,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
             items_table_rows_html = '<tr><td colspan="9" style="padding: 8px; border: 1px solid #ddd; text-align: center;">No items found</td></tr>'
         
         # Prepare notification message
-        notification_message = f"""📦 *New Material Indent Raised*
+        notification_message = f"""📦 *New Purchase Indent Raised*
 
 *Date:* {date_value}
 *Time:* {time_value}
@@ -3813,7 +3777,7 @@ Please find the detailed order document attached."""
             
             if has_any_email:
                 # Prepare email content (same for all recipients)
-                email_subject = f"New Material Indent Raised - {order_data.get('givenBy', 'N/A')} - {order_id}"
+                email_subject = f"New Purchase Indent Raised - {order_data.get('givenBy', 'N/A')} - {order_id}"
                 
                 # Parse dateTime to extract separate date and time
                 date_time_str = order_data.get('dateTime', '')

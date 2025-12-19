@@ -122,10 +122,11 @@ export const getCurrentBackendUrl = () => {
 export const FACTORY_NAMES = {
     'gulbarga': 'Gulbarga',
     'kerur': 'Kerur',
-    'humnabad': 'Humnabad',
+    'newplant': 'New Plant',
     'omkar': 'Omkar',
     'padmavati': 'Padmavati',
-    'headoffice': 'Head Office'
+    'headoffice': 'Head Office',
+    'fertilizer': 'Fertilizer'
 };
 
 // Old service keys removed - using centralized FACTORY_RBAC_CONFIG instead
@@ -253,9 +254,7 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          gb_place_order: { name: 'Place Order', permission: 'gb_place_order' },
-          gb_add_material_list: { name: 'Add Material', permission: 'gb_add_material_list' },
-          gb_delete_material_list: { name: 'Delete Material', permission: 'gb_delete_material_list' },
+          gb_purchase_indent: { name: 'Purchase Indent', permission: 'gb_purchase_indent' },
           gb_material_inward: { name: 'Material Inward', permission: 'gb_material_inward' },
           gb_material_outward: { name: 'Material Outward', permission: 'gb_material_outward' }
         }
@@ -282,9 +281,7 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          kr_place_order: { name: 'Place Order', permission: 'kr_place_order' },
-          kr_add_material_list: { name: 'Add to Material List', permission: 'kr_add_material_list' },
-          kr_delete_material_list: { name: 'Delete Material', permission: 'kr_delete_material_list' },
+          kr_purchase_indent: { name: 'Purchase Indent', permission: 'kr_purchase_indent' },
           kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
           kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
           kr_order_status: { name: 'Order Status', permission: 'kr_order_status' }
@@ -306,31 +303,29 @@ export const FACTORY_RBAC_CONFIG = {
       }
     }
   },
-  humnabad: {
-    name: 'Humnabad',
-    document_name: 'HB',
+  newplant: {
+    name: 'New Plant',
+    document_name: 'NP',
     departments: {
       store: {
         name: 'Store',
         services: {
-          hb_place_order: { name: 'Place Order', permission: 'hb_place_order' },
-          hb_add_material_list: { name: 'Add Material', permission: 'hb_add_material_list' },
-          hb_delete_material_list: { name: 'Delete Material', permission: 'hb_delete_material_list' },
-          hb_material_inward: { name: 'Material Inward', permission: 'hb_material_inward' },
-          hb_material_outward: { name: 'Material Outward', permission: 'hb_material_outward' }
+          np_purchase_indent: { name: 'Purchase Indent', permission: 'np_purchase_indent' },
+          np_material_inward: { name: 'Material Inward', permission: 'np_material_inward' },
+          np_material_outward: { name: 'Material Outward', permission: 'np_material_outward' }
         }
       },
       humanresource: {
         name: 'Human Resource',
         services: {
-          hb_single_processing: { name: 'Single Processing', permission: 'hb_single_processing' },
-          hb_batch_processing: { name: 'Batch Processing', permission: 'hb_batch_processing' }
+          np_single_processing: { name: 'Single Processing', permission: 'np_single_processing' },
+          np_batch_processing: { name: 'Batch Processing', permission: 'np_batch_processing' }
         }
       },
       operations: {
         name: 'Operations',
         services: {
-          hb_general_reports: { name: 'General Reports', permission: 'hb_general_reports' }
+          np_general_reports: { name: 'General Reports', permission: 'np_general_reports' }
         }
       }
     }
@@ -342,9 +337,7 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          om_place_order: { name: 'Place Order', permission: 'om_place_order' },
-          om_add_material_list: { name: 'Add Material', permission: 'om_add_material_list' },
-          om_delete_material_list: { name: 'Delete Material', permission: 'om_delete_material_list' },
+          om_purchase_indent: { name: 'Purchase Indent', permission: 'om_purchase_indent' },
           om_material_inward: { name: 'Material Inward', permission: 'om_material_inward' },
           om_material_outward: { name: 'Material Outward', permission: 'om_material_outward' }
         }
@@ -371,9 +364,7 @@ export const FACTORY_RBAC_CONFIG = {
       store: {
         name: 'Store',
         services: {
-          pv_place_order: { name: 'Place Order', permission: 'pv_place_order' },
-          pv_add_material_list: { name: 'Add Material', permission: 'pv_add_material_list' },
-          pv_delete_material_list: { name: 'Delete Material', permission: 'pv_delete_material_list' },
+          pv_purchase_indent: { name: 'Purchase Indent', permission: 'pv_purchase_indent' },
           pv_material_inward: { name: 'Material Inward', permission: 'pv_material_inward' },
           pv_material_outward: { name: 'Material Outward', permission: 'pv_material_outward' }
         }
@@ -426,6 +417,33 @@ export const FACTORY_RBAC_CONFIG = {
         name: 'Operations',
         services: {
           ho_general_reports: { name: 'General Reports', permission: 'ho_general_reports' }
+        }
+      }
+    }
+  },
+  fertilizer: {
+    name: 'Fertilizer',
+    document_name: 'FT',
+    departments: {
+      store: {
+        name: 'Store',
+        services: {
+          ft_purchase_indent: { name: 'Purchase Indent', permission: 'ft_purchase_indent' },
+          ft_material_inward: { name: 'Material Inward', permission: 'ft_material_inward' },
+          ft_material_outward: { name: 'Material Outward', permission: 'ft_material_outward' }
+        }
+      },
+      humanresource: {
+        name: 'Human Resource',
+        services: {
+          ft_single_processing: { name: 'Single Processing', permission: 'ft_single_processing' },
+          ft_batch_processing: { name: 'Batch Processing', permission: 'ft_batch_processing' }
+        }
+      },
+      operations: {
+        name: 'Operations',
+        services: {
+          ft_general_reports: { name: 'General Reports', permission: 'ft_general_reports' }
         }
       }
     }
@@ -530,7 +548,7 @@ export const RBAC_HELPERS = {
     const factoryConfig = FACTORY_RBAC_CONFIG[factory];
     const factoryShortForm = factoryConfig?.document_name?.toLowerCase() || factory;
     
-    // Check for both formats: prefixed (kr_place_order) and non-prefixed (place_order)
+    // Check for both formats: prefixed (kr_purchase_indent) and non-prefixed (purchase_indent)
     const prefixedService = `${factoryShortForm}_${service}`;
     const nonPrefixedService = service ? service.replace(`${factoryShortForm}_`, '') : '';
     const result = allowedServices.includes(service) || allowedServices.includes(prefixedService) || allowedServices.includes(nonPrefixedService);
@@ -563,7 +581,7 @@ export const RBAC_HELPERS = {
       const factoryConfig = FACTORY_RBAC_CONFIG[factory];
       if (!factoryConfig) return;
       
-      const factoryShortForm = factoryConfig.document_name; // e.g., 'GB', 'KR', 'HB'
+      const factoryShortForm = factoryConfig.document_name; // e.g., 'GB', 'KR', 'NP'
       
       departments.forEach(dept => {
         if (factoryConfig.departments[dept]) {
@@ -620,9 +638,11 @@ export const PLANT_DATA = [
     material_sheet_id: '1EkjLEEMeZTJoMVDpmtxBVQ_LY_5u99J76PPMwodvD5Y',
     document_name: 'GB',
     sheet_name: {
+      RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'List'
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
     }
   },
   { 
@@ -633,18 +653,20 @@ export const PLANT_DATA = [
       RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'List'
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
     }
   },
   { 
-    name: 'Humnabad', 
+    name: 'New Plant', 
     material_sheet_id: '1cj6q7YfIfAHPO4GDHTQldF0XthpD1p6lLrnBPDx2jsw',
-    document_name: 'HB',
+    document_name: 'NP',
     sheet_name: {
       RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'List'
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
     }
   },
   { 
@@ -652,19 +674,35 @@ export const PLANT_DATA = [
     material_sheet_id: '15MSsB7qXCyKWHvdJtUJuivlgy6khA2dCXxNXuY-sowg',
     document_name: 'OM',
     sheet_name: {
+      RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'List'
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
     }
   },
   {
     name: 'Padmavati',
-    material_sheet_id: '', 
+    material_sheet_id: '1or2svgyGemGxTpb2SG5z7XLYnXgIbZ1gzogKZaAUixE', 
     document_name: 'PV',
     sheet_name: {
+      RecipentsList: 'Recipents List',
       MaterialList: 'Material List',
       PartyList: 'Party List',
-      AuthorityList: 'List'
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
+    }
+  },
+  {
+    name: 'Fertilizer',
+    material_sheet_id: '',
+    document_name: 'FT',
+    sheet_name: {
+      RecipentsList: 'Recipents List',
+      MaterialList: 'Material List',
+      PartyList: 'Party List',
+      AuthorityList: 'List',
+      IndentList: 'Indent List'
     }
   }
 ];

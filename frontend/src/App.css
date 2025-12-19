@@ -53,7 +53,10 @@ body {
   text-decoration: none;
   border-radius: 5px;
   transition: background-color 0.3s;
-  flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
+  flex: 0 1 auto; /* No grow, allow shrink, auto basis */
+  min-width: 150px; /* Minimum width for consistency */
+  max-width: 250px; /* Maximum width to prevent overly long buttons */
+  width: auto; /* Auto width based on content, but constrained by min/max */
   text-align: center; /* Center text */
   align-items: center;
   justify-content: center;
@@ -73,7 +76,10 @@ body {
   text-decoration: none;
   border-radius: 5px;
   transition: background-color 0.3s;
-  flex: 1 1 150px; /* Flex-grow, flex-shrink, and flex-basis */
+  flex: 0 1 auto; /* No grow, allow shrink, auto basis */
+  min-width: 150px; /* Minimum width for consistency */
+  max-width: 250px; /* Maximum width to prevent overly long buttons */
+  width: auto; /* Auto width based on content, but constrained by min/max */
   text-align: center; /* Center text */
   align-items: center;
   justify-content: center;
@@ -134,7 +140,8 @@ body {
   }
 
   .nav-link, .btn {
-    flex: 1 1 100px; /* Adjust flex-basis for smaller screens */
+    min-width: 120px; /* Smaller minimum width for tablets */
+    max-width: 200px; /* Smaller maximum width for tablets */
   }
 }
 
@@ -153,7 +160,9 @@ body {
   }
 
   .nav-link, .btn {
-    flex: 1 1 80px; /* Adjust flex-basis for smaller screens */
+    min-width: 100px; /* Smaller minimum width for mobile */
+    max-width: 180px; /* Smaller maximum width for mobile */
+    padding: 8px 16px; /* Slightly smaller padding on mobile */
   }
 }
 

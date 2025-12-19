@@ -5,7 +5,7 @@ import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 import BackButton from '../../Components/BackButton'
 
-const HB_Delete_MaterialList = () => {
+const NP_Delete_MaterialList = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -347,7 +347,7 @@ const HB_Delete_MaterialList = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'HB' }
+          params: { factory: 'NP' }
         })
         
         if (response.data.success) {
@@ -515,7 +515,7 @@ const HB_Delete_MaterialList = () => {
         subCategory: subCategory,
         specifications: specifications,
         materialName: materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Fetching material details with payload:', payload)
@@ -545,7 +545,7 @@ const HB_Delete_MaterialList = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'HB'
+            department: 'NP'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -626,7 +626,7 @@ const HB_Delete_MaterialList = () => {
         subCategory: materialToDelete.subCategory === 'N/A' ? '' : materialToDelete.subCategory,
         specifications: materialToDelete.specifications === 'N/A' ? '' : materialToDelete.specifications,
         materialName: materialToDelete.materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Deleting material with payload:', payload)
@@ -697,7 +697,7 @@ const HB_Delete_MaterialList = () => {
   return (
     <div className="material_list-container">
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/humnabad/hb_store" />
+      <BackButton label="Back to Store" to="/newplant/np_store" />
       
       <div className="material-form-wrapper">
         <h2>Delete Material</h2>
@@ -1005,4 +1005,4 @@ const HB_Delete_MaterialList = () => {
   )
 }
 
-export default HB_Delete_MaterialList
+export default NP_Delete_MaterialList

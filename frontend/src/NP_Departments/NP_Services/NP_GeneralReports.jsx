@@ -903,7 +903,7 @@ const Reports = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <button 
-          onClick={() => navigate('/humnabad/hb_operations')} 
+          onClick={() => navigate('/newplant/np_operations')} 
           className="back-button"
           style={{
             background: '#6c757d',

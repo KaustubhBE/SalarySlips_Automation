@@ -915,7 +915,7 @@ const GB_MaterialInward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Inward Form</h2>
@@ -929,7 +929,7 @@ const GB_MaterialInward = () => {
   }
 
   return (
-    <div className="place_order-container">
+    <div className="purchase_indent-container">
       {/* Back Button Section - Always at top-left */}
       <BackButton label="Back to Store" to="/gulbarga/gb_store" />
       

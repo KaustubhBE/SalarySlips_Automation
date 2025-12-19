@@ -13,40 +13,45 @@ import { useSessionExpired } from './Components/SessionExpiredContext';
 import { setSessionExpiredHandler } from './config';
 
 // Import KR Store Services components
-import KR_PlaceOrder from './KR_Departments/KR_Services/KR_PlaceOrder';
+import KR_PurchaseIndent from './KR_Departments/KR_Services/KR_PurchaseIndent';
 import KR_Add_MaterialList from './KR_Departments/KR_Services/KR_Add_MaterialList';
 import KR_Delete_MaterialList from './KR_Departments/KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
 
 // Import OM Store Services components
-import OM_PlaceOrder from './OM_Departments/OM_Services/OM_PlaceOrder';
+import OM_PurchaseIndent from './OM_Departments/OM_Services/OM_PurchaseIndent';
 import OM_Add_MaterialList from './OM_Departments/OM_Services/OM_Add_MaterialList';
 import OM_Delete_MaterialList from './OM_Departments/OM_Services/OM_Delete_MaterialList';
 import OM_MaterialInward from './OM_Departments/OM_Services/OM_MaterialInward';
 import OM_MaterialOutward from './OM_Departments/OM_Services/OM_MaterialOutward';
 
 // Import PV Store Services components
-import PV_PlaceOrder from './PV_Departments/PV_Services/PV_PlaceOrder';
+import PV_PurchaseIndent from './PV_Departments/PV_Services/PV_PurchaseIndent';
 import PV_Add_MaterialList from './PV_Departments/PV_Services/PV_Add_MaterialList';
 import PV_Delete_MaterialList from './PV_Departments/PV_Services/PV_Delete_MaterialList';
 import PV_MaterialInward from './PV_Departments/PV_Services/PV_MaterialInward';
 import PV_MaterialOutward from './PV_Departments/PV_Services/PV_MaterialOutward';
 
-// Import HB Store Services components
-import HB_PlaceOrder from './HB_Departments/HB_Services/HB_PlaceOrder';
-import HB_Add_MaterialList from './HB_Departments/HB_Services/HB_Add_MaterialList';
-import HB_Delete_MaterialList from './HB_Departments/HB_Services/HB_Delete_MaterialList';
-import HB_MaterialInward from './HB_Departments/HB_Services/HB_MaterialInward';
-import HB_MaterialOutward from './HB_Departments/HB_Services/HB_MaterialOutward';
+// Import NP Store Services components
+import NP_PurchaseIndent from './NP_Departments/NP_Services/NP_PurchaseIndent';
+import NP_Add_MaterialList from './NP_Departments/NP_Services/NP_Add_MaterialList';
+import NP_Delete_MaterialList from './NP_Departments/NP_Services/NP_Delete_MaterialList';
+import NP_MaterialInward from './NP_Departments/NP_Services/NP_MaterialInward';
+import NP_MaterialOutward from './NP_Departments/NP_Services/NP_MaterialOutward';
 
 // Import GB department components
-import GB_PlaceOrder from './GB_Departments/GB_Services/GB_PlaceOrder';
+import GB_PurchaseIndent from './GB_Departments/GB_Services/GB_PurchaseIndent';
 import GB_Add_MaterialList from './GB_Departments/GB_Services/GB_Add_MaterialList';
 import GB_Delete_MaterialList from './GB_Departments/GB_Services/GB_Delete_MaterialList';
 import GB_MaterialInward from './GB_Departments/GB_Services/GB_MaterialInward';
 import GB_MaterialOutward from './GB_Departments/GB_Services/GB_MaterialOutward';
 import SheetsMaterialList from './HO_Departments/HO_Services/HO_Sheets-MaterialList';
+
+// Import FT Store Services components
+import FT_PurchaseIndent from './FT_Departments/FT_Services/FT_PurchaseIndent';
+import FT_MaterialInward from './FT_Departments/FT_Services/FT_MaterialInward';
+import FT_MaterialOutward from './FT_Departments/FT_Services/FT_MaterialOutward';
 
 // Import specific processing components
 import KRProcessing from './KR_Departments/KR_Services/KR_Processing';
@@ -54,7 +59,7 @@ import GBProcessing from './GB_Departments/GB_Services/GB_Processing';
 import PVProcessing from './PV_Departments/PV_Services/PV_Processing';
 import OMProcessing from './OM_Departments/OM_Services/OM_Processing';
 import HOProcessing from './HO_Departments/HO_Services/HO_Processing';
-import HBProcessing from './HB_Departments/HB_Services/HB_Processing';
+import NPProcessing from './NP_Departments/NP_Services/NP_Processing';
 
 import PrivacyPolicy from './Components/PrivacyPolicy';
 import TermsAndConditions from './Components/TermsAndConditions';
@@ -66,7 +71,8 @@ import KerurFactory from './Factories/kerur';
 import OmkarFactory from './Factories/omkar';
 import HeadOfficeFactory from './Factories/headoffice';
 import PadmavatiFactory from './Factories/padmavati';
-import HumnabadFactory from './Factories/humnabad';
+import NewPlantFactory from './Factories/newplant';
+import FertilizerFactory from './Factories/fertilizer';
 import GBStore from './GB_Departments/GBStore';
 import GBHumanResource from './GB_Departments/GBHumanResource';
 import GBOperations from './GB_Departments/GBOperations';
@@ -74,7 +80,7 @@ import KRStore from './KR_Departments/KRStore';
 import KRHumanResource from './KR_Departments/KRHumanResource';
 import KROperations from './KR_Departments/KROperations';
 import OMOperations from './OM_Departments/OMOperations';
-import HBOperations from './HB_Departments/HBOperations';
+import NPOperations from './NP_Departments/NPOperations';
 import PVOperations from './PV_Departments/PVOperations';
 import KR_ReactorReports from './KR_Departments/KR_Services/KR_ReactorReports';
 import KR_GeneralReports from './KR_Departments/KR_Services/KR_GeneralReports';
@@ -82,11 +88,11 @@ import PV_GeneralReports from './PV_Departments/PV_Services/PV_GeneralReports';
 import OM_GeneralReports from './OM_Departments/OM_Services/OM_GeneralReports';
 import HO_GeneralReports from './HO_Departments/HO_Services/HO_GeneralReports';
 import GB_GeneralReports from './GB_Departments/GB_Services/GB_GeneralReports';
-import HB_GeneralReports from './HB_Departments/HB_Services/HB_GeneralReports';
+import NP_GeneralReports from './NP_Departments/NP_Services/NP_GeneralReports';
 import OMStore from './OM_Departments/OMStore';
 import OMHumanResource from './OM_Departments/OMHumanResource';
-import HBStore from './HB_Departments/HBStore';
-import HBHumanResource from './HB_Departments/HBHumanResource';
+import NPStore from './NP_Departments/NPStore';
+import NPHumanResource from './NP_Departments/NPHumanResource';
 import PVStore from './PV_Departments/PVStore';
 import PVHumanResource from './PV_Departments/PVHumanResource';
 import HOAccounts from './HO_Departments/HOAccounts';
@@ -94,6 +100,7 @@ import HOMarketing from './HO_Departments/HOMarketing';
 import HOOperations from './HO_Departments/HOOperations';
 import HOStore from './HO_Departments/HOStore';
 import HOHumanResource from './HO_Departments/HOHumanResourec';
+import FTStore from './FT_Departments/FTStore';
 import { useAuth } from './Components/AuthContext';
 import { FACTORY_NAMES } from './config';
 
@@ -115,10 +122,10 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
       'humanresource': OMHumanResource,
       'operations': OMOperations
     },
-    'humnabad': {
-      'store': HBStore,
-      'humanresource': HBHumanResource,
-      'operations': HBOperations
+    'newplant': {
+      'store': NPStore,
+      'humanresource': NPHumanResource,
+      'operations': NPOperations
     },
     'padmavati': {
       'store': PVStore,
@@ -131,6 +138,11 @@ const getDepartmentComponent = (factoryKey, departmentKey) => {
       'operations': HOOperations,
       'store': HOStore,
       'humanresource': HOHumanResource
+    },
+    'fertilizer': {
+      'store': FTStore,
+      'humanresource': null, // TODO: Create FTHumanResource component
+      'operations': null // TODO: Create FTOperations component
     }
   };
   
@@ -143,7 +155,7 @@ const getProcessingComponent = (factoryKey, mode) => {
     'gulbarga': GBProcessing,
     'kerur': KRProcessing,
     'omkar': OMProcessing,
-    'humnabad': HBProcessing,
+    'newplant': NPProcessing,
     'padmavati': PVProcessing,
     'headoffice': HOProcessing
   };
@@ -160,9 +172,10 @@ const DepartmentWrapper = () => {
   let actualDepartmentKey = departmentKey;
   if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
       departmentKey.startsWith('pv_') || departmentKey.startsWith('om_') || 
-      departmentKey.startsWith('hb_') || departmentKey.startsWith('ho_'))) {
+      departmentKey.startsWith('np_') || departmentKey.startsWith('ho_') || 
+      departmentKey.startsWith('ft_'))) {
     // Extract the base department key (remove factory prefix)
-    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
+    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|np_|ho_|ft_)/, '');
   }
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
@@ -188,7 +201,7 @@ const FactoryPrefixedDepartmentWrapper = ({ departmentType }) => {
   const { factoryKey } = useParams();
   
   // Extract the base department key (remove factory prefix)
-  const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
+  const actualDepartmentKey = departmentType.replace(/^(gb_|kr_|pv_|om_|np_|ho_|ft_)/, '');
   
   const DepartmentComponent = getDepartmentComponent(factoryKey, actualDepartmentKey);
   
@@ -228,9 +241,10 @@ const DepartmentRouteGuard = ({ requiredRouteType, component }) => {
   let actualDepartmentKey = departmentKey;
   if (departmentKey && (departmentKey.startsWith('gb_') || departmentKey.startsWith('kr_') || 
       departmentKey.startsWith('pv_') || departmentKey.startsWith('om_') || 
-      departmentKey.startsWith('hb_') || departmentKey.startsWith('ho_'))) {
+      departmentKey.startsWith('np_') || departmentKey.startsWith('ho_') || 
+      departmentKey.startsWith('ft_'))) {
     // Extract the base department key (remove factory prefix)
-    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|hb_|ho_)/, '');
+    actualDepartmentKey = departmentKey.replace(/^(gb_|kr_|pv_|om_|np_|ho_|ft_)/, '');
   }
   
   // Debug logging
@@ -314,33 +328,48 @@ function App() {
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
 
+  // Desired factory order: Gulbarga, Kerur, New Plant, Omkar, Padmavati, Fertilizer, Head Office
+  const FACTORY_ORDER = ['gulbarga', 'kerur', 'newplant', 'omkar', 'padmavati', 'fertilizer', 'headoffice'];
+
+  // Helper function to sort factories according to desired order
+  const sortFactoriesByOrder = (factories) => {
+    return factories.sort((a, b) => {
+      const indexA = FACTORY_ORDER.indexOf(a);
+      const indexB = FACTORY_ORDER.indexOf(b);
+      // If factory not in order list, put it at the end
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  };
+
   // Get accessible factories for current user - only show factories where user has access to services
   const getAccessibleFactoriesForUser = () => {
     if (!user) return [];
     
     // Admin has access to all factories
     if ((user.role || '').toString().toLowerCase() === 'admin' || (user.permissions && user.permissions['*'] === true)) {
-      return ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'];
+      return [...FACTORY_ORDER]; // Return a copy to avoid mutation
     }
     
     // Use permission_metadata if available
     const permissionMetadata = user.permission_metadata || {};
     const userFactories = permissionMetadata.factories || [];
     
-    // If we have permission_metadata with factories, use it
+    // If we have permission_metadata with factories, use it and sort by desired order
     if (userFactories.length > 0) {
       // Debug logging (remove in production)
       if (process.env.NODE_ENV === 'development') {
         console.log('App.jsx - Accessible factories from permission_metadata:', userFactories);
       }
-      return userFactories;
+      return sortFactoriesByOrder([...userFactories]); // Return sorted copy
     }
     
     // Fallback to old logic for regular users (only if canAccessFactory is available)
     // Use safe fallback to prevent errors
-    const allFactories = ['gulbarga', 'kerur', 'humnabad', 'omkar', 'padmavati', 'headoffice'];
     try {
-      const accessibleFactories = allFactories.filter(factory => {
+      const accessibleFactories = FACTORY_ORDER.filter(factory => {
         try {
           return safeCanAccessFactory(factory);
         } catch (err) {
@@ -353,7 +382,7 @@ function App() {
       if (process.env.NODE_ENV === 'development') {
         console.log('App.jsx - Accessible factories from fallback logic:', accessibleFactories);
       }
-      return accessibleFactories;
+      return accessibleFactories; // Already in correct order
     } catch (err) {
       console.error('Error in getAccessibleFactoriesForUser fallback:', err);
       return [];
@@ -513,9 +542,15 @@ function App() {
             <Navigate to="/app" replace />
         } />
 
-        <Route path="/humnabad" element={
-          isAuthenticated && getAccessibleFactoriesForUser().includes('humnabad') ? 
-            <HumnabadFactory /> : 
+        <Route path="/newplant" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('newplant') ? 
+            <NewPlantFactory /> : 
+            <Navigate to="/app" replace />
+        } />
+
+        <Route path="/fertilizer" element={
+          isAuthenticated && getAccessibleFactoriesForUser().includes('fertilizer') ? 
+            <FertilizerFactory /> : 
             <Navigate to="/app" replace />
         } />
 
@@ -592,19 +627,19 @@ function App() {
             /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/:factoryKey/hb_store" element={
+        <Route path="/:factoryKey/np_store" element={
           isAuthenticated ? 
             <DepartmentRouteGuard 
               requiredRouteType="department_access"
-              component={<FactoryPrefixedDepartmentWrapper departmentType="hb_store" />}
+              component={<FactoryPrefixedDepartmentWrapper departmentType="np_store" />}
             /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/:factoryKey/hb_humanresource" element={
+        <Route path="/:factoryKey/np_humanresource" element={
           isAuthenticated ? 
             <DepartmentRouteGuard 
               requiredRouteType="department_access"
-              component={<FactoryPrefixedDepartmentWrapper departmentType="hb_humanresource" />}
+              component={<FactoryPrefixedDepartmentWrapper departmentType="np_humanresource" />}
             /> : 
             <Navigate to="/login" replace />
         } />
@@ -656,11 +691,11 @@ function App() {
             /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/:factoryKey/hb_operations" element={
+        <Route path="/:factoryKey/np_operations" element={
           isAuthenticated ? 
             <DepartmentRouteGuard 
               requiredRouteType="department_access"
-              component={<FactoryPrefixedDepartmentWrapper departmentType="hb_operations" />}
+              component={<FactoryPrefixedDepartmentWrapper departmentType="np_operations" />}
             /> : 
             <Navigate to="/login" replace />
         } />
@@ -669,6 +704,30 @@ function App() {
             <DepartmentRouteGuard 
               requiredRouteType="department_access"
               component={<FactoryPrefixedDepartmentWrapper departmentType="pv_operations" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ft_store" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ft_store" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ft_humanresource" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ft_humanresource" />}
+            /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/:factoryKey/ft_operations" element={
+          isAuthenticated ? 
+            <DepartmentRouteGuard 
+              requiredRouteType="department_access"
+              component={<FactoryPrefixedDepartmentWrapper departmentType="ft_operations" />}
             /> : 
             <Navigate to="/login" replace />
         } />
@@ -726,10 +785,24 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
-        {/* Humnabad Operations General Reports Route */}
-        <Route path="/humnabad/hb_operations/hb_general_reports" element={
+        {/* New Plant Operations General Reports Route */}
+        <Route path="/newplant/np_operations/np_general_reports" element={
           isAuthenticated ? 
-            <HB_GeneralReports /> : 
+            <NP_GeneralReports /> : 
+            <Navigate to="/login" replace />
+        } />
+
+        {/* Fertilizer Operations General Reports Route */}
+        {/* Note: FT_GeneralReports component needs to be created */}
+        <Route path="/fertilizer/ft_operations/ft_general_reports" element={
+          isAuthenticated ? 
+            <div className="splash-page">
+              <h1>Fertilizer General Reports</h1>
+              <p>This feature is coming soon. The component needs to be created.</p>
+              <button onClick={() => window.history.back()} className="nav-link" style={{ marginTop: '15px' }}>
+                ← Go Back
+              </button>
+            </div> : 
             <Navigate to="/login" replace />
         } />
 
@@ -822,14 +895,14 @@ function App() {
           />
         } />
 
-        <Route path="/:factoryKey/:departmentKey/hb_single_processing/*" element={
+        <Route path="/:factoryKey/:departmentKey/np_single_processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="single_processing"
             component={<ProcessingWrapper mode="single" />}
           />
         } />
 
-        <Route path="/:factoryKey/:departmentKey/hb_batch_processing/*" element={
+        <Route path="/:factoryKey/:departmentKey/np_batch_processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="batch_processing"
             component={<ProcessingWrapper mode="batch" />}
@@ -844,6 +917,20 @@ function App() {
         } />
 
         <Route path="/:factoryKey/:departmentKey/ho_batch_processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="batch_processing"
+            component={<ProcessingWrapper mode="batch" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/ft_single_processing/*" element={
+          <DepartmentRouteGuard 
+            requiredRouteType="single_processing"
+            component={<ProcessingWrapper mode="single" />}
+          />
+        } />
+
+        <Route path="/:factoryKey/:departmentKey/ft_batch_processing/*" element={
           <DepartmentRouteGuard 
             requiredRouteType="batch_processing"
             component={<ProcessingWrapper mode="batch" />}
@@ -919,15 +1006,15 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/hb_single_processing/*" element={
+        <Route path="/np_single_processing/*" element={
           isAuthenticated ? 
-            <HBHumanResource /> : 
+            <NPHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/hb_batch_processing/*" element={
+        <Route path="/np_batch_processing/*" element={
           isAuthenticated ? 
-            <HBHumanResource /> : 
+            <NPHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
@@ -965,19 +1052,34 @@ function App() {
             <KR_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/kerur/kr_store/kr_place_order" element={
+        <Route path="/kerur/kr_store/kr_purchase_indent" element={
           isAuthenticated ? 
-            <KR_PlaceOrder /> : 
+            <KR_PurchaseIndent /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/gulbarga/gb_store/gb_place_order" element={
+        <Route path="/fertilizer/ft_store/ft_purchase_indent" element={
           isAuthenticated ? 
-            <GB_PlaceOrder /> : 
+            <FT_PurchaseIndent /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/humnabad/hb_store/hb_place_order" element={
+        <Route path="/fertilizer/ft_store/ft_material_inward" element={
           isAuthenticated ? 
-            <HB_PlaceOrder /> : 
+            <FT_MaterialInward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/fertilizer/ft_store/ft_material_outward" element={
+          isAuthenticated ? 
+            <FT_MaterialOutward /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/gulbarga/gb_store/gb_purchase_indent" element={
+          isAuthenticated ? 
+            <GB_PurchaseIndent /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/newplant/np_store/np_purchase_indent" element={
+          isAuthenticated ? 
+            <NP_PurchaseIndent /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/headoffice/ho_store/ho_material_list" element={
@@ -985,14 +1087,14 @@ function App() {
             <SheetsMaterialList /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/omkar/om_store/om_place_order" element={
+        <Route path="/omkar/om_store/om_purchase_indent" element={
           isAuthenticated ? 
-            <OM_PlaceOrder /> : 
+            <OM_PurchaseIndent /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/padmavati/pv_store/pv_place_order" element={
+        <Route path="/padmavati/pv_store/pv_purchase_indent" element={
           isAuthenticated ? 
-            <PV_PlaceOrder /> : 
+            <PV_PurchaseIndent /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/kerur/kr_store/kr_material_inward" element={
@@ -1072,25 +1174,25 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
-        {/* HB Store Routes */}
-        <Route path="/humnabad/hb_store/hb_add_material_list" element={
+        {/* NP Store Routes */}
+        <Route path="/newplant/np_store/np_add_material_list" element={
           isAuthenticated ? 
-            <HB_Add_MaterialList /> : 
+            <NP_Add_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/humnabad/hb_store/hb_delete_material_list" element={
+        <Route path="/newplant/np_store/np_delete_material_list" element={
           isAuthenticated ? 
-            <HB_Delete_MaterialList /> : 
+            <NP_Delete_MaterialList /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/humnabad/hb_store/hb_material_inward" element={
+        <Route path="/newplant/np_store/np_material_inward" element={
           isAuthenticated ? 
-            <HB_MaterialInward /> : 
+            <NP_MaterialInward /> : 
             <Navigate to="/login" replace />
         } />
-        <Route path="/humnabad/hb_store/hb_material_outward" element={
+        <Route path="/newplant/np_store/np_material_outward" element={
           isAuthenticated ? 
-            <HB_MaterialOutward /> : 
+            <NP_MaterialOutward /> : 
             <Navigate to="/login" replace />
         } />
 
@@ -1154,15 +1256,15 @@ function App() {
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/hb_humanresource/*" element={
+        <Route path="/np_humanresource/*" element={
           isAuthenticated ? 
-            <HBHumanResource /> : 
+            <NPHumanResource /> : 
             <Navigate to="/login" replace />
         } />
 
-        <Route path="/hb_store/*" element={
+        <Route path="/np_store/*" element={
           isAuthenticated ? 
-            <HBStore /> : 
+            <NPStore /> : 
             <Navigate to="/login" replace />
         } />
 

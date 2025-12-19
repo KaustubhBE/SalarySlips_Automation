@@ -11,11 +11,11 @@ const HumnabadFactory = () => {
   // Function to check if user is admin (role or wildcard permission)
   const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin' || (user?.permissions && user.permissions['*'] === true);
 
-  // Static departments for Humnabad factory with hardcoded navigation (only existing departments)
-  const humnabadDepartments = [
-    { key: 'hb_store', name: 'Store', route: '/humnabad/hb_store' },
-    { key: 'hb_humanresource', name: 'Human Resource', route: '/humnabad/hb_humanresource' },
-    { key: 'hb_operations', name: 'Operations', route: '/humnabad/hb_operations' }
+  // Static departments for New Plant factory with hardcoded navigation (only existing departments)
+  const newplantDepartments = [
+    { key: 'np_store', name: 'Store', route: '/newplant/np_store' },
+    // { key: 'np_humanresource', name: 'Human Resource', route: '/newplant/np_humanresource' },
+    // { key: 'np_operations', name: 'Operations', route: '/newplant/np_operations' }
   ];
 
   // Filter departments based on user permissions
@@ -23,12 +23,12 @@ const HumnabadFactory = () => {
     if (!user) return [];
     
     if (isAdmin) {
-      return humnabadDepartments;
+      return newplantDepartments;
     }
     
-    return humnabadDepartments.filter(dept => {
-      // Use the full prefixed department key (hb_store, hb_humanresource, etc.)
-      return canAccessFactoryDepartment('humnabad', dept.key);
+    return newplantDepartments.filter(dept => {
+      // Use the full prefixed department key (np_store, np_humanresource, etc.)
+      return canAccessFactoryDepartment('newplant', dept.key);
     });
   };
 
@@ -82,14 +82,14 @@ const HumnabadFactory = () => {
         {process.env.NODE_ENV === 'development' && (
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
             <strong>Debug Info:</strong><br/>
-            Factory: Humnabad<br/>
+            Factory: New Plant<br/>
             User Role: {user?.role}<br/>
             User Permission Metadata: {JSON.stringify(user?.permission_metadata || {})}<br/>
             Accessible Departments: {JSON.stringify(accessibleDepartments.map(d => d.key))}
           </div>
         )}
         
-        <h2>Available Departments - Humnabad</h2>
+        <h2>Available Departments - New Plant</h2>
         <h3>Select a department to access its services:</h3>
         
         {/* Department Navigation Buttons */}

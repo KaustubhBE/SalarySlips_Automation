@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from '../Components/AuthContext';
-import KR_PlaceOrder from './KR_Services/KR_PlaceOrder';
+import KR_PurchaseIndent from './KR_Services/KR_PurchaseIndent';
 import KR_Add_MaterialList from './KR_Services/KR_Add_MaterialList';
 import KR_Delete_MaterialList from './KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Services/KR_MaterialInward';
@@ -19,11 +19,11 @@ const KRStore = () => {
   
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
-    { key: 'kr_place_order', name: 'Order Intent', route: '/kerur/kr_store/kr_place_order' },
+    { key: 'kr_purchase_indent', name: 'Purchase Indent', route: '/kerur/kr_store/kr_purchase_indent' },
     // { key: 'kr_add_material_list', name: 'Add Material', route: '/kerur/kr_store/kr_add_material_list' },
     // { key: 'kr_delete_material_list', name: 'Delete Material', route: '/kerur/kr_store/kr_delete_material_list'},
-    { key: 'kr_material_inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material_inward' },
-    { key: 'kr_material_outward', name: 'Material Outward', route: '/kerur/kr_store/kr_material_outward' },
+    // { key: 'kr_material_inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material_inward' },
+    // { key: 'kr_material_outward', name: 'Material Outward', route: '/kerur/kr_store/kr_material_outward' },
   ];
 
   // Get accessible services based on user permissions
@@ -114,8 +114,8 @@ const KRStore = () => {
 
   return (
     <Routes>
-      {/* KR Place Order Service Route */}
-      <Route path="kr_place_order" element={<KR_PlaceOrder />} />
+      {/* KR Purchase Indent Service Route */}
+      <Route path="kr_purchase_indent" element={<KR_PurchaseIndent />} />
       
       {/* KR Add Material Service Route */}
       <Route path="kr_add_material_list" element={<KR_Add_MaterialList />} />

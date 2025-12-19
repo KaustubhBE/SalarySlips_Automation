@@ -11,7 +11,7 @@ def write_order_to_indent_sheet(factory, order_data, logger=None):
     Write order data to the "Indent List" Google Sheet.
     
     Args:
-        factory: Factory identifier (e.g., 'KR', 'GB', 'HB', etc.)
+        factory: Factory identifier (e.g., 'KR', 'GB', 'NP', etc.)
         order_data: Dictionary containing order information with the following structure:
             - orderId: str
             - orderItems: list of dicts, each containing:

@@ -24,7 +24,7 @@ const formatDateTime = (date) => {
   return `${day}/${month}/${year}, ${hours12}:${minutes}:${seconds} ${ampm}`
 }
 
-const KR_MaterialInward = () => {
+const FT_MaterialOutward = () => {
   const [formData, setFormData] = useState({
     category: '',
     subCategory: '',
@@ -34,10 +34,10 @@ const KR_MaterialInward = () => {
     quantity: ''
   })
 
-  // General form data for party name and place (applies to all items)
+  // General form data for given to and description (applies to all items)
   const [generalFormData, setGeneralFormData] = useState({
-    partyName: '',
-    place: ''
+    givenTo: '',
+    description: ''
   })
 
   // Date and time state
@@ -56,22 +56,15 @@ const KR_MaterialInward = () => {
     return `${hours}:${minutes} ${ampm}`
   })
 
-
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
   const [materialData, setMaterialData] = useState({})
   const [categories, setCategories] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
-  const [partyNames, setPartyNames] = useState([])
-  const [places, setPlaces] = useState([])
-  const [partyPlaceMapping, setPartyPlaceMapping] = useState({}) // Store party name to place mapping
-  const [partyLoading, setPartyLoading] = useState(true)
-  const [placesLoading, setPlacesLoading] = useState(true)
-  const [formValidationErrors, setFormValidationErrors] = useState([])
-  const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
-  const [highlightedFields, setHighlightedFields] = useState([])
-  
+  const [authorityNames, setAuthorityNames] = useState([])
+  const [authorityLoading, setAuthorityLoading] = useState(true)
+
   // Recipients functionality
   const [recipients, setRecipients] = useState([])
   const [recipientsLoading, setRecipientsLoading] = useState(true)
@@ -84,8 +77,31 @@ const KR_MaterialInward = () => {
   const [enableWhatsappNotification, setEnableWhatsappNotification] = useState(true)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [summaryModalData, setSummaryModalData] = useState(null)
-  const highlightTimeoutRef = useRef(null)
-  const screenFlashTimeoutRef = useRef(null)
+
+  // Multi-item management
+  const [outwardItems, setOutwardItems] = useState([])
+  
+  // Edit functionality
+  const [editingItem, setEditingItem] = useState(null)
+  const [editFormData, setEditFormData] = useState({})
+  
+  // Quantity validation
+  const [currentQuantity, setCurrentQuantity] = useState(null)
+  const [quantityLoading, setQuantityLoading] = useState(false)
+  
+  // Touch functionality for mobile
+  const [touchStartTime, setTouchStartTime] = useState(null)
+  const [touchStartPosition, setTouchStartPosition] = useState(null)
+  
+  // Mobile items sheet modal
+  const [showItemsSheet, setShowItemsSheet] = useState(false)
+  const [showScreenFlash, setShowScreenFlash] = useState(false)
+const [formValidationErrors, setFormValidationErrors] = useState([])
+const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
+const itemsSheetHistoryPushed = useRef(false)
+const [highlightedFields, setHighlightedFields] = useState([])
+const highlightTimeoutRef = useRef(null)
+const screenFlashTimeoutRef = useRef(null)
 const categoryInputRef = useRef(null)
 const materialNameInputRef = useRef(null)
 const quantityInputRef = useRef(null)
@@ -97,36 +113,8 @@ const addItemFieldRefs = {
   uom: uomInputRef
 }
   
-  // Helper function to get available places for a party name
-  const getPlacesForParty = (partyName) => {
-    if (!partyName || !partyPlaceMapping[partyName]) {
-      return []
-    }
-    const placeData = partyPlaceMapping[partyName]
-    // Handle both single string and array of places
-    if (Array.isArray(placeData)) {
-      return placeData
-    } else if (typeof placeData === 'string') {
-      return [placeData]
-    }
-    return []
-  }
-
-  // Multi-item management
-  const [inwardItems, setInwardItems] = useState([])
-  
-  // Edit functionality
-  const [editingItem, setEditingItem] = useState(null)
-  const [editFormData, setEditFormData] = useState({})
-  
-  // Touch functionality for mobile
-  const [touchStartTime, setTouchStartTime] = useState(null)
-  const [touchStartPosition, setTouchStartPosition] = useState(null)
-  
-  // Mobile items sheet modal
-  const [showItemsSheet, setShowItemsSheet] = useState(false)
-  const [showScreenFlash, setShowScreenFlash] = useState(false)
-  const itemsSheetHistoryPushed = useRef(false)
+  // Ref to track if component is still mounted and form is active
+  const isFormActive = useRef(true)
   const materialInputSectionRef = useRef(null)
   const itemsTableContainerRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -168,6 +156,60 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     }
   }
 }
+
+  // Function to fetch current quantity from database
+  const fetchCurrentQuantity = async (category, subCategory, specifications, materialName) => {
+    try {
+      setQuantityLoading(true)
+      const payload = {
+        category: category,
+        subCategory: subCategory || '',
+        specifications: specifications || '',
+        materialName: materialName,
+        department: 'FT'
+      }
+
+      console.log('Fetching current quantity with payload:', payload)
+      const response = await axios.post(getApiUrl('get_material_details'), payload)
+      console.log('Current quantity response:', response.data)
+      
+      if (response.data.success) {
+        const material = response.data.material
+        const currentQty = material.currentQuantity || material.initialQuantity || 0
+        setCurrentQuantity(currentQty)
+        return currentQty
+      } else {
+        console.warn('Material not found in database:', response.data.message)
+        // If material not found, try to find it without specifications
+        if (specifications) {
+          console.log('Retrying without specifications...')
+          const retryPayload = {
+            category: category,
+            subCategory: subCategory || '',
+            specifications: '',
+            materialName: materialName,
+            department: 'FT'
+          }
+          
+          const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
+          if (retryResponse.data.success) {
+            const material = retryResponse.data.material
+            const currentQty = material.currentQuantity || material.initialQuantity || 0
+            setCurrentQuantity(currentQty)
+            return currentQty
+          }
+        }
+        setCurrentQuantity(null)
+        return null
+      }
+    } catch (error) {
+      console.error('Error fetching current quantity:', error)
+      setCurrentQuantity(null)
+      return null
+    } finally {
+      setQuantityLoading(false)
+    }
+  }
 
   // Helper function to get material name options based on category data structure
   const getMaterialNameOptions = (categoryData, subCategory) => {
@@ -464,19 +506,19 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   // Function to fetch UOM from backend for exact material match
   const fetchMaterialUomFromBackend = async (category, subCategory, specifications, materialName) => {
     try {
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       const sheetName =
-        typeof kerurPlant?.sheet_name === 'object'
-          ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-          : kerurPlant?.sheet_name || 'Material List'
+        typeof fertilizerPlant?.sheet_name === 'object'
+          ? fertilizerPlant?.sheet_name?.MaterialList || 'Material List'
+          : fertilizerPlant?.sheet_name || 'Material List'
 
       const payload = {
         category: category,
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'KR',
+        department: 'FT',
         sheet_id: sheetId,
         sheet_name: sheetName
       }
@@ -505,7 +547,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'KR',
+            department: 'FT',
             sheet_id: sheetId,
             sheet_name: sheetName
           }
@@ -529,7 +571,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   }
 
   // Multi-item management functions
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
   // Determine which required fields are missing
   const requiredFields = [
     { name: 'category', label: 'Category' },
@@ -545,6 +587,32 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     return
   }
 
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(formData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      formData.category,
+      formData.subCategory,
+      formData.specifications,
+      formData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
+      return
+    }
+
     const newItem = {
       id: Date.now(),
       category: formData.category,
@@ -555,7 +623,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       quantity: formData.quantity
     }
 
-    setInwardItems(prev => [...prev, newItem])
+    setOutwardItems(prev => [...prev, newItem])
     
     // Trigger flash animation on table container
     if (itemsTableContainerRef.current) {
@@ -581,14 +649,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       quantity: ''
     }))
     
+    // Reset current quantity
+    setCurrentQuantity(null)
+    
     // Scroll to material inputs after a short delay to allow DOM update
     setTimeout(() => {
       scrollToMaterialInputs()
     }, 100)
+    scrollToMaterialInputs()
   }
 
   const handleRemoveItem = (itemId) => {
-    setInwardItems(prev => prev.filter(item => item.id !== itemId))
+    setOutwardItems(prev => prev.filter(item => item.id !== itemId))
   }
 
   const handleEditItem = (item) => {
@@ -727,13 +799,39 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     })
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData.category || !editFormData.materialName || !editFormData.uom || !editFormData.quantity) {
       alert('Please fill in all required fields (Category, Material Name, UOM, and Quantity) before saving.')
       return
     }
 
-    setInwardItems(prev => prev.map(item => 
+    // Validate quantity against current quantity in database
+    const enteredQuantity = parseFloat(editFormData.quantity)
+    if (isNaN(enteredQuantity) || enteredQuantity <= 0) {
+      alert('Please enter a valid quantity greater than 0.')
+      return
+    }
+
+    // Fetch current quantity from database
+    const currentQty = await fetchCurrentQuantity(
+      editFormData.category,
+      editFormData.subCategory,
+      editFormData.specifications,
+      editFormData.materialName
+    )
+
+    if (currentQty === null) {
+      alert('Material not found in database. Cannot validate quantity.')
+      return
+    }
+
+    // Check if entered quantity exceeds current quantity
+    if (enteredQuantity > currentQty) {
+      alert(`The required quantity (${enteredQuantity}) exceeds the current quantity (${currentQty}) available for this material. Please enter a quantity less than or equal to ${currentQty}.`)
+      return
+    }
+
+    setOutwardItems(prev => prev.map(item => 
       item.id === editingItem 
         ? { ...item, ...editFormData }
         : item
@@ -741,6 +839,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     
     setEditingItem(null)
     setEditFormData({})
+    setCurrentQuantity(null)
   }
 
   const handleCancelEdit = () => {
@@ -785,24 +884,24 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       setSendingNotification(true)
       
       // Get sheet ID from PLANT_DATA
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       const notificationData = {
         orderData: lastSubmittedData,
         recipients: selectedRecipients,
         method: notificationMethod,
-        factory: 'KR',
+        factory: 'fertilizer',
         autoSend: false, // Manual send with selected recipients
         sheetId: sheetId, // Send sheet ID to backend
         sheetName: 'Recipents List', // Send sheet name to backend
-        type: 'material_inward' // Specify the type
+        type: 'material_outward' // Specify the type
       }
 
       const response = await axios.post(getApiUrl('send_order_notification'), notificationData)
 
       if (response.data.success) {
-        const contextDetails = buildInwardSummaryContext(lastSubmittedData)
+        const contextDetails = buildOutwardSummaryContext(lastSubmittedData)
         showDetailedLogReport(response.data, contextDetails)
         alert('Notifications sent successfully!')
         setShowNotificationModal(false)
@@ -826,14 +925,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     setLastSubmittedData(null)
   }
 
-  const buildInwardSummaryContext = (data) => {
+  const buildOutwardSummaryContext = (data) => {
     if (!data) {
       return []
     }
     const rows = [
-      { label: 'Party Name', value: data.partyName },
-      { label: 'Place', value: data.place },
-      { label: 'Items Count', value: data.inwardItems?.length },
+      { label: 'Given To', value: data.givenTo },
+      { label: 'Description', value: data.description },
+      { label: 'Items Count', value: data.outwardItems?.length },
       { label: 'Recorded At', value: data.dateTime ? formatDateTime(new Date(data.dateTime)) : null }
     ]
     return rows.filter(row => row.value)
@@ -870,18 +969,15 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           onChange={(e) => handleInputChange(field, e.target.value)}
           required={required}
           className="mio-form-select"
-          disabled={dataLoading || partyLoading || placesLoading || 
+          disabled={dataLoading || authorityLoading || 
                    (field === 'subCategory' && !formData.category) || 
-                   (field === 'particulars' && !formData.category) ||
+                   (field === 'specifications' && !formData.category) ||
                    (field === 'materialName' && !formData.category) ||
                    (field === 'uom' && !formData.category) ||
-                   (field === 'partyName' && partyLoading) ||
-                   (field === 'place' && placesLoading)}
+                   (field === 'givenTo' && authorityLoading)}
         >
           <option value="">
-            {field === 'partyName' && partyLoading ? 'Loading party names...' :
-             field === 'place' && placesLoading ? 'Loading places...' :
-             `Select ${label}`}
+            {field === 'givenTo' && authorityLoading ? 'Loading authority names...' : `Select ${label}`}
           </option>
           {options.map((option, index) => (
             <option key={index} value={option}>
@@ -897,18 +993,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const fetchRecipientsList = async () => {
     try {
       setRecipientsLoading(true)
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      // Find the Fertilizer plant data to get the sheet ID
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
+        console.error('No sheet ID found for Fertilizer plant')
         return
       }
       
       const response = await axios.get(getApiUrl('get_recipients_list'), {
         params: { 
-          factory: 'KR',
+          factory: 'fertilizer',
           sheet_name: 'Recipents List',
           sheet_id: sheetId
         }
@@ -926,50 +1022,42 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     }
   }
 
-  // Fetch party and place data with mapping from Google Sheets
-  const fetchPartyPlaceData = async () => {
+  // Fetch authority list data from Google Sheets
+  const fetchAuthorityList = async () => {
     try {
-      setPartyLoading(true)
-      setPlacesLoading(true)
-      
-      // Find the Kerur plant data to get the sheet ID
-      const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-      const sheetId = kerurPlant?.material_sheet_id
+      setAuthorityLoading(true)
+      // Find the Fertilizer plant data to get the sheet ID
+      const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+      const sheetId = fertilizerPlant?.material_sheet_id
       
       if (!sheetId) {
-        console.error('No sheet ID found for Kerur plant')
-        setMessage('No Google Sheet configuration found for Kerur plant')
+        console.error('No sheet ID found for Fertilizer plant')
+        setMessage('No Google Sheet configuration found for Fertilizer plant')
         setMessageType('error')
         return
       }
       
-      const response = await axios.get(getApiUrl('get_party_place_data'), {
+      const response = await axios.get(getApiUrl('get_authority_list'), {
         params: { 
-          factory: 'KR',
-          sheet_name: 'Party List',
+          factory: 'fertilizer',
+          sheet_name: 'List',
           sheet_id: sheetId
         }
       })
       
       if (response.data.success) {
-        const { party_names, places, party_place_mapping } = response.data.data
-        
-        // Sort arrays alphabetically for better UX
-        setPartyNames(party_names.sort())
-        setPlaces(places.sort())
-        setPartyPlaceMapping(party_place_mapping)
+        setAuthorityNames(response.data.data)
       } else {
-        console.error('Failed to load party place data:', response.data.error)
-        setMessage('Failed to load party and place data')
+        console.error('Failed to load authority list:', response.data.error)
+        setMessage('Failed to load authority list data')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error fetching party place data:', error)
-      setMessage('Error loading party and place data. Please try again.')
+      console.error('Error fetching authority list:', error)
+      setMessage('Error loading authority list data. Please try again.')
       setMessageType('error')
     } finally {
-      setPartyLoading(false)
-      setPlacesLoading(false)
+      setAuthorityLoading(false)
     }
   }
 
@@ -978,16 +1066,16 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     const fetchMaterialData = async () => {
       try {
         setDataLoading(true)
-        const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-        const sheetId = kerurPlant?.material_sheet_id
+        const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+        const sheetId = fertilizerPlant?.material_sheet_id
         const sheetName =
-          typeof kerurPlant?.sheet_name === 'object'
-            ? kerurPlant?.sheet_name?.MaterialList || 'Material List'
-            : kerurPlant?.sheet_name || 'Material List'
+          typeof fertilizerPlant?.sheet_name === 'object'
+            ? fertilizerPlant?.sheet_name?.MaterialList || 'Material List'
+            : fertilizerPlant?.sheet_name || 'Material List'
 
         const response = await axios.get(getApiUrl('get_material_data'), {
           params: {
-            factory: 'KR',
+            factory: 'fertilizer',
             sheet_id: sheetId,
             sheet_name: sheetName
           }
@@ -1010,8 +1098,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
     }
 
     fetchMaterialData()
-    fetchPartyPlaceData()
+    fetchAuthorityList()
     fetchRecipientsList()
+    
+    // Reset form active state on mount
+    isFormActive.current = true
   }, [])
 
   // Show alert popup when message is set
@@ -1038,16 +1129,16 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   const validateForm = () => {
     const errors = []
     
-    if (inwardItems.length === 0) {
-      errors.push('Please add at least one item to record material inward')
+    if (outwardItems.length === 0) {
+      errors.push('Please add at least one item to record material outward')
     }
     
-    if (!generalFormData.partyName) {
-      errors.push('Please select Party Name')
+    if (!generalFormData.givenTo) {
+      errors.push('Please select Given To (Authority Name)')
     }
     
-    if (!generalFormData.place) {
-      errors.push('Please select Place')
+    if (!generalFormData.description || generalFormData.description.trim() === '') {
+      errors.push('Please enter Description')
     }
     
     return errors
@@ -1057,7 +1148,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   useEffect(() => {
     const errors = validateForm()
     setFormValidationErrors(errors)
-  }, [inwardItems, generalFormData.partyName, generalFormData.place])
+  }, [outwardItems, generalFormData.givenTo, generalFormData.description])
 
   // Handle browser back button when items sheet modal is open
   useEffect(() => {
@@ -1163,6 +1254,17 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 value
               )
             }, 100)
+            // Also fetch current quantity for materials without specifications
+            setTimeout(() => {
+              if (isFormActive.current) {
+                fetchCurrentQuantity(
+                  newFormData.category,
+                  newFormData.subCategory || '',
+                  '',
+                  value
+                )
+              }
+            }, 200)
           }
           // If specifications exist, don't fetch yet - wait for user to select specification
         }
@@ -1180,51 +1282,53 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         }, 100)
       }
 
+      // Clear current quantity when dependent fields change
+      if (field === 'category' || field === 'subCategory') {
+        setCurrentQuantity(null)
+      }
+
+      // Fetch current quantity when specifications are manually selected
+      if (field === 'specifications' && value && newFormData.category && newFormData.materialName) {
+        setCurrentQuantity(null) // Clear first
+        setTimeout(() => {
+          if (isFormActive.current) {
+            fetchCurrentQuantity(
+              newFormData.category,
+              newFormData.subCategory || '',
+              value,
+              newFormData.materialName
+            )
+          }
+        }, 100)
+      }
+
       return newFormData
     })
   }
 
   const handleGeneralInputChange = (field, value) => {
-    setGeneralFormData(prev => {
-      const newGeneralFormData = {
-        ...prev,
-        [field]: value
-      }
-
-      // Auto-select place when party name is selected
-      if (field === 'partyName') {
-        if (value && partyPlaceMapping[value]) {
-          const placeData = partyPlaceMapping[value]
-          
-          // Handle both single string and array of places
-          if (Array.isArray(placeData)) {
-            newGeneralFormData.place = placeData.length === 1 ? placeData[0] : ''
-          } else if (typeof placeData === 'string') {
-            newGeneralFormData.place = placeData
-          } else {
-            newGeneralFormData.place = ''
-          }
-        } else {
-          // Reset place when party name is cleared or not mapped
-          newGeneralFormData.place = ''
-        }
-      }
-
-      return newGeneralFormData
-    })
+    setGeneralFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (inwardItems.length === 0) {
-      alert('Please add at least one item to record material inward.')
+    if (outwardItems.length === 0) {
+      alert('Please add at least one item to record material outward.')
       return
     }
 
-    if (!generalFormData.partyName || !generalFormData.place) {
-      alert('Please fill in Party Name and Place for the inward record.')
+    if (!generalFormData.givenTo) {
+      alert('Please fill in Given To for the outward record.')
+      return
+    }
+
+    if (!generalFormData.description) {
+      alert('Please fill in Description for the outward record.')
       return
     }
 
@@ -1237,7 +1341,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       let errorCount = 0
       let quantityUpdates = []
       
-      for (const item of inwardItems) {
+      for (const item of outwardItems) {
         try {
           const payload = {
             category: item.category,
@@ -1246,14 +1350,14 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             materialName: item.materialName,
             uom: item.uom,
             quantity: item.quantity,
-            partyName: generalFormData.partyName,
-            place: generalFormData.place,
+            givenTo: generalFormData.givenTo,
+            description: generalFormData.description,
             timestamp: `${currentDate}, ${currentTime}`,
-            department: 'KR',
-            type: 'inward'
+            department: 'FT',
+            type: 'outward'
           }
 
-          const response = await axios.post(getApiUrl('material_inward'), payload)
+          const response = await axios.post(getApiUrl('material_outward'), payload)
           
           if (response.data.success) {
             successCount++
@@ -1263,7 +1367,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 material: item.materialName,
                 previous: response.data.previousQuantity,
                 new: response.data.newQuantity,
-                added: item.quantity
+                removed: item.quantity
               })
             }
           } else {
@@ -1277,13 +1381,13 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       }
       
       if (successCount > 0) {
-        let successMsg = `Material inward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}\n\n`
+        let successMsg = `Material outward recorded successfully! ${successCount} item(s) processed.${errorCount > 0 ? ` ${errorCount} item(s) failed.` : ''}\n\n`
         
         // Add quantity update details
         if (quantityUpdates.length > 0) {
           successMsg += 'Quantity Updates:\n'
           quantityUpdates.forEach(update => {
-            successMsg += `• ${update.material}: ${update.previous} → ${update.new} (Added: ${update.added})\n`
+            successMsg += `• ${update.material}: ${update.previous} → ${update.new} (Removed: ${update.removed})\n`
           })
         }
         
@@ -1292,9 +1396,9 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         
         // Prepare data for notification
         const notificationData = {
-          inwardItems,
-          partyName: generalFormData.partyName,
-          place: generalFormData.place,
+          outwardItems,
+          givenTo: generalFormData.givenTo,
+          description: generalFormData.description,
           dateTime: `${currentDate}, ${currentTime}`,
           quantityUpdates
         }
@@ -1311,28 +1415,28 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             console.log('Auto-sending notifications to all recipients from Google Sheets...')
             
             // Get sheet ID and sheet name from PLANT_DATA
-            const kerurPlant = PLANT_DATA.find(plant => plant.document_name === 'KR')
-            const sheetId = kerurPlant?.material_sheet_id
+            const fertilizerPlant = PLANT_DATA.find(plant => plant.document_name === 'FT')
+            const sheetId = fertilizerPlant?.material_sheet_id
             
             if (!sheetId) {
-              console.error('No sheet ID found for Kerur plant configuration')
+              console.error('No sheet ID found for Fertilizer plant configuration')
             } else {
               // Send notifications automatically - backend will fetch all recipients from Google Sheets
               const autoNotificationData = {
                 orderData: notificationData,
                 recipients: [], // Empty array - backend will fetch from Google Sheets
                 method: notificationMethod,
-                factory: 'KR',
+                factory: 'fertilizer',
                 autoSend: true, // Flag to indicate auto-send - backend will fetch recipients
                 sheetId: sheetId, // Send sheet ID to backend
                 sheetName: 'Recipents List', // Send sheet name to backend
-                type: 'material_inward' // Specify the type
+                type: 'material_outward' // Specify the type
               }
               
               const notifResponse = await axios.post(getApiUrl('send_order_notification'), autoNotificationData)
               
               if (notifResponse.data.success) {
-                const contextDetails = buildInwardSummaryContext(notificationData)
+                const contextDetails = buildOutwardSummaryContext(notificationData)
                 showDetailedLogReport(notifResponse.data, contextDetails)
               } else {
                 console.error('Notifications failed:', notifResponse.data.message)
@@ -1343,7 +1447,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           }
         }
         
-        setInwardItems([])
+        setOutwardItems([])
         setFormData({
           category: '',
           subCategory: '',
@@ -1353,16 +1457,19 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           quantity: ''
         })
         setGeneralFormData({
-          partyName: '',
-          place: ''
+          givenTo: '',
+          description: ''
         })
+        // Clear any pending quantity fetching and mark form as inactive
+        setCurrentQuantity(null)
+        isFormActive.current = false
       } else {
-        setMessage('Failed to record any material inward items. Please try again.')
+        setMessage('Failed to record any material outward items. Please try again.')
         setMessageType('error')
       }
     } catch (error) {
-      console.error('Error recording material inward:', error)
-      setMessage('Error recording material inward. Please try again.')
+      console.error('Error recording material outward:', error)
+      setMessage('Error recording material outward. Please try again.')
       setMessageType('error')
     } finally {
       setLoading(false)
@@ -1384,7 +1491,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         </tr>
       </thead>
       <tbody>
-        {inwardItems.map((item, index) => (
+        {outwardItems.map((item, index) => (
           <tr key={item.id} className={editingItem === item.id ? "mio-editing-row" : ""}>
             <td data-label="S.No">{index + 1}</td>
             <td 
@@ -1454,9 +1561,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 >
                   <option value="">Select Material Name</option>
                   {editFormData.category && getMaterialNameOptions(materialData[editFormData.category], editFormData.subCategory).map(name => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
+                    <option key={name} value={name}>{name}</option>
                   ))}
                 </select>
               ) : (
@@ -1662,7 +1767,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             </div>
           </div>
           <div className="header-center">
-            <h2>Material Inward Form</h2>
+            <h2>Material Outward Form</h2>
           </div>
         </div>
         <div className="mio-loading-message">
@@ -1680,7 +1785,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
       {showScreenFlash && <div className="mio-screen-flash-overlay" />}
       
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/kerur/kr_store" />
+      <BackButton label="Back to Store" to="/fertilizer/ft_store" />
       
       <div className="form-header">
         <div className="header-left">
@@ -1755,7 +1860,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
         </div>
         <div className="header-center">
-          <h2>Material Inward Form</h2>
+          <h2>Material Outward Form</h2>
         </div>
       </div>
       
@@ -1763,7 +1868,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         <form onSubmit={handleSubmit} className="mio-material-form">
 
           {/* Added Items Table - Desktop view at top */}
-          {inwardItems.length > 0 && (
+          {outwardItems.length > 0 && (
             <div className="mio-added-items-top-section">
               {/* Desktop View: Show Table */}
               <div className="mio-items-table-container mio-desktop-table" ref={itemsTableContainerRef}>
@@ -1774,11 +1879,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           )}
 
           {/* Mobile Full-Screen Items Sheet */}
-          {showItemsSheet && inwardItems.length > 0 && (
+          {showItemsSheet && outwardItems.length > 0 && (
             <div className="mio-items-sheet-overlay" onClick={() => setShowItemsSheet(false)}>
               <div className="mio-items-sheet" onClick={(e) => e.stopPropagation()}>
                 <div className="mio-items-sheet-header">
-                  <h3>Added Items ({inwardItems.length})</h3>
+                  <h3>Added Items ({outwardItems.length})</h3>
                   <button
                     type="button"
                     className="mio-items-sheet-close-btn"
@@ -1802,13 +1907,13 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
             {/* Left Section - Form Inputs */}
             <div className="mio-form-left-section" ref={materialInputSectionRef}>
               {/* Form inputs for adding new item - Only show when no items exist */}
-              {inwardItems.length === 0 && (
+              {outwardItems.length === 0 && (
                 <div className="mio-add-item-section">
                   <h3 className="mio-add-item-header">
-                    Add Item to Inward
+                    Add Item to Outward
                   </h3>
                   <p className="mio-add-item-description">
-                    Fill in the required fields below to add your first item to the inward record.
+                    Fill in the required fields below to add your first item to the outward record.
                   </p>
                 </div>
               )}
@@ -1822,10 +1927,10 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="category"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
-                    required={inwardItems.length === 0}
-                  className={`mio-form-select ${highlightedFields.includes('category') ? 'mio-error-highlight' : ''}`}
-                    disabled={dataLoading || partyLoading || placesLoading}
-                  ref={categoryInputRef}
+                    required={outwardItems.length === 0}
+                    className={`mio-form-select ${highlightedFields.includes('category') ? 'mio-error-highlight' : ''}`}
+                    disabled={dataLoading}
+                    ref={categoryInputRef}
                   >
                     <option value="">{dataLoading ? 'Loading categories...' : 'Select Category'}</option>
                     {categories.map(category => (
@@ -1855,6 +1960,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   </select>
                 </div>
 
+
                 {/* Material Name */}
                 <div className="mio-form-group">
                   <label htmlFor="materialName" className="required">
@@ -1864,7 +1970,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="materialName"
                     value={formData.materialName}
                     onChange={(e) => handleInputChange('materialName', e.target.value)}
-                    required={inwardItems.length === 0}
+                    required={outwardItems.length === 0}
                     className={`mio-form-select ${highlightedFields.includes('materialName') ? 'mio-error-highlight' : ''}`}
                     disabled={!formData.category || dataLoading}
                     ref={materialNameInputRef}
@@ -1910,7 +2016,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="quantity"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
-                    required={inwardItems.length === 0}
+                    required={outwardItems.length === 0}
                     className={`mio-form-input mio-quantity-input ${highlightedFields.includes('quantity') ? 'mio-error-highlight' : ''}`}
                     placeholder="Enter quantity"
                     pattern="[0-9]*"
@@ -1930,7 +2036,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     id="uom"
                     value={formData.uom}
                     readOnly
-                    required={inwardItems.length === 0}
+                    required={outwardItems.length === 0}
                     className={`mio-form-input ${highlightedFields.includes('uom') ? 'mio-error-highlight' : ''}`}
                     placeholder="UOM"
                     style={{
@@ -1942,6 +2048,29 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                     ref={uomInputRef}
                   />
                 </div>
+
+                {/* Current Quantity - Read-only, shows available quantity */}
+                <div className="mio-form-group">
+                  <label htmlFor="currentQuantity">
+                    Current Quantity Available
+                  </label>
+                  <input
+                    type="text"
+                    id="currentQuantity"
+                    value={currentQuantity !== null ? currentQuantity : ''}
+                    readOnly
+                    className="mio-form-input"
+                    placeholder={quantityLoading ? 'Loading...' : 'Select material to see quantity'}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      color: currentQuantity !== null ? '#333' : '#999',
+                      fontWeight: currentQuantity !== null ? 'bold' : 'normal'
+                    }}
+                    title="Current quantity available in database"
+                  />
+                </div>
+
 
 
                 {/* Add Item Button */}
@@ -1960,7 +2089,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           </div>
 
           {/* Mobile View: View Added Items Button - Below Add Item Button */}
-          {inwardItems.length > 0 && (
+          {outwardItems.length > 0 && (
             <div className="mio-form-row">
               <div className="mio-form-group mio-mobile-items-button-container">
                 <label>&nbsp;</label>
@@ -1969,83 +2098,51 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                   className="mio-view-items-btn"
                   onClick={() => setShowItemsSheet(true)}
                 >
-                  <span className="mio-items-count-badge">{inwardItems.length}</span>
+                  <span className="mio-items-count-badge">{outwardItems.length}</span>
                   <span className="mio-view-items-text">View Added Items</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* General Form Fields - Party Name and Place */}
+          {/* General Form Fields - Given To and Description */}
           <div className="mio-form-row">
-            {/* Party Name - Required */}
+            {/* Given To - Required */}
             <div className="mio-form-group">
-              <label htmlFor="generalPartyName" className="required">
-                Party Name
+              <label htmlFor="generalGivenTo" className="required">
+                Given To
               </label>
               <select
-                id="generalPartyName"
-                value={generalFormData.partyName}
-                onChange={(e) => handleGeneralInputChange('partyName', e.target.value)}
+                id="generalGivenTo"
+                value={generalFormData.givenTo}
+                onChange={(e) => handleGeneralInputChange('givenTo', e.target.value)}
                 required
                 className="mio-form-select"
-                disabled={partyLoading}
+                disabled={authorityLoading}
               >
-                <option value="">{partyLoading ? 'Loading party names...' : 'Select Party Name'}</option>
-                {partyNames.map(party => (
-                  <option key={party} value={party}>{party}</option>
+                <option value="">{authorityLoading ? 'Loading authority names...' : 'Select Authority Name'}</option>
+                {authorityNames.map((authority, index) => (
+                  <option key={index} value={authority}>
+                    {authority}
+                  </option>
                 ))}
               </select>
             </div>
 
-            {/* Place - Required */}
+            {/* Description - Required */}
             <div className="mio-form-group">
-              <label htmlFor="generalPlace" className="required">
-                Place
+              <label htmlFor="generalDescription" className="required">
+                Description
               </label>
-              {(() => {
-                const availablePlaces = getPlacesForParty(generalFormData.partyName)
-                const hasMultiplePlaces = availablePlaces.length > 1
-                
-                // Show dropdown if multiple places, read-only input if single place
-                if (hasMultiplePlaces) {
-                  return (
-                    <select
-                      id="generalPlace"
-                      value={generalFormData.place}
-                      onChange={(e) => handleGeneralInputChange('place', e.target.value)}
-                      required
-                      className="mio-form-select"
-                      disabled={!generalFormData.partyName || placesLoading}
-                    >
-                      <option value="">
-                        {placesLoading ? 'Loading places...' : 'Select Place'}
-                      </option>
-                      {availablePlaces.map(place => (
-                        <option key={place} value={place}>{place}</option>
-                      ))}
-                    </select>
-                  )
-                } else {
-                  return (
-                    <input
-                      type="text"
-                      id="generalPlace"
-                      value={generalFormData.place}
-                      readOnly
-                      required
-                      className="mio-form-input"
-                      placeholder={placesLoading ? 'Loading places...' : 'Place'}
-                      style={{
-                        backgroundColor: '#f5f5f5',
-                        cursor: 'not-allowed',
-                        color: '#333'
-                      }}
-                      title={generalFormData.partyName ? "Place is auto-selected based on party name" : "Select party name first"}
-                    />
-                  )
-                }
-              })()}
+              <textarea
+                id="generalDescription"
+                value={generalFormData.description}
+                onChange={(e) => handleGeneralInputChange('description', e.target.value)}
+                required
+                className="mio-form-textarea"
+                placeholder="Enter detailed description of the material outward"
+                rows="4"
+              />
             </div>
           </div>
 
@@ -2093,20 +2190,20 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
           <div className="mio-form-actions">
             <button 
               type="submit" 
-              className={`mio-submit-btn ${!formHasBlockingErrors && inwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
-              disabled={formHasBlockingErrors || inwardItems.length === 0}
+              className={`mio-submit-btn ${!formHasBlockingErrors && outwardItems.length > 0 ? 'mio-ready-to-submit' : 'disabled'}`}
+              disabled={formHasBlockingErrors || outwardItems.length === 0}
               title={
                 formHasBlockingErrors
                   ? 'Resolve all form errors before submitting'
-                  : inwardItems.length === 0
-                    ? 'Add at least one item to record inward'
-                    : 'Ready to record inward'
+                  : outwardItems.length === 0
+                    ? 'Add at least one item to record outward'
+                    : 'Ready to record outward'
               }
             >
-              Record Inward {!formHasBlockingErrors && inwardItems.length > 0 ? '✓' : ''}
+              Record Outward {!formHasBlockingErrors && outwardItems.length > 0 ? '✓' : ''}
             </button>
             <button type="button" className="mio-reset-btn" onClick={() => {
-              setInwardItems([])
+              setOutwardItems([])
               setFormData({
                 category: '',
                 subCategory: '',
@@ -2116,9 +2213,11 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
                 quantity: ''
               })
               setGeneralFormData({
-                partyName: '',
-                place: ''
+                givenTo: '',
+                description: ''
               })
+              setCurrentQuantity(null)
+              isFormActive.current = false
               alert('Form reset!')
             }}>Reset</button>
           </div>
@@ -2130,7 +2229,7 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
         <div className="po-notification-modal-overlay">
           <div className="po-notification-modal">
             <div className="po-notification-modal-header">
-              <h3>Send Material Inward Notification</h3>
+              <h3>Send Material Outward Notification</h3>
               <button 
                 className="po-modal-close-btn"
                 onClick={handleCloseNotificationModal}
@@ -2142,18 +2241,18 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
 
             <div className="po-notification-modal-body">
               <div className="po-order-summary">
-                <h4>Inward Summary</h4>
+                <h4>Outward Summary</h4>
                 <div className="po-summary-item">
-                  <strong>Party Name:</strong> {lastSubmittedData?.partyName}
+                  <strong>Given To:</strong> {lastSubmittedData?.givenTo}
                 </div>
                 <div className="po-summary-item">
-                  <strong>Place:</strong> {lastSubmittedData?.place}
+                  <strong>Description:</strong> {lastSubmittedData?.description}
                 </div>
                 <div className="po-summary-item">
                   <strong>Date & Time:</strong> {lastSubmittedData?.dateTime ? formatDateTime(new Date(lastSubmittedData.dateTime)) : ''}
                 </div>
                 <div className="po-summary-item">
-                  <strong>Items Count:</strong> {lastSubmittedData?.inwardItems?.length || 0}
+                  <strong>Items Count:</strong> {lastSubmittedData?.outwardItems?.length || 0}
                 </div>
               </div>
 
@@ -2263,4 +2362,4 @@ const focusFieldWithError = (primaryField, fieldsToHighlight = [primaryField]) =
   )
 }
 
-export default KR_MaterialInward
+export default FT_MaterialOutward

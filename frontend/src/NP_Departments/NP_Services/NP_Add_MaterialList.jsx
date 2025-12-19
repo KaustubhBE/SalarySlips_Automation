@@ -5,7 +5,7 @@ import { getApiUrl } from '../../config'
 import '../../MaterialList.css'
 import BackButton from '../../Components/BackButton'
 
-const HB_Add_MaterialList = () => {
+const NP_Add_MaterialList = () => {
   const navigate = useNavigate()
   
   const [formData, setFormData] = useState({
@@ -314,7 +314,7 @@ const HB_Add_MaterialList = () => {
         subCategory: subCategory || '',
         specifications: specifications || '',
         materialName: materialName,
-        department: 'HB'
+        department: 'NP'
       }
 
       console.log('Fetching UOM from backend with payload:', payload)
@@ -339,7 +339,7 @@ const HB_Add_MaterialList = () => {
             subCategory: subCategory || '',
             specifications: '',
             materialName: materialName,
-            department: 'HB'
+            department: 'NP'
           }
           
           const retryResponse = await axios.post(getApiUrl('get_material_details'), retryPayload)
@@ -440,7 +440,7 @@ const HB_Add_MaterialList = () => {
       try {
         setDataLoading(true)
         const response = await axios.get(getApiUrl('get_material_data'), {
-          params: { factory: 'HB' }
+          params: { factory: 'NP' }
         })
         
         if (response.data.success) {
@@ -569,7 +569,7 @@ const HB_Add_MaterialList = () => {
         uom: formData.uom,
         initialQuantity: formData.initialQuantity,
         timestamp: new Date().toISOString(),
-        department: 'HB'
+        department: 'NP'
       }
 
       const response = await axios.post(getApiUrl('add_material'), payload)
@@ -614,7 +614,7 @@ const HB_Add_MaterialList = () => {
   return (
     <div className="material_list-container">
       {/* Back Button Section - Always at top-left */}
-      <BackButton label="Back to Store" to="/humnabad/hb_store" />
+      <BackButton label="Back to Store" to="/newplant/np_store" />
       
       <div className="material-form-wrapper">
         <h2>Add New Material</h2>
@@ -729,4 +729,4 @@ const HB_Add_MaterialList = () => {
   )
 }
 
-export default HB_Add_MaterialList
+export default NP_Add_MaterialList

@@ -1067,7 +1067,7 @@ const PV_MaterialOutward = () => {
 
   if (dataLoading) {
     return (
-      <div className="place_order-container">
+      <div className="purchase_indent-container">
         <div className="form-header">
           <div className="header-center">
             <h2>Material Outward Form</h2>
@@ -1081,7 +1081,7 @@ const PV_MaterialOutward = () => {
   }
 
   return (
-    <div className="place_order-container">
+    <div className="purchase_indent-container">
       {/* Back Button Section - Always at top-left */}
       <BackButton label="Back to Store" to="/padmavati/pv_store" />
       
