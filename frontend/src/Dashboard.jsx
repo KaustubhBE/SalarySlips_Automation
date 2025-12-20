@@ -46,6 +46,7 @@ function Dashboard() {
   const [showNoChangesModal, setShowNoChangesModal] = useState(false);
   const [originalPermissions, setOriginalPermissions] = useState({});
   const [showSelfDeleteRestriction, setShowSelfDeleteRestriction] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     console.log('Dashboard component mounted, fetching users...');
@@ -812,20 +813,47 @@ function Dashboard() {
       return users;
   };
 
+  // Filter users by search query (name or email)
+  const filterUsersBySearch = (userList) => {
+    if (!searchQuery.trim()) {
+      return userList;
+    }
+    
+    const query = searchQuery.trim().toLowerCase();
+    return userList.filter(user => {
+      const username = (user.username || '').toLowerCase();
+      const email = (user.email || '').toLowerCase();
+      return username.includes(query) || email.includes(query);
+    });
+  };
+
   // Get admin users
   const getAdminUsers = () => {
-    return users
+    const adminUsers = users
       .filter(user => user.role === 'admin')
       .slice()
       .sort((a, b) => (a.username || '').localeCompare(b.username || '', 'en', { sensitivity: 'base' }));
+    
+    return filterUsersBySearch(adminUsers);
   };
 
   // Get regular users
   const getRegularUsers = () => {
-    return users
+    const regularUsers = users
       .filter(user => user.role === 'user')
       .slice()
       .sort((a, b) => (a.username || '').localeCompare(b.username || '', 'en', { sensitivity: 'base' }));
+    
+    return filterUsersBySearch(regularUsers);
+  };
+
+  // Get total admin and user counts (before filtering)
+  const getTotalAdminCount = () => {
+    return users.filter(user => user.role === 'admin').length;
+  };
+
+  const getTotalUserCount = () => {
+    return users.filter(user => user.role === 'user').length;
   };
 
   const canEditPermissions = (targetUserRole) => {
@@ -873,19 +901,45 @@ function Dashboard() {
       <BackButton label="Back to Main Menu" to="/app" />
       
       <div className="dashboard-header">
+        <div className="dashboard-actions">
+          <button 
+            className="add-user-btn"
+            onClick={() => window.location.href = '/add-user'}
+          >
+            Add New User
+          </button>
+        </div>
         <div className="header-left">
           <h1>User Management Dashboard</h1>
           <div className="user-count">
-            {getAdminUsers().length} admin{getAdminUsers().length !== 1 ? 's' : ''} • {getRegularUsers().length} user{getRegularUsers().length !== 1 ? 's' : ''} loaded
+            {searchQuery.trim() ? (
+              <>
+                {getAdminUsers().length} of {getTotalAdminCount()} admin{getTotalAdminCount() !== 1 ? 's' : ''} • {getRegularUsers().length} of {getTotalUserCount()} user{getTotalUserCount() !== 1 ? 's' : ''} shown
+              </>
+            ) : (
+              <>
+                {getAdminUsers().length} admin{getAdminUsers().length !== 1 ? 's' : ''} • {getRegularUsers().length} user{getRegularUsers().length !== 1 ? 's' : ''} loaded
+              </>
+            )}
           </div>
         </div>
-        <div className="dashboard-actions">
-            <button 
-              className="add-user-btn"
-              onClick={() => window.location.href = '/add-user'}
+        <div className="search-bar-container">
+          <input
+            type="text"
+            className="search-bar"
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              title="Clear search"
             >
-              Add New User
+              ×
             </button>
+          )}
         </div>
       </div>
       
@@ -906,7 +960,14 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {getAdminUsers().map(user => (
+              {getAdminUsers().length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="no-results-message">
+                    {searchQuery.trim() ? `No admins found matching "${searchQuery}"` : 'No admins found'}
+                  </td>
+                </tr>
+              ) : (
+                getAdminUsers().map(user => (
                 <React.Fragment key={user.id}>
                   <tr 
                     className={`user-row ${selectedUserIdForActions === user.id ? 'user-row-selected' : ''}`}
@@ -1150,7 +1211,8 @@ function Dashboard() {
                     </tr>
                   )}
                 </React.Fragment>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1170,7 +1232,14 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {getRegularUsers().map(user => (
+              {getRegularUsers().length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="no-results-message">
+                    {searchQuery.trim() ? `No users found matching "${searchQuery}"` : 'No users found'}
+                  </td>
+                </tr>
+              ) : (
+                getRegularUsers().map(user => (
                 <React.Fragment key={user.id}>
                   <tr 
                     className={`user-row ${selectedUserIdForActions === user.id ? 'user-row-selected' : ''}`}
@@ -1414,7 +1483,8 @@ function Dashboard() {
                     </tr>
                   )}
                 </React.Fragment>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

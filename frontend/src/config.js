@@ -695,7 +695,7 @@ export const PLANT_DATA = [
   },
   {
     name: 'Fertilizer',
-    material_sheet_id: '',
+    material_sheet_id: '1f_dI4h-8J5_FX3hfJojevJQGGAfusAXbEOH03gDJTEk',
     document_name: 'FT',
     sheet_name: {
       RecipentsList: 'Recipents List',

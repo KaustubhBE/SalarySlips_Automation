@@ -146,8 +146,8 @@ PLANT_DATA = [
     {
         "name": "Fertilizer",
         "document_name": "FT",
-        "material_sheet_id": "",
-        "fertilizer_store_drive_id": "[TO_BE_ASSIGNED]",
+        "material_sheet_id": "1f_dI4h-8J5_FX3hfJojevJQGGAfusAXbEOH03gDJTEk",
+        "fertilizer_store_drive_id": "1Vh5kzv8SNtj0j5C9XBFLvApgFTfaD4L8",
         "sheet_name": {
             "MaterialList": "Material List",
             "PartyList": "Party List",
@@ -159,9 +159,6 @@ PLANT_DATA = [
 ]
 
 def _get_plant_config(factory_identifier):
-    """
-    Retrieve plant configuration using various identifiers (document name or full name).
-    """
     if not factory_identifier:
         return None
 
