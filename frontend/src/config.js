@@ -178,6 +178,12 @@ export const ENDPOINTS = {
     PROCESS_BATCH: 'process_batch'
 };
 
+// Common permission keys for reuse in components
+export const PERMISSIONS = {
+  KR_ORDER_STATUS: 'kr_order_status',
+  KR_UPDATE_ORDER_STATUS: 'kr_update_order_status'
+};
+
 // API call with fetch
 export const makeApiCall = async (endpoint, options = {}) => {
     const defaultOptions = {
@@ -284,7 +290,8 @@ export const FACTORY_RBAC_CONFIG = {
           kr_purchase_indent: { name: 'Purchase Indent', permission: 'kr_purchase_indent' },
           kr_material_inward: { name: 'Material Inward', permission: 'kr_material_inward' },
           kr_material_outward: { name: 'Material Outward', permission: 'kr_material_outward' },
-          kr_order_status: { name: 'Order Status', permission: 'kr_order_status' }
+          kr_order_status: { name: 'Order Status', permission: 'kr_order_status' },
+          kr_update_order_status: { name: 'Update Order Status', permission: 'kr_update_order_status' }
         }
       },
       humanresource: {

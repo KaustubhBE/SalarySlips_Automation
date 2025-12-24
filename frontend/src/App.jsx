@@ -18,6 +18,7 @@ import KR_Add_MaterialList from './KR_Departments/KR_Services/KR_Add_MaterialLis
 import KR_Delete_MaterialList from './KR_Departments/KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Departments/KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Departments/KR_Services/KR_MaterialOutward';
+import KR_OrderStatus from './KR_Departments/KR_Services/KR_OrderStatus';
 
 // Import OM Store Services components
 import OM_PurchaseIndent from './OM_Departments/OM_Services/OM_PurchaseIndent';
@@ -102,7 +103,10 @@ import HOStore from './HO_Departments/HOStore';
 import HOHumanResource from './HO_Departments/HOHumanResourec';
 import FTStore from './FT_Departments/FTStore';
 import { useAuth } from './Components/AuthContext';
-import { FACTORY_NAMES } from './config';
+import ProtectedRoute from './Components/ProtectedRoute';
+import { FACTORY_NAMES, PERMISSIONS } from './config';
+import KR_ViewOrderDetails from './KR_Departments/KR_Services/KR_ViewOrderDetails';
+import KR_UpdateOrderDetails from './KR_Departments/KR_Services/KR_UpdateOrderDetails';
 
 // Function to get the correct department component based on factory and department keys
 const getDepartmentComponent = (factoryKey, departmentKey) => {
@@ -1055,6 +1059,33 @@ function App() {
         <Route path="/kerur/kr_store/kr_purchase_indent" element={
           isAuthenticated ? 
             <KR_PurchaseIndent /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_order_status" element={
+          isAuthenticated ? 
+            <KR_OrderStatus /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_order_status/:orderId" element={
+          isAuthenticated ? 
+            <ProtectedRoute 
+              requiredPermission={PERMISSIONS.KR_ORDER_STATUS}
+              requiredFactory="kerur"
+              requiredDepartment="store"
+            >
+              <KR_ViewOrderDetails />
+            </ProtectedRoute> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="/kerur/kr_store/kr_order_status/update/:orderId" element={
+          isAuthenticated ? 
+            <ProtectedRoute 
+              requiredPermission={PERMISSIONS.KR_UPDATE_ORDER_STATUS}
+              requiredFactory="kerur"
+              requiredDepartment="store"
+            >
+              <KR_UpdateOrderDetails />
+            </ProtectedRoute> : 
             <Navigate to="/login" replace />
         } />
         <Route path="/fertilizer/ft_store/ft_purchase_indent" element={

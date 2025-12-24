@@ -655,3 +655,411 @@ def upload_store_document_to_drive(pdf_path, factory, date_string, process_type,
         import traceback
         log.error(traceback.format_exc())
         return False, None, None, error_msg
+
+
+def sanitize_folder_name(name):
+    """Remove invalid characters for Google Drive folder names"""
+    if not name:
+        return ""
+    # Remove invalid characters: / \ : * ? " < > |
+    invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+    sanitized = name
+    for char in invalid_chars:
+        sanitized = sanitized.replace(char, '_')
+    # Remove leading/trailing spaces and dots
+    sanitized = sanitized.strip(' .')
+    # Replace multiple spaces/underscores with single underscore
+    import re
+    sanitized = re.sub(r'[_\s]+', '_', sanitized)
+    return sanitized
+
+
+def generate_material_folder_name(category, sub_category, material_name, specifications):
+    """
+    Generate folder name: Category_SubCategory_MaterialName_Specifications
+    Handle missing values - no double underscores
+    """
+    parts = []
+    if category:
+        parts.append(sanitize_folder_name(category))
+    if sub_category:
+        parts.append(sanitize_folder_name(sub_category))
+    if material_name:
+        parts.append(sanitize_folder_name(material_name))
+    if specifications:
+        parts.append(sanitize_folder_name(specifications))
+    
+    folder_name = '_'.join(parts) if parts else 'Unknown_Material'
+    # Remove any double underscores that might have been created
+    import re
+    folder_name = re.sub(r'_+', '_', folder_name)
+    return folder_name
+
+
+def create_indent_folder_structure(factory, order_id, order_items, date_string, logger=None):
+    """
+    Create folder structure for an indent:
+    - Inside month/year folder → Order ID folder
+    - Inside Order ID folder → Material folders (one per unique material)
+    
+    Material folder naming: {Category}_{Subcategory}_{Materialname}_{Specification}
+    - Handle missing values: No double underscores
+    
+    Args:
+        factory: Factory identifier (e.g., 'KR')
+        order_id: Order ID string
+        order_items: List of order item dicts
+        date_string: Date string in format DD/MM/YYYY or YYYY-MM-DD
+        logger: Optional logger instance
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'order_folder_id': str or None,
+            'material_folders': {material_key: folder_id},
+            'message': str
+        }
+    """
+    log = logger if logger else logging
+    
+    try:
+        if drive is None:
+            error_msg = "Google Drive service not initialized"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Lazy import to avoid circular dependency
+        import sys
+        if 'app' in sys.modules:
+            PLANT_DATA = sys.modules['app'].PLANT_DATA
+        else:
+            from app import PLANT_DATA
+        
+        # Get plant configuration
+        plant_config = None
+        factory_normalized = str(factory).strip().upper() if factory else ""
+        
+        for plant in PLANT_DATA:
+            document_name = str(plant.get("document_name", "")).strip().upper()
+            plant_name = str(plant.get("name", "")).strip().upper()
+            
+            if document_name == factory_normalized or plant_name == factory_normalized:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            error_msg = f"Plant configuration not found for factory: {factory}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Get base Drive ID for store operations
+        plant_name = plant_config.get("name", "")
+        if not plant_name:
+            error_msg = f"Plant name not found in configuration for factory: {factory}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        plant_name_lower = plant_name.lower()
+        key_variations = [
+            f"{plant_name_lower.replace(' ', '_')}_store_drive_id",
+            f"{plant_name_lower.replace(' ', '')}_store_drive_id",
+        ]
+        
+        base_drive_id = None
+        for key_variant in key_variations:
+            drive_id = plant_config.get(key_variant)
+            if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                base_drive_id = drive_id
+                break
+        
+        if not base_drive_id:
+            for key in plant_config.keys():
+                if key.endswith("_store_drive_id"):
+                    drive_id = plant_config.get(key)
+                    if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                        base_drive_id = drive_id
+                        break
+        
+        if not base_drive_id or base_drive_id == "[TO_BE_ASSIGNED]":
+            error_msg = f"Store Drive ID not configured for factory: {factory}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Calculate financial year and month
+        financial_year = get_financial_year_from_date(date_string)
+        if not financial_year:
+            error_msg = f"Could not calculate financial year from date: {date_string}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        month_sequence, month_abbr, year_2digit = get_month_sequence_and_name(date_string)
+        if month_sequence is None:
+            error_msg = f"Could not calculate month sequence from date: {date_string}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Get process folder name (Indents)
+        process_folder_name = get_process_folder_name("purchase_indent")
+        if not process_folder_name:
+            error_msg = "Invalid process type: purchase_indent"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Get or create hierarchical folders up to Process Folder
+        folder_success, process_folder_id, folder_error = get_or_create_hierarchical_folders(
+            base_drive_id=base_drive_id,
+            financial_year=financial_year,
+            month_sequence=month_sequence,
+            month_abbr=month_abbr,
+            year_2digit=year_2digit,
+            process_folder_name=process_folder_name,
+            logger=logger
+        )
+        
+        if not folder_success:
+            error_msg = f"Failed to create hierarchical folders: {folder_error}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        # Create Order ID folder inside Process Folder
+        order_folder_success, order_folder_id, order_folder_error = get_or_create_folder(
+            process_folder_id,
+            order_id,
+            logger=logger
+        )
+        
+        if not order_folder_success:
+            error_msg = f"Failed to create Order ID folder: {order_folder_error}"
+            log.error(error_msg)
+            return {
+                'success': False,
+                'order_folder_id': None,
+                'material_folders': {},
+                'message': error_msg
+            }
+        
+        log.info(f"Created/accessed Order ID folder: {order_id} (ID: {order_folder_id})")
+        
+        # Create material folders for unique materials
+        material_folders = {}
+        seen_materials = set()
+        
+        for item in order_items:
+            category = item.get('category', '')
+            sub_category = item.get('subCategory', '') or item.get('sub_category', '')
+            material_name = item.get('materialName', '') or item.get('material_name', '')
+            specifications = item.get('specifications', '') or item.get('specification', '')
+            
+            # Generate material folder name
+            material_folder_name = generate_material_folder_name(
+                category, sub_category, material_name, specifications
+            )
+            
+            # Create unique key for this material combination
+            material_key = f"{category}_{sub_category}_{material_name}_{specifications}".lower()
+            
+            # Skip if we've already created this material folder
+            if material_key in seen_materials:
+                continue
+            
+            seen_materials.add(material_key)
+            
+            # Create material folder
+            material_folder_success, material_folder_id, material_folder_error = get_or_create_folder(
+                order_folder_id,
+                material_folder_name,
+                logger=logger
+            )
+            
+            if material_folder_success:
+                material_folders[material_key] = material_folder_id
+                log.info(f"Created/accessed material folder: {material_folder_name} (ID: {material_folder_id})")
+            else:
+                log.warning(f"Failed to create material folder {material_folder_name}: {material_folder_error}")
+        
+        return {
+            'success': True,
+            'order_folder_id': order_folder_id,
+            'material_folders': material_folders,
+            'message': f"Successfully created folder structure for order {order_id}"
+        }
+        
+    except Exception as e:
+        error_msg = f"Error creating indent folder structure: {str(e)}"
+        log.error(error_msg, exc_info=True)
+        return {
+            'success': False,
+            'order_folder_id': None,
+            'material_folders': {},
+            'message': error_msg
+        }
+
+
+def get_order_folder_id(factory, order_id, date_string, logger=None):
+    """
+    Get the Order ID folder ID for a given order.
+    Navigates to Process Folder and finds the Order ID folder.
+    
+    Args:
+        factory: Factory identifier (e.g., 'KR')
+        order_id: Order ID string
+        date_string: Date string in format DD/MM/YYYY or YYYY-MM-DD
+        logger: Optional logger instance
+    
+    Returns:
+        str: Order folder ID if found, None otherwise
+    """
+    log = logger if logger else logging
+    
+    try:
+        if drive is None:
+            log.error("Google Drive service not initialized")
+            return None
+        
+        # Lazy import to avoid circular dependency
+        import sys
+        if 'app' in sys.modules:
+            PLANT_DATA = sys.modules['app'].PLANT_DATA
+        else:
+            from app import PLANT_DATA
+        
+        # Get plant configuration
+        plant_config = None
+        factory_normalized = str(factory).strip().upper() if factory else ""
+        
+        for plant in PLANT_DATA:
+            document_name = str(plant.get("document_name", "")).strip().upper()
+            plant_name = str(plant.get("name", "")).strip().upper()
+            
+            if document_name == factory_normalized or plant_name == factory_normalized:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            log.error(f"Plant configuration not found for factory: {factory}")
+            return None
+        
+        # Get base Drive ID for store operations
+        plant_name = plant_config.get("name", "")
+        if not plant_name:
+            log.error(f"Plant name not found in configuration for factory: {factory}")
+            return None
+        
+        plant_name_lower = plant_name.lower()
+        key_variations = [
+            f"{plant_name_lower.replace(' ', '_')}_store_drive_id",
+            f"{plant_name_lower.replace(' ', '')}_store_drive_id",
+        ]
+        
+        base_drive_id = None
+        for key_variant in key_variations:
+            drive_id = plant_config.get(key_variant)
+            if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                base_drive_id = drive_id
+                break
+        
+        if not base_drive_id:
+            for key in plant_config.keys():
+                if key.endswith("_store_drive_id"):
+                    drive_id = plant_config.get(key)
+                    if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                        base_drive_id = drive_id
+                        break
+        
+        if not base_drive_id or base_drive_id == "[TO_BE_ASSIGNED]":
+            log.error(f"Store Drive ID not configured for factory: {factory}")
+            return None
+        
+        # Calculate financial year and month
+        financial_year = get_financial_year_from_date(date_string)
+        if not financial_year:
+            log.error(f"Could not calculate financial year from date: {date_string}")
+            return None
+        
+        month_sequence, month_abbr, year_2digit = get_month_sequence_and_name(date_string)
+        if month_sequence is None:
+            log.error(f"Could not calculate month sequence from date: {date_string}")
+            return None
+        
+        # Get process folder name (Indents)
+        process_folder_name = get_process_folder_name("purchase_indent")
+        if not process_folder_name:
+            log.error("Invalid process type: purchase_indent")
+            return None
+        
+        # Get or create hierarchical folders up to Process Folder
+        folder_success, process_folder_id, folder_error = get_or_create_hierarchical_folders(
+            base_drive_id=base_drive_id,
+            financial_year=financial_year,
+            month_sequence=month_sequence,
+            month_abbr=month_abbr,
+            year_2digit=year_2digit,
+            process_folder_name=process_folder_name,
+            logger=logger
+        )
+        
+        if not folder_success:
+            log.error(f"Failed to get process folder: {folder_error}")
+            return None
+        
+        # Find Order ID folder in Process Folder
+        query = f"name='{order_id}' and '{process_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        results = drive.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
+        
+        folders = results.get('files', [])
+        
+        if folders:
+            order_folder_id = folders[0]['id']
+            log.info(f"Found Order ID folder: {order_id} (ID: {order_folder_id})")
+            return order_folder_id
+        else:
+            log.warning(f"Order ID folder not found: {order_id}")
+            return None
+        
+    except Exception as e:
+        log.error(f"Error getting Order ID folder: {str(e)}", exc_info=True)
+        return None

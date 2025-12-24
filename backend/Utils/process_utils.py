@@ -3590,7 +3590,7 @@ def process_order_notification(order_id, order_data, recipients, method, factory
         drive_upload_success = None  # None = not attempted, True = success, False = failed
         if pdf_created and pdf_path:
             try:
-                from Utils.drive_utils import upload_store_document_to_drive
+                from Utils.drive_utils import get_order_folder_id, upload_file_to_drive
                 
                 # Get date string from order_data
                 date_string = order_data.get('dateTime', '')
@@ -3598,15 +3598,36 @@ def process_order_notification(order_id, order_data, recipients, method, factory
                     # Fallback: use current date
                     date_string = datetime.now().strftime("%d/%m/%Y, %I:%M:%S %p")
                 
-                logger.info(f"Uploading order PDF to Google Drive (factory: {factory}, date: {date_string})")
-                upload_success, file_id, folder_id, upload_error = upload_store_document_to_drive(
-                    pdf_path=pdf_path,
-                    factory=factory,
-                    date_string=date_string,
-                    process_type="purchase_indent",
-                    file_name=pdf_filename,
-                    logger=logger
-                )
+                # Extract date part for folder lookup (format: DD/MM/YYYY)
+                date_part = date_string.split(',')[0].strip() if ',' in date_string else date_string
+                
+                # Get Order ID folder
+                order_folder_id = get_order_folder_id(factory, order_id, date_part, logger)
+                
+                if order_folder_id:
+                    # Upload directly to Order ID folder
+                    logger.info(f"Uploading order PDF to Order ID folder (factory: {factory}, order_id: {order_id})")
+                    upload_success, file_id, upload_error = upload_file_to_drive(
+                        file_path=pdf_path,
+                        folder_id=order_folder_id,
+                        file_name=pdf_filename,
+                        mime_type='application/pdf',
+                        overwrite_existing=True,
+                        logger=logger
+                    )
+                    folder_id = order_folder_id
+                else:
+                    # Fallback to old method if Order ID folder not found
+                    logger.warning(f"Order ID folder not found for {order_id}, falling back to Process Folder upload")
+                    from Utils.drive_utils import upload_store_document_to_drive
+                    upload_success, file_id, folder_id, upload_error = upload_store_document_to_drive(
+                        pdf_path=pdf_path,
+                        factory=factory,
+                        date_string=date_part,
+                        process_type="purchase_indent",
+                        file_name=pdf_filename,
+                        logger=logger
+                    )
                 
                 if upload_success:
                     logger.info(f"Successfully uploaded order PDF to Google Drive. File ID: {file_id}, Folder ID: {folder_id}")

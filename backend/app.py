@@ -12,6 +12,7 @@ from Utils.process_utils import *
 from Utils.write_data import write_order_to_indent_sheet
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from Utils.config import CLIENT_SECRETS_FILE, drive, creds
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -2834,6 +2835,1030 @@ def get_recipients_list():
             "error": str(e)
         }), 500
 
+@app.route("/api/get_indent_list", methods=["GET"])
+def get_indent_list():
+    """Get indent list (order status) from Google Sheets"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters
+        factory = request.args.get('factory', 'KR')
+        sheet_name = request.args.get('sheet_name', 'Indent List')
+        sheet_id = request.args.get('sheet_id')
+        
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": "Sheet ID is required"
+            }), 400
+        
+        # Fetch indent list from Google Sheets
+        indent_data = fetch_google_sheet_data(sheet_id, sheet_name)
+        
+        if not indent_data or len(indent_data) < 2:
+            return jsonify({
+                "success": True,
+                "data": [],
+                "message": f"No indent data found in sheet {sheet_name}"
+            }), 200
+        
+        # Headers are in Row 2 (index 1), data starts from Row 3 (index 2)
+        # Expected headers: Date, Time, Order ID, Category, Sub Category, Material Name, 
+        # Specifications, Quantity, UOM, Preferred Vendor, Place, Given By, Type, Importance, Description
+        headers = [h.strip() for h in indent_data[1]] if len(indent_data) > 1 else []
+        data_rows = indent_data[2:] if len(indent_data) > 2 else []
+        
+        # Map headers to column indices
+        header_map = {}
+        for idx, header in enumerate(headers):
+            header_lower = header.lower()
+            if 'date' in header_lower:
+                header_map['date'] = idx
+            elif 'time' in header_lower:
+                header_map['time'] = idx
+            elif 'order id' in header_lower or 'orderid' in header_lower:
+                header_map['order_id'] = idx
+            elif 'category' in header_lower and 'sub' not in header_lower:
+                header_map['category'] = idx
+            elif 'sub category' in header_lower or 'subcategory' in header_lower:
+                header_map['sub_category'] = idx
+            elif 'material name' in header_lower or 'materialname' in header_lower:
+                header_map['material_name'] = idx
+            elif 'specification' in header_lower:
+                header_map['specifications'] = idx
+            elif 'quantity' in header_lower:
+                header_map['quantity'] = idx
+            elif 'uom' in header_lower:
+                header_map['uom'] = idx
+            elif 'preferred vendor' in header_lower or 'vendor' in header_lower:
+                header_map['preferred_vendor'] = idx
+            elif 'place' in header_lower:
+                header_map['place'] = idx
+            elif 'given by' in header_lower or 'givenby' in header_lower:
+                header_map['given_by'] = idx
+            elif 'type' in header_lower and 'import' not in header_lower:
+                header_map['type'] = idx
+            elif 'importance' in header_lower:
+                header_map['importance'] = idx
+            elif 'description' in header_lower:
+                header_map['description'] = idx
+            elif 'status' in header_lower:
+                header_map['status'] = idx
+            elif 'tracking details' in header_lower or 'trackingdetails' in header_lower:
+                header_map['tracking_details'] = idx
+        
+        # Build indent records
+        indent_records = []
+        for row in data_rows:
+            if not row or len(row) == 0:
+                continue
+            
+            # Skip empty rows (check if first column is empty)
+            if len(row) > 0 and not row[0].strip():
+                continue
+            
+            record = {}
+            for key, col_idx in header_map.items():
+                if col_idx < len(row):
+                    record[key] = row[col_idx].strip() if row[col_idx] else ''
+                else:
+                    record[key] = ''
+            
+            # Only add records that have at least an Order ID or Date
+            if record.get('order_id') or record.get('date'):
+                indent_records.append(record)
+        
+        return jsonify({
+            "success": True,
+            "data": indent_records,
+            "factory": factory,
+            "sheet_name": sheet_name,
+            "count": len(indent_records),
+            "headers": headers
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching indent list: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/update_indent_item_status", methods=["POST"])
+def update_indent_item_status():
+    """Update the status of a specific item in the Indent List Google Sheet"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        factory = data.get('factory')
+        order_id = data.get('orderId')
+        material_name = data.get('materialName')
+        new_status = data.get('status')
+        row_index = data.get('rowIndex')  # Optional: direct row index (1-based, including header row)
+        
+        if not all([factory, order_id, new_status]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: factory, orderId, status"
+            }), 400
+        
+        # Find plant configuration
+        plant_config = None
+        for plant in PLANT_DATA:
+            if plant.get("document_name") == factory:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            return jsonify({
+                "success": False,
+                "message": f"Plant configuration not found for factory: {factory}"
+            }), 400
+        
+        sheet_id = plant_config.get("material_sheet_id")
+        sheet_names = plant_config.get("sheet_name", {})
+        indent_sheet_name = sheet_names.get("IndentList", "Indent List")
+        
+        # Initialize gspread client
+        import gspread
+        client = gspread.authorize(creds)
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet(indent_sheet_name)
+        
+        # Get all data to find the row
+        all_data = worksheet.get_all_values()
+        
+        if len(all_data) < 2:
+            return jsonify({
+                "success": False,
+                "message": "No data found in sheet"
+            }), 404
+        
+        # Headers are in row 2 (index 1)
+        headers = [h.strip() for h in all_data[1]]
+        
+        # Find status column index
+        status_col_idx = None
+        for idx, header in enumerate(headers):
+            if 'status' in header.lower():
+                status_col_idx = idx + 1  # gspread uses 1-based indexing
+                break
+        
+        if status_col_idx is None:
+            return jsonify({
+                "success": False,
+                "message": "Status column not found in sheet"
+            }), 404
+        
+        # Find the row to update
+        target_row = None
+        
+        if row_index:
+            # Use provided row index (1-based, including header)
+            if row_index > len(all_data):
+                return jsonify({
+                    "success": False,
+                    "message": f"Row index {row_index} out of range"
+                }), 404
+            target_row = row_index
+        else:
+            # Find row by order_id and material_name
+            order_id_col_idx = None
+            material_name_col_idx = None
+            
+            for idx, header in enumerate(headers):
+                header_lower = header.lower()
+                if 'order id' in header_lower or 'orderid' in header_lower:
+                    order_id_col_idx = idx
+                elif 'material name' in header_lower or 'materialname' in header_lower:
+                    material_name_col_idx = idx
+            
+            if order_id_col_idx is None:
+                return jsonify({
+                    "success": False,
+                    "message": "Order ID column not found in sheet"
+                }), 404
+            
+            # Search for matching row (data starts from row 3, index 2)
+            for row_idx in range(2, len(all_data)):
+                row = all_data[row_idx]
+                if len(row) > order_id_col_idx and row[order_id_col_idx].strip() == order_id:
+                    # If material_name is provided, also match it
+                    if material_name:
+                        if material_name_col_idx is not None and len(row) > material_name_col_idx:
+                            if row[material_name_col_idx].strip() == material_name:
+                                target_row = row_idx + 1  # Convert to 1-based
+                                break
+                    else:
+                        # If no material_name provided, update first matching order_id
+                        target_row = row_idx + 1  # Convert to 1-based
+                        break
+        
+        if target_row is None:
+            return jsonify({
+                "success": False,
+                "message": "Matching row not found in sheet"
+            }), 404
+        
+        # Update the status cell
+        cell_address = f"{chr(64 + status_col_idx)}{target_row}"  # Convert to A1 notation
+        worksheet.update(cell_address, new_status)
+        
+        logger.info(f"Updated status for order {order_id} at row {target_row} to {new_status}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Status updated to {new_status}",
+            "row": target_row,
+            "column": status_col_idx
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error updating indent item status: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating status: {str(e)}"
+        }), 500
+
+@app.route("/api/upload_tracking_files", methods=["POST"])
+def upload_tracking_files():
+    """Upload files to Google Drive material folders with material associations"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get form data
+        order_id = request.form.get('orderId')
+        factory = request.form.get('factory', 'KR')
+        material_associations_json = request.form.get('material_associations', '[]')
+        
+        if not order_id:
+            return jsonify({
+                "success": False,
+                "message": "Missing required field: orderId"
+            }), 400
+        
+        # Parse material associations
+        try:
+            import json
+            material_associations = json.loads(material_associations_json)
+        except json.JSONDecodeError:
+            return jsonify({
+                "success": False,
+                "message": "Invalid material_associations JSON"
+            }), 400
+        
+        # Get files
+        files = request.files.getlist('files[]')
+        if not files or len(files) == 0:
+            return jsonify({
+                "success": False,
+                "message": "No files provided"
+            }), 400
+        
+        # Find plant configuration
+        plant_config = None
+        for plant in PLANT_DATA:
+            if plant.get("document_name") == factory:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            return jsonify({
+                "success": False,
+                "message": f"Plant configuration not found for factory: {factory}"
+            }), 400
+        
+        # Get store drive ID
+        plant_name = plant_config.get("name", "")
+        if not plant_name:
+            return jsonify({
+                "success": False,
+                "message": f"Plant name not found in configuration for factory: {factory}"
+            }), 400
+        
+        plant_name_lower = plant_name.lower()
+        key_variations = [
+            f"{plant_name_lower.replace(' ', '_')}_store_drive_id",
+            f"{plant_name_lower.replace(' ', '')}_store_drive_id",
+        ]
+        
+        base_drive_id = None
+        for key_variant in key_variations:
+            drive_id = plant_config.get(key_variant)
+            if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                base_drive_id = drive_id
+                break
+        
+        if not base_drive_id:
+            for key in plant_config.keys():
+                if key.endswith("_store_drive_id"):
+                    drive_id = plant_config.get(key)
+                    if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                        base_drive_id = drive_id
+                        break
+        
+        if not base_drive_id:
+            return jsonify({
+                "success": False,
+                "message": f"Store Drive ID not configured for factory: {factory}"
+            }), 400
+        
+        # Parse order ID to get date
+        import re
+        order_id_match = re.match(r'^KR_(\d{2})(\d{2})-(\d+)$', order_id)
+        if not order_id_match:
+            return jsonify({
+                "success": False,
+                "message": f"Invalid Order ID format: {order_id}"
+            }), 400
+        
+        month_str, year_str, order_num = order_id_match.groups()
+        month = int(month_str)
+        year_2digit = int(year_str)
+        year = 2000 + year_2digit if year_2digit < 100 else year_2digit
+        date_string = f"01/{month:02d}/{year}"
+        
+        # Get process folder and order folder
+        from Utils.drive_utils import (
+            get_financial_year_from_date,
+            get_month_sequence_and_name,
+            get_process_folder_name,
+            get_or_create_hierarchical_folders,
+            get_or_create_folder,
+            upload_file_to_drive
+        )
+        
+        financial_year = get_financial_year_from_date(date_string)
+        month_sequence, month_abbr, year_2digit = get_month_sequence_and_name(date_string)
+        process_folder_name = get_process_folder_name("purchase_indent")
+        
+        # Get process folder
+        folder_success, process_folder_id, folder_error = get_or_create_hierarchical_folders(
+            base_drive_id=base_drive_id,
+            financial_year=financial_year,
+            month_sequence=month_sequence,
+            month_abbr=month_abbr,
+            year_2digit=year_2digit,
+            process_folder_name=process_folder_name,
+            logger=logger
+        )
+        
+        if not folder_success:
+            return jsonify({
+                "success": False,
+                "message": f"Failed to access process folder: {folder_error}"
+            }), 500
+        
+        # Get or create Order ID folder
+        order_folder_success, order_folder_id, order_folder_error = get_or_create_folder(
+            process_folder_id,
+            order_id,
+            logger=logger
+        )
+        
+        if not order_folder_success:
+            return jsonify({
+                "success": False,
+                "message": f"Failed to access Order ID folder: {order_folder_error}"
+            }), 500
+        
+        # Get material folders
+        from Utils.drive_utils import generate_material_folder_name
+        
+        uploaded_files = []
+        temp_file_paths = []
+        
+        try:
+            import tempfile
+            import os
+            
+            for file_index, file in enumerate(files):
+                if file.filename == '':
+                    continue
+                
+                # Get material associations for this file
+                file_associations = next(
+                    (assoc for assoc in material_associations if assoc.get('file_index') == file_index),
+                    {}
+                )
+                material_keys = file_associations.get('material_keys', [])
+                
+                # Save file temporarily
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
+                file.save(temp_file.name)
+                temp_file_paths.append(temp_file.name)
+                
+                if not material_keys:
+                    logger.warning(f"No material associations for file {file.filename}, skipping")
+                    continue
+                
+                # List all material folders in Order ID folder
+                from Utils.config import drive
+                query = f"'{order_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                results = drive.files().list(q=query, fields='files(id, name)').execute()
+                folders = results.get('files', [])
+                
+                # Upload to each associated material folder
+                file_ids = []
+                material_folder_mapping = {}  # {material_key: folder_id}
+                
+                from Utils.drive_utils import upload_file_to_drive, generate_material_folder_name
+                
+                for material_key in material_keys:
+                    # Parse material key to extract components
+                    # Format: category_subcategory_materialname_specifications
+                    parts = material_key.split('_')
+                    category = parts[0] if len(parts) > 0 else ''
+                    sub_category = parts[1] if len(parts) > 1 else ''
+                    material_name = parts[2] if len(parts) > 2 else ''
+                    specifications = '_'.join(parts[3:]) if len(parts) > 3 else ''
+                    
+                    # Generate expected folder name
+                    expected_folder_name = generate_material_folder_name(
+                        category, sub_category, material_name, specifications
+                    )
+                    
+                    # Find matching folder
+                    material_folder_id = None
+                    expected_lower = expected_folder_name.lower()
+                    
+                    # Try exact match first (case-insensitive)
+                    for folder in folders:
+                        if folder['name'].lower() == expected_lower:
+                            material_folder_id = folder['id']
+                            break
+                    
+                    # If no exact match, try partial match
+                    if not material_folder_id:
+                        for folder in folders:
+                            folder_name_lower = folder['name'].lower()
+                            # Check if folder name contains key components
+                            if (material_name.lower() in folder_name_lower and 
+                                category.lower() in folder_name_lower):
+                                material_folder_id = folder['id']
+                                break
+                    
+                    if not material_folder_id:
+                        logger.warning(f"Material folder not found for key: {material_key}, skipping")
+                        continue
+                    
+                    # Upload file to material folder
+                    upload_success, file_id, upload_error = upload_file_to_drive(
+                        file_path=temp_file.name,
+                        folder_id=material_folder_id,
+                        file_name=file.filename,
+                        mime_type=file.content_type or 'application/octet-stream',
+                        overwrite_existing=True,
+                        logger=logger
+                    )
+                    
+                    if upload_success:
+                        file_ids.append(file_id)
+                        material_folder_mapping[material_key] = material_folder_id
+                        
+                        # Create shareable link (only once per unique file_id)
+                        if file_id not in [f.get('file_id') for f in uploaded_files]:
+                            try:
+                                permission = {
+                                    'type': 'anyone',
+                                    'role': 'reader'
+                                }
+                                drive.permissions().create(
+                                    fileId=file_id,
+                                    body=permission
+                                ).execute()
+                            except Exception as e:
+                                logger.warning(f"Failed to create shareable link for file {file_id}: {str(e)}")
+                    else:
+                        logger.warning(f"Failed to upload file to material folder for {material_key}: {upload_error}")
+                
+                if file_ids:
+                    # Use first file_id for URL (all are same file, different folders)
+                    file_url = f"https://drive.google.com/file/d/{file_ids[0]}/view"
+                    
+                    uploaded_files.append({
+                        "file_name": file.filename,
+                        "file_id": file_ids[0],  # Primary file ID
+                        "file_url": file_url,
+                        "material_keys": material_keys,
+                        "material_folders": material_folder_mapping
+                    })
+                else:
+                    logger.warning(f"Failed to upload file {file.filename} to any material folder")
+        
+        finally:
+            # Clean up temporary files
+            for temp_path in temp_file_paths:
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temporary file {temp_path}: {str(e)}")
+        
+        if not uploaded_files:
+            return jsonify({
+                "success": False,
+                "message": "No files were successfully uploaded"
+            }), 500
+        
+        return jsonify({
+            "success": True,
+            "uploaded_files": uploaded_files,
+            "message": f"Successfully uploaded {len(uploaded_files)} file(s)"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error uploading tracking files: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": f"Error uploading files: {str(e)}"
+        }), 500
+
+@app.route("/api/update_tracking_details", methods=["POST"])
+def update_tracking_details():
+    """Update tracking details for a specific material in the Indent List Google Sheet"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        factory = data.get('factory')
+        order_id = data.get('orderId')
+        material_name = data.get('materialName')
+        tracking_details = data.get('tracking_details', '')
+        file_urls = data.get('file_urls', [])
+        row_index = data.get('rowIndex')
+        sheet_id = data.get('sheet_id')
+        sheet_name = data.get('sheet_name')
+        
+        if not all([factory, order_id, sheet_id, sheet_name]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: factory, orderId, sheet_id, sheet_name"
+            }), 400
+        
+        # Find plant configuration
+        plant_config = None
+        for plant in PLANT_DATA:
+            if plant.get("document_name") == factory:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            return jsonify({
+                "success": False,
+                "message": f"Plant configuration not found for factory: {factory}"
+            }), 400
+        
+        # Initialize gspread client
+        import gspread
+        client = gspread.authorize(creds)
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet(sheet_name)
+        
+        # Get all data to find the row
+        all_data = worksheet.get_all_values()
+        
+        if len(all_data) < 2:
+            return jsonify({
+                "success": False,
+                "message": "No data found in sheet"
+            }), 404
+        
+        # Headers are in row 2 (index 1)
+        headers = [h.strip() for h in all_data[1]]
+        
+        # Find tracking details column index
+        tracking_col_idx = None
+        order_id_col_idx = None
+        material_name_col_idx = None
+        
+        for idx, header in enumerate(headers):
+            header_lower = header.lower()
+            if 'tracking' in header_lower and 'detail' in header_lower:
+                tracking_col_idx = idx + 1  # gspread uses 1-based indexing
+            elif 'order id' in header_lower or 'orderid' in header_lower:
+                order_id_col_idx = idx + 1
+            elif 'material name' in header_lower or 'materialname' in header_lower:
+                material_name_col_idx = idx + 1
+        
+        if tracking_col_idx is None:
+            return jsonify({
+                "success": False,
+                "message": "Tracking Details column not found in sheet"
+            }), 404
+        
+        # Find the row to update
+        target_row_idx = None
+        
+        if row_index is not None:
+            if row_index > len(all_data) or row_index < 2:
+                return jsonify({
+                    "success": False,
+                    "message": f"Row index {row_index} out of valid range"
+                }), 404
+            
+            # Verify the row matches order_id and material_name if provided
+            row_data = all_data[row_index - 1]
+            if (order_id_col_idx and row_data[order_id_col_idx - 1].strip() == order_id) and \
+               (not material_name or (material_name_col_idx and row_data[material_name_col_idx - 1].strip() == material_name)):
+                target_row_idx = row_index
+            else:
+                logger.warning(f"Provided rowIndex {row_index} does not match orderId/materialName. Searching for row instead.")
+        
+        if target_row_idx is None:
+            # Search for row by order_id and material_name
+            for i, row in enumerate(all_data[2:], start=3):
+                if (order_id_col_idx and len(row) > order_id_col_idx - 1 and row[order_id_col_idx - 1].strip() == order_id):
+                    if material_name:
+                        if material_name_col_idx and len(row) > material_name_col_idx - 1 and row[material_name_col_idx - 1].strip() == material_name:
+                            target_row_idx = i
+                            break
+                    else:
+                        target_row_idx = i
+                        break
+        
+        if target_row_idx is None:
+            return jsonify({
+                "success": False,
+                "message": f"Order item with Order ID '{order_id}' and Material Name '{material_name}' not found"
+            }), 404
+        
+        # Build updated tracking details text
+        updated_tracking = tracking_details.strip()
+        
+        # Append file URLs if provided
+        if file_urls and len(file_urls) > 0:
+            if updated_tracking:
+                updated_tracking += "\n\nFiles:\n"
+            else:
+                updated_tracking = "Files:\n"
+            updated_tracking += "\n".join(file_urls)
+        
+        # Update the tracking details cell
+        worksheet.update_cell(target_row_idx, tracking_col_idx, updated_tracking)
+        
+        logger.info(f"Updated tracking details for Order ID '{order_id}', Material '{material_name}' at row {target_row_idx}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Tracking details updated successfully",
+            "row": target_row_idx,
+            "column": tracking_col_idx
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error updating tracking details: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": f"Error updating tracking details: {str(e)}"
+        }), 500
+
+@app.route("/api/update_multiple_tracking_details", methods=["POST"])
+def update_multiple_tracking_details():
+    """Update tracking details for multiple materials at once"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        data = request.get_json()
+        factory = data.get('factory')
+        order_id = data.get('orderId')
+        material_names = data.get('material_names', [])  # List of material names to update
+        tracking_details = data.get('tracking_details', '')
+        file_urls = data.get('file_urls', [])
+        sheet_id = data.get('sheet_id')
+        sheet_name = data.get('sheet_name')
+        
+        if not all([factory, order_id, sheet_id, sheet_name]):
+            return jsonify({
+                "success": False,
+                "message": "Missing required fields: factory, orderId, sheet_id, sheet_name"
+            }), 400
+        
+        if not material_names or len(material_names) == 0:
+            return jsonify({
+                "success": False,
+                "message": "No material names provided"
+            }), 400
+        
+        # Find plant configuration
+        plant_config = None
+        for plant in PLANT_DATA:
+            if plant.get("document_name") == factory:
+                plant_config = plant
+                break
+        
+        if not plant_config:
+            return jsonify({
+                "success": False,
+                "message": f"Plant configuration not found for factory: {factory}"
+            }), 400
+        
+        # Initialize gspread client
+        import gspread
+        client = gspread.authorize(creds)
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet(sheet_name)
+        
+        # Get all data to find rows
+        all_data = worksheet.get_all_values()
+        
+        if len(all_data) < 2:
+            return jsonify({
+                "success": False,
+                "message": "No data found in sheet"
+            }), 404
+        
+        # Headers are in row 2 (index 1)
+        headers = [h.strip() for h in all_data[1]]
+        
+        # Find column indices
+        tracking_col_idx = None
+        order_id_col_idx = None
+        material_name_col_idx = None
+        
+        for idx, header in enumerate(headers):
+            header_lower = header.lower()
+            if 'tracking' in header_lower and 'detail' in header_lower:
+                tracking_col_idx = idx + 1  # gspread uses 1-based indexing
+            elif 'order id' in header_lower or 'orderid' in header_lower:
+                order_id_col_idx = idx + 1
+            elif 'material name' in header_lower or 'materialname' in header_lower:
+                material_name_col_idx = idx + 1
+        
+        if tracking_col_idx is None:
+            return jsonify({
+                "success": False,
+                "message": "Tracking Details column not found in sheet"
+            }), 404
+        
+        if order_id_col_idx is None:
+            return jsonify({
+                "success": False,
+                "message": "Order ID column not found in sheet"
+            }), 404
+        
+        if material_name_col_idx is None:
+            return jsonify({
+                "success": False,
+                "message": "Material Name column not found in sheet"
+            }), 404
+        
+        # Build updated tracking details text
+        updated_tracking = tracking_details.strip()
+        
+        # Append file URLs if provided
+        if file_urls and len(file_urls) > 0:
+            if updated_tracking:
+                updated_tracking += "\n\nFiles:\n"
+            else:
+                updated_tracking = "Files:\n"
+            updated_tracking += "\n".join(file_urls)
+        
+        # Find and update rows for each material
+        updated_rows = []
+        failed_materials = []
+        
+        for material_name in material_names:
+            # Search for row by order_id and material_name
+            target_row_idx = None
+            
+            for i, row in enumerate(all_data[2:], start=3):
+                if (len(row) > order_id_col_idx - 1 and row[order_id_col_idx - 1].strip() == order_id) and \
+                   (len(row) > material_name_col_idx - 1 and row[material_name_col_idx - 1].strip() == material_name):
+                    target_row_idx = i
+                    break
+            
+            if target_row_idx:
+                try:
+                    # Update the tracking details cell
+                    worksheet.update_cell(target_row_idx, tracking_col_idx, updated_tracking)
+                    updated_rows.append({
+                        "material_name": material_name,
+                        "row": target_row_idx
+                    })
+                    logger.info(f"Updated tracking details for Order ID '{order_id}', Material '{material_name}' at row {target_row_idx}")
+                except Exception as e:
+                    logger.error(f"Error updating row {target_row_idx} for material {material_name}: {str(e)}")
+                    failed_materials.append(material_name)
+            else:
+                logger.warning(f"Order item with Order ID '{order_id}' and Material Name '{material_name}' not found")
+                failed_materials.append(material_name)
+        
+        if len(updated_rows) == 0:
+            return jsonify({
+                "success": False,
+                "message": f"No materials were updated. Failed materials: {', '.join(failed_materials)}"
+            }), 404
+        
+        response_message = f"Updated tracking details for {len(updated_rows)} material(s)"
+        if failed_materials:
+            response_message += f". Failed to update: {', '.join(failed_materials)}"
+        
+        return jsonify({
+            "success": True,
+            "message": response_message,
+            "updated_rows": updated_rows,
+            "failed_materials": failed_materials
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error updating multiple tracking details: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": f"Error updating tracking details: {str(e)}"
+        }), 500
+
+@app.route("/api/get_order_pdf", methods=["GET"])
+def get_order_pdf():
+    """Get PDF file from Google Drive for a given order ID"""
+    try:
+        if 'user' not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        
+        # Get parameters
+        order_id = request.args.get('order_id')
+        factory = request.args.get('factory', 'KR')
+        
+        if not order_id:
+            return jsonify({
+                "success": False,
+                "error": "Order ID is required"
+            }), 400
+        
+        # Parse order ID to extract month and year
+        # Format: KR_MMYY-XXXX (e.g., KR_1225-0271 = December 2025)
+        import re
+        order_id_match = re.match(r'^KR_(\d{2})(\d{2})-(\d+)$', order_id)
+        if not order_id_match:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid Order ID format: {order_id}. Expected format: KR_MMYY-XXXX"
+            }), 400
+        
+        month_str, year_str, order_num = order_id_match.groups()
+        month = int(month_str)
+        year_2digit = int(year_str)
+        # Convert 2-digit year to 4-digit (assuming 2000-2099)
+        year = 2000 + year_2digit if year_2digit < 100 else year_2digit
+        
+        # Create date string for financial year calculation
+        # Use first day of the month
+        date_string = f"01/{month:02d}/{year}"
+        
+        # Get plant configuration
+        plant_config = _get_plant_config(factory)
+        if not plant_config:
+            return jsonify({
+                "success": False,
+                "error": f"Plant configuration not found for factory: {factory}"
+            }), 400
+        
+        # Get store drive ID
+        plant_name = plant_config.get("name", "")
+        if not plant_name:
+            return jsonify({
+                "success": False,
+                "error": f"Plant name not found in configuration for factory: {factory}"
+            }), 400
+        
+        # Try multiple key variations to handle different naming conventions
+        plant_name_lower = plant_name.lower()
+        key_variations = [
+            f"{plant_name_lower.replace(' ', '_')}_store_drive_id",
+            f"{plant_name_lower.replace(' ', '')}_store_drive_id",
+        ]
+        
+        base_drive_id = None
+        for key_variant in key_variations:
+            drive_id = plant_config.get(key_variant)
+            if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                base_drive_id = drive_id
+                break
+        
+        # Fallback: Search all keys in plant_config for *_store_drive_id pattern
+        if not base_drive_id:
+            for key in plant_config.keys():
+                if key.endswith("_store_drive_id"):
+                    drive_id = plant_config.get(key)
+                    if drive_id and drive_id != "[TO_BE_ASSIGNED]":
+                        base_drive_id = drive_id
+                        break
+        
+        if not base_drive_id or base_drive_id == "[TO_BE_ASSIGNED]":
+            return jsonify({
+                "success": False,
+                "error": f"Store Drive ID not configured for factory: {factory}"
+            }), 400
+        
+        # Import drive utility functions
+        from Utils.drive_utils import (
+            get_financial_year_from_date,
+            get_month_sequence_and_name,
+            get_or_create_hierarchical_folders,
+            get_process_folder_name
+        )
+        
+        # Calculate financial year
+        financial_year = get_financial_year_from_date(date_string)
+        if not financial_year:
+            return jsonify({
+                "success": False,
+                "error": f"Could not calculate financial year from order ID: {order_id}"
+            }), 400
+        
+        # Get month sequence and name
+        month_sequence, month_abbr, year_2digit_str = get_month_sequence_and_name(date_string)
+        if month_sequence is None:
+            return jsonify({
+                "success": False,
+                "error": f"Could not calculate month sequence from order ID: {order_id}"
+            }), 400
+        
+        # Get process folder name
+        process_folder_name = get_process_folder_name("purchase_indent")
+        if not process_folder_name:
+            return jsonify({
+                "success": False,
+                "error": "Invalid process type: purchase_indent"
+            }), 400
+        
+        # Get or create hierarchical folders
+        folder_success, final_folder_id, folder_error = get_or_create_hierarchical_folders(
+            base_drive_id=base_drive_id,
+            financial_year=financial_year,
+            month_sequence=month_sequence,
+            month_abbr=month_abbr,
+            year_2digit=year_2digit_str,
+            process_folder_name=process_folder_name,
+            logger=logger
+        )
+        
+        if not folder_success:
+            return jsonify({
+                "success": False,
+                "error": f"Failed to access folder structure: {folder_error}"
+            }), 500
+        
+        # Search for PDF files matching the order ID pattern
+        # Pattern: INDT_{order_id}*.pdf (e.g., INDT_KR_1225-0271_*.pdf)
+        search_pattern = f"INDT_{order_id}"
+        query = f"name contains '{search_pattern}' and '{final_folder_id}' in parents and mimeType='application/pdf' and trashed=false"
+        
+        try:
+            results = drive.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name, webViewLink)',
+                orderBy='createdTime desc'
+            ).execute()
+            
+            files = results.get('files', [])
+            
+            if not files:
+                return jsonify({
+                    "success": False,
+                    "error": f"PDF not found for Order ID: {order_id}",
+                    "message": f"No PDF file found matching pattern '{search_pattern}' in the folder"
+                }), 404
+            
+            # Return the first matching file (most recent)
+            pdf_file = files[0]
+            file_id = pdf_file.get('id')
+            file_name = pdf_file.get('name', '')
+            
+            # Generate Google Drive viewer link
+            view_link = f"https://drive.google.com/file/d/{file_id}/view"
+            
+            return jsonify({
+                "success": True,
+                "file_id": file_id,
+                "file_name": file_name,
+                "view_link": view_link,
+                "order_id": order_id
+            }), 200
+            
+        except HttpError as e:
+            logger.error(f"Google Drive API error while searching for PDF: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"Error accessing Google Drive: {str(e)}"
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error fetching order PDF: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/get_party_place_data", methods=["GET"])
 def get_party_place_data():
     """Get party and place data from Google Sheets for dropdown population"""
@@ -3535,6 +4560,32 @@ def submit_order():
                 # Log warning but don't fail the order submission
                 logger.warning(f"Failed to write order {order_data['orderId']} to Indent List: {indent_result['message']}")
             
+            # Create folder structure in Google Drive
+            folder_result = None
+            try:
+                from Utils.drive_utils import create_indent_folder_structure
+                date_string = order_data.get('date', '')
+                if not date_string:
+                    # Use current date if not provided
+                    from datetime import datetime
+                    date_string = datetime.now().strftime('%d/%m/%Y')
+                
+                folder_result = create_indent_folder_structure(
+                    factory=factory,
+                    order_id=order_data['orderId'],
+                    order_items=order_data['orderItems'],
+                    date_string=date_string,
+                    logger=logger
+                )
+                
+                if folder_result['success']:
+                    logger.info(f"Folder structure created for order {order_data['orderId']}: {folder_result['message']}")
+                else:
+                    logger.warning(f"Failed to create folder structure for order {order_data['orderId']}: {folder_result['message']}")
+            except Exception as folder_error:
+                logger.warning(f"Error creating folder structure: {str(folder_error)}")
+                # Don't fail order submission if folder creation fails
+            
             return jsonify({
                 "success": True,
                 "message": "Order submitted successfully",
@@ -3542,7 +4593,9 @@ def submit_order():
                 "factory": factory,
                 "factoryDocument": get_factory_initials(factory),
                 "indentSheetWritten": indent_result.get('success', False),
-                "indentSheetMessage": indent_result.get('message', '')
+                "indentSheetMessage": indent_result.get('message', ''),
+                "folderStructureCreated": folder_result.get('success', False) if folder_result else False,
+                "folderStructureMessage": folder_result.get('message', '') if folder_result else ''
             }), 200
         else:
             return jsonify({

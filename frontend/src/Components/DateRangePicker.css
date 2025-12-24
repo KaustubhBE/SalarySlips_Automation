@@ -1,0 +1,191 @@
+.os-date-range-picker {
+  position: relative;
+  width: 100%;
+}
+
+.os-date-range-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.os-date-input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.os-date-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-weight: 500;
+  font-size: 18px;
+  margin: 0 4px;
+  /* Center vertically with input field center */
+  /* Input has 10px padding top/bottom, so center is ~10px from bottom of input */
+  padding-bottom: 10px;
+  line-height: 1;
+}
+
+.os-date-range-input {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.os-date-range-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.os-date-range-input:hover {
+  border-color: #3498db;
+}
+
+.os-calendar-popup {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 1000;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  min-width: 280px;
+}
+
+.os-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.os-calendar-nav-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #3498db;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.os-calendar-nav-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.os-calendar-month-year {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.os-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.os-calendar-day-name {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  padding: 8px 4px;
+  text-transform: uppercase;
+}
+
+.os-calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.os-calendar-day.empty {
+  cursor: default;
+}
+
+.os-calendar-day:not(.empty):hover {
+  background-color: #e8f4f8;
+  color: #3498db;
+}
+
+.os-calendar-day.today {
+  font-weight: 600;
+  color: #3498db;
+}
+
+.os-calendar-day.today:not(.start-date):not(.end-date):not(.in-range) {
+  border: 2px solid #3498db;
+}
+
+.os-calendar-day.in-range {
+  background-color: #e8f4f8;
+  color: #333;
+}
+
+.os-calendar-day.start-date {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+  border-radius: 4px 0 0 4px;
+}
+
+.os-calendar-day.end-date {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+  border-radius: 0 4px 4px 0;
+}
+
+.os-calendar-day.start-date.end-date {
+  border-radius: 4px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .os-date-range-picker {
+    width: 100%;
+  }
+
+  .os-date-range-inputs {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .os-date-separator {
+    display: none;
+  }
+
+  .os-calendar-popup {
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+  }
+
+  .os-date-range-input {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
+}
+

@@ -6,6 +6,9 @@ import KR_Add_MaterialList from './KR_Services/KR_Add_MaterialList';
 import KR_Delete_MaterialList from './KR_Services/KR_Delete_MaterialList';
 import KR_MaterialInward from './KR_Services/KR_MaterialInward';
 import KR_MaterialOutward from './KR_Services/KR_MaterialOutward';
+import KR_OrderStatus from './KR_Services/KR_OrderStatus';
+import KR_ViewOrderDetails from './KR_Services/KR_ViewOrderDetails';
+import KR_UpdateOrderDetails from './KR_Services/KR_UpdateOrderDetails';
 // DEPARTMENTS_CONFIG removed - using centralized FACTORY_RBAC_CONFIG instead
 import '../App.css';
 import BackButton from '../Components/BackButton';
@@ -20,6 +23,7 @@ const KRStore = () => {
   // Static services for KR Store department (only existing services)
   const krStoreServices = [
     { key: 'kr_purchase_indent', name: 'Purchase Indent', route: '/kerur/kr_store/kr_purchase_indent' },
+    { key: 'kr_order_status', name: 'Order Status', route: '/kerur/kr_store/kr_order_status' },
     // { key: 'kr_add_material_list', name: 'Add Material', route: '/kerur/kr_store/kr_add_material_list' },
     // { key: 'kr_delete_material_list', name: 'Delete Material', route: '/kerur/kr_store/kr_delete_material_list'},
     // { key: 'kr_material_inward', name: 'Material Inward', route: '/kerur/kr_store/kr_material_inward' },
@@ -116,6 +120,13 @@ const KRStore = () => {
     <Routes>
       {/* KR Purchase Indent Service Route */}
       <Route path="kr_purchase_indent" element={<KR_PurchaseIndent />} />
+      
+      {/* KR Order Status Service Route */}
+      <Route path="kr_order_status" element={<KR_OrderStatus />} />
+      
+      {/* KR Order Details Route */}
+      <Route path="kr_order_status/:orderId" element={<KR_ViewOrderDetails />} />
+      <Route path="kr_order_status/update/:orderId" element={<KR_UpdateOrderDetails />} />
       
       {/* KR Add Material Service Route */}
       <Route path="kr_add_material_list" element={<KR_Add_MaterialList />} />
