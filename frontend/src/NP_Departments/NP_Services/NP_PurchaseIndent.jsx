@@ -684,6 +684,7 @@ const [showScreenFlash, setShowScreenFlash] = useState(false)
   const [formValidationErrors, setFormValidationErrors] = useState([])
   const [formHasBlockingErrors, setFormHasBlockingErrors] = useState(false)
 const [highlightedFields, setHighlightedFields] = useState([])
+const [addItemValidationError, setAddItemValidationError] = useState('')
 const highlightTimeoutRef = useRef(null)
 const screenFlashTimeoutRef = useRef(null)
 const categoryInputRef = useRef(null)
@@ -1221,6 +1222,19 @@ const hasEditSpecOptions = useMemo(
       setHighlightedFields(prev => prev.filter(f => f !== field))
     }
     
+    // Clear add item validation error when any required field gets a value
+    if (addItemValidationError && ['category', 'materialName', 'uom', 'quantity'].includes(field) && value) {
+      // Check if all required fields are now filled
+      const requiredFields = ['category', 'materialName', 'uom', 'quantity']
+      const willHaveAllFields = requiredFields.every(fieldName => {
+        if (fieldName === field) return !!value
+        return !!formData[fieldName]
+      })
+      if (willHaveAllFields) {
+        setAddItemValidationError('')
+      }
+    }
+    
     setFormData(prev => {
       const newFormData = {
         ...prev,
@@ -1342,10 +1356,22 @@ const hasEditSpecOptions = useMemo(
             materialName
           ).then(backendUom => {
             if (backendUom) {
-              setFormData(prev => ({
-                ...prev,
-                uom: backendUom
-              }))
+              setFormData(prev => {
+                const updated = {
+                  ...prev,
+                  uom: backendUom
+                }
+                // Clear validation error if all required fields are now filled
+                const requiredFields = ['category', 'materialName', 'uom', 'quantity']
+                const allFieldsFilled = requiredFields.every(fieldName => {
+                  if (fieldName === 'uom') return !!backendUom
+                  return !!updated[fieldName]
+                })
+                if (allFieldsFilled) {
+                  setAddItemValidationError('')
+                }
+                return updated
+              })
               setHighlightedFields(prev => prev.filter(f => f !== 'uom'))
             }
           })
@@ -1381,6 +1407,9 @@ const hasEditSpecOptions = useMemo(
     
     // Clear any highlighted fields
     setHighlightedFields([])
+    
+    // Clear validation error
+    setAddItemValidationError('')
   }
 
   const handleAddItem = () => {
@@ -2651,22 +2680,30 @@ const hasEditSpecOptions = useMemo(
           {/* Add Item Button */}
           <div className="po-form-group po-add-item-group">
             <label>&nbsp;</label>
-            <div className="po-add-item-buttons-container">
-              <button
-                type="button"
-                onClick={handleResetAddItemFields}
-                className="po-reset-item-btn"
-                title="Reset add item fields"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="po-add-item-btn"
-              >
-                Add Item
-              </button>
+            <div className="po-add-item-buttons-wrapper">
+              {/* Validation Error Message */}
+              {addItemValidationError && (
+                <div className="po-add-item-validation-error">
+                  <span className="po-error-text">{addItemValidationError}</span>
+                </div>
+              )}
+              <div className="po-add-item-buttons-container">
+                <button
+                  type="button"
+                  onClick={handleResetAddItemFields}
+                  className="po-reset-item-btn"
+                  title="Reset add item fields"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="po-add-item-btn"
+                >
+                  Add Item
+                </button>
+              </div>
             </div>
           </div>
         </div>

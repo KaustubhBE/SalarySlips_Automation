@@ -196,11 +196,52 @@ const KR_UpdateOrderDetails = () => {
     }
   }
 
+  // Clean up duplicate "Files:" sections and URLs from tracking details
+  const cleanupTrackingDetails = (text) => {
+    if (!text || !text.trim()) return ''
+    
+    const trimmed = text.trim()
+    
+    // Split by "Files:" to separate main text from file sections
+    const parts = trimmed.split(/Files:\s*/i)
+    const mainText = parts[0].trim()
+    
+    // Extract all URLs from the entire text
+    const urlRegex = /(https?:\/\/[^\s,\n]+|www\.[^\s,\n]+)/gi
+    const allUrls = trimmed.match(urlRegex) || []
+    
+    // Deduplicate URLs
+    const uniqueUrls = Array.from(new Set(allUrls.map(url => {
+      const normalized = url.trim()
+      return normalized.replace(/\/$/, '')
+    }))).map(url => {
+      // Find original URL with protocol if needed
+      const original = allUrls.find(u => {
+        const normalized = u.trim().replace(/\/$/, '')
+        return normalized === url
+      })
+      return original ? original.trim() : url
+    })
+    
+    // Reconstruct text with single "Files:" section
+    if (uniqueUrls.length > 0) {
+      if (mainText) {
+        return mainText + '\n\nFiles:\n' + uniqueUrls.join('\n')
+      } else {
+        return 'Files:\n' + uniqueUrls.join('\n')
+      }
+    } else {
+      return mainText
+    }
+  }
+
   // Handle opening edit tracking details modal
   const handleEditTracking = (index) => {
     const item = orderItems[index]
     setEditingTrackingIndex(index)
-    setTrackingDetailsText(item.tracking_details || '')
+    // Clean up any duplicates when loading
+    const cleanedText = cleanupTrackingDetails(item.tracking_details || '')
+    setTrackingDetailsText(cleanedText)
     setSelectedFiles([])
     setFileMaterialAssociations({}) // Reset associations
     setShowTrackingModal(true)
@@ -430,11 +471,12 @@ const KR_UpdateOrderDetails = () => {
           .filter(Boolean)
 
         // Build updated tracking details text
-        let updatedTrackingText = trackingDetailsText.trim()
+        // First, clean up any existing duplicates in the textarea content
+        let updatedTrackingText = cleanupTrackingDetails(trackingDetailsText)
 
         // Append file URLs if provided
         if (fileUrls.length > 0) {
-          // Extract existing URLs from tracking details to avoid duplicates
+          // Extract existing URLs from cleaned tracking details
           const urlRegex = /(https?:\/\/[^\s,\n]+|www\.[^\s,\n]+)/gi
           const existingUrls = updatedTrackingText.match(urlRegex) || []
           
@@ -450,17 +492,35 @@ const KR_UpdateOrderDetails = () => {
           
           // Only append if there are new URLs
           if (newUrls.length > 0) {
-            // Remove "Files:" label if it exists at the end
-            updatedTrackingText = updatedTrackingText.replace(/\n*Files:\s*\n*$/i, '').trim()
+            // Split by "Files:" to get the main text before any Files section
+            const parts = updatedTrackingText.split(/Files:\s*/i)
+            const mainText = parts[0].trim()
             
-            if (updatedTrackingText) {
-              updatedTrackingText += '\n\nFiles:\n'
+            // Combine all URLs (existing + new) and deduplicate
+            const allUrls = [...existingUrls, ...newUrls]
+            const uniqueUrls = Array.from(new Set(allUrls.map(url => {
+              const normalized = url.trim()
+              return normalized.replace(/\/$/, '')
+            }))).map(url => {
+              // Find original URL with protocol if needed
+              const original = allUrls.find(u => {
+                const normalized = u.trim().replace(/\/$/, '')
+                return normalized === url
+              })
+              return original ? original.trim() : url
+            })
+            
+            // Reconstruct text with single "Files:" section
+            if (mainText) {
+              updatedTrackingText = mainText + '\n\nFiles:\n' + uniqueUrls.join('\n')
             } else {
-              updatedTrackingText = 'Files:\n'
+              updatedTrackingText = 'Files:\n' + uniqueUrls.join('\n')
             }
-            updatedTrackingText += newUrls.join('\n')
           }
         }
+        
+        // Final cleanup to ensure no duplicates remain
+        updatedTrackingText = cleanupTrackingDetails(updatedTrackingText)
 
         // Update tracking details for all associated materials
         if (materialsToUpdate.length > 0) {
@@ -516,7 +576,8 @@ const KR_UpdateOrderDetails = () => {
         }
       } else {
         // No files uploaded, just update tracking details text for current material
-        let updatedTrackingText = trackingDetailsText.trim()
+        // Clean up any duplicates before saving
+        let updatedTrackingText = cleanupTrackingDetails(trackingDetailsText)
 
         const updateResponse = await axios.post(getApiUrl('update_tracking_details'), {
           factory: 'KR',

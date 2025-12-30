@@ -589,8 +589,9 @@
   
   .po-add-item-group {
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-start; /* Align button to the left */
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
   }
   
   .po-add-item-group .po-add-item-btn {
@@ -609,6 +610,8 @@
     background-color: #27ae60;
     color: white;
     height: 45px;
+    min-height: 45px;
+    max-height: 45px;
     width: auto !important; /* Allow button to size based on content */
     min-width: auto !important; /* Remove fixed minimum width */
     max-width: fit-content !important; /* Prevent button from stretching */
@@ -624,11 +627,55 @@
     transform: translateY(-2px);
   }
   
+  .po-add-item-buttons-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap; /* Desktop: Keep error on left, buttons on right */
+    justify-content: space-between; /* Error at start, buttons at end */
+    box-sizing: border-box;
+  }
+  
+  .po-add-item-validation-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 6px;
+    color: #c33;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0; /* Don't shrink the error message */
+    flex-grow: 0; /* Don't grow the error message */
+    align-self: flex-start; /* Align to flex-start (left) */
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .po-add-item-validation-error .po-error-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  
+  .po-add-item-validation-error .po-error-text {
+    flex: 1;
+  }
+  
   .po-add-item-buttons-container {
     display: flex;
     gap: 12px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-shrink: 0; /* Don't shrink buttons container */
+    flex-grow: 0; /* Don't grow beyond content */
+    align-self: flex-end; /* Align to flex-end (right) */
+    margin-left: auto; /* Push to the right */
+    box-sizing: border-box;
+    max-width: 100%;
   }
   
   .po-reset-item-btn {
@@ -642,6 +689,8 @@
     background-color: #95a5a6;
     color: white;
     height: 45px;
+    min-height: 45px;
+    max-height: 45px;
     width: auto !important;
     min-width: auto !important;
     max-width: fit-content !important;
@@ -869,28 +918,75 @@
       gap: 12px;
     }
     
-    .po-submit-btn, .po-reset-btn {
+    /* Mobile: Validation error above buttons, buttons stay side-by-side */
+    .po-add-item-group {
       width: 100%;
-      min-width: auto;
+      box-sizing: border-box;
+      overflow: hidden;
+      max-width: 100%;
     }
     
-    .po-add-item-btn {
-      width: 100% !important;
-      min-width: auto !important;
+    .po-add-item-buttons-wrapper {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      max-width: 100%;
+      overflow: hidden;
     }
     
-    .po-reset-item-btn {
-      width: 100% !important;
-      min-width: auto !important;
+    .po-add-item-validation-error {
+      width: 100%;
+      max-width: 100%;
+      order: -1; /* Show error above buttons */
+      font-size: 12px;
+      padding: 8px 10px;
+      box-sizing: border-box;
+      white-space: normal; /* Allow text to wrap on mobile */
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      overflow: hidden;
+    }
+    
+    .po-add-item-validation-error .po-error-text {
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
     }
     
     .po-add-item-buttons-container {
-      flex-direction: column;
       width: 100%;
+      max-width: 100%;
+      display: flex;
+      gap: 10px;
+      flex-wrap: nowrap;
+      box-sizing: border-box;
+      overflow: hidden;
     }
     
-    .po-add-item-group {
-      width: 100%;
+    /* Override base styles that prevent flex from working */
+    .po-add-item-group .po-add-item-btn {
+      flex-shrink: 1 !important; /* Allow button to shrink */
+      flex-grow: 1 !important; /* Allow button to grow */
+    }
+    
+    .po-reset-item-btn,
+    .po-add-item-btn {
+      flex: 1 1 0% !important; /* Equal flex distribution - grow and shrink equally */
+      flex-grow: 1 !important; /* Explicitly allow growing */
+      flex-shrink: 1 !important; /* Explicitly allow shrinking */
+      flex-basis: 0% !important; /* Start from 0, let flex distribute equally */
+      min-width: 0 !important; /* Remove any min-width constraints */
+      width: 0 !important; /* Start with 0, let flex grow them equally */
+      max-width: 100% !important; /* Prevent overflow */
+      height: 45px !important; /* Ensure same height */
+      min-height: 45px !important;
+      max-height: 45px !important;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding: 12px 16px !important; /* Ensure adequate padding for touch targets - same for both */
     }
   }
   
