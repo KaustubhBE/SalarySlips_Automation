@@ -417,6 +417,85 @@
   resize: vertical;
 }
 
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  #root {
+    background-color: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .access-denied {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .access-denied h2 {
+    color: #fca5a5;
+  }
+
+  .access-denied p {
+    color: #d1d5db;
+  }
+
+  .input-elements {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .input-elements label {
+    color: #d1d5db;
+  }
+
+  .input-elements select,
+  .input-elements input,
+  #datePicker {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .input-elements select:focus,
+  .input-elements input:focus,
+  #datePicker:focus {
+    border-color: #987349;
+    box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.2);
+  }
+
+  .input-elements input::placeholder {
+    color: #9ca3af;
+  }
+
+  .option-select {
+    background-color: #374151;
+  }
+
+  .financial-year-info {
+    color: #9ca3af;
+  }
+
+  .processing-container {
+    background-color: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .form-group label {
+    color: #d1d5db;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: #987349;
+    box-shadow: 0 0 0 2px rgba(152, 115, 73, 0.2);
+  }
+}
+
 .months-container {
   margin: 20px 0;
   padding: 15px;

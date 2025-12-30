@@ -2967,3 +2967,116 @@
     padding: 5px 10px;
   }
 }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .mio-material_list-container {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .purchase_indent-container {
+    background-color: #111827;
+  }
+
+  .mio-material-form-wrapper {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .mio-material-form-wrapper h2 {
+    color: #f9fafb;
+    border-bottom-color: #3498db;
+  }
+
+  .header-center h2 {
+    color: #f9fafb;
+  }
+
+  .form-header {
+    border-bottom-color: #374151;
+  }
+
+  .mio-form-group label {
+    color: #d1d5db;
+  }
+
+  .mio-form-input,
+  .mio-form-select,
+  .mio-form-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mio-form-input:focus,
+  .mio-form-select:focus,
+  .mio-form-textarea:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  .mio-form-input::placeholder,
+  .mio-form-textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  .mio-datetime-box {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mio-toggle-mode-btn {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .mio-toggle-mode-btn:hover {
+    background-color: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .mio-loading-message {
+    color: #9ca3af;
+  }
+
+  .mio-items-sheet {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .mio-items-sheet-header {
+    background-color: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .mio-items-sheet-header h3 {
+    color: #f9fafb;
+  }
+
+  .mio-items-sheet-body {
+    background-color: #1f2937;
+  }
+
+  .mio-items-sheet-card {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .mio-item-card-label {
+    color: #d1d5db;
+  }
+
+  .mio-item-card-value {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mio-item-card-number {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+}

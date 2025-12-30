@@ -3520,3 +3520,259 @@ table tr:hover {
     vertical-align: middle;
   }
 }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .dashboard-container {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .page-header {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .page-header h1 {
+    color: #f9fafb;
+  }
+
+  .add-user-form {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .form-group label {
+    color: #d1d5db;
+  }
+
+  .form-group input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .form-group input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+
+  .form-group input::placeholder {
+    color: #9ca3af;
+  }
+
+  .dashboard-header {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .dashboard-header h1 {
+    color: #f9fafb;
+  }
+
+  .users-list {
+    background-color: #1f2937;
+  }
+
+  .users-list h2 {
+    color: #f9fafb;
+  }
+
+  .users-table-container {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .users-table {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .users-table thead {
+    background-color: #374151;
+  }
+
+  .users-table th {
+    background-color: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .users-table tbody tr {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .users-table tbody tr:hover {
+    background-color: #374151;
+  }
+
+  .users-table td {
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  .dropdown-menu {
+    background-color: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .dropdown-option {
+    border-bottom-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .dropdown-option:hover {
+    background-color: #374151;
+  }
+
+  .option-label {
+    color: #e5e7eb;
+  }
+
+  .dropdown-option:hover .option-label {
+    color: #f9fafb;
+  }
+
+  .user-actions-buttons button {
+    color: #f9fafb;
+  }
+
+  .edit-website-password-container {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+  }
+
+  .password-form-title {
+    color: #f9fafb;
+  }
+
+  .modal-content {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .success-modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .delete-modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .delete-question {
+    color: #f9fafb;
+  }
+
+  .user-details {
+    background-color: #111827;
+    border-color: #374151;
+  }
+
+  .detail-label {
+    color: #9ca3af;
+  }
+
+  .detail-value {
+    color: #f9fafb;
+  }
+
+  .delete-confirmation-modal {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .delete-modal-body {
+    background-color: #1f2937;
+  }
+
+  .delete-modal-body .detail-value {
+    color: #f9fafb;
+  }
+
+  /* Search Bar */
+  .search-bar {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .search-bar:focus {
+    background-color: #1f2937;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+
+  .search-bar::placeholder {
+    color: #9ca3af;
+  }
+
+  /* Text Elements */
+  .user-count {
+    color: #d1d5db;
+  }
+
+  .factory-scope {
+    color: #d4af37; /* Gold color for visibility */
+  }
+
+  .no-results-message {
+    background-color: #1f2937;
+    color: #9ca3af;
+    border: 1px solid #374151;
+  }
+
+  /* Select Dropdowns */
+  .form-group select {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .form-group select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    background-color: #1f2937;
+  }
+
+  .form-group select:hover {
+    border-color: #60a5fa;
+  }
+
+  .form-group select option {
+    background-color: #374151;
+    color: #f9fafb;
+  }
+
+  .form-group select option:hover {
+    background-color: #4b5563;
+  }
+
+  .form-group select option:checked,
+  .form-group select option:focus {
+    background-color: #3b82f6;
+    color: white;
+  }
+
+  .role-select {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .role-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .role-select:disabled {
+    background-color: #1f2937;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+}

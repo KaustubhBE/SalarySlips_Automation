@@ -364,7 +364,7 @@ const KR_OrderStatus = () => {
   if (loading) {
     return (
       <div className="os-container">
-        <BackButton />
+        <BackButton label="Back to Store" to="/kerur/kr_store" />
         <div className="os-loading">
           <LoadingSpinner />
           <p>Loading order status...</p>
@@ -376,7 +376,7 @@ const KR_OrderStatus = () => {
   if (error) {
     return (
       <div className="os-container">
-        <BackButton />
+        <BackButton label="Back to Store" to="/kerur/kr_store" />
         <div className="os-error">
           <p className="os-error-message">{error}</p>
           <button onClick={fetchIndentList} className="os-retry-btn">
@@ -396,7 +396,7 @@ const KR_OrderStatus = () => {
           <div className="os-pdf-overlay-text">Opening PDF...</div>
         </>
       )}
-      <BackButton />
+      <BackButton label="Back to Store" to="/kerur/kr_store" />
       <div className="os-header">
         <h1>Order Status - Kerur</h1>
         <div className="os-header-actions">

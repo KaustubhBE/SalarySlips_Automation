@@ -81,3 +81,67 @@ a {
 a:hover {
     text-decoration: underline;
 }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #f9fafb;
+  }
+
+  label {
+    color: #d1d5db;
+  }
+
+  input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  input::placeholder {
+    color: #9ca3af;
+  }
+
+  button {
+    background-color: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  button:hover {
+    background-color: #4b5563;
+  }
+
+  table {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  th {
+    background-color: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  td {
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  th, td {
+    border-bottom-color: #374151;
+  }
+
+  a {
+    color: #60a5fa;
+  }
+
+  a:hover {
+    color: #93c5fd;
+  }
+}

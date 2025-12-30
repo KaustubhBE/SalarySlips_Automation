@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { getApiUrl, PLANT_DATA } from '../../config'
 import '../../OrderStatus.css'
@@ -23,7 +23,6 @@ const DEFAULT_STATUS = STATUS_OPTIONS[0]
 
 const KR_UpdateOrderDetails = () => {
   const { orderId } = useParams()
-  const navigate = useNavigate()
   const [orderItems, setOrderItems] = useState([])
   const [orderInfo, setOrderInfo] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -152,11 +151,6 @@ const KR_UpdateOrderDetails = () => {
     fetchOrderDetails()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId])
-
-  // Handle back navigation
-  const handleBack = () => {
-    navigate('/kerur/kr_store/kr_order_status')
-  }
 
   const handleStatusChange = async (index, newStatus) => {
     const item = orderItems[index]
@@ -440,12 +434,32 @@ const KR_UpdateOrderDetails = () => {
 
         // Append file URLs if provided
         if (fileUrls.length > 0) {
-          if (updatedTrackingText) {
-            updatedTrackingText += '\n\nFiles:\n'
-          } else {
-            updatedTrackingText = 'Files:\n'
+          // Extract existing URLs from tracking details to avoid duplicates
+          const urlRegex = /(https?:\/\/[^\s,\n]+|www\.[^\s,\n]+)/gi
+          const existingUrls = updatedTrackingText.match(urlRegex) || []
+          
+          // Filter out URLs that already exist
+          const newUrls = fileUrls.filter(url => {
+            const normalizedUrl = url.trim()
+            return !existingUrls.some(existing => {
+              const normalizedExisting = existing.trim()
+              return normalizedExisting === normalizedUrl || 
+                     normalizedExisting.replace(/\/$/, '') === normalizedUrl.replace(/\/$/, '')
+            })
+          })
+          
+          // Only append if there are new URLs
+          if (newUrls.length > 0) {
+            // Remove "Files:" label if it exists at the end
+            updatedTrackingText = updatedTrackingText.replace(/\n*Files:\s*\n*$/i, '').trim()
+            
+            if (updatedTrackingText) {
+              updatedTrackingText += '\n\nFiles:\n'
+            } else {
+              updatedTrackingText = 'Files:\n'
+            }
+            updatedTrackingText += newUrls.join('\n')
           }
-          updatedTrackingText += fileUrls.join('\n')
         }
 
         // Update tracking details for all associated materials
@@ -545,7 +559,7 @@ const KR_UpdateOrderDetails = () => {
   if (loading) {
     return (
       <div className="os-container">
-        <BackButton onClick={handleBack} />
+        <BackButton label="Back to Order Status" to="/kerur/kr_store/kr_order_status" />
         <div className="os-loading">
           <LoadingSpinner />
           <p>Loading order details...</p>
@@ -557,7 +571,7 @@ const KR_UpdateOrderDetails = () => {
   if (error) {
     return (
       <div className="os-container">
-        <BackButton onClick={handleBack} />
+        <BackButton label="Back to Order Status" to="/kerur/kr_store/kr_order_status" />
         <div className="os-error">
           <p className="os-error-message">{error}</p>
           <button onClick={fetchOrderDetails} className="os-retry-btn">
@@ -570,7 +584,7 @@ const KR_UpdateOrderDetails = () => {
 
   return (
     <div className="os-container">
-      <BackButton onClick={handleBack} />
+      <BackButton label="Back to Order Status" to="/kerur/kr_store/kr_order_status" />
       <div className="order-detail-page">
         <div className="order-detail-header">
           <h1>Order Details - {orderId}</h1>
@@ -599,11 +613,6 @@ const KR_UpdateOrderDetails = () => {
               <div className="info-item">
                 <strong>Importance:</strong> {orderInfo.importance || '-'}
               </div>
-              {orderInfo.tracking_details && (
-                <div className="info-item">
-                  <strong>Tracking Details:</strong> {orderInfo.tracking_details}
-                </div>
-              )}
               {orderInfo.description && (
                 <div className="info-item full-width">
                   <strong>Description:</strong> {orderInfo.description}
@@ -684,48 +693,41 @@ const KR_UpdateOrderDetails = () => {
                             {item.tracking_details ? (
                               (() => {
                                 const trackingText = item.tracking_details.trim()
-                                // Check if it's a URL
-                                const urlPattern = /^(https?:\/\/|www\.)/i
-                                if (urlPattern.test(trackingText)) {
-                                  const href = trackingText.startsWith('http') ? trackingText : `https://${trackingText}`
-                                  return (
-                                    <a 
-                                      href={href} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="os-tracking-link"
-                                    >
-                                      {trackingText}
-                                    </a>
-                                  )
+                                // Extract URLs using regex - matches http://, https://, or www.
+                                const urlRegex = /(https?:\/\/[^\s,\n]+|www\.[^\s,\n]+)/gi
+                                const urls = trackingText.match(urlRegex) || []
+                                
+                                // Remove duplicates
+                                const uniqueUrls = [...new Set(urls)]
+                                
+                                if (uniqueUrls.length === 0) {
+                                  return <span>{trackingText}</span>
                                 }
-                                // Check if it contains URLs
-                                const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
-                                if (urlRegex.test(trackingText)) {
-                                  const parts = trackingText.split(urlRegex)
-                                  return (
-                                    <span>
-                                      {parts.map((part, idx) => {
-                                        if (urlRegex.test(part)) {
-                                          const href = part.startsWith('http') ? part : `https://${part}`
-                                          return (
-                                            <a
-                                              key={idx}
-                                              href={href}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="os-tracking-link"
-                                            >
-                                              {part}
-                                            </a>
-                                          )
-                                        }
-                                        return <span key={idx}>{part}</span>
-                                      })}
-                                    </span>
-                                  )
-                                }
-                                return <span>{trackingText}</span>
+                                
+                                return (
+                                  <span>
+                                    {uniqueUrls.map((url, idx) => {
+                                      // Ensure URL has protocol to open as external link
+                                      const href = url.startsWith('http://') || url.startsWith('https://') 
+                                        ? url 
+                                        : `https://${url}`
+                                      
+                                      return (
+                                        <React.Fragment key={idx}>
+                                          <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="os-tracking-link"
+                                          >
+                                            {url}
+                                          </a>
+                                          {idx < uniqueUrls.length - 1 && <span>, </span>}
+                                        </React.Fragment>
+                                      )
+                                    })}
+                                  </span>
+                                )
                               })()
                             ) : (
                               '-'
@@ -931,6 +933,9 @@ const KR_UpdateOrderDetails = () => {
           </div>
         </div>
       )}
+
+      {/* Loading Spinner for file uploads and tracking details updates */}
+      {uploadingFiles && <LoadingSpinner />}
     </div>
   )
 }

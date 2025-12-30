@@ -73,6 +73,36 @@ button:focus-visible {
   }
 }
 
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #e5e7eb;
+    background-color: #111827;
+    margin-top: 40px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #f9fafb;
+  }
+
+  a {
+    color: #60a5fa;
+  }
+
+  a:hover {
+    color: #93c5fd;
+  }
+
+  button {
+    background-color: #374151;
+    color: #f9fafb;
+  }
+
+  button:hover {
+    background-color: #4b5563;
+  }
+}
+
 /* Modal animations */
 @keyframes fadeInScale {
   from {

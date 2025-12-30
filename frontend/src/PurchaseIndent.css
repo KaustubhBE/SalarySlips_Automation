@@ -5357,4 +5357,460 @@
       padding: 12px 15px;
     }
   }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .po-purchase_indent-container {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .po-purchase_indent-container h2 {
+    color: #f9fafb;
+  }
+
+  .po-loading-message {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .po-loading-message p {
+    color: #d1d5db;
+  }
+
+  .po-material-form {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .po-header-center h2 {
+    color: #f9fafb;
+  }
+
+  .po-form-group label {
+    color: #d1d5db;
+  }
+
+  .po-form-input,
+  .po-form-select,
+  .po-form-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .po-form-input:focus,
+  .po-form-select:focus,
+  .po-form-textarea:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  .po-form-input::placeholder,
+  .po-form-textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  .po-notification-section {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .po-notification-section h2 {
+    color: #f9fafb;
+  }
+
+  .po-items-table-container {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .po-items-table {
+    background-color: #1f2937;
+  }
+
+  .po-items-table thead {
+    background-color: #374151;
+  }
+
+  .po-items-table th {
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .po-items-table td {
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  .po-items-table tbody tr {
+    background-color: #1f2937;
+  }
+
+  .po-items-table tbody tr:hover {
+    background-color: #374151;
+  }
+
+  .po-notification-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  .po-notification-modal {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .po-notification-modal-header {
+    background-color: #374151;
+    border-bottom-color: #4b5563;
+  }
+
+  .po-notification-modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .po-notification-modal-body {
+    background-color: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .order-summary,
+  .notification-method-section,
+  .po-recipients-section {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .order-summary h4,
+  .notification-method-section h4,
+  .po-recipients-header h4 {
+    color: #f9fafb;
+  }
+
+  .po-summary-item {
+    color: #e5e7eb;
+  }
+
+  .po-summary-item strong {
+    color: #d1d5db;
+  }
+
+  .po-recipient-item {
+    background-color: #1f2937;
+    border-color: #4b5563;
+  }
+
+  .po-notification-modal-footer {
+    background-color: #1f2937;
+    border-top-color: #374151;
+  }
+
+  /* DateTime and Order ID Boxes */
+  .po-datetime-box {
+    background-color: #374151;
+    border-color: #60a5fa;
+    color: #f9fafb;
+  }
+
+  .po-time-input {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .po-time-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  }
+
+  .po-time-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .po-order-id-box {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .po-order-id-label {
+    color: #d1d5db;
+  }
+
+  .po-order-id-value {
+    color: #f9fafb;
+  }
+
+  /* React-Select Components */
+  .po-searchable-select .po-select__control {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .po-searchable-select .po-select__control--is-focused {
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+  }
+
+  .po-searchable-select .po-select__control--is-disabled {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+    cursor: not-allowed !important;
+  }
+
+  .po-searchable-select .po-select__single-value,
+  .po-searchable-select .po-select__input {
+    color: #f9fafb !important;
+  }
+
+  .po-searchable-select .po-select__input input {
+    color: #f9fafb !important;
+  }
+
+  .po-searchable-select .po-select__placeholder {
+    color: #9ca3af !important;
+  }
+
+  .po-searchable-select .po-select__menu {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+  }
+
+  .po-searchable-select .po-select__option {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+  }
+
+  .po-searchable-select .po-select__option:hover {
+    background-color: #4b5563 !important;
+  }
+
+  .po-searchable-select .po-select__option--is-selected {
+    background-color: #3498db !important;
+    color: #ffffff !important;
+  }
+
+  .po-searchable-select .po-select__option--is-focused {
+    background-color: #4b5563 !important;
+  }
+
+  .po-searchable-select .po-select__indicator {
+    color: #9ca3af !important;
+  }
+
+  .po-searchable-select .po-select__indicator:hover {
+    color: #f9fafb !important;
+  }
+
+  /* Edit Select (same as above but for editable selects) */
+  .po-searchable-select.po-edit-select .po-select__control {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+  }
+
+  .po-searchable-select.po-edit-select .po-select__control--is-focused {
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+  }
+
+  .po-searchable-select.po-edit-select .po-select__control--is-disabled {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+  }
+
+  /* Error states for React-Select */
+  .po-searchable-select.po-error-highlight .po-select__control {
+    background-color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+  }
+
+  .po-edit-select.po-error-highlight .po-select__control {
+    background-color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+  }
+
+  /* Disabled States */
+  .po-form-select:disabled,
+  .po-form-input:disabled,
+  .po-form-textarea:disabled {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+    cursor: not-allowed;
+  }
+
+  .po-form-select:disabled option {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+  }
+
+  /* Buttons */
+  .po-generate-order-id-btn:not(:disabled) {
+    background-color: #3498db;
+    color: #ffffff;
+  }
+
+  .po-generate-order-id-btn:disabled {
+    background-color: #374151;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+
+  .po-add-item-btn {
+    color: #ffffff;
+  }
+
+  .po-reset-item-btn {
+    background-color: #6b7280;
+    color: #ffffff;
+  }
+
+  .po-reset-item-btn:hover {
+    background-color: #4b5563;
+  }
+
+  /* Edit Input Fields - All variants */
+  .po-edit-input {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .po-edit-input:focus {
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    background-color: #1f2937 !important;
+  }
+
+  .po-edit-input::placeholder {
+    color: #9ca3af !important;
+  }
+
+  .po-edit-input.po-quantity-input {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .po-edit-input.po-readonly-input {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #9ca3af !important;
+    cursor: not-allowed;
+  }
+
+  /* Mobile sheet card edit inputs */
+  .po-items-sheet-card .po-edit-input {
+    background-color: #374151 !important;
+    border-color: #3498db !important;
+    color: #f9fafb !important;
+  }
+
+  .po-items-sheet-card .po-edit-input:focus {
+    border-color: #2980b9 !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+    background-color: #1f2937 !important;
+  }
+
+  /* Editable Cell Hover States */
+  .po-editable-cell:hover {
+    background-color: #374151 !important;
+    box-shadow: inset 0 0 0 2px #3498db !important;
+  }
+
+  .po-editable-cell:active {
+    background-color: #4b5563 !important;
+    box-shadow: inset 0 0 0 2px #60a5fa !important;
+  }
+
+  .po-editable-cell.po-touch-active {
+    background-color: #4b5563 !important;
+  }
+
+  /* Mobile sheet card editable cells */
+  .po-items-sheet-card .po-editable-cell:hover {
+    background-color: #374151 !important;
+    border-radius: 6px;
+  }
+
+  /* Editing cells should have transparent or subtle background */
+  .po-editing-cell {
+    background-color: transparent !important;
+  }
+
+  .po-items-table td.po-editing-cell {
+    background-color: transparent !important;
+  }
+
+  /* Table cells in editing rows - ensure proper background */
+  .po-items-table tbody tr.po-editing-row td {
+    background-color: #1f2937 !important;
+  }
+
+  .po-items-table tbody tr.po-editing-row td.po-editing-cell {
+    background-color: transparent !important;
+  }
+
+  /* Ensure table cells have proper colors even when not explicitly styled */
+  .po-items-table td:not(.po-editing-cell) {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+  }
+
+  /* Edit select disabled state */
+  .po-edit-select:disabled {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+    cursor: not-allowed;
+  }
+
+  .po-items-sheet-card .po-edit-select:disabled {
+    background-color: #1f2937 !important;
+    color: #6b7280 !important;
+  }
+
+  /* Custom Time Picker Dark Mode */
+  .po-custom-time-picker {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+  }
+
+  .po-time-picker-column {
+    background-color: #374151 !important;
+    border-right-color: #4b5563 !important;
+  }
+
+  .po-time-picker-label {
+    color: #d1d5db !important;
+  }
+
+  .po-time-picker-list {
+    background-color: #374151 !important;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-track {
+    background: #1f2937 !important;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-thumb {
+    background: #4b5563 !important;
+  }
+
+  .po-time-picker-list::-webkit-scrollbar-thumb:hover {
+    background: #6b7280 !important;
+  }
+
+  .po-time-picker-item {
+    color: #f9fafb !important;
+  }
+
+  .po-time-picker-item:hover {
+    background-color: #4b5563 !important;
+  }
+
+  .po-time-picker-item.po-time-picker-selected {
+    background-color: #3498db !important;
+    color: #ffffff !important;
+  }
+}
   

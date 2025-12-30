@@ -12,7 +12,7 @@ const LoadingSpinner = () => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 999,
+      zIndex: 10000,
     },
     spinner: {
       border: '8px solid #e6cfb8',

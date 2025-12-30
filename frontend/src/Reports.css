@@ -1465,3 +1465,101 @@
     height: 300px;
   }
 }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .reports-container {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .reports-container h1 {
+    color: #f9fafb;
+  }
+
+  .sheet-id-section {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .sheet-id-section label {
+    color: #d1d5db;
+  }
+
+  .sheet-id-section input {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .sheet-id-section input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.2);
+  }
+
+  .sheet-id-section input.error {
+    border-color: #dc3545;
+    background-color: #7f1d1d;
+  }
+
+  .help-text {
+    color: #9ca3af;
+  }
+
+  .error-message {
+    color: #fca5a5;
+  }
+
+  .drop-zone {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .drop-zone.dragging {
+    border-color: #007bff;
+    background-color: #4b5563;
+  }
+
+  .drop-zone h3 {
+    color: #f9fafb;
+  }
+
+  .drop-zone p {
+    color: #d1d5db;
+  }
+
+  .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-content {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .modal-content h2 {
+    color: #f9fafb;
+  }
+
+  .modal-content p {
+    color: #d1d5db;
+  }
+
+  .loading-state p {
+    color: #d1d5db;
+  }
+
+  .caption-option {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .caption-checkbox-text {
+    color: #e5e7eb;
+  }
+
+  .caption-help-text {
+    color: #9ca3af;
+  }
+}

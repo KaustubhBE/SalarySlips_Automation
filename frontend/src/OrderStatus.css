@@ -2784,3 +2784,542 @@
   }
 }
 
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .os-container {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .os-header h1 {
+    color: #f9fafb;
+  }
+
+  .os-header-actions {
+    color: #f9fafb;
+  }
+
+  .os-filters {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .os-filter-label,
+  .os-date-label {
+    color: #d1d5db;
+  }
+
+  .os-search-input,
+  .os-filter-select,
+  .os-date-input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .os-search-input:focus,
+  .os-filter-select:focus,
+  .os-date-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  }
+
+  .os-search-input::placeholder,
+  .os-date-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .os-results {
+    color: #d1d5db;
+  }
+
+  .os-table-wrap {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .os-table {
+    background-color: #1f2937;
+  }
+
+  .os-table thead {
+    background-color: #374151;
+  }
+
+  .os-table th {
+    color: #f9fafb;
+    border-right-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .os-table th.os-sortable:hover {
+    background-color: #4b5563;
+  }
+
+  .os-table tbody tr {
+    border-bottom-color: #374151;
+    background-color: #1f2937;
+  }
+
+  .os-table tbody tr:hover {
+    background-color: #374151;
+  }
+
+  .os-table tbody tr.os-row-urgent {
+    background-color: #3e2a1a;
+  }
+
+  .os-table tbody tr.os-row-urgent:hover {
+    background-color: #4a341f;
+  }
+
+  .os-table tbody tr.os-row:hover {
+    background-color: #1e3a5f;
+  }
+
+  .os-table td {
+    color: #e5e7eb;
+    border-right-color: #374151;
+  }
+
+  .order-detail-page {
+    background-color: #111827;
+  }
+
+  .order-detail-header h1 {
+    color: #f9fafb;
+  }
+
+  .order-info-card {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .section-title {
+    color: #e5e7eb;
+    border-bottom-color: #3498db;
+  }
+
+  .order-info-grid {
+    color: #e5e7eb;
+  }
+
+  .info-item {
+    background-color: #374151;
+    border-left-color: #3498db;
+    color: #e5e7eb;
+  }
+
+  .info-item strong {
+    color: #d1d5db;
+  }
+
+  .order-items-section {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .order-items-detail-table {
+    background-color: #1f2937;
+  }
+
+  .order-items-detail-table thead {
+    background-color: #374151;
+  }
+
+  .order-items-detail-table th {
+    color: #f9fafb;
+    border-right-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .order-items-detail-table td {
+    color: #e5e7eb;
+    border-bottom-color: #374151;
+    border-right-color: #374151;
+  }
+
+  .order-items-detail-table tbody tr:hover {
+    background-color: #374151;
+  }
+
+  .no-items,
+  .os-no-items,
+  .os-no-data {
+    color: #9ca3af;
+  }
+
+  .os-id-cell,
+  .os-id-link {
+    color: #60a5fa;
+  }
+
+  .os-id-link:hover {
+    color: #93c5fd;
+  }
+
+  .os-loading,
+  .os-error {
+    background-color: #111827;
+  }
+
+  .os-loading p {
+    color: #d1d5db;
+  }
+
+  .os-error-message {
+    color: #fca5a5;
+    background-color: #7f1d1d;
+    border-color: #991b1b;
+  }
+
+  .os-items-table-container {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .os-items-table {
+    background-color: #1f2937;
+  }
+
+  .os-items-table thead {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  }
+
+  .os-items-table th {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    color: #f9fafb;
+    border-bottom-color: #4b5563;
+  }
+
+  .os-items-table td {
+    color: #e5e7eb;
+    border-bottom-color: #374151;
+  }
+
+  .os-items-table tbody tr:hover {
+    background-color: #374151;
+  }
+
+  .os-tracking-link {
+    color: #60a5fa;
+  }
+
+  .os-tracking-link:hover {
+    color: #93c5fd;
+  }
+
+  .os-tracking-link:visited {
+    color: #a78bfa;
+  }
+
+  .os-tracking-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  .os-tracking-modal {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .os-tracking-modal-header {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border-bottom-color: #4b5563;
+  }
+
+  .os-tracking-modal-header h2 {
+    color: #f9fafb;
+  }
+
+  .os-tracking-modal-content {
+    background-color: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .os-tracking-label {
+    color: #d1d5db;
+  }
+
+  .os-tracking-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .os-tracking-textarea:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  }
+
+  .os-tracking-dropzone {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .os-tracking-dropzone:hover {
+    background-color: #4b5563;
+    border-color: #60a5fa;
+  }
+
+  .os-tracking-dropzone.os-drag-active {
+    background-color: #4b5563;
+    border-color: #3498db;
+  }
+
+  .os-tracking-dropzone-text {
+    color: #e5e7eb;
+  }
+
+  .os-tracking-dropzone-hint {
+    color: #9ca3af;
+  }
+
+  .os-tracking-files-title {
+    color: #d1d5db;
+  }
+
+  .os-tracking-file-item {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .os-tracking-file-item:hover {
+    background-color: #4b5563;
+  }
+
+  .os-tracking-file-name {
+    color: #e5e7eb;
+  }
+
+  .os-tracking-file-size {
+    color: #9ca3af;
+  }
+
+  .os-tracking-modal-footer {
+    background-color: #1f2937;
+    border-top-color: #374151;
+  }
+
+  .os-tracking-material-associations-title {
+    color: #d1d5db;
+  }
+
+  .os-tracking-material-associations-hint {
+    color: #9ca3af;
+  }
+
+  .os-tracking-file-association {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .os-tracking-file-association-header {
+    color: #d1d5db;
+  }
+
+  .os-tracking-material-checklist {
+    background-color: #1f2937;
+  }
+
+  .os-tracking-material-checkbox-item:hover {
+    background-color: #374151;
+  }
+
+  .os-tracking-material-label {
+    color: #e5e7eb;
+  }
+
+  .os-tracking-material-label:hover {
+    color: #f9fafb;
+  }
+
+  /* Buttons */
+  .os-refresh-btn {
+    background-color: #3498db;
+    color: #ffffff;
+  }
+
+  .os-refresh-btn:hover {
+    background-color: #2980b9;
+  }
+
+  .os-clear-btn {
+    background-color: #e74c3c;
+    color: #ffffff;
+  }
+
+  .os-clear-btn:hover {
+    background-color: #c0392b;
+  }
+
+  .os-pdf-btn {
+    background-color: #3498db;
+    color: #ffffff;
+  }
+
+  .os-pdf-btn:hover:not(:disabled) {
+    background-color: #2980b9;
+  }
+
+  .os-pdf-btn:disabled {
+    background-color: #374151;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+
+  .os-details-btn {
+    background-color: #3498db;
+    color: #ffffff;
+  }
+
+  .os-details-btn:hover {
+    background-color: #2980b9;
+  }
+
+  .os-retry-btn {
+    background-color: #3498db;
+    color: #ffffff;
+  }
+
+  .os-retry-btn:hover {
+    background-color: #2980b9;
+  }
+
+  /* Status Select */
+  .os-status-select {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .os-status-select:focus {
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    outline: none !important;
+    background-color: #1f2937 !important;
+  }
+
+  .os-status-select:hover {
+    border-color: #60a5fa !important;
+  }
+
+  .os-status-select option {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+  }
+
+  .os-status-select option:hover {
+    background-color: #4b5563 !important;
+  }
+
+  .os-status-select option:checked {
+    background-color: #3498db !important;
+    color: #ffffff !important;
+  }
+
+  /* Table Headers - Ensure explicit dark backgrounds */
+  .os-table thead {
+    background-color: #374151 !important;
+  }
+
+  .os-table thead th {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+  }
+
+  .os-table th {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+    border-right-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .os-table th.os-sortable {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+  }
+
+  .os-table th.os-sortable:hover {
+    background-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  /* Date Range Input Fields (from DateRangePicker component) */
+  .os-date-range-input {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .os-date-range-input:focus {
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+    background-color: #1f2937 !important;
+  }
+
+  .os-date-range-input:hover {
+    border-color: #60a5fa !important;
+  }
+
+  .os-date-range-input::placeholder {
+    color: #9ca3af !important;
+  }
+
+  .os-date-separator {
+    color: #d1d5db !important;
+  }
+
+  /* Calendar Popup */
+  .os-calendar-popup {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+
+  .os-calendar-month-year {
+    color: #f9fafb !important;
+  }
+
+  .os-calendar-nav-btn {
+    color: #60a5fa !important;
+  }
+
+  .os-calendar-nav-btn:hover {
+    background-color: #374151 !important;
+    color: #93c5fd !important;
+  }
+
+  .os-calendar-day-name {
+    color: #d1d5db !important;
+  }
+
+  .os-calendar-day {
+    color: #e5e7eb !important;
+  }
+
+  .os-calendar-day:not(.empty):hover {
+    background-color: #374151 !important;
+    color: #60a5fa !important;
+  }
+
+  .os-calendar-day.today {
+    color: #60a5fa !important;
+  }
+
+  .os-calendar-day.today:not(.start-date):not(.end-date):not(.in-range) {
+    border-color: #60a5fa !important;
+  }
+
+  .os-calendar-day.in-range {
+    background-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+
+  .os-calendar-day.start-date {
+    background-color: #3498db !important;
+    color: #ffffff !important;
+  }
+
+  .os-calendar-day.end-date {
+    background-color: #3498db !important;
+    color: #ffffff !important;
+  }
+}
+

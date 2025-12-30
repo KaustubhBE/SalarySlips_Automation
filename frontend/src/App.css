@@ -268,3 +268,77 @@ body {
 .service-link:hover {
   background-color: #5a6268 !important;
 }
+
+/* ==================== DARK MODE SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .splash-page {
+    background-color: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .splash-page h1 {
+    color: #f9fafb;
+  }
+
+  .splash-page h2 {
+    color: #f9fafb;
+  }
+
+  .splash-page h3 {
+    color: #e5e7eb;
+  }
+
+  .splash-page p {
+    color: #d1d5db;
+  }
+
+  .factory-selection {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .factory-selection h3 {
+    color: #e5e7eb;
+  }
+
+  .department-section {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .department-title {
+    color: #e5e7eb;
+  }
+
+  .back-navigation {
+    border-top-color: #374151;
+  }
+
+  .back-navigation button {
+    background-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .back-navigation button:hover {
+    background-color: #6b7280;
+  }
+
+  .message-logger {
+    background-color: #1f2937;
+    border-top-color: #374151;
+  }
+
+  .message-logger h4 {
+    color: #f9fafb;
+  }
+
+  .message-logger div div {
+    color: #fca5a5;
+  }
+}
